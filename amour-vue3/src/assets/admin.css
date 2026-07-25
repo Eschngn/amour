@@ -1,0 +1,133 @@
+.admin-shell {
+  --admin-primary: #e11d48;
+  --admin-primary-soft: #fff1f2;
+  --admin-border: rgba(226, 232, 240, 0.82);
+  background:
+    radial-gradient(circle at 92% 4%, rgba(251, 113, 133, 0.08), transparent 28rem),
+    radial-gradient(circle at 8% 96%, rgba(244, 63, 94, 0.045), transparent 24rem),
+    #f7f8fb;
+}
+
+.admin-sidebar {
+  background:
+    radial-gradient(circle at 15% 0%, rgba(225, 29, 72, 0.16), transparent 16rem),
+    linear-gradient(180deg, #161b2a 0%, #101521 100%);
+}
+
+.logo-mark,
+.admin-avatar {
+  background: linear-gradient(135deg, #fb7185 0%, #e11d48 58%, #be123c 100%);
+}
+
+.admin-nav-active {
+  background: linear-gradient(90deg, rgba(225, 29, 72, 0.2), rgba(225, 29, 72, 0.08));
+  box-shadow: inset 0 0 0 1px rgba(251, 113, 133, 0.12);
+}
+
+.admin-nav-active::before {
+  position: absolute;
+  left: 0;
+  width: 3px;
+  height: 20px;
+  border-radius: 0 999px 999px 0;
+  background: #fb7185;
+  box-shadow: 0 0 12px rgba(251, 113, 133, 0.6);
+  content: '';
+}
+
+.admin-header {
+  border-color: rgba(226, 232, 240, 0.74);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(16px);
+}
+
+.admin-footer {
+  border-top: 1px solid rgba(226, 232, 240, 0.65);
+  background: rgba(255, 255, 255, 0.48);
+}
+
+.admin-main > div > div > .space-y-4,
+.admin-main > div > div > .space-y-5,
+.admin-main > div > div > .space-y-6 {
+  animation: admin-content-in 0.36s ease-out both;
+}
+
+.admin-main .rounded-xl.border.border-slate-200.bg-white {
+  border-color: var(--admin-border);
+  border-radius: 18px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.025), 0 10px 28px rgba(15, 23, 42, 0.035);
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.admin-main .rounded-xl.border.border-slate-200.bg-white:hover {
+  border-color: rgba(251, 113, 133, 0.22);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.025), 0 14px 36px rgba(15, 23, 42, 0.055);
+}
+
+.admin-main table thead {
+  background: #fafbfc;
+}
+
+.admin-main table th {
+  height: 44px;
+  color: #64748b;
+  font-weight: 600;
+  letter-spacing: 0.035em;
+}
+
+.admin-main table tbody tr {
+  transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.admin-main table tbody tr:hover {
+  background: rgba(255, 241, 242, 0.48);
+  box-shadow: inset 3px 0 0 rgba(251, 113, 133, 0.5);
+}
+
+.admin-main input:not([type='checkbox']):not([type='radio']) {
+  min-height: 40px;
+  background-color: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.02);
+}
+
+.admin-main input:not([type='checkbox']):not([type='radio']):focus {
+  border-color: rgba(244, 63, 94, 0.48);
+  box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.09);
+}
+
+.admin-page-enter-active,
+.admin-page-leave-active {
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.admin-page-enter-from {
+  opacity: 0;
+  transform: translateY(7px);
+}
+
+.admin-page-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+@keyframes admin-content-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-shell *,
+  .admin-shell *::before,
+  .admin-shell *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (max-width: 1023px) {
+  .admin-main table {
+    min-width: 760px;
+  }
+}

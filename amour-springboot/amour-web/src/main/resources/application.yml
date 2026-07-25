@@ -1,0 +1,18 @@
+server:
+  port: 8080
+
+spring:
+  profiles:
+    active: prod
+  servlet:
+    multipart:
+      max-file-size: 10MB # 限制单个上传文件的最大大小为 10MB。如果上传的文件大小超过这个值，将会被拒绝上传。
+      max-request-size: 10MB # 限制整个上传请求的最大大小为 10MB。这包括所有上传文件的大小之和。如果请求总大小超过这个值，将会被拒绝。
+
+amour:
+  security:
+    login-rsa:
+      # 生产多实例部署时必须配置同一组密钥。公钥为 X.509 DER、私钥为 PKCS#8 DER，均使用 Base64 编码。
+      # 未配置时会在应用启动时生成临时密钥，适合本地开发和单实例运行。
+      public-key: ${LOGIN_RSA_PUBLIC_KEY:}
+      private-key: ${LOGIN_RSA_PRIVATE_KEY:}

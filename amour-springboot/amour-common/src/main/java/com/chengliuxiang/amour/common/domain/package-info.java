@@ -1,0 +1,1 @@
+package com.chengliuxiang.amour.common.domain;
