@@ -64,7 +64,7 @@
             <div :class="hasToc ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_15rem] lg:items-start' : ''">
               <!-- 正文区域 -->
               <article class="story-article min-w-0 px-5 py-7 sm:px-9 sm:py-10 lg:px-12">
-                <MdPreview :modelValue="story.content" editorId="storyDetailPreview" />
+                <MdPreview :modelValue="story.content" editorId="storyDetailPreview" :customIcon="markdownPreviewIcons" :codeFoldable="false" :showCodeRowNumber="false" />
               </article>
 
               <!-- 目录侧边栏 -->
@@ -134,6 +134,10 @@ import StoryToc from '@/components/frontend/StoryToc.vue'
 import api from '@/axios'
 
 const route = useRoute()
+
+const markdownPreviewIcons = {
+  copy: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" class="md-editor-icon"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>'
+}
 
 const story = ref(null)
 const loading = ref(true)
@@ -267,6 +271,143 @@ watch(() => route.params.id, (newId) => {
   border-radius: 6px;
   background: #fff1f2;
   color: #be123c;
+}
+
+.story-article .md-editor-preview .md-editor-code {
+  --md-theme-code-block-color: #4a2933;
+  --md-theme-code-block-bg-color: #fffafb;
+  --md-theme-code-before-bg-color: #fffafb;
+  --md-theme-code-copy-tips-color: #881337;
+  --md-theme-code-copy-tips-bg-color: #fff1f2;
+  --md-theme-code-block-radius: 16px;
+  margin: 1.75rem 0;
+  overflow: hidden;
+  border: 1px solid #ffe4e6;
+  border-radius: 16px;
+  background: #fffafb;
+  box-shadow: 0 12px 30px rgba(159, 18, 57, 0.08);
+}
+
+.story-article .md-editor-preview .md-editor-code .md-editor-code-head {
+  position: relative;
+  top: auto;
+  z-index: 1;
+  display: flex;
+  height: 2.5rem;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #ffe4e6;
+  background: #fff1f2;
+}
+
+.story-article .md-editor-preview .md-editor-code .md-editor-code-flag {
+  display: flex;
+  min-width: 3.25rem;
+  align-items: center;
+  margin-inline-start: 0.875rem;
+}
+
+.story-article .md-editor-preview .md-editor-code .md-editor-code-flag span {
+  margin-block-start: 0;
+}
+
+.story-article .md-editor-preview .md-editor-code .md-editor-code-action {
+  position: relative;
+  display: flex;
+  min-width: 4rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: flex-end;
+  margin-inline-end: 0.75rem;
+}
+
+.story-article .md-editor-preview .md-editor-code .md-editor-code-action > * {
+  margin-inline-end: 0;
+}
+
+.story-article .md-editor-preview .md-editor-code .md-editor-code-lang {
+  display: inline-flex;
+  min-height: 1.625rem;
+  max-width: 8rem;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid #fecdd3;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 0 0.625rem;
+  color: #9f1239;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.story-article .md-editor-preview .md-editor-code .md-editor-code-lang:empty::before {
+  content: 'CODE';
+}
+
+.story-article .md-editor-preview .md-editor-code .md-editor-copy-button {
+  position: absolute;
+  right: 0;
+  display: inline-flex;
+  width: 1.875rem;
+  height: 1.875rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #fecdd3;
+  border-radius: 0.625rem;
+  background: rgba(255, 255, 255, 0.8);
+  color: #be123c;
+  opacity: 0;
+  transform: translateY(2px) scale(0.92);
+  transition: opacity 160ms ease, transform 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+
+.story-article .md-editor-preview .md-editor-code .md-editor-copy-button .md-editor-icon {
+  width: 0.9375rem;
+  height: 0.9375rem;
+}
+
+.story-article .md-editor-preview .md-editor-code .md-editor-copy-button:hover {
+  border-color: #fda4af;
+  background: #ffe4e6;
+}
+
+.story-article .md-editor-preview .md-editor-code .md-editor-collapse-tips {
+  display: none;
+}
+
+.story-article .md-editor-preview .md-editor-code:hover .md-editor-code-lang,
+.story-article .md-editor-preview .md-editor-code:focus-within .md-editor-code-lang {
+  opacity: 0;
+  transform: translateY(-2px) scale(0.95);
+}
+
+.story-article .md-editor-preview .md-editor-code:hover .md-editor-copy-button,
+.story-article .md-editor-preview .md-editor-code:focus-within .md-editor-copy-button {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.story-article .md-editor-preview .md-editor-code pre code {
+  overflow: auto;
+  padding: 1.125rem 1.25rem;
+  background: #fffafb;
+  color: #4a2933;
+  font-size: 0.875rem;
+  line-height: 1.75;
+}
+
+.story-article .md-editor-preview .md-editor-code span[rn-wrapper] {
+  display: none;
+}
+
+.story-article .md-editor-preview .md-editor-code pre code .md-editor-code-block {
+  color: inherit;
 }
 
 .story-article .md-editor-preview hr {
