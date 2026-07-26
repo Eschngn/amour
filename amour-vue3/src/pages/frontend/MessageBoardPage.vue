@@ -20,16 +20,6 @@
               </p>
             </div>
             <div class="flex shrink-0 items-center gap-3 text-xs text-rose-700/60">
-              <span
-                class="inline-flex items-center gap-1.5 rounded-full border border-rose-100 bg-white/80 px-3 py-1.5">
-                <svg class="h-3.5 w-3.5 text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                  stroke-width="1.8" aria-hidden="true">
-                  <path d="M20.8 11.2c0 4.8-3.9 8.8-8.8 8.8s-8.8-4-8.8-8.8S7.1 2.4 12 2.4s8.8 4 8.8 8.8Z" />
-                  <path d="M8.5 11.4h.01M12 11.4h.01M15.5 11.4h.01" stroke-linecap="round" />
-                  <path d="M8.7 15.1c1.9 1.3 4.7 1.3 6.6 0" stroke-linecap="round" />
-                </svg>
-                仅你们可见
-              </span>
               <span class="font-medium"><span class="text-base text-rose-600">{{ total }}</span> 条留言</span>
             </div>
           </div>

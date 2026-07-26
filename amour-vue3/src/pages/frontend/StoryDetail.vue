@@ -2,7 +2,7 @@
   <CouplePageScaffold>
     <main class="relative z-10">
       <!-- 加载中 -->
-      <div v-if="loading" class="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16 lg:px-8 lg:py-20" aria-label="正在加载故事" aria-busy="true">
+      <div v-if="loading" class="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-16 lg:px-8 lg:py-20" aria-label="正在加载故事" aria-busy="true">
         <div class="h-80 animate-pulse rounded-[2rem] border border-rose-100 bg-white/60" />
         <div class="mx-auto mt-8 max-w-3xl rounded-3xl border border-rose-100 bg-white/60 p-6 sm:p-10">
           <div class="h-5 w-2/3 animate-pulse rounded-full bg-rose-100" />
@@ -24,7 +24,7 @@
       </div>
 
       <!-- 故事详情 -->
-      <div v-else class="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
+      <div v-else class="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
         <!-- Hero：封面 + 标题 + Meta -->
         <section class="relative overflow-hidden rounded-[2rem] border border-rose-100/80 bg-white/75 shadow-sm shadow-rose-100/50 backdrop-blur-sm">
           <div class="pointer-events-none absolute -left-12 -top-20 h-56 w-56 rounded-full bg-rose-100/70 blur-3xl" aria-hidden="true" />
@@ -60,64 +60,64 @@
 
         <!-- 故事正文 + 目录 -->
         <section class="mt-8">
-          <div :class="hasToc ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_15rem] lg:gap-8' : 'lg:max-w-3xl lg:mx-auto'">
-            <!-- 正文区域 -->
-            <div class="min-w-0">
-              <article class="story-article rounded-[1.75rem] border border-rose-100/90 bg-white/90 px-5 py-7 shadow-sm shadow-rose-100/30 backdrop-blur-sm sm:px-9 sm:py-10 lg:px-12">
+          <div class="overflow-hidden rounded-[1.75rem] border border-rose-100/90 bg-white/90 shadow-sm shadow-rose-100/30 backdrop-blur-sm lg:overflow-visible">
+            <div :class="hasToc ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_15rem] lg:items-start' : ''">
+              <!-- 正文区域 -->
+              <article class="story-article min-w-0 px-5 py-7 sm:px-9 sm:py-10 lg:px-12">
                 <MdPreview :modelValue="story.content" editorId="storyDetailPreview" />
               </article>
 
-              <!-- 最后更新时间 -->
-              <div v-if="story.updateTime" class="mt-5 flex items-center justify-center gap-1.5 text-[11px] text-rose-700/45">
-                <svg class="h-3.5 w-3.5 text-rose-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>
-                最后编辑于 {{ story.updateTime }}
-              </div>
+              <!-- 目录侧边栏 -->
+              <aside v-if="hasToc" class="hidden border-l border-rose-100/80 px-4 py-6 lg:sticky lg:top-24 lg:block lg:self-start">
+                <StoryToc :content="story.content" embedded />
+              </aside>
+            </div>
+          </div>
 
-              <!-- 上下篇导航 -->
-              <nav class="mt-8 grid gap-3 sm:grid-cols-2" aria-label="故事翻篇导航">
-                <div class="min-w-0 flex-1">
-                  <router-link
-                    v-if="story.preStory"
-                    :to="'/story/' + story.preStory.id"
-                    class="group flex h-full flex-col rounded-2xl border border-rose-100 bg-white/80 p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-rose-200 hover:shadow-md"
-                  >
-                    <span class="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-rose-400">
-                      <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/>
-                      </svg>
-                      上一篇
-                    </span>
-                    <span class="mt-2 truncate font-display text-sm font-semibold text-rose-900 group-hover:text-rose-600">
-                      {{ story.preStory.title }}
-                    </span>
-                  </router-link>
-                </div>
+          <!-- 最后更新时间 -->
+          <div v-if="story.updateTime" class="mt-5 flex items-center justify-center gap-1.5 text-[11px] text-rose-700/45">
+            <svg class="h-3.5 w-3.5 text-rose-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>
+            最后编辑于 {{ story.updateTime }}
+          </div>
 
-                <div class="min-w-0 flex-1">
-                  <router-link
-                    v-if="story.nextStory"
-                    :to="'/story/' + story.nextStory.id"
-                    class="group flex h-full flex-col rounded-2xl border border-rose-100 bg-white/80 p-4 text-right shadow-sm transition hover:-translate-y-0.5 hover:border-rose-200 hover:shadow-md"
-                  >
-                    <span class="inline-flex items-center justify-end gap-1 text-[11px] font-semibold uppercase tracking-wider text-rose-400">
-                      下一篇
-                      <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M5 12h12"/><path d="M12 5l7 7-7 7"/>
-                      </svg>
-                    </span>
-                    <span class="mt-2 truncate font-display text-sm font-semibold text-rose-900 group-hover:text-rose-600">
-                      {{ story.nextStory.title }}
-                    </span>
-                  </router-link>
-                </div>
-              </nav>
+          <!-- 上下篇导航 -->
+          <nav class="mt-8 grid gap-3 sm:grid-cols-2" aria-label="故事翻篇导航">
+            <div class="min-w-0 flex-1">
+              <router-link
+                v-if="story.preStory"
+                :to="'/story/' + story.preStory.id"
+                class="group flex h-full flex-col rounded-2xl border border-rose-100 bg-white/80 p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-rose-200 hover:shadow-md"
+              >
+                <span class="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-rose-400">
+                  <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/>
+                  </svg>
+                  上一篇
+                </span>
+                <span class="mt-2 truncate font-display text-sm font-semibold text-rose-900 group-hover:text-rose-600">
+                  {{ story.preStory.title }}
+                </span>
+              </router-link>
             </div>
 
-            <!-- 目录侧边栏 -->
-            <aside v-if="hasToc" class="sticky top-24 hidden self-start lg:block">
-              <StoryToc :content="story.content" />
-            </aside>
-          </div>
+            <div class="min-w-0 flex-1">
+              <router-link
+                v-if="story.nextStory"
+                :to="'/story/' + story.nextStory.id"
+                class="group flex h-full flex-col rounded-2xl border border-rose-100 bg-white/80 p-4 text-right shadow-sm transition hover:-translate-y-0.5 hover:border-rose-200 hover:shadow-md"
+              >
+                <span class="inline-flex items-center justify-end gap-1 text-[11px] font-semibold uppercase tracking-wider text-rose-400">
+                  下一篇
+                  <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 12h12"/><path d="M12 5l7 7-7 7"/>
+                  </svg>
+                </span>
+                <span class="mt-2 truncate font-display text-sm font-semibold text-rose-900 group-hover:text-rose-600">
+                  {{ story.nextStory.title }}
+                </span>
+              </router-link>
+            </div>
+          </nav>
         </section>
       </div>
     </main>
@@ -140,7 +140,7 @@ const loading = ref(true)
 
 const hasToc = computed(() => {
   if (!story.value?.content) return false
-  return /^#{2,3}\s/m.test(story.value.content)
+  return /^#{1,3}\s/m.test(story.value.content)
 })
 
 const totalWords = computed(() => {
@@ -195,6 +195,9 @@ watch(() => route.params.id, (newId) => {
 }
 
 .story-article .md-editor-preview {
+  width: 100%;
+  max-width: 48rem;
+  margin: 0 auto;
   padding: 0;
   font-size: 16px;
   line-height: 2;

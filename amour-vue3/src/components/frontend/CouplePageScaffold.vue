@@ -1,7 +1,7 @@
 <template>
-  <div class="relative min-h-screen overflow-x-clip bg-gradient-to-b from-rose-50 via-pink-50/80 to-white font-sans text-rose-950 antialiased">
+  <div class="relative min-h-screen bg-gradient-to-b from-rose-50 via-pink-50/80 to-white font-sans text-rose-950 antialiased">
     <div
-      class="pointer-events-none fixed inset-0"
+      class="pointer-events-none fixed inset-0 overflow-x-clip"
       aria-hidden="true"
     >
       <div
