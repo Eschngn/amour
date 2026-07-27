@@ -73,3 +73,33 @@ npm run build
 ## 安全
 
 登录密码使用 RSA-OAEP 挑战加密。生产多实例部署时需通过环境变量 `LOGIN_RSA_PUBLIC_KEY` 和 `LOGIN_RSA_PRIVATE_KEY` 配置统一密钥对，否则应用启动时会自动生成临时密钥。
+
+## 页面展示
+
+### 首页
+
+![](https://chengliuxiang.oss-cn-hangzhou.aliyuncs.com/amour/amour-index1.png)
+
+![](https://chengliuxiang.oss-cn-hangzhou.aliyuncs.com/amour/amour-index2.png)
+
+### 我们的故事
+
+![](https://chengliuxiang.oss-cn-hangzhou.aliyuncs.com/amour/amour-story.png)
+
+### 留言板
+
+![](https://chengliuxiang.oss-cn-hangzhou.aliyuncs.com/amour/amour-message.png)
+
+### 相册
+
+![](https://chengliuxiang.oss-cn-hangzhou.aliyuncs.com/amour/amour-photo.png)
+
+### 纪念日
+
+![](https://chengliuxiang.oss-cn-hangzhou.aliyuncs.com/amour/amour-anniversary.png)
+
+### 管理控制台
+
+![](https://chengliuxiang.oss-cn-hangzhou.aliyuncs.com/amour/amour-admin.png)
+
+
