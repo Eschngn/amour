@@ -66,12 +66,12 @@
               </div>
               <span class="text-xs text-rose-700/45">{{ chapters.length }} 章</span>
             </div>
-            <nav class="story-chapter-nav -mx-4 flex max-w-[calc(100%+2rem)] snap-x gap-2 overflow-x-auto px-4 pb-2 lg:mx-0 lg:block lg:max-w-none lg:space-y-2 lg:overflow-visible lg:px-0 lg:pb-0" aria-label="故事章节">
+            <nav class="story-chapter-nav -mx-4 flex max-w-[calc(100%+2rem)] gap-2 overflow-x-auto overscroll-x-contain px-4 pb-2 lg:mx-0 lg:block lg:max-w-none lg:space-y-2 lg:overflow-visible lg:px-0 lg:pb-0" aria-label="故事章节">
               <button
                 v-for="(chapter, i) in chapters"
                 :key="chapter.id"
                 type="button"
-                class="group flex min-w-[min(15rem,calc(100vw-3rem))] snap-start items-center gap-3 rounded-2xl border p-3.5 text-left transition duration-300 lg:w-full lg:min-w-0"
+                class="group flex min-w-[min(15rem,calc(100vw-3rem))] items-center gap-3 rounded-2xl border p-3.5 text-left transition duration-300 lg:w-full lg:min-w-0"
                 :class="activeChapter === i
                   ? 'border-rose-200 bg-white shadow-md shadow-rose-100/60'
                   : 'border-transparent bg-white/45 hover:border-rose-100 hover:bg-white/70'"
@@ -293,6 +293,11 @@ onMounted(init)
 </script>
 
 <style scoped>
+.story-chapter-nav {
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: none;
+}
+
 .story-fade-enter-active,
 .story-fade-leave-active {
   transition: opacity 180ms ease, transform 180ms ease;
