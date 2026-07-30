@@ -57,8 +57,8 @@
         </section>
 
         <!-- 章节与时间线 -->
-        <section v-else-if="chapters.length" class="mt-8 grid items-start gap-8 sm:mt-10 lg:grid-cols-[17rem_minmax(0,1fr)] lg:gap-10">
-          <aside class="lg:sticky lg:top-24">
+        <section v-else-if="chapters.length" class="mt-8 grid min-w-0 items-start gap-8 sm:mt-10 lg:grid-cols-[17rem_minmax(0,1fr)] lg:gap-10">
+          <aside class="min-w-0 lg:sticky lg:top-24">
             <div class="mb-4 flex items-end justify-between gap-3">
               <div>
                 <p class="text-xs font-bold uppercase tracking-[0.22em] text-rose-400">Chapters</p>
@@ -66,7 +66,7 @@
               </div>
               <span class="text-xs text-rose-700/45">{{ chapters.length }} 章</span>
             </div>
-            <nav class="story-chapter-nav -mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-2 lg:mx-0 lg:block lg:space-y-2 lg:overflow-visible lg:px-0 lg:pb-0" aria-label="故事章节">
+            <nav class="story-chapter-nav -mx-4 flex max-w-[calc(100%+2rem)] snap-x gap-2 overflow-x-auto px-4 pb-2 lg:mx-0 lg:block lg:max-w-none lg:space-y-2 lg:overflow-visible lg:px-0 lg:pb-0" aria-label="故事章节">
               <button
                 v-for="(chapter, i) in chapters"
                 :key="chapter.id"
@@ -112,11 +112,11 @@
 
             <Transition name="story-fade" mode="out-in">
               <div v-if="currentStories.length && !storiesLoading && !storiesError" :key="activeChapter" class="relative">
-                <div class="absolute bottom-4 left-[0.7rem] top-4 w-px bg-gradient-to-b from-rose-300 via-rose-200 to-transparent sm:left-[1.15rem]" aria-hidden="true" />
+                <div class="absolute bottom-4 left-[1.15rem] top-4 hidden w-px bg-gradient-to-b from-rose-300 via-rose-200 to-transparent sm:block" aria-hidden="true" />
                 <ol class="space-y-5">
-                  <li v-for="story in currentStories" :key="story.id" class="relative pl-7 sm:pl-12">
-                    <span class="absolute left-1 top-7 z-10 h-3.5 w-3.5 rounded-full border-[3px] border-white bg-rose-400 shadow-sm ring-1 ring-rose-200 sm:left-3" aria-hidden="true" />
-                    <router-link :to="'/story/' + story.id" class="group block min-w-0 overflow-hidden rounded-2xl border border-rose-100/90 bg-white/85 shadow-sm shadow-rose-100/30 transition duration-300 hover:-translate-y-0.5 hover:border-rose-200 hover:shadow-lg sm:rounded-3xl">
+                  <li v-for="story in currentStories" :key="story.id" class="relative sm:pl-12">
+                    <span class="absolute left-3 top-7 z-10 hidden h-3.5 w-3.5 rounded-full border-[3px] border-white bg-rose-400 shadow-sm ring-1 ring-rose-200 sm:block" aria-hidden="true" />
+                    <router-link :to="'/story/' + story.id" class="group block min-w-0 overflow-hidden rounded-2xl border border-rose-100/90 bg-white/85 p-3 shadow-sm shadow-rose-100/30 transition duration-300 hover:-translate-y-0.5 hover:border-rose-200 hover:shadow-lg sm:rounded-3xl sm:p-0">
                       <div class="grid sm:grid-cols-[minmax(0,1fr)_12rem]" :class="story.coverImage ? '' : 'sm:grid-cols-1'">
                         <div class="min-w-0 p-4 sm:p-6">
                           <div class="flex flex-wrap items-center gap-2 text-[11px] text-rose-600/50">
@@ -132,7 +132,7 @@
                           <p class="mt-3 line-clamp-3 text-sm leading-7 text-rose-800/65">{{ story.content || '这一段故事，等你慢慢打开。' }}</p>
                           <span class="mt-5 inline-flex items-center gap-1.5 text-xs font-semibold text-rose-500">阅读全文<svg class="h-3.5 w-3.5 transition group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
                         </div>
-                        <div v-if="story.coverImage" class="relative aspect-[16/10] overflow-hidden bg-rose-50 sm:aspect-auto sm:min-h-full">
+                        <div v-if="story.coverImage" class="relative -order-1 aspect-[16/9] overflow-hidden rounded-xl bg-rose-50 sm:order-none sm:aspect-auto sm:min-h-full sm:rounded-none">
                           <img :src="story.coverImage" :alt="story.title" class="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105" loading="lazy" />
                           <div class="absolute inset-0 bg-gradient-to-t from-rose-950/15 to-transparent sm:bg-gradient-to-r" aria-hidden="true" />
                         </div>
@@ -140,7 +140,7 @@
                     </router-link>
                   </li>
                 </ol>
-                <div class="relative mt-6 pl-7 sm:pl-12"><span class="absolute left-1 top-0 h-3.5 w-3.5 rounded-full border-2 border-rose-200 bg-white sm:left-3" aria-hidden="true" /><p class="text-xs italic text-rose-400/55">未完待续，下一页还在一起书写……</p></div>
+                <div class="relative mt-6 sm:pl-12"><span class="absolute left-3 top-0 hidden h-3.5 w-3.5 rounded-full border-2 border-rose-200 bg-white sm:block" aria-hidden="true" /><p class="text-center text-xs italic text-rose-400/55 sm:text-left">未完待续，下一页还在一起书写……</p></div>
               </div>
             </Transition>
 
