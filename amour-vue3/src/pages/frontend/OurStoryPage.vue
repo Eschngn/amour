@@ -1,8 +1,8 @@
 <template>
   <CouplePageScaffold>
     <main class="relative z-10">
-      <div class="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
-        <section class="relative overflow-hidden rounded-[2rem] border border-rose-100/80 bg-white/70 px-5 py-8 shadow-sm shadow-rose-100/50 backdrop-blur-sm sm:px-8 sm:py-10 lg:px-10">
+      <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
+        <section class="relative overflow-hidden rounded-3xl border border-rose-100/80 bg-white/70 px-4 py-7 shadow-sm shadow-rose-100/50 backdrop-blur-sm sm:rounded-[2rem] sm:px-8 sm:py-10 lg:px-10">
           <div class="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full bg-rose-100/80 blur-3xl" aria-hidden="true" />
           <div class="pointer-events-none absolute -bottom-24 left-1/3 h-48 w-48 rounded-full bg-fuchsia-100/60 blur-3xl" aria-hidden="true" />
           <div class="relative grid items-end gap-8 lg:grid-cols-[minmax(0,1fr)_24rem]">
@@ -11,28 +11,28 @@
                 <span class="h-1.5 w-1.5 rounded-full bg-rose-400" aria-hidden="true" />
                 Our Story
               </p>
-              <h1 class="mt-4 font-display text-4xl font-extrabold tracking-tight text-rose-950 sm:text-5xl lg:text-6xl">
+              <h1 class="mt-4 font-display text-3xl font-extrabold tracking-tight text-rose-950 sm:text-5xl lg:text-6xl">
                 从陌生人，<br class="hidden sm:block" />到彼此
               </h1>
               <p class="mt-4 max-w-xl text-sm leading-7 text-rose-800/65 sm:text-base">
                 记录每一个让我们走得更近的瞬间。那些普通又珍贵的日子，拼成了只属于我们的故事。
               </p>
-              <p class="mt-5 inline-flex items-center gap-2 text-xs text-rose-500/70">
-                <span class="flex h-7 w-7 items-center justify-center rounded-full bg-rose-50 text-rose-400" aria-hidden="true">♡</span>
+              <p class="mt-5 inline-flex max-w-full items-center gap-2 text-xs text-rose-500/70">
+                <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-400" aria-hidden="true">♡</span>
                 从 {{ startYear }} 年开始，故事一直在继续
               </p>
             </div>
 
-            <div class="grid grid-cols-3 gap-2.5 sm:gap-3">
-              <div class="rounded-2xl border border-rose-100 bg-white/80 px-2 py-4 text-center shadow-sm sm:px-4 sm:py-5">
+            <div class="grid grid-cols-3 gap-2 sm:gap-3">
+              <div class="min-w-0 rounded-2xl border border-rose-100 bg-white/80 px-2 py-4 text-center shadow-sm sm:px-4 sm:py-5">
                 <p class="font-display text-2xl font-bold text-rose-600 sm:text-3xl">{{ stats.totalNodes }}</p>
                 <p class="mt-1 text-[11px] text-rose-800/45">故事节点</p>
               </div>
-              <div class="rounded-2xl border border-rose-100 bg-white/80 px-2 py-4 text-center shadow-sm sm:px-4 sm:py-5">
+              <div class="min-w-0 rounded-2xl border border-rose-100 bg-white/80 px-2 py-4 text-center shadow-sm sm:px-4 sm:py-5">
                 <p class="font-display text-2xl font-bold text-rose-600 sm:text-3xl">{{ stats.totalSeasons }}</p>
                 <p class="mt-1 text-[11px] text-rose-800/45">一起走过</p>
               </div>
-              <div class="rounded-2xl border border-rose-100 bg-white/80 px-2 py-4 text-center shadow-sm sm:px-4 sm:py-5">
+              <div class="min-w-0 rounded-2xl border border-rose-100 bg-white/80 px-2 py-4 text-center shadow-sm sm:px-4 sm:py-5">
                 <p class="font-display text-2xl font-bold text-rose-600 sm:text-3xl">{{ shortStartYear }}</p>
                 <p class="mt-1 text-[11px] text-rose-800/45">故事开始</p>
               </div>
@@ -57,7 +57,7 @@
         </section>
 
         <!-- 章节与时间线 -->
-        <section v-else-if="chapters.length" class="mt-10 grid items-start gap-8 lg:grid-cols-[17rem_minmax(0,1fr)] lg:gap-10">
+        <section v-else-if="chapters.length" class="mt-8 grid items-start gap-8 sm:mt-10 lg:grid-cols-[17rem_minmax(0,1fr)] lg:gap-10">
           <aside class="lg:sticky lg:top-24">
             <div class="mb-4 flex items-end justify-between gap-3">
               <div>
@@ -66,12 +66,12 @@
               </div>
               <span class="text-xs text-rose-700/45">{{ chapters.length }} 章</span>
             </div>
-            <nav class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-2 lg:mx-0 lg:block lg:space-y-2 lg:overflow-visible lg:px-0 lg:pb-0" aria-label="故事章节">
+            <nav class="story-chapter-nav -mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-2 lg:mx-0 lg:block lg:space-y-2 lg:overflow-visible lg:px-0 lg:pb-0" aria-label="故事章节">
               <button
                 v-for="(chapter, i) in chapters"
                 :key="chapter.id"
                 type="button"
-                class="group flex min-w-[15rem] items-center gap-3 rounded-2xl border p-3.5 text-left transition duration-300 lg:w-full lg:min-w-0"
+                class="group flex min-w-[min(15rem,calc(100vw-3rem))] snap-start items-center gap-3 rounded-2xl border p-3.5 text-left transition duration-300 lg:w-full lg:min-w-0"
                 :class="activeChapter === i
                   ? 'border-rose-200 bg-white shadow-md shadow-rose-100/60'
                   : 'border-transparent bg-white/45 hover:border-rose-100 hover:bg-white/70'"
@@ -91,9 +91,9 @@
 
           <div class="min-w-0">
             <header class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div>
+              <div class="min-w-0">
                 <p class="text-xs font-semibold uppercase tracking-[0.2em] text-rose-400">{{ currentChapter?.period ?? '' }}</p>
-                <h2 class="mt-1 font-display text-2xl font-bold text-rose-950 sm:text-3xl">{{ currentChapter?.title ?? '' }}</h2>
+                <h2 class="mt-1 break-words font-display text-2xl font-bold text-rose-950 sm:text-3xl">{{ currentChapter?.title ?? '' }}</h2>
               </div>
               <span class="inline-flex w-fit items-center gap-2 rounded-full border border-rose-100 bg-white/70 px-3 py-1.5 text-xs text-rose-700/55">
                 <span class="h-1.5 w-1.5 rounded-full bg-rose-400" aria-hidden="true" />
@@ -112,27 +112,27 @@
 
             <Transition name="story-fade" mode="out-in">
               <div v-if="currentStories.length && !storiesLoading && !storiesError" :key="activeChapter" class="relative">
-                <div class="absolute bottom-4 left-[1.15rem] top-4 w-px bg-gradient-to-b from-rose-300 via-rose-200 to-transparent" aria-hidden="true" />
+                <div class="absolute bottom-4 left-[0.7rem] top-4 w-px bg-gradient-to-b from-rose-300 via-rose-200 to-transparent sm:left-[1.15rem]" aria-hidden="true" />
                 <ol class="space-y-5">
-                  <li v-for="story in currentStories" :key="story.id" class="relative pl-12">
-                    <span class="absolute left-3 top-7 z-10 h-3.5 w-3.5 rounded-full border-[3px] border-white bg-rose-400 shadow-sm ring-1 ring-rose-200" aria-hidden="true" />
-                    <router-link :to="'/story/' + story.id" class="group block overflow-hidden rounded-3xl border border-rose-100/90 bg-white/85 shadow-sm shadow-rose-100/30 transition duration-300 hover:-translate-y-0.5 hover:border-rose-200 hover:shadow-lg">
+                  <li v-for="story in currentStories" :key="story.id" class="relative pl-7 sm:pl-12">
+                    <span class="absolute left-1 top-7 z-10 h-3.5 w-3.5 rounded-full border-[3px] border-white bg-rose-400 shadow-sm ring-1 ring-rose-200 sm:left-3" aria-hidden="true" />
+                    <router-link :to="'/story/' + story.id" class="group block min-w-0 overflow-hidden rounded-2xl border border-rose-100/90 bg-white/85 shadow-sm shadow-rose-100/30 transition duration-300 hover:-translate-y-0.5 hover:border-rose-200 hover:shadow-lg sm:rounded-3xl">
                       <div class="grid sm:grid-cols-[minmax(0,1fr)_12rem]" :class="story.coverImage ? '' : 'sm:grid-cols-1'">
-                        <div class="min-w-0 p-5 sm:p-6">
+                        <div class="min-w-0 p-4 sm:p-6">
                           <div class="flex flex-wrap items-center gap-2 text-[11px] text-rose-600/50">
-                            <span class="font-semibold uppercase tracking-[0.16em] text-rose-400">{{ story.storyNumber }}</span>
+                            <span class="font-semibold uppercase tracking-[0.12em] text-rose-400 sm:tracking-[0.16em]">{{ story.storyNumber }}</span>
                             <span class="text-rose-200">/</span>
                             <time>{{ story.date }}</time>
-                            <span v-if="story.location" class="inline-flex items-center gap-1"><svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>{{ story.location }}</span>
+                            <span v-if="story.location" class="inline-flex min-w-0 items-center gap-1"><svg class="h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg><span class="truncate">{{ story.location }}</span></span>
                           </div>
-                          <div class="mt-3 flex items-start justify-between gap-3">
-                            <h3 class="font-display text-xl font-bold text-rose-950 transition group-hover:text-rose-600">{{ story.title }}</h3>
-                            <span v-if="story.tag" class="shrink-0 rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-semibold text-rose-500 ring-1 ring-rose-100">{{ story.tag }}</span>
+                          <div class="mt-3 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                            <h3 class="min-w-0 break-words font-display text-lg font-bold text-rose-950 transition group-hover:text-rose-600 sm:text-xl">{{ story.title }}</h3>
+                            <span v-if="story.tag" class="w-fit max-w-full shrink-0 truncate rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-semibold text-rose-500 ring-1 ring-rose-100">{{ story.tag }}</span>
                           </div>
                           <p class="mt-3 line-clamp-3 text-sm leading-7 text-rose-800/65">{{ story.content || '这一段故事，等你慢慢打开。' }}</p>
                           <span class="mt-5 inline-flex items-center gap-1.5 text-xs font-semibold text-rose-500">阅读全文<svg class="h-3.5 w-3.5 transition group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
                         </div>
-                        <div v-if="story.coverImage" class="relative min-h-44 overflow-hidden bg-rose-50 sm:min-h-full">
+                        <div v-if="story.coverImage" class="relative aspect-[16/10] overflow-hidden bg-rose-50 sm:aspect-auto sm:min-h-full">
                           <img :src="story.coverImage" :alt="story.title" class="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105" loading="lazy" />
                           <div class="absolute inset-0 bg-gradient-to-t from-rose-950/15 to-transparent sm:bg-gradient-to-r" aria-hidden="true" />
                         </div>
@@ -140,7 +140,7 @@
                     </router-link>
                   </li>
                 </ol>
-                <div class="relative mt-6 pl-12"><span class="absolute left-3 top-0 h-3.5 w-3.5 rounded-full border-2 border-rose-200 bg-white" aria-hidden="true" /><p class="text-xs italic text-rose-400/55">未完待续，下一页还在一起书写……</p></div>
+                <div class="relative mt-6 pl-7 sm:pl-12"><span class="absolute left-1 top-0 h-3.5 w-3.5 rounded-full border-2 border-rose-200 bg-white sm:left-3" aria-hidden="true" /><p class="text-xs italic text-rose-400/55">未完待续，下一页还在一起书写……</p></div>
               </div>
             </Transition>
 
