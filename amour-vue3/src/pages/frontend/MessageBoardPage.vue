@@ -362,6 +362,7 @@ async function onPublish() {
     if (data.success) {
       draft.value = ''
       current.value = 1
+      ElMessage.success('留言发布成功')
       fetchMessages()
     } else if (data.errorCode === '20002') {
       redirectToLogin(data.message)
