@@ -134,7 +134,7 @@
                           <span class="absolute inset-0 bg-gradient-to-t from-rose-950/35 via-transparent to-transparent opacity-60" aria-hidden="true" />
                           <span class="photo-detail-hint">查看详情</span>
                         </span>
-                        <span class="mt-4 block min-w-0 text-left sm:mt-5">
+                        <span class="page-photo-copy mt-4 block min-w-0 text-left sm:mt-5">
                           <span class="block truncate font-display text-base font-bold text-rose-950 sm:text-xl">{{ photo.title }}</span>
                           <span class="mt-2 flex items-center justify-between gap-2 text-[10px] font-semibold tracking-wider text-rose-700/45 sm:text-xs">
                             <span class="truncate">{{ photo.categoryName || '共同回忆' }}</span>
@@ -195,18 +195,18 @@
               <div>
                 <span class="inline-flex rounded-full bg-rose-100 px-3 py-1 text-xs font-bold text-rose-600">{{ selectedPhoto.categoryName || '共同回忆' }}</span>
                 <h2 class="mt-5 font-display text-3xl font-bold leading-tight text-rose-950 sm:text-4xl">{{ selectedPhoto.title }}</h2>
+                <dl class="photo-detail-meta mt-5 border-y border-rose-100 py-4 text-sm">
+                  <div>
+                    <dt class="text-rose-800/40">拍摄时间</dt>
+                    <dd class="font-semibold text-rose-900">{{ formatTakenDate(selectedPhoto.takenTime, true) }}</dd>
+                  </div>
+                  <div>
+                    <dt class="text-rose-800/40">拍摄地点</dt>
+                    <dd class="font-semibold text-rose-900">{{ selectedPhoto.location || '地点未记录' }}</dd>
+                  </div>
+                </dl>
                 <p class="mt-5 text-sm leading-7 text-rose-900/60 sm:text-base sm:leading-8">{{ selectedPhoto.description || '这张照片还没有写下描述。' }}</p>
               </div>
-              <dl class="mt-8 space-y-4 border-t border-rose-100 pt-6 text-sm">
-                <div class="flex items-center justify-between gap-5">
-                  <dt class="text-rose-800/40">拍摄时间</dt>
-                  <dd class="font-semibold text-rose-900">{{ formatTakenDate(selectedPhoto.takenTime, true) }}</dd>
-                </div>
-                <div class="flex items-center justify-between gap-5">
-                  <dt class="text-rose-800/40">拍摄地点</dt>
-                  <dd class="max-w-[70%] text-right font-semibold text-rose-900">{{ selectedPhoto.location || '地点未记录' }}</dd>
-                </div>
-              </dl>
             </div>
           </article>
         </div>
@@ -752,15 +752,21 @@ onBeforeUnmount(() => {
 .page-photo {
   display: flex;
   height: 100%;
+  width: 100%;
   min-width: 0;
   flex-direction: column;
   justify-content: center;
+  overflow: hidden;
+  text-align: left;
 }
 
 .page-photo-frame {
   position: relative;
   display: block;
   height: clamp(230px, 32vw, 355px);
+  width: 100%;
+  min-width: 0;
+  flex-shrink: 0;
   overflow: hidden;
   border: 0.45rem solid white;
   background: #fce7f3;
@@ -802,9 +808,19 @@ onBeforeUnmount(() => {
 
 .page-description {
   display: -webkit-box;
+  width: 100%;
   overflow: hidden;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.page-photo-copy {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .empty-page {
@@ -889,9 +905,12 @@ onBeforeUnmount(() => {
 
 .photo-detail-card {
   display: grid;
+  height: min(90vh, 760px);
   max-height: 90vh;
   width: min(1050px, 94vw);
-  grid-template-columns: minmax(0, 1.35fr) minmax(18rem, 0.72fr);
+  min-width: 0;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.72fr);
+  grid-template-rows: minmax(0, 1fr);
   overflow: hidden;
   border-radius: 1.75rem;
   background: #fffaf4;
@@ -899,7 +918,9 @@ onBeforeUnmount(() => {
 }
 
 .photo-detail-image-wrap {
-  min-height: 36rem;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
   background: #2f111d;
 }
 
@@ -907,8 +928,60 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
   overflow-y: auto;
+  overflow-wrap: anywhere;
+  overscroll-behavior: contain;
   padding: clamp(1.75rem, 4vw, 3.25rem);
+  scrollbar-color: rgba(190, 18, 60, 0.35) transparent;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  word-break: break-word;
+}
+
+.photo-detail-copy h2,
+.photo-detail-copy p,
+.photo-detail-copy dl,
+.photo-detail-copy dl > div {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.photo-detail-copy dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.photo-detail-meta {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.photo-detail-meta > div {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: start;
+  gap: 1.25rem;
+}
+
+.photo-detail-meta dd {
+  text-align: right;
+}
+
+.photo-detail-copy::-webkit-scrollbar {
+  width: 6px;
+}
+
+.photo-detail-copy::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.photo-detail-copy::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(190, 18, 60, 0.3);
 }
 
 .detail-close-button {
@@ -979,13 +1052,21 @@ onBeforeUnmount(() => {
   .book-spread { min-height: 448px; }
   .book-page { padding: 1.55rem 0.7rem 1.6rem; }
   .page-photo-frame { height: clamp(165px, 47vw, 255px); border-width: 0.3rem; }
-  .page-description { display: none; }
   .photo-detail-hint { display: none; }
   .book-spread::after { width: 1.1rem; }
   .turn-button { width: 2rem; height: 3rem; font-size: 1.65rem; }
-  .photo-detail-card { max-height: 92vh; grid-template-columns: 1fr; overflow-y: auto; }
-  .photo-detail-image-wrap { min-height: 0; height: min(52vh, 28rem); }
-  .photo-detail-copy { overflow: visible; }
+  .photo-detail-card {
+    height: 92vh;
+    max-height: 92vh;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, min(42vh, 22rem)) minmax(0, 1fr);
+    overflow: hidden;
+  }
+  .photo-detail-image-wrap { min-height: 0; height: 100%; }
+  .photo-detail-copy { height: 100%; min-height: 0; overflow-y: auto; padding: 1.35rem 1.4rem 1.6rem; }
+  .photo-detail-copy h2 { margin-top: 1rem; font-size: 1.6rem; line-height: 1.25; }
+  .photo-detail-meta { margin-top: 1rem; gap: 0.6rem; padding-block: 0.75rem; }
+  .photo-detail-meta > div { gap: 0.75rem; font-size: 0.75rem; }
 }
 
 @media (max-width: 430px) {
