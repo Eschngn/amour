@@ -1,0 +1,69 @@
+<navigation-bar title="我们的故事" back="{{false}}" color="#572c37" background="#fcf8f5"></navigation-bar>
+
+<scroll-view class="page-scroll" scroll-y type="list" enhanced show-scrollbar="false">
+  <view class="story-page">
+    <view class="page-hero">
+      <text class="hero-kicker">OUR STORY</text>
+      <text class="hero-title">从陌生人，到彼此</text>
+      <text class="hero-copy">记录每一个让我们走得更近的瞬间。那些普通又珍贵的日子，拼成了只属于我们的故事。</text>
+      <view class="story-stats">
+        <view class="stat-item"><text class="stat-value">{{stats.totalNodes}}</text><text class="stat-label">故事节点</text></view>
+        <view class="stat-item"><text class="stat-value">{{stats.totalSeasons}}</text><text class="stat-label">一起走过</text></view>
+        <view class="stat-item"><text class="stat-value">{{stats.startYear}}</text><text class="stat-label">故事开始</text></view>
+      </view>
+    </view>
+
+    <view wx:if="{{loading}}" class="state-section" aria-role="alert">
+      <view class="loading-line loading-line-short"></view><view class="loading-card"></view><view class="loading-card"></view>
+    </view>
+
+    <view wx:elif="{{loadError}}" class="state-section empty-state">
+      <text class="state-symbol">!</text><text class="state-title">故事暂时走丢了</text><text class="state-copy">{{loadError}}</text>
+      <button class="outline-button" bindtap="loadOverview">重新加载</button>
+    </view>
+
+    <block wx:else>
+      <view wx:if="{{chapters.length}}" class="chapter-section">
+        <view class="section-heading"><view><text class="section-kicker">CHAPTERS</text><text class="section-title">故事章节</text></view><text class="section-meta">{{chapters.length}} 章</text></view>
+        <scroll-view class="chapter-scroll" scroll-x enhanced show-scrollbar="false">
+          <view class="chapter-list">
+            <view wx:for="{{chapters}}" wx:key="id" class="chapter-tab {{index === activeChapter ? 'is-active' : ''}}" data-index="{{index}}" bindtap="selectChapter" hover-class="tap-hover">
+              <text class="chapter-number">{{item.number}}</text>
+              <view class="chapter-copy"><text class="chapter-period">{{item.period}}</text><text class="chapter-name">{{item.title}}</text></view>
+              <text class="chapter-count">{{item.nodeCount}}</text>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+
+      <view wx:if="{{chapters.length}}" class="timeline-section">
+        <view class="current-heading"><view><text class="current-period">{{currentChapter.period}}</text><text class="current-title">{{currentChapter.title}}</text></view><text class="current-count">{{stories.length}} 个故事</text></view>
+
+        <view wx:if="{{storiesLoading}}" class="timeline-list"><view class="loading-card" wx:for="{{loadingItems}}" wx:key="*this"></view></view>
+        <view wx:elif="{{storiesError}}" class="empty-state inner-state"><text class="state-symbol">!</text><text class="state-copy">{{storiesError}}</text><button class="outline-button" bindtap="retryChapter">重试</button></view>
+        <view wx:elif="{{stories.length}}" class="timeline-list">
+          <view class="timeline-line"></view>
+          <view class="story-item" wx:for="{{stories}}" wx:key="id">
+            <view class="timeline-dot"></view>
+            <view class="story-card" data-id="{{item.id}}" bindtap="openStoryDetail" hover-class="story-card-hover" aria-role="button" aria-label="阅读故事 {{item.title}}">
+              <image wx:if="{{item.coverImage}}" class="story-cover" src="{{item.coverImage}}" mode="aspectFill" lazy-load="true"></image>
+              <view class="story-content">
+                <view class="story-meta"><text>{{item.storyNumber}}</text><text class="meta-divider">/</text><text>{{item.date}}</text></view>
+                <text wx:if="{{item.tag}}" class="story-tag">{{item.tag}}</text>
+                <text class="story-title">{{item.title}}</text>
+                <text wx:if="{{item.location}}" class="story-location">⌖ {{item.location}}</text>
+                <text class="story-summary">{{item.summary}}</text>
+                <text class="story-read-link">阅读全文 →</text>
+              </view>
+            </view>
+          </view>
+          <text class="story-ending">未完待续，下一页还在一起书写……</text>
+        </view>
+        <view wx:else class="empty-state inner-state"><text class="state-symbol">♡</text><text class="state-title">这一章还没有故事</text><text class="state-copy">值得记录的日子，正在前面等着你们。</text></view>
+      </view>
+      <view wx:else class="empty-state state-section"><text class="state-symbol">♡</text><text class="state-title">故事还在路上</text><text class="state-copy">等第一个值得纪念的瞬间出现，就从这里开始记录吧。</text></view>
+    </block>
+    <view class="safe-bottom"></view>
+  </view>
+</scroll-view>
+<bottom-nav current="story"></bottom-nav>

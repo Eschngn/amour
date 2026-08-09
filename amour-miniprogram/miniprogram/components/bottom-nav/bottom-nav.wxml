@@ -1,0 +1,19 @@
+<view class="bottom-nav">
+  <view class="nav-bar">
+    <view class="nav-item {{current === 'story' ? 'is-active' : ''}}" data-page="story" bindtap="navigate" hover-class="nav-hover" aria-role="button" aria-label="故事">
+      <text class="nav-icon story-icon">✦</text><text class="nav-label">故事</text>
+    </view>
+    <view class="nav-item {{current === 'photo' ? 'is-active' : ''}}" data-page="photo" bindtap="navigate" hover-class="nav-hover" aria-role="button" aria-label="相册">
+      <text class="nav-icon photo-icon">▣</text><text class="nav-label">相册</text>
+    </view>
+    <view class="nav-item home-item {{current === 'home' ? 'is-active' : ''}}" data-page="home" bindtap="navigate" hover-class="home-hover" aria-role="button" aria-label="首页">
+      <view class="home-logo"><image class="logo-image" src="/images/amour-logo.svg" mode="aspectFit"></image></view><text class="nav-label home-label">首页</text>
+    </view>
+    <view class="nav-item {{current === 'message' ? 'is-active' : ''}}" data-page="message" bindtap="navigate" hover-class="nav-hover" aria-role="button" aria-label="留言">
+      <text class="nav-icon message-icon">♡</text><text class="nav-label">留言</text>
+    </view>
+    <view class="nav-item {{current === 'profile' ? 'is-active' : ''}}" data-page="profile" bindtap="navigate" hover-class="nav-hover" aria-role="button" aria-label="我的">
+      <view class="profile-icon"><view class="profile-head"></view><view class="profile-body"></view></view><text class="nav-label">我的</text>
+    </view>
+  </view>
+</view>

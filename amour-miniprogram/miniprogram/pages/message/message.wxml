@@ -1,0 +1,52 @@
+<navigation-bar title="留言板" back="{{false}}" color="#674254" background="#fdf8fb"></navigation-bar>
+
+<scroll-view class="page-scroll" scroll-y type="list" enhanced show-scrollbar="false">
+  <view class="message-page">
+    <view class="page-hero">
+      <text class="hero-kicker">LOVE NOTES</text>
+      <text class="hero-title">把想说的话，留在这里</text>
+      <text class="hero-copy">有些温柔适合当面说，有些心意值得被认真写下来。</text>
+      <view class="message-summary"><text class="summary-value">{{total}}</text><text class="summary-label">封被好好收藏的留言</text></view>
+    </view>
+
+    <view class="composer-section">
+      <view class="composer-heading"><view><text class="section-kicker">WRITE IT DOWN</text><text class="section-title">给 Ta 的悄悄话</text></view><text class="composer-icon">✎</text></view>
+      <textarea class="message-input" value="{{draft}}" maxlength="500" placeholder="今天想对 Ta 说……" placeholder-class="input-placeholder" bindinput="onDraftInput"></textarea>
+      <view class="composer-footer"><text class="input-note">轻轻写下，不必完美</text><text class="input-count">{{draftLength}} / 500</text></view>
+      <button class="publish-button" disabled="{{publishing || !canPublish}}" bindtap="publishMessage">{{publishing ? '发布中…' : '发布留言'}} <text wx:if="{{!publishing}}">→</text></button>
+    </view>
+
+    <view class="notes-section">
+      <view class="section-heading"><view><text class="section-kicker">RECENT NOTES</text><text class="section-title">最近的留言</text></view><text class="section-meta">第 {{currentPage}} 页</text></view>
+
+      <view wx:if="{{loading}}" class="loading-list"><view class="message-skeleton" wx:for="{{loadingItems}}" wx:key="*this"></view></view>
+      <view wx:elif="{{loadError}}" class="empty-state"><text class="state-symbol">!</text><text class="state-title">留言暂时没有送达</text><text class="state-copy">{{loadError}}</text><button class="outline-button" bindtap="retry">重新加载</button></view>
+      <view wx:elif="{{messages.length}}" class="message-list">
+        <view class="message-card" wx:for="{{messages}}" wx:key="messageId">
+          <view class="message-author">
+            <view class="author-avatar"><text>{{item.initials}}</text><image wx:if="{{item.userAvatar}}" class="avatar-image" src="{{item.userAvatar}}" mode="aspectFill"></image></view>
+            <view class="author-copy"><text class="author-name">{{item.userName}}</text><text class="message-time">{{item.displayTime}}</text></view>
+            <text class="message-index">#{{item.number}}</text>
+          </view>
+          <text class="message-content">{{item.content}}</text>
+          <view class="message-footer"><text>♡ {{item.replyCount}} 条回复</text><text>{{item.shortDate}}</text></view>
+          <view wx:if="{{item.replies.length}}" class="reply-list">
+            <view class="reply-row" wx:for="{{item.replies}}" wx:key="replyId" wx:for-item="reply">
+              <view class="reply-avatar"><text>{{reply.initials}}</text><image wx:if="{{reply.fromUserAvatar}}" class="avatar-image" src="{{reply.fromUserAvatar}}" mode="aspectFill"></image></view>
+              <view class="reply-copy"><text class="reply-content">{{reply.content}}</text><text class="reply-meta"><text class="reply-name">{{reply.fromUserName}}</text> 回复 {{reply.toUserName}} · {{reply.displayTime}}</text></view>
+            </view>
+          </view>
+        </view>
+      </view>
+      <view wx:else class="empty-state"><text class="state-symbol">♡</text><text class="state-title">这里还很安静</text><text class="state-copy">写下第一句悄悄话吧。</text></view>
+
+      <view wx:if="{{totalPages > 1}}" class="pagination">
+        <button class="page-button" disabled="{{currentPage <= 1 || loading}}" data-direction="prev" bindtap="turnPage">← 上一页</button>
+        <text class="page-current">{{currentPage}} / {{totalPages}}</text>
+        <button class="page-button" disabled="{{currentPage >= totalPages || loading}}" data-direction="next" bindtap="turnPage">下一页 →</button>
+      </view>
+    </view>
+    <view class="safe-bottom"></view>
+  </view>
+</scroll-view>
+<bottom-nav current="message"></bottom-nav>

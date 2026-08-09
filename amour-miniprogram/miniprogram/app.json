@@ -1,0 +1,31 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/story/story",
+    "pages/story-detail/story-detail",
+    "pages/photo/photo",
+    "pages/photo-detail/photo-detail",
+    "pages/message/message",
+    "pages/profile/profile",
+    "pages/logs/logs"
+  ],
+  "window": {
+    "backgroundColor": "#fcf8f5",
+    "backgroundTextStyle": "light",
+    "enablePullDownRefresh": false,
+    "navigationBarTextStyle": "black",
+    "navigationStyle": "custom"
+  },
+  "style": "v2",
+  "rendererOptions": {
+    "skyline": {
+      "defaultDisplayBlock": true,
+      "disableABTest": true,
+      "sdkVersionBegin": "3.0.0",
+      "sdkVersionEnd": "15.255.255"
+    }
+  },
+  "componentFramework": "glass-easel",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

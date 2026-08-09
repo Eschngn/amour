@@ -1,0 +1,61 @@
+<navigation-bar title="AMOUR" back="{{false}}" color="#572c37" background="#fcf8f5"></navigation-bar>
+
+<scroll-view class="scrollarea" scroll-y type="list" enhanced show-scrollbar="false">
+  <view class="home-page">
+    <view class="hero-section">
+      <view class="hero-copy">
+        <view class="eyebrow"><text class="eyebrow-dot"></text><text>{{boyName}} · {{girlName}} / OUR LITTLE UNIVERSE</text></view>
+        <text class="hero-title">把普通的日子，
+          <text class="hero-title-accent">过成两个人的纪念册</text>
+        </text>
+        <text class="hero-description">从相遇的那一刻起，时间有了温度，日常也有了值得反复翻阅的意义。</text>
+        <button class="primary-button" bindtap="openStory" hover-class="button-hover">
+          <text>翻阅我们的故事</text><text class="button-arrow">→</text>
+        </button>
+      </view>
+
+      <view class="hero-visual">
+        <view class="orbit orbit-large"></view>
+        <view class="orbit orbit-small"></view>
+        <view class="photo-frame photo-frame-main">
+          <image class="hero-photo" src="{{heroPhotoOne}}" data-source="primary" mode="aspectFill" lazy-load="true" binderror="onPhotoError"></image>
+          <view class="photo-caption"><text class="caption-label">OUR FAVORITE</text><text class="caption-title">Love in every frame</text><text class="caption-heart">♥</text></view>
+        </view>
+        <view class="photo-frame photo-frame-small">
+          <image class="hero-photo" src="{{heroPhotoTwo}}" data-source="secondary" mode="aspectFill" lazy-load="true" binderror="onPhotoError"></image>
+        </view>
+        <view class="together-badge">
+          <view class="avatar-stack"><image class="mini-avatar" src="{{boyAvatar}}" mode="aspectFill"></image><image class="mini-avatar mini-avatar-overlap" src="{{girlAvatar}}" mode="aspectFill"></image></view>
+          <view class="together-copy"><text class="together-label">TOGETHER</text><text class="together-days">{{togetherDays}} DAYS</text></view>
+        </view>
+        <view class="since-note"><text class="since-label">SINCE</text><text class="since-date">{{loveStartDate}}</text></view>
+      </view>
+    </view>
+
+    <view class="time-section">
+      <view class="section-heading"><view><text class="section-kicker">OUR TIME</text><text class="section-title">我们已经一起走过</text></view><text class="section-aside">每一秒都值得被记住</text></view>
+      <view class="time-grid">
+        <view class="time-unit" wx:for="{{elapsedUnits}}" wx:key="label"><text class="time-value">{{item.value}}</text><text class="time-label">{{item.label}}</text></view>
+      </view>
+    </view>
+
+    <view class="explore-section">
+      <view class="section-heading explore-heading"><view><text class="section-kicker">OUR CORNERS</text><text class="section-title">收藏每一种心动</text></view><text class="section-aside">故事、照片和想对彼此说的话</text></view>
+      <view class="quick-grid">
+        <view class="quick-card quick-card-story" data-section="story" bindtap="openSection" hover-class="card-hover" aria-role="button" aria-label="查看我们的故事">
+          <view class="card-icon">✦</view><text class="card-title">我们的故事</text><text class="card-description">沿着时间线，重温一路走来的重要章节。</text><text class="card-link">{{storyStat}} <text>→</text></text>
+        </view>
+        <view class="quick-card quick-card-photo" data-section="photo" bindtap="openSection" hover-class="card-hover" aria-role="button" aria-label="打开恋爱相册">
+          <view class="card-icon">◫</view><text class="card-title">恋爱相册</text><text class="card-description">把旅行、日常和彼此的笑容装进同一本相册。</text><text class="card-link">打开相册 <text>→</text></text>
+        </view>
+        <view class="quick-card quick-card-note" data-section="message" bindtap="openSection" hover-class="card-hover" aria-role="button" aria-label="打开悄悄话">
+          <view class="card-icon">♡</view><text class="card-title">悄悄话</text><text class="card-description">写下此刻想说的话，让温柔一直有迹可循。</text><text class="card-link">留一句话 <text>→</text></text>
+        </view>
+      </view>
+    </view>
+
+    <view class="quote-section"><text class="quote-mark">“</text><text class="quote-text">时间会把答案写在我们一起走过的每一天里。</text><text class="quote-author">— FOR US, ALWAYS</text></view>
+    <view class="safe-bottom"></view>
+  </view>
+</scroll-view>
+<bottom-nav current="home"></bottom-nav>

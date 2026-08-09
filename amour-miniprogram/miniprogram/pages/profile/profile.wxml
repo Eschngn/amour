@@ -1,0 +1,26 @@
+<navigation-bar title="我的" back="{{false}}" color="#4f4650" background="#faf9f7"></navigation-bar>
+
+<scroll-view class="page-scroll" scroll-y type="list" enhanced show-scrollbar="false">
+  <view class="profile-page">
+    <view class="profile-hero">
+      <view class="avatar-wrap">
+        <text class="avatar-initial">{{initial}}</text>
+        <image wx:if="{{avatar}}" class="avatar-image" src="{{avatar}}" mode="aspectFill"></image>
+      </view>
+      <text class="display-name">{{displayName}}</text>
+      <text class="account-state">{{loggedIn ? username : '尚未登录'}}</text>
+    </view>
+
+    <view class="profile-section">
+      <text class="section-kicker">MY AMOUR</text>
+      <text class="section-title">个人空间</text>
+      <view class="setting-list">
+        <view class="setting-row"><view class="setting-icon heart-icon">♡</view><view class="setting-copy"><text class="setting-title">相伴时光</text><text class="setting-note">收藏属于两个人的生活记录</text></view><text class="setting-arrow">›</text></view>
+        <view class="setting-row"><view class="setting-icon account-icon">○</view><view class="setting-copy"><text class="setting-title">账号信息</text><text class="setting-note">{{loggedIn ? '当前账号已登录' : '登录后可发布留言'}}</text></view><text class="setting-arrow">›</text></view>
+        <view class="setting-row"><view class="setting-icon shield-icon">◇</view><view class="setting-copy"><text class="setting-title">隐私与安全</text><text class="setting-note">管理个人资料与登录状态</text></view><text class="setting-arrow">›</text></view>
+      </view>
+    </view>
+    <view class="safe-bottom"></view>
+  </view>
+</scroll-view>
+<bottom-nav current="profile"></bottom-nav>

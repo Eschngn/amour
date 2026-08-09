@@ -1,0 +1,47 @@
+<navigation-bar title="故事详情" back="{{true}}" color="#572c37" background="#fcf8f5"></navigation-bar>
+
+<scroll-view class="page-scroll" scroll-y type="list" enhanced show-scrollbar="false" scroll-into-view="{{scrollIntoView}}">
+  <view id="detail-top" class="detail-page">
+    <view wx:if="{{loading}}" class="loading-state">
+      <view class="hero-skeleton"></view>
+      <view class="article-skeleton"><view class="skeleton-line" wx:for="{{loadingItems}}" wx:key="*this"></view></view>
+    </view>
+
+    <view wx:elif="{{error}}" class="empty-state">
+      <text class="state-symbol">♡</text><text class="state-title">故事不在这里</text><text class="state-copy">{{error}}</text>
+      <view class="state-actions"><button class="outline-button" bindtap="backToStory">返回列表</button><button class="primary-button" bindtap="retry">重新加载</button></view>
+    </view>
+
+    <block wx:else>
+      <view class="detail-hero">
+        <image wx:if="{{story.coverImage}}" class="hero-cover" src="{{story.coverImage}}" mode="aspectFill"></image>
+        <view class="hero-content">
+          <view class="story-labels"><text wx:if="{{story.tagLabel}}" class="story-tag">{{story.tagLabel}}</text><text class="chapter-name">{{story.chapterName}}</text></view>
+          <text class="story-title">{{story.title}}</text>
+          <text wx:if="{{story.summary}}" class="story-summary">{{story.summary}}</text>
+          <view class="story-meta"><text>◷ {{readTime}}</text><text>▤ {{totalWords}} 字</text><text>◇ {{formattedDate}}</text><text wx:if="{{story.location}}">⌖ {{story.location}}</text></view>
+        </view>
+      </view>
+
+      <view class="article-paper">
+        <block wx:for="{{blocks}}" wx:key="key">
+          <text wx:if="{{item.type === 'heading'}}" class="article-heading heading-level-{{item.level}}">{{item.text}}</text>
+          <text wx:elif="{{item.type === 'paragraph'}}" class="article-paragraph">{{item.text}}</text>
+          <view wx:elif="{{item.type === 'quote'}}" class="article-quote"><text>{{item.text}}</text></view>
+          <view wx:elif="{{item.type === 'list'}}" class="article-list-item"><text class="list-dot">•</text><text class="list-text">{{item.text}}</text></view>
+          <view wx:elif="{{item.type === 'code'}}" class="article-code"><text class="code-language">{{item.language}}</text><text class="code-content">{{item.text}}</text></view>
+          <image wx:elif="{{item.type === 'image'}}" class="article-image" src="{{item.url}}" mode="widthFix" data-url="{{item.url}}" bindtap="previewContentImage" aria-role="button" aria-label="预览 {{item.alt}}"></image>
+          <view wx:elif="{{item.type === 'divider'}}" class="article-divider"></view>
+        </block>
+        <view wx:if="{{!blocks.length}}" class="article-empty">这一页还没有写下正文。</view>
+      </view>
+
+      <view wx:if="{{story.preStory || story.nextStory}}" class="neighbor-section">
+        <view wx:if="{{story.preStory}}" class="neighbor-card" data-id="{{story.preStory.id}}" bindtap="switchStory" hover-class="neighbor-hover"><text class="neighbor-label">← 上一篇</text><text class="neighbor-title">{{story.preStory.title}}</text></view>
+        <view wx:if="{{story.nextStory}}" class="neighbor-card neighbor-next" data-id="{{story.nextStory.id}}" bindtap="switchStory" hover-class="neighbor-hover"><text class="neighbor-label">下一篇 →</text><text class="neighbor-title">{{story.nextStory.title}}</text></view>
+      </view>
+    </block>
+    <view class="safe-bottom"></view>
+  </view>
+</scroll-view>
+<bottom-nav current="story"></bottom-nav>
