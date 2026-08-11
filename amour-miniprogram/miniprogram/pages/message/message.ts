@@ -1,4 +1,5 @@
-import { post } from '../../utils/request'
+import { ApiError, post } from '../../utils/request'
+import { ensureWechatLogin } from '../../utils/auth'
 
 const PAGE_SIZE = 8
 
@@ -37,6 +38,11 @@ function formatTime(value: string) {
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback
+}
+
+function isUnauthorized(error: unknown) {
+  return error instanceof ApiError
+    && (error.statusCode === 401 || error.errorCode === '20002')
 }
 
 Component({
@@ -99,14 +105,16 @@ Component({
     async publishMessage() {
       const content = this.data.draft.trim()
       if (!content || this.data.publishing) return
-      const token = wx.getStorageSync('amour_token')
-      if (typeof token !== 'string' || !token.trim()) {
-        wx.showToast({ title: '请先登录后再发布留言', icon: 'none', duration: 1800 })
-        return
-      }
       this.setData({ publishing: true })
       try {
-        await post<void>('/message/publish', { content })
+        await ensureWechatLogin()
+        try {
+          await post<void>('/message/publish', { content })
+        } catch (error) {
+          if (!isUnauthorized(error)) throw error
+          await ensureWechatLogin({ force: true })
+          await post<void>('/message/publish', { content })
+        }
         this.setData({ draft: '', draftLength: 0, canPublish: false })
         wx.showToast({ title: '留言发布成功', icon: 'success' })
         await this.loadMessages(1)

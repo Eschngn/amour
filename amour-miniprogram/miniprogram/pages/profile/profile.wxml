@@ -8,17 +8,73 @@
         <image wx:if="{{avatar}}" class="avatar-image" src="{{avatar}}" mode="aspectFill"></image>
       </view>
       <text class="display-name">{{displayName}}</text>
-      <text class="account-state">{{loggedIn ? username : '尚未登录'}}</text>
+      <view class="account-state">
+        <view class="state-dot {{loggedIn ? 'is-online' : ''}}"></view>
+        <text>{{accountState}}</text>
+      </view>
+    </view>
+
+    <view class="auth-band {{loginError ? 'has-error' : ''}}">
+      <view class="auth-status-icon">
+        <view wx:if="{{authenticating}}" class="auth-spinner"></view>
+        <text wx:elif="{{loginError}}">!</text>
+        <text wx:elif="{{loggedIn}}">✓</text>
+        <view wx:else class="wechat-mark"><view></view><view></view></view>
+      </view>
+      <view class="auth-copy">
+        <text class="auth-title">{{authTitle}}</text>
+        <text class="auth-note">{{loginError || authNote}}</text>
+      </view>
+      <button
+        wx:if="{{!authenticating && (!loggedIn || loginError)}}"
+        class="login-button"
+        bindtap="retryLogin"
+        hover-class="button-hover"
+        loading="{{authenticating}}"
+      >{{loginError ? '重试' : '微信登录'}}</button>
     </view>
 
     <view class="profile-section">
       <text class="section-kicker">MY AMOUR</text>
       <text class="section-title">个人空间</text>
       <view class="setting-list">
-        <view class="setting-row"><view class="setting-icon heart-icon">♡</view><view class="setting-copy"><text class="setting-title">相伴时光</text><text class="setting-note">收藏属于两个人的生活记录</text></view><text class="setting-arrow">›</text></view>
-        <view class="setting-row"><view class="setting-icon account-icon">○</view><view class="setting-copy"><text class="setting-title">账号信息</text><text class="setting-note">{{loggedIn ? '当前账号已登录' : '登录后可发布留言'}}</text></view><text class="setting-arrow">›</text></view>
-        <view class="setting-row"><view class="setting-icon shield-icon">◇</view><view class="setting-copy"><text class="setting-title">隐私与安全</text><text class="setting-note">管理个人资料与登录状态</text></view><text class="setting-arrow">›</text></view>
+        <view class="setting-row">
+          <view class="setting-icon heart-icon">♡</view>
+          <view class="setting-copy">
+            <text class="setting-title">相伴时光</text>
+            <text class="setting-note">收藏属于两个人的生活记录</text>
+          </view>
+        </view>
+        <view
+          class="setting-row {{(!loggedIn || loginError) ? 'is-actionable' : ''}}"
+          bindtap="handleAccountAction"
+          hover-class="{{(!loggedIn || loginError) ? 'row-hover' : 'none'}}"
+        >
+          <view class="setting-icon account-icon"><view class="mini-profile-icon"><view></view><view></view></view></view>
+          <view class="setting-copy">
+            <text class="setting-title">账号信息</text>
+            <text class="setting-note">{{loggedIn ? accountLabel : '等待微信登录'}}</text>
+          </view>
+          <text wx:if="{{!loggedIn || loginError}}" class="setting-arrow">›</text>
+          <view wx:else class="row-check">✓</view>
+        </view>
+        <view class="setting-row">
+          <view class="setting-icon shield-icon"><view class="shield-mark">✓</view></view>
+          <view class="setting-copy">
+            <text class="setting-title">会话安全</text>
+            <text class="setting-note">会话密钥仅由服务端保管</text>
+          </view>
+        </view>
       </view>
+
+      <button
+        wx:if="{{loggedIn}}"
+        class="logout-button"
+        bindtap="requestLogout"
+        loading="{{loggingOut}}"
+        disabled="{{authenticating || loggingOut}}"
+        hover-class="logout-hover"
+      ><text class="logout-icon">↪</text><text>{{loggingOut ? '正在退出' : '退出登录'}}</text></button>
     </view>
     <view class="safe-bottom"></view>
   </view>

@@ -46,6 +46,8 @@ public enum ResponseCodeEnum implements BaseExceptionInterface {
     ANNIVERSARY_NOT_EXIST("20025", "纪念日不存在或已被删除"),
     MESSAGE_DELETE_FORBIDDEN("20026", "只能删除自己发布的留言"),
     MESSAGE_REPLY_DELETE_FORBIDDEN("20027", "只能删除自己发布的回复"),
+    WECHAT_LOGIN_FAILED("20028", "微信登录失败，请稍后重试"),
+    WECHAT_CONFIG_INVALID("20029", "微信登录配置不完整"),
 
 
     ;

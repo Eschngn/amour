@@ -10,6 +10,11 @@ spring:
       max-request-size: 10MB # 限制整个上传请求的最大大小为 10MB。这包括所有上传文件的大小之和。如果请求总大小超过这个值，将会被拒绝。
 
 amour:
+  wechat:
+    # 微信小程序 AppID 和 AppSecret 仅从环境变量注入，禁止提交真实密钥。
+    app-id: ${WECHAT_APP_ID:}
+    app-secret: ${WECHAT_APP_SECRET:}
+    code2-session-url: ${WECHAT_CODE2SESSION_URL:https://api.weixin.qq.com/sns/jscode2session}
   security:
     login-rsa:
       # 生产多实例部署时必须配置同一组密钥。公钥为 X.509 DER、私钥为 PKCS#8 DER，均使用 Base64 编码。

@@ -1,18 +1,15 @@
-// app.ts
+import { AuthSession, ensureWechatLogin } from './utils/auth'
+
 App<IAppOption>({
   globalData: {},
-  onLaunch() {
-    // 展示本地存储能力
-    const logs = wx.getStorageSync('logs') || []
-    logs.unshift(Date.now())
-    wx.setStorageSync('logs', logs)
 
-    // 登录
-    wx.login({
-      success: res => {
-        console.log(res.code)
-        // 发送 res.code 到后台换取 openId, sessionKey, unionId
-      },
+  onLaunch() {
+    const authReady = ensureWechatLogin()
+    this.globalData.authReady = authReady
+    authReady.then((auth: AuthSession) => {
+      this.globalData.auth = auth
+    }).catch(error => {
+      console.warn('微信登录初始化失败', error)
     })
   },
 })
