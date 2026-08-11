@@ -5,6 +5,8 @@ import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
 import com.chengliuxiang.amour.common.exception.BizException;
 import com.chengliuxiang.amour.web.config.WechatProperties;
 import com.chengliuxiang.amour.web.model.wechat.WechatCode2SessionResponse;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
@@ -23,6 +25,9 @@ public class WechatAuthClientImpl implements WechatAuthClient {
     @Resource
     private WechatProperties wechatProperties;
 
+    @Resource
+    private ObjectMapper objectMapper;
+
     @Override
     public WechatCode2SessionResponse code2Session(String code) {
         if (StrUtil.isBlank(wechatProperties.getAppId())
@@ -38,8 +43,10 @@ public class WechatAuthClientImpl implements WechatAuthClient {
                 .queryParam("grant_type", "authorization_code")
                 .toUriString();
         try {
-            WechatCode2SessionResponse response = wechatRestTemplate.getForObject(
-                    url, WechatCode2SessionResponse.class);
+            // 微信接口偶尔将 JSON 响应声明为 text/plain，先接收原文避免受响应头影响。
+            String responseBody = wechatRestTemplate.getForObject(url, String.class);
+            WechatCode2SessionResponse response = objectMapper.readValue(
+                    responseBody, WechatCode2SessionResponse.class);
             if (response == null || (response.getErrcode() != null && response.getErrcode() != 0)
                     || StrUtil.isBlank(response.getOpenid())
                     || StrUtil.isBlank(response.getSessionKey())) {
@@ -51,7 +58,7 @@ public class WechatAuthClientImpl implements WechatAuthClient {
             return response;
         } catch (BizException e) {
             throw e;
-        } catch (RestClientException e) {
+        } catch (RestClientException | JsonProcessingException e) {
             log.error("调用微信 code2Session 接口失败", e);
             throw new BizException(ResponseCodeEnum.WECHAT_LOGIN_FAILED);
         }

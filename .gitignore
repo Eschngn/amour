@@ -113,6 +113,9 @@ lerna-debug.log*
 # Vitest
 __screenshots__/
 
+# Backend test sources
+/amour-springboot/**/src/test/
+
 
 # Vite
 *.timestamp-*-*.mjs
