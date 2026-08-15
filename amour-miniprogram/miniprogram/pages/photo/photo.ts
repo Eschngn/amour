@@ -1,6 +1,7 @@
 import { post } from '../../utils/request'
 
 const PAGE_SIZE = 6
+let latestPhotoRequestId = 0
 
 interface PhotoCategory {
   id: number
@@ -31,7 +32,9 @@ function getErrorMessage(error: unknown, fallback: string) {
 Component({
   data: {
     loading: true,
+    loadingMore: false,
     loadError: '',
+    loadMoreError: '',
     loadingItems: [1, 2, 3, 4],
     categories: [] as PhotoCategory[],
     activeCategory: 'all' as string | number,
@@ -39,6 +42,7 @@ Component({
     currentPage: 1,
     totalPages: 1,
     total: 0,
+    hasMore: false,
     pageSummary: '正在整理照片',
   },
 
@@ -64,16 +68,31 @@ Component({
       }
     },
 
-    async loadPhotos(page: number) {
-      this.setData({ loading: true, loadError: '' })
+    async loadPhotos(page: number, append = false) {
+      const requestId = ++latestPhotoRequestId
+      this.setData(append
+        ? { loadingMore: true, loadMoreError: '' }
+        : {
+          loading: true,
+          loadingMore: false,
+          loadError: '',
+          loadMoreError: '',
+          photos: [],
+          currentPage: 1,
+          totalPages: 1,
+          total: 0,
+          hasMore: false,
+          pageSummary: '正在整理照片',
+        })
       const payload: WechatMiniprogram.IAnyObject = { current: page, size: PAGE_SIZE }
       if (this.data.activeCategory !== 'all') payload.photoCategoryId = this.data.activeCategory
       try {
         const result = await post<PhotoPageResult>('/photo/page', payload)
+        if (requestId !== latestPhotoRequestId) return
         const total = Number(result.total) || 0
         const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
         const currentPage = Math.min(Math.max(1, Number(result.current) || page), totalPages)
-        const photos = (result.records || []).filter((item) => item.url).map((item, index) => ({
+        const newPhotos = (result.records || []).filter((item) => item.url).map((item, index) => ({
           ...item,
           title: item.title || '未命名照片',
           description: item.description || '这一页还没有写下文字。',
@@ -82,21 +101,24 @@ Component({
           location: item.location || '',
           number: String((currentPage - 1) * PAGE_SIZE + index + 1).padStart(2, '0'),
         }))
-        const start = total ? (currentPage - 1) * PAGE_SIZE + 1 : 0
-        const end = Math.min(currentPage * PAGE_SIZE, total)
+        const photos = append ? [...this.data.photos, ...newPhotos] : newPhotos
         this.setData({
           photos,
           currentPage,
           totalPages,
           total,
-          pageSummary: total ? `${start}-${end} / ${total}` : '等待新的照片',
+          hasMore: currentPage < totalPages && newPhotos.length > 0,
+          pageSummary: total ? `${photos.length} / ${total}` : '等待新的照片',
           loading: false,
+          loadingMore: false,
+          loadMoreError: '',
         })
       } catch (error) {
-        this.setData({
-          loading: false,
-          loadError: getErrorMessage(error, '照片加载失败，请稍后重试'),
-        })
+        if (requestId !== latestPhotoRequestId) return
+        const errorMessage = getErrorMessage(error, '照片加载失败，请稍后重试')
+        this.setData(append
+          ? { loadingMore: false, loadMoreError: errorMessage }
+          : { loading: false, loadError: errorMessage })
       }
     },
 
@@ -104,13 +126,13 @@ Component({
       const rawId = event.currentTarget.dataset.id
       const categoryId = rawId === 'all' ? 'all' : Number(rawId)
       if (categoryId === this.data.activeCategory) return
+      latestPhotoRequestId += 1
       this.setData({ activeCategory: categoryId }, () => this.loadPhotos(1))
     },
 
-    turnPage(event: WechatMiniprogram.BaseEvent) {
-      const direction = event.currentTarget.dataset.direction
-      const nextPage = direction === 'prev' ? this.data.currentPage - 1 : this.data.currentPage + 1
-      if (nextPage >= 1 && nextPage <= this.data.totalPages) this.loadPhotos(nextPage)
+    loadMore() {
+      if (this.data.loading || this.data.loadingMore || !this.data.hasMore) return
+      this.loadPhotos(this.data.currentPage + 1, true)
     },
 
     openPhotoDetail(event: WechatMiniprogram.BaseEvent) {
@@ -127,7 +149,11 @@ Component({
     },
 
     retry() {
-      this.loadPhotos(this.data.currentPage)
+      this.loadPhotos(1)
+    },
+
+    retryLoadMore() {
+      this.loadMore()
     },
   },
 })

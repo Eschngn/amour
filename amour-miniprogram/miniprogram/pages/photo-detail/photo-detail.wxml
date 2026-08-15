@@ -1,4 +1,4 @@
-<navigation-bar title="照片详情" back="{{true}}" color="#315e56" background="#f6faf8"></navigation-bar>
+<navigation-bar title="照片详情" back="{{true}}" color="#572c37" background="#fcf8f5"></navigation-bar>
 
 <scroll-view class="page-scroll" scroll-y type="list" enhanced show-scrollbar="false" scroll-into-view="{{scrollIntoView}}">
   <view id="photo-detail-top" class="detail-page">
@@ -7,9 +7,15 @@
     </view>
 
     <block wx:else>
-      <view class="photo-stage" bindtap="previewImage" hover-class="stage-hover" aria-role="button" aria-label="预览原图 {{photo.title}}">
-        <image class="detail-image" src="{{photo.url}}" mode="aspectFit"></image>
-        <view class="image-toolbar"><text>{{displayNumber}} / {{photos.length}}</text><text>点击查看原图</text></view>
+      <view class="photo-stage">
+        <swiper class="photo-swiper" current="{{currentIndex}}" duration="260" easing-function="easeOutCubic" bindchange="onSwiperChange">
+          <swiper-item wx:for="{{photos}}" wx:key="id">
+            <view class="photo-slide" bindtap="previewImage" hover-class="stage-hover" aria-role="button" aria-label="预览原图 {{item.title}}">
+              <image class="detail-image" src="{{item.url}}" mode="aspectFit"></image>
+            </view>
+          </swiper-item>
+        </swiper>
+        <view class="image-toolbar"><text>{{displayNumber}} / {{photos.length}}</text><text>点击查看原图 · 左右滑动切换</text></view>
       </view>
 
       <view class="detail-content">
@@ -21,10 +27,6 @@
         <text class="photo-description">{{photo.description}}</text>
       </view>
 
-      <view wx:if="{{photos.length > 1}}" class="photo-navigation">
-        <button class="nav-button" disabled="{{!hasPrevious}}" data-direction="previous" bindtap="switchPhoto"><text>←</text><view><text class="nav-label">上一张</text><text class="nav-title">继续向前翻阅</text></view></button>
-        <button class="nav-button next-button" disabled="{{!hasNext}}" data-direction="next" bindtap="switchPhoto"><view><text class="nav-label">下一张</text><text class="nav-title">看看下一段回忆</text></view><text>→</text></button>
-      </view>
     </block>
     <view class="safe-bottom"></view>
   </view>

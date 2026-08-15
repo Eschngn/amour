@@ -1,6 +1,6 @@
-<navigation-bar title="恋爱相册" back="{{false}}" color="#315e56" background="#f6faf8"></navigation-bar>
+<navigation-bar title="恋爱相册" back="{{false}}" color="#572c37" background="#fcf8f5"></navigation-bar>
 
-<scroll-view class="page-scroll" scroll-y type="list" enhanced show-scrollbar="false">
+<scroll-view class="page-scroll" scroll-y type="list" enhanced show-scrollbar="false" lower-threshold="120" bindscrolltolower="loadMore">
   <view class="photo-page">
     <view class="page-hero">
       <text class="hero-kicker">OUR PHOTO BOOK</text>
@@ -30,12 +30,13 @@
       </view>
     </view>
 
-    <view wx:else class="empty-state"><text class="state-symbol">□</text><text class="state-title">这一页还没有照片</text><text class="state-copy">新的回忆会慢慢装满这里。</text></view>
+    <view wx:else class="empty-state"><text class="state-symbol">□</text><text class="state-title">这里还没有照片</text><text class="state-copy">新的回忆会慢慢装满这里。</text></view>
 
-    <view wx:if="{{totalPages > 1}}" class="pagination">
-      <button class="page-button" disabled="{{currentPage <= 1 || loading}}" data-direction="prev" bindtap="turnPage">← 上一页</button>
-      <text class="page-current">{{currentPage}} / {{totalPages}}</text>
-      <button class="page-button" disabled="{{currentPage >= totalPages || loading}}" data-direction="next" bindtap="turnPage">下一页 →</button>
+    <view wx:if="{{photos.length}}" class="load-more-status">
+      <text wx:if="{{loadingMore}}" class="load-more-text">正在加载更多回忆…</text>
+      <view wx:elif="{{loadMoreError}}" class="load-more-error"><text>{{loadMoreError}}</text><button class="load-more-button" bindtap="retryLoadMore">重试</button></view>
+      <text wx:elif="{{hasMore}}" class="load-more-text">继续上滑，加载更多</text>
+      <text wx:else class="load-more-text">已经看完所有照片</text>
     </view>
     <view class="safe-bottom"></view>
   </view>

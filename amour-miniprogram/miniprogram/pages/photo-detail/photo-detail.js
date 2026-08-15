@@ -15,8 +15,6 @@ Page({
     currentIndex: 0,
     displayNumber: '01',
     formattedDateTime: '拍摄时间未记录',
-    hasPrevious: false,
-    hasNext: false,
     error: '',
     scrollIntoView: '',
   },
@@ -58,18 +56,16 @@ Page({
       currentIndex: safeIndex,
       displayNumber: String(safeIndex + 1).padStart(2, '0'),
       formattedDateTime,
-      hasPrevious: safeIndex > 0,
-      hasNext: safeIndex < validPhotos.length - 1,
       error: '',
       scrollIntoView: 'photo-detail-top',
     })
   },
 
-  switchPhoto(event) {
-    const direction = event.currentTarget.dataset.direction
-    const nextIndex = direction === 'previous' ? this.data.currentIndex - 1 : this.data.currentIndex + 1
+  onSwiperChange(event) {
+    const nextIndex = Number(event.detail.current)
+    if (!Number.isInteger(nextIndex) || nextIndex === this.data.currentIndex) return
     if (nextIndex < 0 || nextIndex >= this.data.photos.length) return
-    this.setData({ scrollIntoView: '' }, () => this.applyCollection(this.data.photos, nextIndex))
+    this.applyCollection(this.data.photos, nextIndex)
   },
 
   previewImage() {
