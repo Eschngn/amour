@@ -1,6 +1,6 @@
 <navigation-bar title="我们的故事" back="{{false}}" color="#572c37" background="#fcf8f5"></navigation-bar>
 
-<scroll-view class="page-scroll" scroll-y type="list" enhanced show-scrollbar="false">
+<scroll-view class="page-scroll" scroll-y bounces="{{false}}" type="list" enhanced show-scrollbar="false">
   <view class="story-page">
     <view class="page-hero">
       <text class="hero-kicker">OUR STORY</text>

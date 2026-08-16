@@ -1,6 +1,6 @@
 <navigation-bar title="恋爱相册" back="{{false}}" color="#572c37" background="#fcf8f5"></navigation-bar>
 
-<scroll-view class="page-scroll" scroll-y type="list" enhanced show-scrollbar="false" lower-threshold="120" bindscrolltolower="loadMore">
+<scroll-view class="page-scroll" scroll-y bounces="{{false}}" type="list" enhanced show-scrollbar="false" lower-threshold="120" bindscrolltolower="loadMore">
   <view class="photo-page">
     <view class="page-hero">
       <text class="hero-kicker">OUR PHOTO BOOK</text>

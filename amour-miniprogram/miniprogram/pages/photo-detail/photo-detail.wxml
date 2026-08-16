@@ -1,6 +1,6 @@
 <navigation-bar title="照片详情" back="{{true}}" color="#572c37" background="#fcf8f5"></navigation-bar>
 
-<scroll-view class="page-scroll" scroll-y type="list" enhanced show-scrollbar="false" scroll-into-view="{{scrollIntoView}}">
+<scroll-view class="page-scroll" scroll-y="{{pageScrollEnabled}}" bounces="{{false}}" type="list" enhanced show-scrollbar="false" scroll-top="{{scrollTop}}" scroll-with-animation="{{false}}">
   <view id="photo-detail-top" class="detail-page">
     <view wx:if="{{error}}" class="empty-state">
       <text class="state-symbol">□</text><text class="state-title">照片不在这里</text><text class="state-copy">{{error}}</text><button class="outline-button" bindtap="backToAlbum">返回相册</button>
@@ -8,6 +8,32 @@
 
     <block wx:else>
       <view class="detail-swipe-viewport">
+        <view class="album-preview {{backReveal ? 'is-visible' : ''}}">
+          <view class="album-preview-hero">
+            <text class="album-preview-kicker">OUR PHOTO BOOK</text>
+            <text class="album-preview-hero-title">翻开属于我们的相册</text>
+            <text class="album-preview-hero-copy">收藏走过的地方、见过的光，还有每一个刚好有彼此的瞬间。</text>
+            <view class="album-preview-summary"><text class="album-preview-count">{{previewPhotos.length}}</text><text class="album-preview-label">张照片，仍在继续增加</text></view>
+          </view>
+          <view class="album-preview-section">
+            <view class="album-preview-heading"><view><text class="album-preview-kicker">COLLECTIONS</text><text class="album-preview-section-title">照片分类</text></view></view>
+            <view class="album-preview-filters">
+              <view class="album-preview-filter is-active">全部</view>
+              <view wx:for="{{previewCategories}}" wx:key="*this" class="album-preview-filter">{{item}}</view>
+            </view>
+          </view>
+          <view class="album-preview-grid">
+            <view class="album-preview-card" wx:for="{{previewPhotos}}" wx:key="id">
+              <view class="album-preview-frame"><image class="album-preview-image" src="{{item.url}}" mode="aspectFill"></image><text class="album-preview-number">{{item.number}}</text></view>
+              <view class="album-preview-card-copy">
+                <text class="album-preview-card-title">{{item.title}}</text>
+                <text class="album-preview-card-category">{{item.categoryName}}</text>
+                <text class="album-preview-card-description">{{item.description}}</text>
+                <view class="album-preview-card-meta"><text>{{item.date}}</text><text wx:if="{{item.location}}">⌖ {{item.location}}</text></view>
+              </view>
+            </view>
+          </view>
+        </view>
         <view wx:if="{{adjacentPhoto}}" class="detail-panel adjacent-panel {{detailTransition ? 'panel-transition' : ''}}" style="transform: translateX({{adjacentOffset}}px);">
           <view class="photo-stage">
             <view class="photo-slide">
@@ -26,14 +52,14 @@
             </view>
           </view>
         </view>
-        <view class="detail-panel current-panel {{detailTransition ? 'panel-transition' : ''}}" style="transform: translateX({{detailOffset}}px);">
+        <view class="detail-panel current-panel {{detailTransition ? 'panel-transition' : ''}} {{backDragging ? 'is-back-dragging' : ''}}" style="transform: translateX({{detailOffset}}px);" bindtouchstart="onDetailTouchStart" bindtouchmove="onDetailTouchMove" bindtouchend="onDetailTouchEnd" bindtouchcancel="onDetailTouchEnd">
           <view class="photo-stage">
             <view class="photo-slide" bindtap="previewImage" hover-class="stage-hover" aria-role="button" aria-label="预览原图 {{photo.title}}">
               <image class="detail-image" src="{{photo.url}}" mode="aspectFit"></image>
             </view>
             <view class="image-toolbar"><text>{{displayNumber}} / {{photos.length}}</text><text>点击查看原图</text></view>
           </view>
-          <view class="detail-swipe-area" bindtouchstart="onDetailTouchStart" bindtouchmove="onDetailTouchMove" bindtouchend="onDetailTouchEnd">
+          <view class="detail-swipe-area">
             <view class="detail-content">
               <view class="title-row"><view class="title-copy"><text class="photo-category">{{photo.categoryName}}</text><text class="photo-title">{{photo.title}}</text></view><text class="favorite-mark">♡</text></view>
               <view class="title-meta">

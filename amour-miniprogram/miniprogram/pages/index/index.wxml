@@ -1,6 +1,6 @@
 <navigation-bar title="AMOUR" back="{{false}}" color="#572c37" background="#fcf8f5"></navigation-bar>
 
-<scroll-view class="scrollarea" scroll-y type="list" enhanced show-scrollbar="false">
+<scroll-view class="scrollarea" scroll-y bounces="{{false}}" type="list" enhanced show-scrollbar="false">
   <view class="home-page">
     <view class="hero-section">
       <view class="hero-copy">

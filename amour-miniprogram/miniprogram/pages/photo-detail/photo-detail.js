@@ -31,12 +31,18 @@ Page({
     adjacentOffset: 0,
     detailOffset: 0,
     detailTransition: false,
+    previewPhotos: [],
+    previewCategories: [],
+    backReveal: false,
+    backDragging: false,
+    scrollTop: 0,
+    pageScrollEnabled: true,
     error: '',
-    scrollIntoView: '',
   },
 
   onLoad(options) {
     const id = Number(options.id)
+    this.detailBackCommitting = false
     const storedPhotos = wx.getStorageSync('photoDetailCollection')
     if (Array.isArray(storedPhotos) && storedPhotos.length) {
       const storedIndex = storedPhotos.findIndex((item) => Number(item.id) === id)
@@ -60,6 +66,17 @@ Page({
     const safeIndex = Math.min(Math.max(0, index), validPhotos.length - 1)
     const photo = validPhotos[safeIndex]
     const formattedDateTime = formatDateTime(photo.takenTime)
+    // 切换照片时保持当前滚动位置，不再强制回到顶部：
+    // 若用户已向下滚动（如正在阅读描述），强制回顶会让整页瞬间弹跳；
+    // 且 enhanced 虚拟列表反复改变 scroll-top 还会触发整体重排造成页面抖动
+    const previewPhotos = validPhotos.slice(0, 6).map((photo, index) => ({
+      ...formatPhoto(photo),
+      number: photo.number || String(index + 1).padStart(2, '0'),
+      date: photo.takenTime ? photo.takenTime.slice(0, 10).replace(/-/g, '.') : '日期未记录',
+    }))
+    const previewCategories = Array.from(
+      new Set(validPhotos.map((photo) => photo.categoryName).filter(Boolean)),
+    )
     this.setData({
       photo: formatPhoto(photo),
       photos: validPhotos,
@@ -72,21 +89,34 @@ Page({
       adjacentOffset: 0,
       detailOffset: 0,
       detailTransition: false,
+      previewPhotos,
+      previewCategories,
+      backReveal: false,
+      backDragging: false,
+      // scrollTop 保持 0 且不变：不发送滚动指令，切换照片时页面原地不动
+      scrollTop: 0,
       error: '',
-      scrollIntoView: 'photo-detail-top',
     })
   },
 
   onDetailTouchStart(event) {
     const touch = event.touches && event.touches[0]
-    if (!touch || this.detailSwitchTimer) return
+    if (!touch || this.detailSwitchTimer || this.detailBackCommitting) return
     if (this.detailResetTimer) {
       clearTimeout(this.detailResetTimer)
       this.detailResetTimer = null
     }
+    const windowWidth = wx.getSystemInfoSync().windowWidth
+    // 返回手势触发区：仅屏幕最左侧边缘一条窄带（约屏宽 8%，16px～32px）。
+    // 只有从这里开始右滑才返回上一级恋爱相册；
+    // 其余区域（包括描述文字区左侧，未贴屏幕边缘）一律用于切换上一张/下一张照片。
+    const edgeWidth = Math.max(16, Math.min(32, windowWidth * 0.08))
     this.detailTouchStart = { x: touch.clientX, y: touch.clientY }
     this.detailGestureDirection = ''
-    this.setData({ detailTransition: false })
+    this.detailBackGesture = false
+    this.detailEdgeBackCandidate = touch.clientX <= edgeWidth
+    // 每次触摸开始先恢复纵向滚动，避免上次手势异常结束时遗留锁定状态
+    this.setData({ detailTransition: false, backDragging: false, backReveal: false, pageScrollEnabled: true })
   },
 
   onDetailTouchMove(event) {
@@ -98,15 +128,35 @@ Page({
     const offsetY = touch.clientY - start.y
     if (!this.detailGestureDirection && (Math.abs(offsetX) > 8 || Math.abs(offsetY) > 8)) {
       this.detailGestureDirection = Math.abs(offsetX) > Math.abs(offsetY) ? 'horizontal' : 'vertical'
+      // 一旦判定为左右切换手势，立即禁用页面纵向滚动：
+      // 避免手指在左右拖动过程中同时触发上下滚动（只在方向判定时切换一次，不逐帧 setData）
+      if (this.detailGestureDirection === 'horizontal' && this.data.pageScrollEnabled) {
+        this.setData({ pageScrollEnabled: false })
+      }
     }
     if (this.detailGestureDirection !== 'horizontal') return
+
+    const windowWidth = wx.getSystemInfoSync().windowWidth
+
+    // 从左边缘开始右滑：锁定为返回手势，当前面板跟手右移，相册内容从左侧逐步露出
+    if (this.detailEdgeBackCandidate && offsetX > 0) this.detailBackGesture = true
+    if (this.detailBackGesture) {
+      const clampedOffset = Math.max(0, Math.min(offsetX, windowWidth))
+      this.setData({
+        detailOffset: clampedOffset,
+        adjacentPhoto: null,
+        adjacentOffset: 0,
+        backReveal: true,
+        backDragging: true,
+      })
+      return
+    }
 
     const direction = offsetX < 0 ? 1 : -1
     const adjacentIndex = this.data.currentIndex + direction
     const hasAdjacentPhoto = adjacentIndex >= 0 && adjacentIndex < this.data.photos.length
     const displayOffset = hasAdjacentPhoto ? offsetX : offsetX * 0.28
     const adjacentPhoto = hasAdjacentPhoto ? formatPhoto(this.data.photos[adjacentIndex]) : null
-    const windowWidth = wx.getSystemInfoSync().windowWidth
     this.setData({
       detailOffset: displayOffset,
       adjacentPhoto,
@@ -120,30 +170,66 @@ Page({
     const start = this.detailTouchStart
     const touch = event.changedTouches && event.changedTouches[0]
     const direction = this.detailGestureDirection
+    const wasBackGesture = this.detailBackGesture
     this.detailTouchStart = null
     this.detailGestureDirection = ''
+    this.detailBackGesture = false
+    this.detailEdgeBackCandidate = false
     if (!start || !touch || direction !== 'horizontal') return
 
+    // 手势结束，恢复页面纵向滚动
+    this.setData({ pageScrollEnabled: true })
+
     const offsetX = touch.clientX - start.x
-    const nextIndex = this.data.currentIndex + (offsetX < 0 ? 1 : -1)
-    const canSwitch = nextIndex >= 0 && nextIndex < this.data.photos.length
-    const shouldSwitch = canSwitch && Math.abs(offsetX) >= 120
-    if (!shouldSwitch) {
-      this.setData({ detailOffset: 0, adjacentOffset: 0, detailTransition: true })
-      this.detailResetTimer = setTimeout(() => {
-        this.detailResetTimer = null
-        this.setData({ adjacentPhoto: null, adjacentFormattedDateTime: '', adjacentIndexNumber: '' })
-      }, 220)
+    const windowWidth = wx.getSystemInfoSync().windowWidth
+
+    // 左边缘右滑返回：超过阈值先把当前页滑出屏幕、露出完整相册，再执行真正的返回；否则回弹复位
+    if (wasBackGesture) {
+      if (offsetX >= windowWidth * 0.3) {
+        this.detailBackCommitting = true
+        this.setData({ detailOffset: windowWidth, detailTransition: true, backDragging: false })
+        this.detailResetTimer = setTimeout(() => {
+          this.detailResetTimer = null
+          this.setData({ backReveal: false })
+          this.backToAlbum()
+        }, 220)
+      } else {
+        this.setData({ detailOffset: 0, adjacentOffset: 0, detailTransition: true, backDragging: false })
+        this.detailResetTimer = setTimeout(() => {
+          this.detailResetTimer = null
+          this.setData({
+            adjacentPhoto: null,
+            adjacentFormattedDateTime: '',
+            adjacentIndexNumber: '',
+            backReveal: false,
+          })
+        }, 220)
+      }
       return
     }
 
-    const windowWidth = wx.getSystemInfoSync().windowWidth
+    const nextIndex = this.data.currentIndex + (offsetX < 0 ? 1 : -1)
+    const canSwitch = nextIndex >= 0 && nextIndex < this.data.photos.length
+    // 切换上一张/下一张的触发距离：约屏宽 12%（不小于 36px），轻滑即可切换
+    const switchThreshold = Math.max(36, windowWidth * 0.12)
+    const shouldSwitch = canSwitch && Math.abs(offsetX) >= switchThreshold
+    if (!shouldSwitch) {
+      this.setData({ detailOffset: 0, adjacentOffset: 0, detailTransition: true })
+      // 计时略长于过渡时长（220ms），等面板完全回弹后再卸载相邻面板，避免中途闪现
+      this.detailResetTimer = setTimeout(() => {
+        this.detailResetTimer = null
+        this.setData({ adjacentPhoto: null, adjacentFormattedDateTime: '', adjacentIndexNumber: '' })
+      }, 250)
+      return
+    }
+
     const targetOffset = offsetX < 0 ? -windowWidth : windowWidth
     this.setData({ detailOffset: targetOffset, adjacentOffset: 0, detailTransition: true })
+    // 计时略长于过渡时长（220ms），等面板完全滑出屏幕后再切换照片，避免回摆/瞬跳
     this.detailSwitchTimer = setTimeout(() => {
       this.detailSwitchTimer = null
       this.applyCollection(this.data.photos, nextIndex)
-    }, 220)
+    }, 250)
   },
 
   onUnload() {

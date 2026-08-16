@@ -1,6 +1,6 @@
 <navigation-bar title="故事详情" back="{{true}}" color="#572c37" background="#fcf8f5"></navigation-bar>
 
-<scroll-view class="page-scroll" scroll-y type="list" enhanced show-scrollbar="false" scroll-into-view="{{scrollIntoView}}">
+<scroll-view class="page-scroll" scroll-y bounces="{{false}}" type="list" enhanced show-scrollbar="false" scroll-into-view="{{scrollIntoView}}">
   <view id="detail-top" class="detail-page">
     <view wx:if="{{loading}}" class="loading-state">
       <view class="hero-skeleton"></view>

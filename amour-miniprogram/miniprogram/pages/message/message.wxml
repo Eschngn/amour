@@ -1,6 +1,6 @@
 <navigation-bar title="留言板" back="{{false}}" color="#674254" background="#fdf8fb"></navigation-bar>
 
-<scroll-view class="page-scroll" scroll-y type="list" enhanced show-scrollbar="false">
+<scroll-view class="page-scroll" scroll-y bounces="{{false}}" type="list" enhanced show-scrollbar="false">
   <view class="message-page">
     <view class="page-hero">
       <text class="hero-kicker">LOVE NOTES</text>

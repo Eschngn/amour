@@ -1,7 +1,7 @@
 page { display: flex; height: 100vh; flex-direction: column; background: #fcf8f5; color: #572c37; }
 .page-scroll { flex: 1; min-height: 0; }
 .detail-page { display: flex; min-height: 100%; flex-direction: column; padding: 34rpx 34rpx 0; background: #fcf8f5; box-sizing: border-box; }
-.photo-stage { position: relative; overflow: hidden; height: 600rpx; flex: none; border: 1rpx solid #efdcde; border-radius: 16rpx; background: #f1e0e1; box-shadow: 0 12rpx 28rpx rgba(133,77,87,.07); }
+.photo-stage { position: relative; width: 100%; aspect-ratio: 3 / 4; flex: none; overflow: hidden; border: 1rpx solid #efdcde; border-radius: 16rpx; background: #f1e0e1; box-shadow: 0 12rpx 28rpx rgba(133,77,87,.07); }
 .photo-slide { width: 100%; height: 100%; }
 .detail-image { display: block; width: 100%; height: 100%; }
 .image-toolbar { position: absolute; z-index: 2; right: 0; bottom: 0; left: 0; display: flex; justify-content: space-between; padding: 18rpx 22rpx; background: rgba(255,255,255,.9); color: #936d74; font-size: 18rpx; pointer-events: none; }
@@ -12,6 +12,32 @@ page { display: flex; height: 100vh; flex-direction: column; background: #fcf8f5
 .adjacent-panel { position: absolute; top: 0; z-index: 1; width: 100%; }
 .detail-swipe-area { display: flex; min-height: 360rpx; flex: 1; flex-direction: column; }
 .panel-transition { transition: transform 220ms cubic-bezier(.22,.61,.36,1); }
+.current-panel.is-back-dragging { box-shadow: -12rpx 0 32rpx rgba(133,77,87,.14); }
+.album-preview { position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 0; overflow: hidden; background: #fcf8f5; visibility: hidden; pointer-events: none; }
+.album-preview.is-visible { visibility: visible; }
+.album-preview-hero { padding: 34rpx 42rpx 36rpx; border-bottom: 1rpx solid #f0dcdc; background: #fff2f1; }
+.album-preview-kicker { display: block; color: #ca7480; font-size: 18rpx; font-weight: 700; letter-spacing: 4rpx; }
+.album-preview-hero-title { display: block; margin-top: 16rpx; color: #5f303c; font-family: Georgia, serif; font-size: 42rpx; font-weight: 700; line-height: 1.25; }
+.album-preview-hero-copy { display: block; max-width: 600rpx; margin-top: 14rpx; color: #936d74; font-size: 22rpx; line-height: 1.75; }
+.album-preview-summary { display: flex; align-items: baseline; margin-top: 20rpx; }
+.album-preview-count { color: #bc5e6d; font-family: Georgia, serif; font-size: 38rpx; font-weight: 700; }
+.album-preview-label { margin-left: 12rpx; color: #ac858b; font-size: 19rpx; }
+.album-preview-section { padding: 34rpx 34rpx 0; }
+.album-preview-heading { display: flex; align-items: flex-end; justify-content: space-between; padding: 0 8rpx; }
+.album-preview-section-title { display: block; margin-top: 8rpx; color: #623640; font-family: Georgia, serif; font-size: 33rpx; font-weight: 700; }
+.album-preview-filters { display: flex; margin-top: 20rpx; padding: 2rpx 8rpx 6rpx; white-space: nowrap; }
+.album-preview-filter { display: inline-flex; height: 56rpx; flex: none; align-items: center; margin-right: 12rpx; padding: 0 24rpx; border: 1rpx solid #ead4d6; border-radius: 28rpx; background: rgba(255,255,255,.72); color: #936d74; font-size: 20rpx; }
+.album-preview-filter.is-active { border-color: #c86b78; background: #c86b78; color: #fff; }
+.album-preview-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16rpx; padding: 24rpx 34rpx 0; }
+.album-preview-card { overflow: hidden; border: 1rpx solid #efdcde; border-radius: 14rpx; background: rgba(255,255,255,.88); box-shadow: 0 8rpx 18rpx rgba(133,77,87,.06); }
+.album-preview-frame { position: relative; width: 100%; aspect-ratio: 4 / 5; overflow: hidden; background: #f1e0e1; }
+.album-preview-image { display: block; width: 100%; height: 100%; }
+.album-preview-number { position: absolute; top: 10rpx; right: 10rpx; padding: 4rpx 8rpx; border-radius: 12rpx; background: rgba(255,255,255,.88); color: #bd6370; font-size: 15rpx; font-weight: 700; }
+.album-preview-card-copy { padding: 14rpx; }
+.album-preview-card-title { display: block; overflow: hidden; color: #603640; font-family: Georgia, serif; font-size: 23rpx; font-weight: 700; white-space: nowrap; text-overflow: ellipsis; }
+.album-preview-card-category { display: inline-block; margin-top: 8rpx; padding: 4rpx 9rpx; border-radius: 10rpx; background: #fae9ea; color: #bf6874; font-size: 15rpx; }
+.album-preview-card-description { display: -webkit-box; height: 52rpx; margin-top: 8rpx; overflow: hidden; color: #936f75; font-size: 18rpx; line-height: 26rpx; text-overflow: ellipsis; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.album-preview-card-meta { display: flex; min-width: 0; flex-direction: column; margin-top: 10rpx; padding-top: 9rpx; border-top: 1rpx solid #eedfe0; color: #b08389; font-size: 15rpx; line-height: 1.5; }
 .detail-content { margin-top: 22rpx; padding: 32rpx 28rpx; border: 1rpx solid #efdcde; border-radius: 16rpx; background: rgba(255,255,255,.92); box-shadow: 0 9rpx 20rpx rgba(133,77,87,.07); }
 .title-row { display: flex; align-items: flex-start; }
 .title-copy { min-width: 0; flex: 1; }
