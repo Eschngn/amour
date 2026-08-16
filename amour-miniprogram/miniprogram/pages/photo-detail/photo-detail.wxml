@@ -7,24 +7,43 @@
     </view>
 
     <block wx:else>
-      <view class="photo-stage">
-        <swiper class="photo-swiper" current="{{currentIndex}}" duration="260" easing-function="easeOutCubic" bindchange="onSwiperChange">
-          <swiper-item wx:for="{{photos}}" wx:key="id">
-            <view class="photo-slide" bindtap="previewImage" hover-class="stage-hover" aria-role="button" aria-label="预览原图 {{item.title}}">
-              <image class="detail-image" src="{{item.url}}" mode="aspectFit"></image>
+      <view class="detail-swipe-viewport">
+        <view wx:if="{{adjacentPhoto}}" class="detail-panel adjacent-panel {{detailTransition ? 'panel-transition' : ''}}" style="transform: translateX({{adjacentOffset}}px);">
+          <view class="photo-stage">
+            <view class="photo-slide">
+              <image class="detail-image" src="{{adjacentPhoto.url}}" mode="aspectFit"></image>
             </view>
-          </swiper-item>
-        </swiper>
-        <view class="image-toolbar"><text>{{displayNumber}} / {{photos.length}}</text><text>点击查看原图 · 左右滑动切换</text></view>
-      </view>
-
-      <view class="detail-content">
-        <view class="title-row"><view class="title-copy"><text class="photo-category">{{photo.categoryName}}</text><text class="photo-title">{{photo.title}}</text></view><text class="favorite-mark">♡</text></view>
-        <view class="title-meta">
-          <view class="title-meta-item"><text class="title-meta-icon time-icon">◷</text><text class="title-meta-value">{{formattedDateTime}}</text></view>
-          <view class="title-meta-item"><text class="title-meta-icon location-icon">⌖</text><text class="title-meta-value">{{photo.location}}</text></view>
+            <view class="image-toolbar"><text>{{adjacentIndexNumber}} / {{photos.length}}</text><text>点击查看原图</text></view>
+          </view>
+          <view class="detail-swipe-area">
+            <view class="detail-content">
+              <view class="title-row"><view class="title-copy"><text class="photo-category">{{adjacentPhoto.categoryName}}</text><text class="photo-title">{{adjacentPhoto.title}}</text></view><text class="favorite-mark">♡</text></view>
+              <view class="title-meta">
+                <view class="title-meta-item"><text class="title-meta-icon time-icon">◷</text><text class="title-meta-value">{{adjacentFormattedDateTime}}</text></view>
+                <view class="title-meta-item"><text class="title-meta-icon location-icon">⌖</text><text class="title-meta-value">{{adjacentPhoto.location}}</text></view>
+              </view>
+              <text class="photo-description">{{adjacentPhoto.description}}</text>
+            </view>
+          </view>
         </view>
-        <text class="photo-description">{{photo.description}}</text>
+        <view class="detail-panel current-panel {{detailTransition ? 'panel-transition' : ''}}" style="transform: translateX({{detailOffset}}px);">
+          <view class="photo-stage">
+            <view class="photo-slide" bindtap="previewImage" hover-class="stage-hover" aria-role="button" aria-label="预览原图 {{photo.title}}">
+              <image class="detail-image" src="{{photo.url}}" mode="aspectFit"></image>
+            </view>
+            <view class="image-toolbar"><text>{{displayNumber}} / {{photos.length}}</text><text>点击查看原图</text></view>
+          </view>
+          <view class="detail-swipe-area" bindtouchstart="onDetailTouchStart" bindtouchmove="onDetailTouchMove" bindtouchend="onDetailTouchEnd">
+            <view class="detail-content">
+              <view class="title-row"><view class="title-copy"><text class="photo-category">{{photo.categoryName}}</text><text class="photo-title">{{photo.title}}</text></view><text class="favorite-mark">♡</text></view>
+              <view class="title-meta">
+                <view class="title-meta-item"><text class="title-meta-icon time-icon">◷</text><text class="title-meta-value">{{formattedDateTime}}</text></view>
+                <view class="title-meta-item"><text class="title-meta-icon location-icon">⌖</text><text class="title-meta-value">{{photo.location}}</text></view>
+              </view>
+              <text class="photo-description">{{photo.description}}</text>
+            </view>
+          </view>
+        </view>
       </view>
 
     </block>
