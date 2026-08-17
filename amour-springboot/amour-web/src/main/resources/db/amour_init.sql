@@ -40,16 +40,18 @@ DROP TABLE IF EXISTS `user`;
 
 CREATE TABLE `user`
 (
-    `id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'id',
-    `username`     VARCHAR(60)  NOT NULL COMMENT '用户名',
-    `password`     VARCHAR(60)           DEFAULT NULL COMMENT 'BCrypt加密密码',
-    `display_name` VARCHAR(60)  NOT NULL DEFAULT '恋人' COMMENT '前台展示名称',
-    `avatar`       VARCHAR(500) NOT NULL DEFAULT '' COMMENT '用户头像 URL',
-    `create_time`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_time`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '最后一次更新时间',
-    `is_deleted`   TINYINT      NOT NULL DEFAULT 0 COMMENT '逻辑删除：0-未删除 1-已删除',
+    `id`             BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'id',
+    `username`       VARCHAR(60)  NOT NULL COMMENT '用户名',
+    `password`       VARCHAR(60)           DEFAULT NULL COMMENT 'BCrypt加密密码',
+    `display_name`   VARCHAR(60)  NOT NULL DEFAULT '恋人' COMMENT '前台展示名称',
+    `avatar`         VARCHAR(500) NOT NULL DEFAULT '' COMMENT '用户头像 URL',
+    `wechat_openid`  VARCHAR(128)          DEFAULT NULL COMMENT '微信小程序用户唯一标识(openid)',
+    `create_time`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '最后一次更新时间',
+    `is_deleted`     TINYINT      NOT NULL DEFAULT 0 COMMENT '逻辑删除：0-未删除 1-已删除',
     PRIMARY KEY (`id`) USING BTREE,
-    UNIQUE KEY `uk_username` (`username`) USING BTREE
+    UNIQUE KEY `uk_username` (`username`) USING BTREE,
+    UNIQUE KEY `uk_wechat_openid` (`wechat_openid`)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci

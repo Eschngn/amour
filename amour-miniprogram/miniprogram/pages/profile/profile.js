@@ -29,6 +29,7 @@ Component({
     displayName: 'Amour 用户',
     accountLabel: '微信用户',
     avatar: '',
+    avatarError: false,
     initial: 'A',
     authTitle: '尚未登录',
     authNote: '微信授权尚未完成',
@@ -58,6 +59,7 @@ Component({
         displayName,
         accountLabel: getAccountLabel(auth.username),
         avatar: auth.avatar || '',
+        avatarError: false,
         initial: getInitial(displayName),
         authTitle: loggedIn ? '微信登录已连接' : '尚未登录',
         authNote: loggedIn ? '登录状态有效' : '微信授权尚未完成',
@@ -88,6 +90,7 @@ Component({
           displayName,
           accountLabel: getAccountLabel(auth.username),
           avatar: auth.avatar || '',
+          avatarError: false,
           initial: getInitial(displayName),
           authTitle: '微信登录已连接',
           authNote: '登录状态有效',
@@ -110,6 +113,12 @@ Component({
 
     retryLogin() {
       this.authenticate(true)
+    },
+
+    onAvatarError() {
+      if (this.data.avatar && !this.data.avatarError) {
+        this.setData({ avatarError: true })
+      }
     },
 
     handleAccountAction() {
@@ -150,6 +159,7 @@ Component({
         displayName: 'Amour 用户',
         accountLabel: '微信用户',
         avatar: '',
+        avatarError: false,
         initial: 'A',
         authTitle: '尚未登录',
         authNote: '微信授权尚未完成',

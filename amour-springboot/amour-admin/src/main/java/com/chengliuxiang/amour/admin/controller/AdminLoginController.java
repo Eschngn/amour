@@ -25,11 +25,13 @@ public class AdminLoginController {
     private LoginCryptoService loginCryptoService;
 
     @PostMapping("/login/challenge")
+    @ApiOperationLog(description = "获取管理员登录挑战码")
     public Response<LoginChallengeVO> challenge() {
         return Response.success(loginCryptoService.createChallenge());
     }
 
     @PostMapping("/login")
+    @ApiOperationLog(description = "管理员登录")
     public Response<String> login(@RequestBody @Validated AdminLoginReqVO adminLoginReqVO){
         return adminLoginService.adminLogin(adminLoginReqVO);
     }

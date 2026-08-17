@@ -1,5 +1,6 @@
 package com.chengliuxiang.amour.web.controller;
 
+import com.chengliuxiang.amour.common.aspect.ApiOperationLog;
 import com.chengliuxiang.amour.common.utils.Response;
 import com.chengliuxiang.amour.web.model.vo.login.WechatLoginReqVO;
 import com.chengliuxiang.amour.web.model.vo.login.WechatLoginRespVO;
@@ -20,6 +21,7 @@ public class WechatLoginController {
     private WechatLoginService wechatLoginService;
 
     @PostMapping({"/wechat", "/wechatLogin"})
+    @ApiOperationLog(description = "微信登录")
     public Response<WechatLoginRespVO> login(@RequestBody @Validated WechatLoginReqVO reqVO) {
         return wechatLoginService.login(reqVO);
     }

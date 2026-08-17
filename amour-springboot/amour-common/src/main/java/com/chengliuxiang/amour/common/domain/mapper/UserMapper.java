@@ -10,4 +10,9 @@ public interface UserMapper extends BaseMapper<UserDO> {
         return selectOne(new LambdaQueryWrapper<UserDO>()
                 .eq(UserDO::getUsername, username));
     }
+
+    default UserDO selectByWechatOpenid(String openid) {
+        return selectOne(new LambdaQueryWrapper<UserDO>()
+                .eq(UserDO::getWechatOpenid, openid));
+    }
 }

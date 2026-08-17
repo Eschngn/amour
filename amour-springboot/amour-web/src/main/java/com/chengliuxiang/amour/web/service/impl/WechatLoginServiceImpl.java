@@ -2,10 +2,14 @@ package com.chengliuxiang.amour.web.service.impl;
 
 import cn.dev33.satoken.stp.SaTokenInfo;
 import cn.dev33.satoken.stp.StpUtil;
+import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.digest.DigestUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.chengliuxiang.amour.common.constant.RedisKeyConstants;
+import com.chengliuxiang.amour.common.domain.dos.SiteConfigDO;
 import com.chengliuxiang.amour.common.domain.dos.UserDO;
+import com.chengliuxiang.amour.common.domain.mapper.SiteConfigMapper;
 import com.chengliuxiang.amour.common.domain.mapper.UserMapper;
 import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
 import com.chengliuxiang.amour.common.exception.BizException;
@@ -27,13 +31,18 @@ import org.springframework.stereotype.Service;
 import javax.annotation.Resource;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Service
 @Slf4j
 public class WechatLoginServiceImpl implements WechatLoginService {
 
     private static final long SESSION_TTL_SECONDS = 2592000L;
+
+    /** 新注册微信用户的默认昵称前缀 */
+    private static final String DEFAULT_DISPLAY_NAME_PREFIX = "微信用户";
+
+    /** 新注册微信用户的默认头像配置键 */
+    private static final String DEFAULT_AVATAR_CONFIG_KEY = "default_avatar";
 
     @Resource
     private WechatAuthClient wechatAuthClient;
@@ -42,10 +51,10 @@ public class WechatLoginServiceImpl implements WechatLoginService {
     private UserMapper userMapper;
 
     @Resource
-    private StringRedisTemplate stringRedisTemplate;
+    private SiteConfigMapper siteConfigMapper;
 
     @Resource
-    private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+    private StringRedisTemplate stringRedisTemplate;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -66,7 +75,7 @@ public class WechatLoginServiceImpl implements WechatLoginService {
 
         return Response.success(WechatLoginRespVO.builder()
                 .token(token)
-                .displayName(StrUtil.blankToDefault(user.getDisplayName(), "恋人"))
+                .displayName(StrUtil.blankToDefault(user.getDisplayName(), "微信用户"))
                 .avatar(StrUtil.blankToDefault(user.getAvatar(), ""))
                 .build());
     }
@@ -97,15 +106,25 @@ public class WechatLoginServiceImpl implements WechatLoginService {
             return mappedUser;
         }
 
-        String username = "wx_" + DigestUtil.sha256Hex(openid).substring(0, 32);
-        UserDO user = userMapper.selectByUsername(username);
+        String username = "wx_" + DigestUtil.sha256Hex(openid).substring(0, 6);
+        UserDO user = userMapper.selectByWechatOpenid(openid);
+        if (user == null) {
+            // 兼容旧数据：历史微信用户只有确定性用户名，未写入 openid，登录时补齐。
+            user = userMapper.selectByUsername(username);
+            if (user != null) {
+                user.setWechatOpenid(openid);
+                user.setUpdateTime(LocalDateTime.now());
+                userMapper.updateById(user);
+            }
+        }
         if (user == null) {
             user = UserDO.builder()
                     .username(username)
-                    // 微信用户没有密码登录入口，仍满足现有用户表的非空约束。
-                    .password(passwordEncoder.encode(UUID.randomUUID().toString()))
-                    .displayName("恋人")
-                    .avatar("")
+                    // 微信用户注册时密码默认为空，微信登录不依赖密码。
+                    .password(null)
+                    .displayName(DEFAULT_DISPLAY_NAME_PREFIX + RandomUtil.randomString(6))
+                    .avatar(queryDefaultAvatar())
+                    .wechatOpenid(openid)
                     .createTime(LocalDateTime.now())
                     .updateTime(LocalDateTime.now())
                     .isDeleted(false)
@@ -113,8 +132,8 @@ public class WechatLoginServiceImpl implements WechatLoginService {
             try {
                 userMapper.insert(user);
             } catch (DataIntegrityViolationException e) {
-                // 并发首次登录时，另一请求可能已经创建了相同的确定性用户名。
-                user = userMapper.selectByUsername(username);
+                // 并发首次登录时，另一请求可能已经创建了相同的 openid/用户名。
+                user = userMapper.selectByWechatOpenid(openid);
                 if (user == null) {
                     throw new BizException(ResponseCodeEnum.WECHAT_LOGIN_FAILED);
                 }
@@ -140,6 +159,19 @@ public class WechatLoginServiceImpl implements WechatLoginService {
             log.warn("微信用户映射数据格式错误: {}", userIdValue);
         }
         return null;
+    }
+
+    /**
+     * 查询 site_config 表中 config_key=default_avatar 配置的头像地址，未配置时返回空串。
+     */
+    private String queryDefaultAvatar() {
+        SiteConfigDO siteConfig = siteConfigMapper.selectOne(
+                new LambdaQueryWrapper<SiteConfigDO>()
+                        .select(SiteConfigDO::getConfigValue)
+                        .eq(SiteConfigDO::getConfigKey, DEFAULT_AVATAR_CONFIG_KEY)
+                        .last("LIMIT 1")
+        );
+        return siteConfig == null ? "" : StrUtil.nullToEmpty(siteConfig.getConfigValue());
     }
 
     private void saveSession(String token, WechatCode2SessionResponse response) {

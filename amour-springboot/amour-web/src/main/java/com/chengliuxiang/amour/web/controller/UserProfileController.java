@@ -24,6 +24,7 @@ public class UserProfileController {
     private UserProfileService userProfileService;
 
     @PostMapping("/profile")
+    @ApiOperationLog(description = "查询用户个人资料")
     public Response<UserProfileVO> getProfile() {
         return userProfileService.getProfile();
     }

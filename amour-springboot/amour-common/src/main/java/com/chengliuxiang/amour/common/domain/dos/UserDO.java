@@ -28,6 +28,8 @@ public class UserDO {
 
     private String avatar;
 
+    private String wechatOpenid;
+
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;

@@ -4,8 +4,8 @@
   <view class="profile-page">
     <view class="profile-hero">
       <view class="avatar-wrap">
-        <text class="avatar-initial">{{initial}}</text>
-        <image wx:if="{{avatar}}" class="avatar-image" src="{{avatar}}" mode="aspectFill"></image>
+        <text wx:if="{{!avatar || avatarError}}" class="avatar-initial">{{initial}}</text>
+        <image wx:else class="avatar-image" src="{{avatar}}" mode="aspectFill" binderror="onAvatarError"></image>
       </view>
       <text class="display-name">{{displayName}}</text>
       <view class="account-state">
