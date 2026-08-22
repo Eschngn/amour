@@ -14,7 +14,8 @@ import FrontendLogin from '@/pages/frontend/FrontendLogin.vue'
 import UserProfilePage from '@/pages/frontend/UserProfilePage.vue'
 import PhotoAlbumPage from '@/pages/frontend/PhotoAlbumPage.vue'
 import { isAdminAuthenticated } from '@/utils/adminAuth.js'
-import { isFrontendAuthenticated } from '@/utils/auth.js'
+import { clearFrontendSession, isFrontendAuthenticated } from '@/utils/auth.js'
+import api from '@/axios'
 import { createRouter, createWebHistory } from 'vue-router'
 
 const routes = [
@@ -109,9 +110,33 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach((to) => {
-  if (to.meta?.requiresFrontendAuth && !isFrontendAuthenticated()) {
-    return { path: '/login', query: { redirect: to.fullPath } }
+let frontendAuthCheck = null
+
+async function validateFrontendSession() {
+  if (!isFrontendAuthenticated()) return true
+  if (frontendAuthCheck) return frontendAuthCheck
+  frontendAuthCheck = api.post('/login/status')
+    .then((response) => {
+      const valid = response.data?.success !== false && response.data?.data !== false
+      if (!valid) clearFrontendSession()
+      return valid
+    })
+    .catch((error) => {
+      // 网络异常不清除本地登录态，避免暂时断网导致误退出。
+      return true
+    })
+    .finally(() => {
+      frontendAuthCheck = null
+    })
+  return frontendAuthCheck
+}
+
+router.beforeEach(async (to) => {
+  const hadFrontendSession = isFrontendAuthenticated()
+  const frontendSessionValid = await validateFrontendSession()
+  const frontendSessionExpired = hadFrontendSession && !frontendSessionValid
+  if (to.meta?.requiresFrontendAuth && (!frontendSessionValid || frontendSessionExpired)) {
+    return { path: '/login', query: { expired: '1', redirect: to.fullPath } }
   }
   if (!to.path.startsWith('/admin')) {
     return true

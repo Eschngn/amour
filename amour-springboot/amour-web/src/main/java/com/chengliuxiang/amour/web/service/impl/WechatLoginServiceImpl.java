@@ -13,30 +13,23 @@ import com.chengliuxiang.amour.common.domain.mapper.SiteConfigMapper;
 import com.chengliuxiang.amour.common.domain.mapper.UserMapper;
 import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
 import com.chengliuxiang.amour.common.exception.BizException;
-import com.chengliuxiang.amour.common.utils.JsonUtil;
 import com.chengliuxiang.amour.common.utils.Response;
 import com.chengliuxiang.amour.web.client.WechatAuthClient;
 import com.chengliuxiang.amour.web.model.vo.login.WechatLoginReqVO;
 import com.chengliuxiang.amour.web.model.vo.login.WechatLoginRespVO;
 import com.chengliuxiang.amour.web.model.wechat.WechatCode2SessionResponse;
-import com.chengliuxiang.amour.web.model.wechat.WechatSession;
 import com.chengliuxiang.amour.web.service.WechatLoginService;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
-import java.time.Duration;
 import java.time.LocalDateTime;
 
 @Service
 @Slf4j
 public class WechatLoginServiceImpl implements WechatLoginService {
-
-    private static final long SESSION_TTL_SECONDS = 2592000L;
 
     /** 新注册微信用户的默认昵称前缀 */
     private static final String DEFAULT_DISPLAY_NAME_PREFIX = "微信用户";
@@ -56,8 +49,6 @@ public class WechatLoginServiceImpl implements WechatLoginService {
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
     @Override
     public Response<WechatLoginRespVO> login(WechatLoginReqVO reqVO) {
         String code = reqVO == null ? null : reqVO.getCode();
@@ -71,31 +62,12 @@ public class WechatLoginServiceImpl implements WechatLoginService {
         StpUtil.login(user.getId());
         SaTokenInfo tokenInfo = StpUtil.getTokenInfo();
         String token = tokenInfo.tokenValue;
-        saveSession(token, wechatSession);
 
         return Response.success(WechatLoginRespVO.builder()
                 .token(token)
                 .displayName(StrUtil.blankToDefault(user.getDisplayName(), "微信用户"))
                 .avatar(StrUtil.blankToDefault(user.getAvatar(), ""))
                 .build());
-    }
-
-    @Override
-    public WechatSession getSession(String token) {
-        if (StrUtil.isBlank(token)) {
-            return null;
-        }
-        String value = stringRedisTemplate.opsForValue()
-                .get(RedisKeyConstants.buildWechatSessionKey(token));
-        if (StrUtil.isBlank(value)) {
-            return null;
-        }
-        try {
-            return objectMapper.readValue(value, WechatSession.class);
-        } catch (JsonProcessingException e) {
-            log.warn("微信登录会话数据格式错误，token: {}", token);
-            return null;
-        }
     }
 
     private UserDO findOrCreateUser(String openid) {
@@ -174,12 +146,4 @@ public class WechatLoginServiceImpl implements WechatLoginService {
         return siteConfig == null ? "" : StrUtil.nullToEmpty(siteConfig.getConfigValue());
     }
 
-    private void saveSession(String token, WechatCode2SessionResponse response) {
-        WechatSession session = new WechatSession(
-                response.getOpenid(), response.getSessionKey(), response.getUnionid());
-        stringRedisTemplate.opsForValue().set(
-                RedisKeyConstants.buildWechatSessionKey(token),
-                JsonUtil.toJsonString(session),
-                Duration.ofSeconds(SESSION_TTL_SECONDS));
-    }
 }

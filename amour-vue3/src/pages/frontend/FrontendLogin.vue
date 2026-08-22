@@ -73,8 +73,10 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import 'element-plus/es/components/message/style/css'
 import api from '@/axios'
 import { setFrontendProfile, setFrontendToken } from '@/utils/auth'
 import { createEncryptedLoginPayload } from '@/utils/loginCrypto'
@@ -85,6 +87,14 @@ const username = ref('')
 const password = ref('')
 const error = ref('')
 const loading = ref(false)
+
+onMounted(() => {
+  if (route.query.expired === '1') {
+    const message = '登录过期，请重新登录'
+    error.value = `${message}。`
+    ElMessage.warning(message)
+  }
+})
 
 function getSafeRedirect() {
   const redirect = route.query.redirect

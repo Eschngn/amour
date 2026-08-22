@@ -47,6 +47,11 @@ function clearAuth() {
   wx.removeStorageSync(DISPLAY_NAME_KEY)
   wx.removeStorageSync(AVATAR_KEY)
   lastValidatedAt = 0
+  const app = typeof getApp === 'function' ? getApp() : null
+  if (app && app.globalData) {
+    app.globalData.auth = undefined
+    app.globalData.authReady = undefined
+  }
 }
 
 function getWechatCode() {
@@ -99,7 +104,10 @@ async function validateStoredAuth(storedAuth) {
     lastValidatedAt = Date.now()
     return auth
   } catch (error) {
-    if (isUnauthorized(error)) return exchangeWechatCode()
+    if (isUnauthorized(error)) {
+      clearAuth()
+      throw new Error('登录已过期，请重新登录')
+    }
     throw error
   }
 }
@@ -108,8 +116,9 @@ function ensureWechatLogin(options = {}) {
   if (loginPromise) return loginPromise
 
   const force = Boolean(options.force)
+  const forceValidation = Boolean(options.forceValidation)
   const storedAuth = getStoredAuth()
-  if (!force && storedAuth.token && Date.now() - lastValidatedAt < VALIDATION_CACHE_MS) {
+  if (!force && !forceValidation && storedAuth.token && Date.now() - lastValidatedAt < VALIDATION_CACHE_MS) {
     return Promise.resolve(storedAuth)
   }
   loginPromise = force || !storedAuth.token

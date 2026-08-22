@@ -52,6 +52,7 @@ Component({
   pageLifetimes: {
     show() {
       this.loadStoredProfile()
+      this.authenticate(false, true)
     },
   },
 
@@ -73,7 +74,7 @@ Component({
       })
     },
 
-    async authenticate(force) {
+    async authenticate(force, forceValidation = false) {
       if (this.data.authenticating || this.data.loggingOut) return
       const hadToken = Boolean(getStoredAuth().token)
       this.setData({
@@ -84,7 +85,10 @@ Component({
         accountState: '登录处理中',
       })
       try {
-        const authPromise = ensureWechatLogin({ force: Boolean(force) })
+        const authPromise = ensureWechatLogin({
+          force: Boolean(force),
+          forceValidation: Boolean(forceValidation),
+        })
         const app = getApp()
         if (app && app.globalData) app.globalData.authReady = authPromise
         const auth = await authPromise

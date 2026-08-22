@@ -39,25 +39,39 @@ instance.interceptors.request.use((config) => {
   return config
 })
 
+function handleExpiredSession(config) {
+  const adminRequest = isAdminRequest(config)
+  if (adminRequest) {
+    clearAdminSession()
+  } else {
+    clearFrontendSession()
+  }
+  if (typeof window !== 'undefined') {
+    const next = encodeURIComponent(
+      window.location.pathname + window.location.search,
+    )
+    const loginPath = adminRequest ? '/admin/login' : '/login'
+    const currentPath = window.location.pathname
+    if (currentPath !== loginPath) {
+      window.location.assign(`${loginPath}?expired=1&redirect=${next}`)
+    }
+  }
+}
+
+function isExpiredResponse(response) {
+  return response?.status === 401 || response?.data?.errorCode === '20002'
+}
+
 instance.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (isExpiredResponse(response) && response.config?.headers?.Authorization) {
+      handleExpiredSession(response.config)
+    }
+    return response
+  },
   (error) => {
-    const status = error.response?.status
-    const hadAuth = Boolean(error.config?.headers?.Authorization)
-    if (status === 401 && hadAuth) {
-      const adminRequest = isAdminRequest(error.config)
-      if (adminRequest) {
-        clearAdminSession()
-      } else {
-        clearFrontendSession()
-      }
-      if (typeof window !== 'undefined') {
-        const next = encodeURIComponent(
-          window.location.pathname + window.location.search,
-        )
-        const loginPath = adminRequest ? '/admin/login' : '/login'
-        window.location.assign(`${loginPath}?expired=1&redirect=${next}`)
-      }
+    if (isExpiredResponse(error.response) && error.config?.headers?.Authorization) {
+      handleExpiredSession(error.config)
     }
     return Promise.reject(error)
   },

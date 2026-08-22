@@ -7,6 +7,6 @@ export interface AuthSession {
 
 export function getStoredAuth(): AuthSession
 export function clearAuth(): void
-export function ensureWechatLogin(options?: { force?: boolean }): Promise<AuthSession>
+export function ensureWechatLogin(options?: { force?: boolean; forceValidation?: boolean }): Promise<AuthSession>
 export function logoutWechat(): Promise<void>
 export function updateStoredProfile(profile?: Partial<AuthSession>): AuthSession

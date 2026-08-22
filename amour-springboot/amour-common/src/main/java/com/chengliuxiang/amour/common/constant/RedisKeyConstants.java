@@ -21,9 +21,6 @@ public class RedisKeyConstants {
     /** 微信用户对应本地用户 ID 的 KEY 前缀 */
     private static final String WECHAT_USER_KEY_PREFIX = "wechat:user:";
 
-    /** 微信登录会话 KEY 前缀。值仅在服务端保存，不返回给小程序 */
-    private static final String WECHAT_SESSION_KEY_PREFIX = "wechat:session:";
-
     /**
      * 构建角色对应的权限集合 KEY
      * @param roleKey
@@ -51,10 +48,6 @@ public class RedisKeyConstants {
 
     public static String buildWechatUserKey(String openid) {
         return WECHAT_USER_KEY_PREFIX + openid;
-    }
-
-    public static String buildWechatSessionKey(String token) {
-        return WECHAT_SESSION_KEY_PREFIX + token;
     }
 
     /**

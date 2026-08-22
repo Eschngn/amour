@@ -1,4 +1,4 @@
-const DEFAULT_API_BASE_URL = 'http://172.20.10.2:8080'
+const DEFAULT_API_BASE_URL = 'http://192.168.7.8:8080'
 
 class ApiError extends Error {
   constructor(message, statusCode, errorCode) {
@@ -10,6 +10,13 @@ class ApiError extends Error {
 }
 
 function clearStoredAuth() {
+  // 认证模块负责同时清理 token、用户资料和校验缓存。
+  // 使用延迟 require 避免 request.js 与 auth.js 初始化时互相依赖。
+  const auth = require('./auth')
+  if (auth && typeof auth.clearAuth === 'function') {
+    auth.clearAuth()
+    return
+  }
   wx.removeStorageSync('amour_token')
   wx.removeStorageSync('amour_username')
   wx.removeStorageSync('amour_display_name')
