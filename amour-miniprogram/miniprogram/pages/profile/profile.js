@@ -2,7 +2,9 @@ const {
   ensureWechatLogin,
   getStoredAuth,
   logoutWechat,
+  updateStoredProfile,
 } = require('../../utils/auth')
+const { post, uploadFile } = require('../../utils/request')
 
 function getInitial(value) {
   const normalized = String(value || '').trim()
@@ -30,6 +32,10 @@ Component({
     accountLabel: '微信用户',
     avatar: '',
     avatarError: false,
+    avatarUploading: false,
+    nicknameEditorVisible: false,
+    nicknameDraft: '',
+    nicknameSaving: false,
     initial: 'A',
     authTitle: '尚未登录',
     authNote: '微信授权尚未完成',
@@ -121,6 +127,116 @@ Component({
       }
     },
 
+    async openNicknameEditor() {
+      if (this.data.nicknameSaving) return
+      if (!this.data.loggedIn || this.data.loginError) {
+        wx.showToast({ title: '请先完成微信登录', icon: 'none' })
+        this.authenticate(true)
+        return
+      }
+      if (!getStoredAuth().username) {
+        try {
+          const profile = await post('/user/profile')
+          const auth = updateStoredProfile(profile || {})
+          this.setData({ accountLabel: getAccountLabel(auth.username) })
+        } catch (error) {
+          wx.showToast({ title: getErrorMessage(error), icon: 'none' })
+          return
+        }
+      }
+      this.setData({
+        nicknameEditorVisible: true,
+        nicknameDraft: this.data.displayName,
+      })
+    },
+
+    stopNicknameTap() {},
+
+    closeNicknameEditor() {
+      if (!this.data.nicknameSaving) {
+        wx.hideKeyboard()
+        this.setData({ nicknameEditorVisible: false })
+      }
+    },
+
+    onNicknameInput(event) {
+      this.setData({ nicknameDraft: event && event.detail ? event.detail.value : '' })
+    },
+
+    async submitNickname(event) {
+      if (this.data.nicknameSaving) return
+      const formValues = event && event.detail ? event.detail.value : null
+      const submittedName = formValues && typeof formValues.nickname === 'string'
+        ? formValues.nickname
+        : this.data.nicknameDraft || ''
+      const displayName = String(submittedName).trim()
+      if (!displayName) {
+        wx.showToast({ title: '请输入昵称', icon: 'none' })
+        return
+      }
+      const username = getStoredAuth().username
+      if (!username) {
+        wx.showToast({ title: '用户资料尚未准备好', icon: 'none' })
+        return
+      }
+      wx.hideKeyboard()
+      this.setData({ nicknameSaving: true })
+      try {
+        const profile = await post('/user/profile/update', { username, displayName })
+        const auth = updateStoredProfile(profile || {})
+        const app = getApp()
+        if (app && app.globalData) app.globalData.auth = auth
+        this.setData({
+          nicknameEditorVisible: false,
+          nicknameDraft: auth.displayName || displayName,
+          displayName: auth.displayName || displayName,
+          initial: getInitial(auth.displayName || displayName),
+        })
+        wx.showToast({ title: '昵称已更新', icon: 'success' })
+      } catch (error) {
+        wx.showToast({ title: getErrorMessage(error), icon: 'none' })
+      } finally {
+        this.setData({ nicknameSaving: false })
+      }
+    },
+
+    handleAvatarTap() {
+      if (this.data.avatarUploading || (this.data.loggedIn && !this.data.loginError)) return
+      if (!this.data.loggedIn || this.data.loginError) {
+        wx.showToast({ title: '请先完成微信登录', icon: 'none' })
+        this.authenticate(true)
+      }
+    },
+
+    onWechatAvatarChosen(event) {
+      const filePath = event && event.detail && event.detail.avatarUrl
+      if (filePath) this.uploadSelectedAvatar(filePath)
+    },
+
+    async uploadSelectedAvatar(filePath) {
+      if (this.data.avatarUploading) return
+      this.setData({ avatarUploading: true, avatarError: false })
+      wx.showLoading({ title: '上传头像', mask: true })
+      try {
+        const profile = await uploadFile('/user/profile/avatar', filePath)
+        const auth = updateStoredProfile(profile || {})
+        const app = getApp()
+        if (app && app.globalData) app.globalData.auth = auth
+        this.setData({
+          avatar: auth.avatar || '',
+          avatarError: false,
+          displayName: auth.displayName || this.data.displayName,
+          initial: getInitial(auth.displayName || this.data.displayName),
+        })
+        wx.showToast({ title: '头像已更新', icon: 'success' })
+      } catch (error) {
+        wx.showToast({ title: getErrorMessage(error) || '头像上传失败', icon: 'none' })
+      } finally {
+        wx.hideLoading()
+        this.setData({ avatarUploading: false })
+      }
+    },
+
     handleAccountAction() {
       if (!this.data.loggedIn || this.data.loginError) this.authenticate(true)
     },
@@ -160,6 +276,10 @@ Component({
         accountLabel: '微信用户',
         avatar: '',
         avatarError: false,
+        avatarUploading: false,
+        nicknameEditorVisible: false,
+        nicknameDraft: '',
+        nicknameSaving: false,
         initial: 'A',
         authTitle: '尚未登录',
         authNote: '微信授权尚未完成',

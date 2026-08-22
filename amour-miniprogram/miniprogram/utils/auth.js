@@ -31,6 +31,16 @@ function saveAuth(auth) {
   return getStoredAuth()
 }
 
+function updateStoredProfile(profile = {}) {
+  const current = getStoredAuth()
+  return saveAuth({
+    token: current.token,
+    username: typeof profile.username === 'string' ? profile.username : current.username,
+    displayName: typeof profile.displayName === 'string' ? profile.displayName : current.displayName,
+    avatar: typeof profile.avatar === 'string' ? profile.avatar : current.avatar,
+  })
+}
+
 function clearAuth() {
   wx.removeStorageSync(TOKEN_KEY)
   wx.removeStorageSync(USERNAME_KEY)
@@ -136,4 +146,5 @@ module.exports = {
   ensureWechatLogin,
   getStoredAuth,
   logoutWechat,
+  updateStoredProfile,
 }

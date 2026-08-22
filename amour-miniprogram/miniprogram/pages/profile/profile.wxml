@@ -3,11 +3,21 @@
 <scroll-view class="page-scroll" scroll-y bounces="{{false}}" type="list" enhanced show-scrollbar="false">
   <view class="profile-page">
     <view class="profile-hero">
-      <view class="avatar-wrap">
-        <text wx:if="{{!avatar || avatarError}}" class="avatar-initial">{{initial}}</text>
-        <image wx:else class="avatar-image" src="{{avatar}}" mode="aspectFill" binderror="onAvatarError"></image>
+      <view class="avatar-picker" bindtap="handleAvatarTap">
+        <view class="avatar-wrap {{avatarUploading ? 'is-uploading' : ''}}">
+          <text wx:if="{{!avatar || avatarError}}" class="avatar-initial">{{initial}}</text>
+          <image wx:else class="avatar-image" src="{{avatar}}" mode="aspectFill" binderror="onAvatarError"></image>
+          <view wx:if="{{avatarUploading}}" class="avatar-uploading"><view class="avatar-spinner"></view></view>
+        </view>
+        <button
+          wx:if="{{!avatarUploading}}"
+          class="avatar-picker-button"
+          open-type="chooseAvatar"
+          bindchooseavatar="onWechatAvatarChosen"
+          disabled="{{!loggedIn || loginError}}"
+        ></button>
       </view>
-      <text class="display-name">{{displayName}}</text>
+      <text class="display-name" bindtap="openNicknameEditor" hover-class="nickname-hover">{{displayName}}</text>
       <view class="account-state">
         <view class="state-dot {{loggedIn ? 'is-online' : ''}}"></view>
         <text>{{accountState}}</text>
@@ -79,4 +89,26 @@
     <view class="safe-bottom"></view>
   </view>
 </scroll-view>
+<view wx:if="{{nicknameEditorVisible}}" class="nickname-modal-mask" catchtap="closeNicknameEditor">
+  <view class="nickname-modal" catchtap="stopNicknameTap">
+    <text class="nickname-modal-title">设置昵称</text>
+    <text class="nickname-modal-note">输入时可使用微信昵称</text>
+    <form bindsubmit="submitNickname">
+      <input
+        class="nickname-input"
+        name="nickname"
+        type="nickname"
+        value="{{nicknameDraft}}"
+        maxlength="20"
+        placeholder="请输入昵称"
+        bindinput="onNicknameInput"
+        cursor-spacing="160"
+        adjust-position="true"
+        confirm-type="done"
+      />
+      <button class="nickname-submit" form-type="submit" loading="{{nicknameSaving}}" disabled="{{nicknameSaving}}">保存</button>
+    </form>
+    <button class="nickname-cancel" bindtap="closeNicknameEditor" disabled="{{nicknameSaving}}">取消</button>
+  </view>
+</view>
 <bottom-nav current="profile"></bottom-nav>
