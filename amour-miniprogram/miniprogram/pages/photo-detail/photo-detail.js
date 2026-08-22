@@ -29,6 +29,7 @@ Page({
     adjacentFormattedDateTime: '',
     adjacentIndexNumber: '',
     adjacentOffset: 0,
+    adjacentTop: 0,
     detailOffset: 0,
     detailTransition: false,
     previewPhotos: [],
@@ -66,9 +67,12 @@ Page({
     const safeIndex = Math.min(Math.max(0, index), validPhotos.length - 1)
     const photo = validPhotos[safeIndex]
     const formattedDateTime = formatDateTime(photo.takenTime)
-    // 切换照片时保持当前滚动位置，不再强制回到顶部：
-    // 若用户已向下滚动（如正在阅读描述），强制回顶会让整页瞬间弹跳；
-    // 且 enhanced 虚拟列表反复改变 scroll-top 还会触发整体重排造成页面抖动
+    // 切换照片后回到页面顶部，让新照片的卡片完整露出：
+    // 滑动过渡期间相邻面板已锚定在当前可视窗口（top = 当前滚动偏移），
+    // 过渡结束时新照片的卡片正位于屏幕顶部，此时 scrollTop 归零是"隐形"的，
+    // 不会像旧实现那样在空白过渡之后整页瞬间弹跳
+    // （onDetailTouchEnd 切换提交时已把 scrollTop 同步为实际滚动位置，这里的 0 才会真正触发回顶）
+    this.scrollOffsetPx = 0
     const previewPhotos = validPhotos.slice(0, 6).map((photo, index) => ({
       ...formatPhoto(photo),
       number: photo.number || String(index + 1).padStart(2, '0'),
@@ -87,16 +91,26 @@ Page({
       adjacentFormattedDateTime: '',
       adjacentIndexNumber: '',
       adjacentOffset: 0,
+      adjacentTop: 0,
       detailOffset: 0,
       detailTransition: false,
       previewPhotos,
       previewCategories,
       backReveal: false,
       backDragging: false,
-      // scrollTop 保持 0 且不变：不发送滚动指令，切换照片时页面原地不动
+      // scrollTop 归零：切换提交时已把 scroll-top 属性同步为实际滚动位置，
+      // 这里 0 会真正触发一次回顶，使新照片卡片停留在过渡结束时的屏幕位置；
+      // 初次加载时属性本就为 0，属于无操作，不会产生滚动指令
       scrollTop: 0,
       error: '',
     })
+  },
+
+  onDetailScroll(event) {
+    // 记录滚动偏移（px）：滑动切换时把相邻面板锚定到当前可视窗口，
+    // 避免页面滚动到下方后（描述文字较多时）下一张照片被定位在可视区之外而显示空白。
+    // 只写实例字段、不做 setData，避免逐帧触发重渲染
+    this.scrollOffsetPx = event.detail.scrollTop || 0
   },
 
   onDetailTouchStart(event) {
@@ -116,7 +130,15 @@ Page({
     this.detailBackGesture = false
     this.detailEdgeBackCandidate = touch.clientX <= edgeWidth
     // 每次触摸开始先恢复纵向滚动，避免上次手势异常结束时遗留锁定状态
-    this.setData({ detailTransition: false, backDragging: false, backReveal: false, pageScrollEnabled: true })
+    this.setData({
+      detailTransition: false,
+      backDragging: false,
+      backReveal: false,
+      pageScrollEnabled: true,
+      // 相邻面板锚定到当前滚动位置：页面向下滚动后（描述文字较长时），
+      // 下一张照片仍从屏幕右侧滑入，而不是被定位在可视区之外导致空白
+      adjacentTop: this.scrollOffsetPx || 0,
+    })
   },
 
   onDetailTouchMove(event) {
@@ -163,6 +185,8 @@ Page({
       adjacentFormattedDateTime: adjacentPhoto ? formatDateTime(adjacentPhoto.takenTime) : '',
       adjacentIndexNumber: hasAdjacentPhoto ? String(adjacentIndex + 1).padStart(2, '0') : '',
       adjacentOffset: hasAdjacentPhoto ? displayOffset + (offsetX < 0 ? windowWidth : -windowWidth) : 0,
+      // 方向判定前后可能产生少量纵向滚动，随手指移动刷新锚点，保证面板始终落在可视窗口内
+      adjacentTop: this.scrollOffsetPx || 0,
     })
   },
 
@@ -224,7 +248,15 @@ Page({
     }
 
     const targetOffset = offsetX < 0 ? -windowWidth : windowWidth
-    this.setData({ detailOffset: targetOffset, adjacentOffset: 0, detailTransition: true })
+    this.setData({
+      detailOffset: targetOffset,
+      adjacentOffset: 0,
+      detailTransition: true,
+      // 把 scroll-top 属性同步为当前实际滚动位置（本身是原地滚动、无视觉变化），
+      // 这样 applyCollection 里归零 scrollTop 时才会真正触发一次回顶，
+      // 使新照片停留在过渡结束时它所在的屏幕位置
+      scrollTop: this.scrollOffsetPx || 0,
+    })
     // 计时略长于过渡时长（220ms），等面板完全滑出屏幕后再切换照片，避免回摆/瞬跳
     this.detailSwitchTimer = setTimeout(() => {
       this.detailSwitchTimer = null
