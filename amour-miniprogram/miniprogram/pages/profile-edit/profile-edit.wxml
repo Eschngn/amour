@@ -1,0 +1,56 @@
+<navigation-bar title="编辑个人资料" back="{{true}}" color="#4f4650" background="#faf9f7"></navigation-bar>
+
+<scroll-view class="page-scroll" scroll-y bounces="{{false}}" enhanced show-scrollbar="false">
+  <view class="edit-page">
+    <form class="edit-form" bindsubmit="onSave">
+      <view class="avatar-section">
+        <button
+          class="avatar-button"
+          open-type="chooseAvatar"
+          bindchooseavatar="onChooseAvatar"
+          disabled="{{avatarUploading}}"
+        >
+          <view class="avatar-wrap">
+            <text wx:if="{{!form.avatar || avatarError}}" class="avatar-initial">{{initial}}</text>
+            <image wx:else class="avatar-image" src="{{form.avatar}}" mode="aspectFill" binderror="onAvatarError"></image>
+            <view wx:if="{{avatarUploading}}" class="avatar-loading"><view class="spinner"></view></view>
+          </view>
+          <text class="avatar-action">更换头像</text>
+        </button>
+      </view>
+
+      <view class="field-group">
+        <text class="field-label">昵称</text>
+        <input
+          class="field-input"
+          name="displayName"
+          type="nickname"
+          value="{{form.displayName}}"
+          maxlength="20"
+          placeholder="请输入昵称"
+        />
+      </view>
+
+      <view class="field-group">
+        <text class="field-label">用户名</text>
+        <text class="field-note">用户名可用于网页端登录，30 天可修改一次</text>
+        <text wx:if="{{usernameChangeLocked}}" class="field-note">下次可编辑日期：{{usernameChangeAvailableAtText}}</text>
+        <text wx:else class="field-note">4-20 位，仅英文大小写、数字和下划线</text>
+        <input
+          class="field-input"
+          name="username"
+          value="{{form.username}}"
+          maxlength="20"
+          minlength="4"
+          placeholder="请输入 4-20 位用户名"
+          data-field="username"
+          bindinput="onInput"
+          disabled="{{usernameChangeLocked}}"
+        />
+      </view>
+
+      <button class="save-button" form-type="submit" loading="{{saving}}" disabled="{{saving || avatarUploading}}">保存资料</button>
+    </form>
+    <view class="safe-bottom"></view>
+  </view>
+</scroll-view>

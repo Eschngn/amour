@@ -1,10 +1,10 @@
 const {
   ensureWechatLogin,
   getStoredAuth,
-  logoutWechat,
   updateStoredProfile,
 } = require('../../utils/auth')
-const { post, uploadFile } = require('../../utils/request')
+const { encryptPassword } = require('../../utils/login-crypto')
+const { post } = require('../../utils/request')
 
 function getInitial(value) {
   const normalized = String(value || '').trim()
@@ -22,7 +22,7 @@ function getAccountLabel(username) {
   return normalized && !normalized.startsWith('wx_') ? normalized : '微信用户'
 }
 
-Component({
+if (false) Component({
   data: {
     loggedIn: false,
     authenticating: false,
@@ -32,10 +32,6 @@ Component({
     accountLabel: '微信用户',
     avatar: '',
     avatarError: false,
-    avatarUploading: false,
-    nicknameEditorVisible: false,
-    nicknameDraft: '',
-    nicknameSaving: false,
     initial: 'A',
     authTitle: '尚未登录',
     authNote: '微信授权尚未完成',
@@ -57,6 +53,16 @@ Component({
   },
 
   methods: {
+    openProfileEditor() {
+      if (this.data.authenticating || this.data.loggingOut) return
+      if (!this.data.loggedIn || this.data.loginError) {
+        wx.showToast({ title: '请先完成微信登录', icon: 'none' })
+        this.authenticate(true)
+        return
+      }
+      wx.navigateTo({ url: '../profile-edit/profile-edit' })
+    },
+
     loadStoredProfile() {
       const auth = getStoredAuth()
       const loggedIn = Boolean(auth.token)
@@ -131,116 +137,6 @@ Component({
       }
     },
 
-    async openNicknameEditor() {
-      if (this.data.nicknameSaving) return
-      if (!this.data.loggedIn || this.data.loginError) {
-        wx.showToast({ title: '请先完成微信登录', icon: 'none' })
-        this.authenticate(true)
-        return
-      }
-      if (!getStoredAuth().username) {
-        try {
-          const profile = await post('/user/profile')
-          const auth = updateStoredProfile(profile || {})
-          this.setData({ accountLabel: getAccountLabel(auth.username) })
-        } catch (error) {
-          wx.showToast({ title: getErrorMessage(error), icon: 'none' })
-          return
-        }
-      }
-      this.setData({
-        nicknameEditorVisible: true,
-        nicknameDraft: this.data.displayName,
-      })
-    },
-
-    stopNicknameTap() {},
-
-    closeNicknameEditor() {
-      if (!this.data.nicknameSaving) {
-        wx.hideKeyboard()
-        this.setData({ nicknameEditorVisible: false })
-      }
-    },
-
-    onNicknameInput(event) {
-      this.setData({ nicknameDraft: event && event.detail ? event.detail.value : '' })
-    },
-
-    async submitNickname(event) {
-      if (this.data.nicknameSaving) return
-      const formValues = event && event.detail ? event.detail.value : null
-      const submittedName = formValues && typeof formValues.nickname === 'string'
-        ? formValues.nickname
-        : this.data.nicknameDraft || ''
-      const displayName = String(submittedName).trim()
-      if (!displayName) {
-        wx.showToast({ title: '请输入昵称', icon: 'none' })
-        return
-      }
-      const username = getStoredAuth().username
-      if (!username) {
-        wx.showToast({ title: '用户资料尚未准备好', icon: 'none' })
-        return
-      }
-      wx.hideKeyboard()
-      this.setData({ nicknameSaving: true })
-      try {
-        const profile = await post('/user/profile/update', { username, displayName })
-        const auth = updateStoredProfile(profile || {})
-        const app = getApp()
-        if (app && app.globalData) app.globalData.auth = auth
-        this.setData({
-          nicknameEditorVisible: false,
-          nicknameDraft: auth.displayName || displayName,
-          displayName: auth.displayName || displayName,
-          initial: getInitial(auth.displayName || displayName),
-        })
-        wx.showToast({ title: '昵称已更新', icon: 'success' })
-      } catch (error) {
-        wx.showToast({ title: getErrorMessage(error), icon: 'none' })
-      } finally {
-        this.setData({ nicknameSaving: false })
-      }
-    },
-
-    handleAvatarTap() {
-      if (this.data.avatarUploading || (this.data.loggedIn && !this.data.loginError)) return
-      if (!this.data.loggedIn || this.data.loginError) {
-        wx.showToast({ title: '请先完成微信登录', icon: 'none' })
-        this.authenticate(true)
-      }
-    },
-
-    onWechatAvatarChosen(event) {
-      const filePath = event && event.detail && event.detail.avatarUrl
-      if (filePath) this.uploadSelectedAvatar(filePath)
-    },
-
-    async uploadSelectedAvatar(filePath) {
-      if (this.data.avatarUploading) return
-      this.setData({ avatarUploading: true, avatarError: false })
-      wx.showLoading({ title: '上传头像', mask: true })
-      try {
-        const profile = await uploadFile('/user/profile/avatar', filePath)
-        const auth = updateStoredProfile(profile || {})
-        const app = getApp()
-        if (app && app.globalData) app.globalData.auth = auth
-        this.setData({
-          avatar: auth.avatar || '',
-          avatarError: false,
-          displayName: auth.displayName || this.data.displayName,
-          initial: getInitial(auth.displayName || this.data.displayName),
-        })
-        wx.showToast({ title: '头像已更新', icon: 'success' })
-      } catch (error) {
-        wx.showToast({ title: getErrorMessage(error) || '头像上传失败', icon: 'none' })
-      } finally {
-        wx.hideLoading()
-        this.setData({ avatarUploading: false })
-      }
-    },
-
     handleAccountAction() {
       if (!this.data.loggedIn || this.data.loginError) this.authenticate(true)
     },
@@ -280,15 +176,202 @@ Component({
         accountLabel: '微信用户',
         avatar: '',
         avatarError: false,
-        avatarUploading: false,
-        nicknameEditorVisible: false,
-        nicknameDraft: '',
-        nicknameSaving: false,
         initial: 'A',
         authTitle: '尚未登录',
         authNote: '微信授权尚未完成',
         accountState: '尚未登录',
       })
+    },
+  },
+})
+
+Component({
+  data: {
+    loggedIn: false,
+    authenticating: false,
+    loginError: '',
+    username: '',
+    displayName: 'Amour 用户',
+    avatar: '',
+    avatarError: false,
+    initial: 'A',
+    passwordSet: false,
+    passwordModalOpen: false,
+    passwordSheetClosing: false,
+    passwordSheetOffset: 0,
+    passwordSheetTransition: '',
+    passwordSaving: false,
+    passwordForm: { current: '', next: '', confirm: '' },
+  },
+
+  lifetimes: {
+    attached() {
+      this.applyAuth(getStoredAuth())
+    },
+  },
+
+  pageLifetimes: {
+    show() {
+      this.applyAuth(getStoredAuth())
+      this.authenticate(false, true)
+    },
+  },
+
+  methods: {
+    applyAuth(auth = {}) {
+      const displayName = auth.displayName || 'Amour 用户'
+      this.setData({
+        loggedIn: Boolean(auth.token),
+        username: auth.username || '',
+        displayName,
+        avatar: auth.avatar || '',
+        avatarError: false,
+        initial: getInitial(displayName),
+        passwordSet: Boolean(auth.passwordSet),
+      })
+    },
+
+    async authenticate(force, forceValidation = false) {
+      if (this.data.authenticating) return
+      this.setData({ authenticating: true, loginError: '' })
+      try {
+        const authPromise = ensureWechatLogin({ force: Boolean(force), forceValidation: Boolean(forceValidation) })
+        const app = getApp()
+        if (app && app.globalData) app.globalData.authReady = authPromise
+        const auth = await authPromise
+        this.applyAuth(auth)
+        this.setData({ authenticating: false, loginError: '' })
+        if (app && app.globalData) app.globalData.auth = auth
+      } catch (error) {
+        this.applyAuth(getStoredAuth())
+        this.setData({ authenticating: false, loginError: getErrorMessage(error) })
+      }
+    },
+
+    retryLogin() {
+      this.authenticate(true)
+    },
+
+    openProfileEditor() {
+      if (this.data.authenticating) return
+      if (!this.data.loggedIn) {
+        this.authenticate(true)
+        return
+      }
+      wx.navigateTo({ url: '../profile-edit/profile-edit' })
+    },
+
+    onAvatarError() {
+      if (this.data.avatar && !this.data.avatarError) this.setData({ avatarError: true })
+    },
+
+    openPasswordModal() {
+      if (this.data.authenticating || !this.data.loggedIn) return
+      if (this.passwordSheetCloseTimer) {
+        clearTimeout(this.passwordSheetCloseTimer)
+        this.passwordSheetCloseTimer = null
+      }
+      this.setData({
+        passwordModalOpen: true,
+        passwordSheetOffset: 0,
+        passwordSheetTransition: '',
+        passwordForm: { current: '', next: '', confirm: '' },
+      })
+    },
+
+    closePasswordModal() {
+      if (this.data.passwordSaving || this.data.passwordSheetClosing) return
+      this.setData({
+        passwordSheetClosing: true,
+        passwordSheetOffset: 1000,
+        passwordSheetTransition: 'transform 220ms ease-in',
+      })
+      this.passwordSheetCloseTimer = setTimeout(() => {
+        this.passwordSheetCloseTimer = null
+        this.setData({
+          passwordModalOpen: false,
+          passwordSheetClosing: false,
+          passwordSheetOffset: 0,
+          passwordSheetTransition: '',
+          passwordForm: { current: '', next: '', confirm: '' },
+        })
+      }, 230)
+    },
+
+    stopPropagation() {},
+
+    onSheetTouchStart(event) {
+      if (this.data.passwordSaving || this.data.passwordSheetClosing) return
+      const touch = event && event.touches && event.touches[0]
+      if (!touch) return
+      this.passwordSheetTouchStartY = touch.clientY
+      this.setData({ passwordSheetTransition: '' })
+    },
+
+    onSheetTouchMove(event) {
+      if (this.data.passwordSaving || this.data.passwordSheetClosing || this.passwordSheetTouchStartY === undefined) return
+      const touch = event && event.touches && event.touches[0]
+      if (!touch) return
+      const offset = Math.max(0, Math.min(1000, touch.clientY - this.passwordSheetTouchStartY))
+      this.setData({ passwordSheetOffset: offset })
+    },
+
+    onSheetTouchEnd() {
+      if (this.data.passwordSaving || this.data.passwordSheetClosing) return
+      const startY = this.passwordSheetTouchStartY
+      this.passwordSheetTouchStartY = undefined
+      if (startY === undefined) return
+      if (this.data.passwordSheetOffset >= 120) {
+        this.closePasswordModal()
+        return
+      }
+      this.setData({
+        passwordSheetOffset: 0,
+        passwordSheetTransition: 'transform 180ms ease-out',
+      })
+    },
+
+    onPasswordInput(event) {
+      const field = event && event.currentTarget && event.currentTarget.dataset
+        ? event.currentTarget.dataset.field
+        : ''
+      if (field) this.setData({ [`passwordForm.${field}`]: event.detail.value || '' })
+    },
+
+    async onPasswordSubmit() {
+      if (this.data.passwordSaving) return
+      const current = String(this.data.passwordForm.current || '')
+      const next = String(this.data.passwordForm.next || '')
+      const confirm = String(this.data.passwordForm.confirm || '')
+      if (this.data.passwordSet && !current) return wx.showToast({ title: '请输入当前密码', icon: 'none' })
+      if (next.length < 6 || next.length > 64) return wx.showToast({ title: '新密码需为 6-64 个字符', icon: 'none' })
+      if (next !== confirm) return wx.showToast({ title: '两次输入的新密码不一致', icon: 'none' })
+      if (this.data.passwordSet && current === next) return wx.showToast({ title: '新密码不能与当前密码相同', icon: 'none' })
+
+      this.setData({ passwordSaving: true })
+      const wasPasswordSet = this.data.passwordSet
+      try {
+        const tasks = [encryptPassword(next)]
+        if (wasPasswordSet) tasks.push(encryptPassword(current))
+        const encrypted = await Promise.all(tasks)
+        const payload = {
+          newChallengeId: encrypted[0].challengeId,
+          encryptedNewPassword: encrypted[0].encryptedPassword,
+        }
+        if (encrypted[1]) {
+          payload.currentChallengeId = encrypted[1].challengeId
+          payload.encryptedCurrentPassword = encrypted[1].encryptedPassword
+        }
+        await post('/user/password/change', payload)
+        updateStoredProfile({ passwordSet: true })
+        this.setData({ passwordSet: true, passwordModalOpen: false, passwordForm: { current: '', next: '', confirm: '' } })
+        wx.showToast({ title: wasPasswordSet ? '密码已更新' : '密码已设置', icon: 'success' })
+        await this.authenticate(true)
+      } catch (error) {
+        wx.showToast({ title: getErrorMessage(error), icon: 'none' })
+      } finally {
+        this.setData({ passwordSaving: false })
+      }
     },
   },
 })

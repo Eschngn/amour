@@ -1,23 +1,17 @@
+<block wx:if="{{false}}">
 <navigation-bar title="我的" back="{{false}}" color="#4f4650" background="#faf9f7"></navigation-bar>
 
 <scroll-view class="page-scroll" scroll-y bounces="{{false}}" type="list" enhanced show-scrollbar="false">
   <view class="profile-page">
     <view class="profile-hero">
-      <view class="avatar-picker" bindtap="handleAvatarTap">
+      <view class="avatar-picker" catchtap="openProfileEditor">
         <view class="avatar-wrap {{avatarUploading ? 'is-uploading' : ''}}">
           <text wx:if="{{!avatar || avatarError}}" class="avatar-initial">{{initial}}</text>
           <image wx:else class="avatar-image" src="{{avatar}}" mode="aspectFill" binderror="onAvatarError"></image>
           <view wx:if="{{avatarUploading}}" class="avatar-uploading"><view class="avatar-spinner"></view></view>
         </view>
-        <button
-          wx:if="{{!avatarUploading}}"
-          class="avatar-picker-button"
-          open-type="chooseAvatar"
-          bindchooseavatar="onWechatAvatarChosen"
-          disabled="{{!loggedIn || loginError}}"
-        ></button>
       </view>
-      <text class="display-name" bindtap="openNicknameEditor" hover-class="nickname-hover">{{displayName}}</text>
+      <text class="display-name" catchtap="openProfileEditor" hover-class="nickname-hover">{{displayName}}</text>
       <view class="account-state">
         <view class="state-dot {{loggedIn ? 'is-online' : ''}}"></view>
         <text>{{accountState}}</text>
@@ -77,38 +71,64 @@
         </view>
       </view>
 
-      <button
-        wx:if="{{loggedIn}}"
-        class="logout-button"
-        bindtap="requestLogout"
-        loading="{{loggingOut}}"
-        disabled="{{authenticating || loggingOut}}"
-        hover-class="logout-hover"
-      ><text class="logout-icon">↪</text><text>{{loggingOut ? '正在退出' : '退出登录'}}</text></button>
     </view>
     <view class="safe-bottom"></view>
   </view>
 </scroll-view>
-<view wx:if="{{nicknameEditorVisible}}" class="nickname-modal-mask" catchtap="closeNicknameEditor">
-  <view class="nickname-modal" catchtap="stopNicknameTap">
-    <text class="nickname-modal-title">设置昵称</text>
-    <text class="nickname-modal-note">输入时可使用微信昵称</text>
-    <form bindsubmit="submitNickname">
-      <input
-        class="nickname-input"
-        name="nickname"
-        type="nickname"
-        value="{{nicknameDraft}}"
-        maxlength="20"
-        placeholder="请输入昵称"
-        bindinput="onNicknameInput"
-        cursor-spacing="160"
-        adjust-position="true"
-        confirm-type="done"
-      />
-      <button class="nickname-submit" form-type="submit" loading="{{nicknameSaving}}" disabled="{{nicknameSaving}}">保存</button>
+<bottom-nav current="profile"></bottom-nav>
+</block>
+
+<navigation-bar title="我的" back="{{false}}" color="#3f393d" background="#f7f6f4"></navigation-bar>
+
+<scroll-view class="page-scroll" scroll-y bounces="{{false}}" type="list" enhanced show-scrollbar="false">
+  <view class="profile-page">
+    <view wx:if="{{authenticating}}" class="login-progress"><view class="login-progress-bar"></view></view>
+    <view class="account-summary" bindtap="openProfileEditor" hover-class="account-summary-hover">
+      <view class="avatar-wrap">
+        <text wx:if="{{!avatar || avatarError}}" class="avatar-initial">{{initial}}</text>
+        <image wx:else class="avatar-image" src="{{avatar}}" mode="aspectFill" binderror="onAvatarError"></image>
+      </view>
+      <view class="account-copy">
+        <text class="display-name">{{displayName}}</text>
+        <text class="username">{{username ? '@' + username : (authenticating ? '正在同步账号' : '账号信息未就绪')}}</text>
+      </view>
+      <view class="edit-chevron" aria-role="button" aria-label="编辑个人资料">›</view>
+    </view>
+    <view wx:if="{{loginError}}" class="error-band">
+      <view class="error-copy"><text class="error-title">账号同步失败</text><text class="error-note">{{loginError}}</text></view>
+      <button class="retry-button" bindtap="retryLogin" loading="{{authenticating}}">重试</button>
+    </view>
+    <view class="settings-section">
+      <text class="section-title">账号安全</text>
+      <view class="settings-list">
+        <view class="settings-row {{(!loggedIn || authenticating) ? 'is-disabled' : ''}}" bindtap="openPasswordModal" hover-class="settings-row-hover">
+          <view class="lock-icon"><view class="lock-shackle"></view><view class="lock-body"><view></view></view></view>
+          <view class="settings-copy"><text class="settings-title">{{passwordSet ? '修改密码' : '设置密码'}}</text><text class="settings-note">{{passwordSet ? '需验证当前密码' : '设置后可在网页端使用用户名登录'}}</text></view>
+          <text class="row-status">{{passwordSet ? '已设置' : '未设置'}}</text><text class="row-chevron">›</text>
+        </view>
+      </view>
+    </view>
+    <view class="safe-bottom"></view>
+  </view>
+</scroll-view>
+<bottom-nav current="profile"></bottom-nav>
+
+<view wx:if="{{passwordModalOpen}}" class="modal-mask" bindtap="closePasswordModal">
+  <view
+    class="password-sheet"
+    style="transform: translateY({{passwordSheetOffset}}rpx); transition: {{passwordSheetTransition}};"
+    catchtap="stopPropagation"
+    catchtouchstart="onSheetTouchStart"
+    catchtouchmove="onSheetTouchMove"
+    catchtouchend="onSheetTouchEnd"
+  >
+    <view class="sheet-handle"></view>
+    <view class="sheet-header"><view class="sheet-copy"><text class="sheet-title">{{passwordSet ? '修改密码' : '设置密码'}}</text><text class="sheet-note">{{passwordSet ? '验证当前密码后进行更新' : '密码长度需为 6-64 个字符'}}</text></view></view>
+    <form bindsubmit="onPasswordSubmit">
+      <view wx:if="{{passwordSet}}" class="password-field"><text class="field-label">当前密码</text><input class="password-input" password maxlength="64" value="{{passwordForm.current}}" placeholder="请输入当前密码" data-field="current" bindinput="onPasswordInput" /></view>
+      <view class="password-field"><text class="field-label">新密码</text><input class="password-input" password maxlength="64" value="{{passwordForm.next}}" placeholder="6-64 个字符" data-field="next" bindinput="onPasswordInput" /></view>
+      <view class="password-field"><text class="field-label">确认新密码</text><input class="password-input" password maxlength="64" value="{{passwordForm.confirm}}" placeholder="请再次输入新密码" data-field="confirm" bindinput="onPasswordInput" /></view>
+      <button class="password-submit" form-type="submit" loading="{{passwordSaving}}" disabled="{{passwordSaving}}">{{passwordSaving ? '正在保存' : (passwordSet ? '确认更新' : '确认设置')}}</button>
     </form>
-    <button class="nickname-cancel" bindtap="closeNicknameEditor" disabled="{{nicknameSaving}}">取消</button>
   </view>
 </view>
-<bottom-nav current="profile"></bottom-nav>

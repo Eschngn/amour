@@ -21,6 +21,7 @@ function clearStoredAuth() {
   wx.removeStorageSync('amour_username')
   wx.removeStorageSync('amour_display_name')
   wx.removeStorageSync('amour_avatar')
+  wx.removeStorageSync('amour_password_set')
 }
 
 function getApiBaseUrl() {

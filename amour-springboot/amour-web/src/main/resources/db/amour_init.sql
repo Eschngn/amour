@@ -46,6 +46,7 @@ CREATE TABLE `user`
     `display_name`   VARCHAR(60)  NOT NULL DEFAULT '恋人' COMMENT '前台展示名称',
     `avatar`         VARCHAR(500) NOT NULL DEFAULT '' COMMENT '用户头像 URL',
     `wechat_openid`  VARCHAR(128)          DEFAULT NULL COMMENT '微信小程序用户唯一标识(openid)',
+    `username_update_time` DATETIME        DEFAULT NULL COMMENT '用户名最近修改时间',
     `create_time`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '最后一次更新时间',
     `is_deleted`     TINYINT      NOT NULL DEFAULT 0 COMMENT '逻辑删除：0-未删除 1-已删除',

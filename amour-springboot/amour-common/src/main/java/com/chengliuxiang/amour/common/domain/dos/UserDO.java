@@ -30,6 +30,8 @@ public class UserDO {
 
     private String wechatOpenid;
 
+    private LocalDateTime usernameUpdateTime;
+
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;

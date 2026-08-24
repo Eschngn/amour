@@ -14,6 +14,7 @@ import com.chengliuxiang.amour.web.model.vo.user.UpdateUserProfileReqVO;
 import com.chengliuxiang.amour.web.model.vo.user.UserProfileVO;
 import com.chengliuxiang.amour.web.service.UserProfileService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,7 @@ import java.util.Set;
 @Slf4j
 public class UserProfileServiceImpl implements UserProfileService {
 
+    private static final long USERNAME_CHANGE_COOLDOWN_DAYS = 30L;
     private static final long MAX_AVATAR_SIZE = 5L * 1024 * 1024;
     private static final Set<String> ALLOWED_IMAGE_TYPES = new HashSet<>(Arrays.asList(
             "image/jpeg", "image/png", "image/webp", "image/gif"));
@@ -56,15 +58,30 @@ public class UserProfileServiceImpl implements UserProfileService {
         UserDO user = getCurrentUser();
         String username = reqVO.getUsername().trim();
         String displayName = reqVO.getDisplayName().trim();
-        UserDO sameUsernameUser = userMapper.selectByUsername(username);
-        if (sameUsernameUser != null && !sameUsernameUser.getId().equals(user.getId())) {
-            throw new BizException(ResponseCodeEnum.USERNAME_ALREADY_EXISTS);
+        boolean usernameChanged = !username.equals(user.getUsername());
+        if (usernameChanged) {
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime availableAt = user.getUsernameUpdateTime() == null
+                    ? null : user.getUsernameUpdateTime().plusDays(USERNAME_CHANGE_COOLDOWN_DAYS);
+            if (availableAt != null && now.isBefore(availableAt)) {
+                throw new BizException(ResponseCodeEnum.USERNAME_CHANGE_TOO_FREQUENT);
+            }
+            UserDO sameUsernameUser = userMapper.selectByUsername(username);
+            if (sameUsernameUser != null && !sameUsernameUser.getId().equals(user.getId())) {
+                throw new BizException(ResponseCodeEnum.USERNAME_ALREADY_EXISTS);
+            }
+            user.setUsername(username);
+            user.setUsernameUpdateTime(now);
         }
 
-        user.setUsername(username);
         user.setDisplayName(displayName);
         user.setUpdateTime(LocalDateTime.now());
-        userMapper.updateById(user);
+        try {
+            userMapper.updateById(user);
+        } catch (DataIntegrityViolationException e) {
+            // The pre-check handles normal conflicts; the unique index closes the race window.
+            throw new BizException(ResponseCodeEnum.USERNAME_ALREADY_EXISTS);
+        }
         return Response.success(toProfile(user));
     }
 
@@ -90,18 +107,22 @@ public class UserProfileServiceImpl implements UserProfileService {
     @Transactional(rollbackFor = Exception.class)
     public Response<Void> changePassword(ChangePasswordReqVO reqVO) {
         UserDO user = getCurrentUser();
-        String currentPassword = loginCryptoService.decryptPassword(
-                reqVO.getCurrentChallengeId(), reqVO.getEncryptedCurrentPassword());
+        boolean passwordSet = StrUtil.isNotBlank(user.getPassword());
+        String currentPassword = null;
+        if (passwordSet) {
+            currentPassword = loginCryptoService.decryptPassword(
+                    reqVO.getCurrentChallengeId(), reqVO.getEncryptedCurrentPassword());
+            if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+                throw new BizException(ResponseCodeEnum.CURRENT_PASSWORD_ERROR);
+            }
+        }
         String newPassword = loginCryptoService.decryptPassword(
                 reqVO.getNewChallengeId(), reqVO.getEncryptedNewPassword());
 
-        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
-            throw new BizException(ResponseCodeEnum.CURRENT_PASSWORD_ERROR);
-        }
         if (newPassword.length() < 6 || newPassword.length() > 64) {
             throw new BizException(ResponseCodeEnum.NEW_PASSWORD_FORMAT_INVALID);
         }
-        if (currentPassword.equals(newPassword)) {
+        if (passwordSet && currentPassword.equals(newPassword)) {
             throw new BizException(ResponseCodeEnum.NEW_PASSWORD_SAME);
         }
 
@@ -136,6 +157,9 @@ public class UserProfileServiceImpl implements UserProfileService {
                 .username(user.getUsername())
                 .displayName(StrUtil.blankToDefault(user.getDisplayName(), "恋人"))
                 .avatar(StrUtil.blankToDefault(user.getAvatar(), ""))
+                .passwordSet(StrUtil.isNotBlank(user.getPassword()))
+                .usernameChangeAvailableAt(user.getUsernameUpdateTime() == null
+                        ? null : user.getUsernameUpdateTime().plusDays(USERNAME_CHANGE_COOLDOWN_DAYS))
                 .build();
     }
 }

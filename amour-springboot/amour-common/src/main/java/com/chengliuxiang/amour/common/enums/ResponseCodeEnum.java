@@ -48,6 +48,7 @@ public enum ResponseCodeEnum implements BaseExceptionInterface {
     MESSAGE_REPLY_DELETE_FORBIDDEN("20027", "只能删除自己发布的回复"),
     WECHAT_LOGIN_FAILED("20028", "微信登录失败，请稍后重试"),
     WECHAT_CONFIG_INVALID("20029", "微信登录配置不完整"),
+    USERNAME_CHANGE_TOO_FREQUENT("20030", "用户名修改后 30 天内不能再次修改"),
 
 
     ;

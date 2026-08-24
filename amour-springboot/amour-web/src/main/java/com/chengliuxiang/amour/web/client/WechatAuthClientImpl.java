@@ -63,4 +63,5 @@ public class WechatAuthClientImpl implements WechatAuthClient {
             throw new BizException(ResponseCodeEnum.WECHAT_LOGIN_FAILED);
         }
     }
+
 }

@@ -14,11 +14,9 @@ import javax.validation.constraints.Size;
 @AllArgsConstructor
 public class ChangePasswordReqVO {
 
-    @NotBlank(message = "当前密码验证信息不能为空")
     @Size(max = 64, message = "当前密码验证信息格式错误")
     private String currentChallengeId;
 
-    @NotBlank(message = "当前密码密文不能为空")
     @Size(max = 1024, message = "当前密码密文格式错误")
     private String encryptedCurrentPassword;
 

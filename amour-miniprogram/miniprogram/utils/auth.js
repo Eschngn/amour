@@ -4,6 +4,7 @@ const TOKEN_KEY = 'amour_token'
 const USERNAME_KEY = 'amour_username'
 const DISPLAY_NAME_KEY = 'amour_display_name'
 const AVATAR_KEY = 'amour_avatar'
+const PASSWORD_SET_KEY = 'amour_password_set'
 const VALIDATION_CACHE_MS = 30000
 
 let loginPromise = null
@@ -20,6 +21,7 @@ function getStoredAuth() {
     username: readString(USERNAME_KEY),
     displayName: readString(DISPLAY_NAME_KEY),
     avatar: readString(AVATAR_KEY),
+    passwordSet: wx.getStorageSync(PASSWORD_SET_KEY) === true,
   }
 }
 
@@ -28,6 +30,7 @@ function saveAuth(auth) {
   wx.setStorageSync(USERNAME_KEY, auth.username || '')
   wx.setStorageSync(DISPLAY_NAME_KEY, auth.displayName || '')
   wx.setStorageSync(AVATAR_KEY, auth.avatar || '')
+  wx.setStorageSync(PASSWORD_SET_KEY, Boolean(auth.passwordSet))
   return getStoredAuth()
 }
 
@@ -38,6 +41,7 @@ function updateStoredProfile(profile = {}) {
     username: typeof profile.username === 'string' ? profile.username : current.username,
     displayName: typeof profile.displayName === 'string' ? profile.displayName : current.displayName,
     avatar: typeof profile.avatar === 'string' ? profile.avatar : current.avatar,
+    passwordSet: typeof profile.passwordSet === 'boolean' ? profile.passwordSet : current.passwordSet,
   })
 }
 
@@ -46,6 +50,7 @@ function clearAuth() {
   wx.removeStorageSync(USERNAME_KEY)
   wx.removeStorageSync(DISPLAY_NAME_KEY)
   wx.removeStorageSync(AVATAR_KEY)
+  wx.removeStorageSync(PASSWORD_SET_KEY)
   lastValidatedAt = 0
   const app = typeof getApp === 'function' ? getApp() : null
   if (app && app.globalData) {
@@ -84,9 +89,10 @@ async function exchangeWechatCode() {
   }
   const auth = saveAuth({
     token: result.token.trim(),
-    username: '',
+    username: typeof result.username === 'string' ? result.username.trim() : '',
     displayName: typeof result.displayName === 'string' ? result.displayName.trim() : '',
     avatar: typeof result.avatar === 'string' ? result.avatar.trim() : '',
+    passwordSet: result.passwordSet === true,
   })
   lastValidatedAt = Date.now()
   return auth
@@ -100,13 +106,14 @@ async function validateStoredAuth(storedAuth) {
       username: profile && typeof profile.username === 'string' ? profile.username.trim() : '',
       displayName: profile && typeof profile.displayName === 'string' ? profile.displayName.trim() : '',
       avatar: profile && typeof profile.avatar === 'string' ? profile.avatar.trim() : '',
+      passwordSet: Boolean(profile && profile.passwordSet),
     })
     lastValidatedAt = Date.now()
     return auth
   } catch (error) {
     if (isUnauthorized(error)) {
       clearAuth()
-      throw new Error('登录已过期，请重新登录')
+      return exchangeWechatCode()
     }
     throw error
   }

@@ -3,6 +3,7 @@ export interface AuthSession {
   username: string
   displayName: string
   avatar: string
+  passwordSet: boolean
 }
 
 export function getStoredAuth(): AuthSession

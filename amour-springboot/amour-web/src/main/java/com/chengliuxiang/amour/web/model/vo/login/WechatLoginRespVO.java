@@ -13,7 +13,11 @@ public class WechatLoginRespVO {
 
     private String token;
 
+    private String username;
+
     private String displayName;
 
     private String avatar;
+
+    private boolean passwordSet;
 }

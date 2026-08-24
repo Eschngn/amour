@@ -7,6 +7,7 @@
     "pages/photo-detail/photo-detail",
     "pages/message/message",
     "pages/profile/profile",
+    "pages/profile-edit/profile-edit",
     "pages/logs/logs"
   ],
   "window": {

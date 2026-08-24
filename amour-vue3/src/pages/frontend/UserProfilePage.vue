@@ -44,8 +44,8 @@
               </div>
               <div>
                 <label for="profile-username" class="block text-sm font-semibold text-rose-900">登录 username</label>
-                <input id="profile-username" v-model="form.username" maxlength="30" autocomplete="username" class="mt-2 w-full rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm text-rose-950 outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100" placeholder="用于登录">
-                <p class="mt-1.5 text-xs text-rose-700/45">修改后，下次登录请使用新的 username。</p>
+                <input id="profile-username" v-model="form.username" minlength="4" maxlength="20" pattern="[A-Za-z0-9_]{4,20}" autocomplete="username" class="mt-2 w-full rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm text-rose-950 outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100 disabled:cursor-not-allowed disabled:bg-rose-50" placeholder="4-20 位英文、数字或下划线" :disabled="profileSaving || usernameChangeLocked">
+                <p class="mt-1.5 text-xs text-rose-700/45">{{ usernameChangeLocked ? '用户名修改后 30 天内不可再次修改。' : '4-20 位，仅英文大小写、数字和下划线。' }}</p>
               </div>
               <button type="submit" class="w-full rounded-full bg-gradient-to-r from-rose-500 to-pink-500 py-3 text-sm font-semibold text-white shadow-md shadow-rose-200 transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60" :disabled="profileSaving">
                 {{ profileSaving ? '保存中…' : '保存个人资料' }}
@@ -85,7 +85,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import 'element-plus/es/components/message/style/css'
@@ -94,6 +94,7 @@ import CouplePageScaffold from '@/components/frontend/CouplePageScaffold.vue'
 import { clearFrontendSession, setFrontendAvatar, setFrontendProfile } from '@/utils/auth'
 import { encryptPassword } from '@/utils/loginCrypto'
 
+const USERNAME_PATTERN = /^[A-Za-z0-9_]{4,20}$/
 const router = useRouter()
 const loading = ref(true)
 const profileSaving = ref(false)
@@ -102,6 +103,12 @@ const passwordSaving = ref(false)
 const avatarInput = ref(null)
 const form = reactive({ username: '', displayName: '', avatar: '' })
 const passwordForm = reactive({ current: '', next: '', confirm: '' })
+const originalUsername = ref('')
+const usernameChangeAvailableAt = ref('')
+const usernameChangeLocked = computed(() => {
+  const timestamp = Date.parse(String(usernameChangeAvailableAt.value || '').replace(' ', 'T'))
+  return Number.isFinite(timestamp) && Date.now() < timestamp
+})
 
 function initials(name) {
   return String(name || '恋人').trim().slice(0, 2).toUpperCase()
@@ -111,6 +118,8 @@ function applyProfile(profile) {
   form.username = profile?.username || ''
   form.displayName = profile?.displayName || ''
   form.avatar = profile?.avatar || ''
+  originalUsername.value = form.username
+  usernameChangeAvailableAt.value = profile?.usernameChangeAvailableAt || ''
   setFrontendProfile(profile)
 }
 
@@ -128,10 +137,13 @@ async function loadProfile() {
 }
 
 async function saveProfile() {
-  const username = form.username.trim()
+  const username = form.username
   const displayName = form.displayName.trim()
   if (!displayName) return ElMessage.warning('请输入展示名称')
-  if (!username) return ElMessage.warning('请输入 username')
+  if (!USERNAME_PATTERN.test(username)) return ElMessage.warning('用户名需为 4-20 位英文、数字或下划线')
+  if (username !== originalUsername.value && usernameChangeLocked.value) {
+    return ElMessage.warning('用户名修改后 30 天内不能再次修改')
+  }
   profileSaving.value = true
   try {
     const { data } = await api.post('/user/profile/update', { username, displayName })
