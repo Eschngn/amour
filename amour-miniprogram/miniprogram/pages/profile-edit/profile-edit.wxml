@@ -1,4 +1,4 @@
-<navigation-bar title="编辑个人资料" back="{{true}}" color="#4f4650" background="#faf9f7"></navigation-bar>
+<navigation-bar title="编辑个人资料" back="{{true}}" color="#623640" background="#fcf8f5"></navigation-bar>
 
 <scroll-view class="page-scroll" scroll-y bounces="{{false}}" enhanced show-scrollbar="false">
   <view class="edit-page">

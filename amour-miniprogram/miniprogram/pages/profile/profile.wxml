@@ -1,5 +1,5 @@
 <block wx:if="{{false}}">
-<navigation-bar title="我的" back="{{false}}" color="#4f4650" background="#faf9f7"></navigation-bar>
+<navigation-bar title="我的" back="{{false}}" color="#623640" background="#fcf8f5"></navigation-bar>
 
 <scroll-view class="page-scroll" scroll-y bounces="{{false}}" type="list" enhanced show-scrollbar="false">
   <view class="profile-page">
@@ -78,7 +78,7 @@
 <bottom-nav current="profile"></bottom-nav>
 </block>
 
-<navigation-bar title="我的" back="{{false}}" color="#3f393d" background="#f7f6f4"></navigation-bar>
+<navigation-bar title="我的" back="{{false}}" color="#623640" background="#fcf8f5"></navigation-bar>
 
 <scroll-view class="page-scroll" scroll-y bounces="{{false}}" type="list" enhanced show-scrollbar="false">
   <view class="profile-page">
