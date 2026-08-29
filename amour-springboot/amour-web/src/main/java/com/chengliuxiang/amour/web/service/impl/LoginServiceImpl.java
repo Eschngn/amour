@@ -8,6 +8,7 @@ import com.chengliuxiang.amour.common.domain.mapper.UserMapper;
 import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
 import com.chengliuxiang.amour.common.exception.BizException;
 import com.chengliuxiang.amour.common.service.LoginCryptoService;
+import com.chengliuxiang.amour.common.service.SaTokenPermissionService;
 import com.chengliuxiang.amour.common.utils.Response;
 import com.chengliuxiang.amour.web.model.vo.login.LoginReqVO;
 import com.chengliuxiang.amour.web.model.vo.login.LoginRespVO;
@@ -32,6 +33,9 @@ public class LoginServiceImpl implements LoginService {
     @Resource
     private LoginCryptoService loginCryptoService;
 
+    @Resource
+    private SaTokenPermissionService saTokenPermissionService;
+
     @Override
     public Response<LoginRespVO> login(LoginReqVO loginReqVO) {
         String username = loginReqVO.getUsername();
@@ -47,6 +51,7 @@ public class LoginServiceImpl implements LoginService {
         }
         Long userId = userDO.getId();
         StpUtil.login(userId);
+        saTokenPermissionService.refreshSession(userId);
         SaTokenInfo tokenInfo = StpUtil.getTokenInfo();
         return Response.success(LoginRespVO.builder()
                 .token(tokenInfo.tokenValue)

@@ -11,8 +11,10 @@ import com.chengliuxiang.amour.common.domain.dos.SiteConfigDO;
 import com.chengliuxiang.amour.common.domain.dos.UserDO;
 import com.chengliuxiang.amour.common.domain.mapper.SiteConfigMapper;
 import com.chengliuxiang.amour.common.domain.mapper.UserMapper;
+import com.chengliuxiang.amour.common.domain.mapper.UserRoleRelMapper;
 import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
 import com.chengliuxiang.amour.common.exception.BizException;
+import com.chengliuxiang.amour.common.service.SaTokenPermissionService;
 import com.chengliuxiang.amour.common.utils.Response;
 import com.chengliuxiang.amour.web.client.WechatAuthClient;
 import com.chengliuxiang.amour.web.model.vo.login.WechatLoginReqVO;
@@ -44,6 +46,12 @@ public class WechatLoginServiceImpl implements WechatLoginService {
     private UserMapper userMapper;
 
     @Resource
+    private UserRoleRelMapper userRoleRelMapper;
+
+    @Resource
+    private SaTokenPermissionService saTokenPermissionService;
+
+    @Resource
     private SiteConfigMapper siteConfigMapper;
 
     @Resource
@@ -60,6 +68,7 @@ public class WechatLoginServiceImpl implements WechatLoginService {
         UserDO user = findOrCreateUser(wechatSession.getOpenid());
 
         StpUtil.login(user.getId());
+        saTokenPermissionService.refreshSession(user.getId());
         SaTokenInfo tokenInfo = StpUtil.getTokenInfo();
         String token = tokenInfo.tokenValue;
 
@@ -82,6 +91,7 @@ public class WechatLoginServiceImpl implements WechatLoginService {
 
         String username = "wx_" + DigestUtil.sha256Hex(openid).substring(0, 6);
         UserDO user = userMapper.selectByWechatOpenid(openid);
+        boolean shouldAssignCommonRole = false;
         if (user == null) {
             // 兼容旧数据：历史微信用户只有确定性用户名，未写入 openid，登录时补齐。
             user = userMapper.selectByUsername(username);
@@ -105,16 +115,26 @@ public class WechatLoginServiceImpl implements WechatLoginService {
                     .build();
             try {
                 userMapper.insert(user);
+                shouldAssignCommonRole = true;
             } catch (DataIntegrityViolationException e) {
                 // 并发首次登录时，另一请求可能已经创建了相同的 openid/用户名。
                 user = userMapper.selectByWechatOpenid(openid);
                 if (user == null) {
                     throw new BizException(ResponseCodeEnum.WECHAT_LOGIN_FAILED);
                 }
+                // 让并发请求也能补齐首个请求尚未写入的默认角色关系。
+                shouldAssignCommonRole = true;
             }
         }
         if (Boolean.TRUE.equals(user.getIsDeleted())) {
             throw new BizException(ResponseCodeEnum.USER_NOT_EXIST);
+        }
+        if (shouldAssignCommonRole) {
+            int inserted = userRoleRelMapper.insertCommonRoleIfAbsent(user.getId());
+            if (inserted == 0) {
+                // 0 也可能表示并发请求已经完成了关系写入；角色缺失时由日志提示运维补齐初始化数据。
+                log.warn("微信用户 {} 未新增 common 角色关系，请确认 common 角色已初始化", user.getId());
+            }
         }
         stringRedisTemplate.opsForValue().set(userKey, String.valueOf(user.getId()));
         return user;

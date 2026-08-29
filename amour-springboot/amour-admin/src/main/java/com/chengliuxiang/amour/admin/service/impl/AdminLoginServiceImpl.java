@@ -9,6 +9,7 @@ import com.chengliuxiang.amour.common.domain.mapper.UserMapper;
 import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
 import com.chengliuxiang.amour.common.exception.BizException;
 import com.chengliuxiang.amour.common.service.LoginCryptoService;
+import com.chengliuxiang.amour.common.service.SaTokenPermissionService;
 import com.chengliuxiang.amour.common.utils.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -27,6 +28,8 @@ public class AdminLoginServiceImpl implements AdminLoginService {
     private PasswordEncoder passwordEncoder;
     @Resource
     private LoginCryptoService loginCryptoService;
+    @Resource
+    private SaTokenPermissionService saTokenPermissionService;
 
     /**
      * 管理员登录
@@ -49,6 +52,7 @@ public class AdminLoginServiceImpl implements AdminLoginService {
         }
         Long userId = userDO.getId();
         StpUtil.login(userId); // SaToken 登录用户，入参为用户 ID
+        saTokenPermissionService.refreshSession(userId);
         SaTokenInfo tokenInfo = StpUtil.getTokenInfo(); // 获取 Token 令牌
         return Response.success(tokenInfo.tokenValue);
     }
