@@ -118,8 +118,8 @@
                   </div>
                 </div>
 
-                <!-- 回复输入框 -->
-                <form v-if="activeReplyTarget?.messageId === m.messageId"
+                <!-- 回复根留言时，输入框紧跟根留言操作栏 -->
+                <form v-if="activeReplyTarget?.key === replyTargetKey(m.messageId)"
                   class="mt-4 rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-50/80 to-pink-50/60 p-3.5 sm:p-4"
                   @submit.prevent="onReply">
                   <label class="block text-xs font-semibold text-rose-700" :for="`reply-${activeReplyTarget.key}`">
@@ -172,6 +172,33 @@
                         </p>
                       </div>
                     </div>
+
+                    <!-- 回复某条回复时，输入框贴近当前回复展示 -->
+                    <form v-if="activeReplyTarget?.key === replyTargetKey(m.messageId, r.replyId)"
+                      class="ml-11 mt-3 border-l-2 border-rose-200 pl-3 sm:pl-4"
+                      @submit.prevent="onReply">
+                      <div class="rounded-xl border border-rose-100 bg-white/85 p-3 shadow-sm shadow-rose-100/40">
+                        <label class="block text-xs font-semibold text-rose-700"
+                          :for="`reply-${activeReplyTarget.key}`">
+                          回复 {{ activeReplyTarget.userName }}
+                        </label>
+                        <textarea :id="`reply-${activeReplyTarget.key}`" v-model="replyDraft" rows="2"
+                          class="mt-2 w-full resize-y rounded-lg border border-rose-200 bg-white px-3 py-2.5 text-sm text-rose-950 placeholder:text-rose-400 focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-200"
+                          :placeholder="`写下给 ${activeReplyTarget.userName || 'Ta'} 的回复……`" autofocus />
+                        <div class="mt-2 flex justify-end gap-2">
+                          <button type="button"
+                            class="rounded-full px-4 py-1.5 text-xs font-medium text-rose-600 transition hover:bg-rose-50"
+                            :disabled="replying" @click="closeReply">
+                            取消
+                          </button>
+                          <button type="submit"
+                            class="rounded-full bg-rose-500 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
+                            :disabled="replying || !replyDraft.trim()">
+                            {{ replying ? '回复中…' : '发送回复' }}
+                          </button>
+                        </div>
+                      </div>
+                    </form>
                   </div>
                 </div>
               </li>
