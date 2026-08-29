@@ -22,6 +22,14 @@ VALUES ('管理员', 'admin', 0, 1, '后台系统管理员', b'0')
                          `is_deleted` = b'0',
                          `update_time` = CURRENT_TIMESTAMP;
 
+-- 确保留言用户角色存在；该角色用于授予前台留言发布和回复权限。
+INSERT INTO `role` (`role_name`, `role_key`, `status`, `sort`, `remark`, `is_deleted`)
+VALUES ('留言用户', 'message_user', 0, 3, '可发布和回复留言', b'0')
+    ON DUPLICATE KEY UPDATE
+                         `status` = 0,
+                         `is_deleted` = b'0',
+                         `update_time` = CURRENT_TIMESTAMP;
+
 COMMIT;
 
 -- 权限目录
@@ -68,6 +76,22 @@ FROM (
     SELECT 'frontend:profile:query', '更换头像', 20, 'frontend:profile:avatar:update'
     UNION ALL
     SELECT 'frontend:profile:query', '密码管理', 30, 'frontend:profile:password:change'
+) s
+JOIN `permission` parent
+  ON parent.permission_key = s.parent_key
+ AND parent.is_deleted = b'0'
+WHERE NOT EXISTS (
+    SELECT 1 FROM `permission` p WHERE p.permission_key = s.permission_key
+);
+
+-- 留言操作权限；仅拥有 message_user 角色（或其他显式关联角色）的用户可使用。
+INSERT INTO `permission`
+    (`parent_id`, `name`, `type`, `menu_url`, `menu_icon`, `sort`, `permission_key`, `status`, `is_deleted`)
+SELECT parent.id, s.name, 3, '', '', s.sort, s.permission_key, 0, b'0'
+FROM (
+    SELECT 'frontend:message:query' AS parent_key, '发布留言' AS name, 10 AS sort, 'frontend:message:publish' AS permission_key
+    UNION ALL
+    SELECT 'frontend:message:query', '回复留言', 20, 'frontend:message:reply'
 ) s
 JOIN `permission` parent
   ON parent.permission_key = s.parent_key
@@ -137,6 +161,7 @@ SET `status` = 0, `is_deleted` = b'0', `update_time` = CURRENT_TIMESTAMP
 WHERE `permission_key` IN (
     'frontend', 'admin',
     'frontend:home:query', 'frontend:story:query', 'frontend:message:query',
+    'frontend:message:publish', 'frontend:message:reply',
     'frontend:photo:query', 'frontend:profile:query', 'frontend:profile:update',
     'frontend:profile:avatar:update', 'frontend:profile:password:change',
     'admin:story:menu', 'admin:story:query', 'admin:story:create', 'admin:story:update', 'admin:story:delete',
@@ -152,8 +177,35 @@ SELECT DISTINCT r.id, p.id, b'0'
 FROM `role` r
 JOIN `permission` p
   ON p.permission_key = 'frontend'
-  OR p.permission_key LIKE 'frontend:%'
+  OR (
+      p.permission_key LIKE 'frontend:%'
+      AND p.permission_key NOT IN ('frontend:message:publish', 'frontend:message:reply')
+  )
 WHERE r.role_key = 'common'
+  AND r.status = 0
+  AND r.is_deleted = b'0'
+  AND p.status = 0
+  AND p.is_deleted = b'0'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM `role_permission_rel` rel
+      WHERE rel.role_id = r.id
+        AND rel.permission_id = p.id
+        AND rel.is_deleted = b'0'
+  );
+
+-- message_user：前台目录、留言页查询，以及留言发布/回复权限。
+INSERT INTO `role_permission_rel` (`role_id`, `permission_id`, `is_deleted`)
+SELECT DISTINCT r.id, p.id, b'0'
+FROM `role` r
+JOIN `permission` p
+  ON p.permission_key IN (
+      'frontend',
+      'frontend:message:query',
+      'frontend:message:publish',
+      'frontend:message:reply'
+  )
+WHERE r.role_key = 'message_user'
   AND r.status = 0
   AND r.is_deleted = b'0'
   AND p.status = 0
