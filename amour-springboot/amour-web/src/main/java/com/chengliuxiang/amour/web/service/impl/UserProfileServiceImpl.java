@@ -77,7 +77,7 @@ public class UserProfileServiceImpl implements UserProfileService {
         user.setDisplayName(displayName);
         user.setUpdateTime(LocalDateTime.now());
         try {
-            userMapper.updateById(user);
+            userMapper.save(user);
         } catch (DataIntegrityViolationException e) {
             // The pre-check handles normal conflicts; the unique index closes the race window.
             throw new BizException(ResponseCodeEnum.USERNAME_ALREADY_EXISTS);
@@ -93,7 +93,7 @@ public class UserProfileServiceImpl implements UserProfileService {
         try {
             user.setAvatar(aliyunOSSUtil.uploadFile(file));
             user.setUpdateTime(LocalDateTime.now());
-            userMapper.updateById(user);
+            userMapper.save(user);
             return Response.success(toProfile(user));
         } catch (BizException e) {
             throw e;
@@ -128,13 +128,13 @@ public class UserProfileServiceImpl implements UserProfileService {
 
         user.setPassword(passwordEncoder.encode(newPassword));
         user.setUpdateTime(LocalDateTime.now());
-        userMapper.updateById(user);
+        userMapper.save(user);
         StpUtil.logout(user.getId());
         return Response.success();
     }
 
     private UserDO getCurrentUser() {
-        UserDO user = userMapper.selectById(StpUtil.getLoginIdAsLong());
+        UserDO user = userMapper.selectActiveById(StpUtil.getLoginIdAsLong());
         if (user == null || Boolean.TRUE.equals(user.getIsDeleted())) {
             throw new BizException(ResponseCodeEnum.USER_NOT_EXIST);
         }

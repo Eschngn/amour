@@ -1,7 +1,6 @@
 package com.chengliuxiang.amour.web.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.chengliuxiang.amour.common.domain.dos.StoryChapterDO;
 import com.chengliuxiang.amour.common.domain.dos.StoryNodeDO;
 import com.chengliuxiang.amour.common.domain.mapper.StoryChapterMapper;
@@ -33,10 +32,7 @@ public class StoryServiceImpl implements StoryService {
      */
     @Override
     public Response<List<MilestoneStoryNodeVO>> queryMilestoneList() {
-        List<StoryNodeDO> storyNodeDOS = storyNodeMapper.selectList(new LambdaQueryWrapper<StoryNodeDO>()
-                .eq(StoryNodeDO::getIsMilestone, true)
-                .eq(StoryNodeDO::getIsDeleted, false)
-                .orderByAsc(StoryNodeDO::getHappenedTime));
+        List<StoryNodeDO> storyNodeDOS = storyNodeMapper.selectMilestones();
         List<MilestoneStoryNodeVO> milestoneStoryNodeVOS = storyNodeDOS.stream()
                 .map(storyNodeDO -> MilestoneStoryNodeVO.builder()
                         .id(storyNodeDO.getId())
@@ -57,23 +53,13 @@ public class StoryServiceImpl implements StoryService {
     @Override
     public Response<StoryOverviewVO> getOverview() {
         // 查询所有可见章节。按 sort_order 升序
-        List<StoryChapterDO> storyChapterDOS = storyChapterMapper.selectList(
-                new LambdaQueryWrapper<StoryChapterDO>()
-                        .eq(StoryChapterDO::getIsVisible, 1)
-                        .orderByAsc(StoryChapterDO::getSortOrder)
-        );
+        List<StoryChapterDO> storyChapterDOS = storyChapterMapper.selectVisibleList();
         if (CollUtil.isEmpty(storyChapterDOS)) {
             return Response.success();
         }
 
         // 查所有可见故事节点，按 chapter_id + sort_order 升序
-        List<StoryNodeDO> storyNodeDOS = storyNodeMapper.selectList(
-                new LambdaQueryWrapper<StoryNodeDO>()
-                        .eq(StoryNodeDO::getIsVisible, 1)
-                        .eq(StoryNodeDO::getIsDeleted, false)
-                        .orderByAsc(StoryNodeDO::getChapterId)
-                        .orderByAsc(StoryNodeDO::getSortOrder)
-        );
+        List<StoryNodeDO> storyNodeDOS = storyNodeMapper.selectVisibleList();
 
         // 故事节点按 chapter_id 分组
         Map<Long, List<StoryNodeDO>> chapterIdAndNodeMap = storyNodeDOS.stream()
@@ -115,14 +101,7 @@ public class StoryServiceImpl implements StoryService {
     @Override
     public Response<List<StoryNodeVO>> getStoryByChapterId(GetStoryByChapterIdReqVO getStoryByChapterIdReqVO) {
         Long chapterId = Long.valueOf(getStoryByChapterIdReqVO.getChapterId());
-        List<StoryNodeDO> storyNodeDOS = storyNodeMapper.selectList(
-                new LambdaQueryWrapper<StoryNodeDO>()
-                        .eq(StoryNodeDO::getChapterId, chapterId)
-                        .eq(StoryNodeDO::getIsVisible, 1)
-                        .eq(StoryNodeDO::getIsDeleted, false)
-                        .orderByAsc(StoryNodeDO::getHappenedTime)
-                        .orderByAsc(StoryNodeDO::getId)
-        );
+        List<StoryNodeDO> storyNodeDOS = storyNodeMapper.selectVisibleByChapterId(chapterId);
         if (CollUtil.isEmpty(storyNodeDOS)) {
             return Response.success();
         }
@@ -146,10 +125,7 @@ public class StoryServiceImpl implements StoryService {
     @Override
     public Response<StoryDetailRspVO> getStoryDetail(StoryDetailReqVO reqVO) {
         // 1. 查询当前故事
-        StoryNodeDO current = storyNodeMapper.selectOne(new LambdaQueryWrapper<StoryNodeDO>()
-                .eq(StoryNodeDO::getId, reqVO.getId())
-                .eq(StoryNodeDO::getIsDeleted, false)
-                .eq(StoryNodeDO::getIsVisible, 1));
+        StoryNodeDO current = storyNodeMapper.selectVisibleById(reqVO.getId());
         if (current == null) {
             return Response.success();
         }
@@ -173,7 +149,7 @@ public class StoryServiceImpl implements StoryService {
         // 3. 查询章节名称
         String chapterName = null;
         if (current.getChapterId() != null) {
-            StoryChapterDO chapter = storyChapterMapper.selectById(current.getChapterId());
+            StoryChapterDO chapter = storyChapterMapper.selectChapterById(current.getChapterId());
             chapterName = chapter != null ? chapter.getName() : null;
         }
 
@@ -204,12 +180,7 @@ public class StoryServiceImpl implements StoryService {
      * 第一排序维度是章节 sort_order；同一章节内按发生时间、ID 升序。
      */
     private List<StoryNodeDO> queryOrderedVisibleStories() {
-        List<StoryChapterDO> chapters = storyChapterMapper.selectList(
-                new LambdaQueryWrapper<StoryChapterDO>()
-                        .eq(StoryChapterDO::getIsVisible, 1)
-                        .orderByAsc(StoryChapterDO::getSortOrder)
-                        .orderByAsc(StoryChapterDO::getId)
-        );
+        List<StoryChapterDO> chapters = storyChapterMapper.selectVisibleList();
         if (CollUtil.isEmpty(chapters)) {
             return Collections.emptyList();
         }
@@ -219,12 +190,7 @@ public class StoryServiceImpl implements StoryService {
             chapterOrder.put(chapters.get(i).getId(), i);
         }
 
-        List<StoryNodeDO> stories = storyNodeMapper.selectList(
-                new LambdaQueryWrapper<StoryNodeDO>()
-                        .in(StoryNodeDO::getChapterId, chapterOrder.keySet())
-                        .eq(StoryNodeDO::getIsVisible, 1)
-                        .eq(StoryNodeDO::getIsDeleted, false)
-        );
+        List<StoryNodeDO> stories = storyNodeMapper.selectVisibleByChapterIds(chapterOrder.keySet());
 
         Comparator<LocalDateTime> happenedTimeComparator = Comparator.nullsLast(Comparator.naturalOrder());
         Comparator<Long> idComparator = Comparator.nullsLast(Comparator.naturalOrder());

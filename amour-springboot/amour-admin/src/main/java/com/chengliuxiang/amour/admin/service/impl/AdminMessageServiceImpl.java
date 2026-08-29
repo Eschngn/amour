@@ -2,10 +2,6 @@ package com.chengliuxiang.amour.admin.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.chengliuxiang.amour.admin.model.vo.message.DeleteMessageReqVO;
 import com.chengliuxiang.amour.admin.model.vo.message.FindMessagePageListReqVO;
 import com.chengliuxiang.amour.admin.model.vo.message.FindMessagePageListRspVO;
@@ -16,6 +12,7 @@ import com.chengliuxiang.amour.common.domain.dos.UserDO;
 import com.chengliuxiang.amour.common.domain.mapper.MessageMapper;
 import com.chengliuxiang.amour.common.domain.mapper.MessageReplyMapper;
 import com.chengliuxiang.amour.common.domain.mapper.UserMapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
 import com.chengliuxiang.amour.common.exception.BizException;
 import com.chengliuxiang.amour.common.model.PageResult;
@@ -51,12 +48,8 @@ public class AdminMessageServiceImpl implements AdminMessageService {
 
     @Override
     public Response<PageResult<FindMessagePageListRspVO>> findMessagePageList(FindMessagePageListReqVO reqVO) {
-        Page<MessageDO> page = new Page<>(reqVO.getCurrent(), reqVO.getSize());
-        LambdaQueryWrapper<MessageDO> wrapper = new LambdaQueryWrapper<MessageDO>()
-                .like(StrUtil.isNotBlank(reqVO.getContent()), MessageDO::getContent, reqVO.getContent())
-                .eq(MessageDO::getIsDeleted, false)
-                .orderByDesc(MessageDO::getCreateTime);
-        IPage<MessageDO> messagePage = messageMapper.selectPage(page, wrapper);
+        IPage<MessageDO> messagePage = messageMapper.selectAdminPage(
+                reqVO.getCurrent(), reqVO.getSize(), reqVO.getContent());
 
         List<MessageDO> messages = messagePage.getRecords();
         if (CollUtil.isEmpty(messages)) {
@@ -71,10 +64,7 @@ public class AdminMessageServiceImpl implements AdminMessageService {
         List<String> messageIds = messages.stream()
                 .map(MessageDO::getId)
                 .collect(Collectors.toList());
-        List<MessageReplyDO> replies = messageReplyMapper.selectList(
-                new LambdaQueryWrapper<MessageReplyDO>()
-                        .in(MessageReplyDO::getMessageId, messageIds)
-                        .eq(MessageReplyDO::getIsDeleted, false));
+        List<MessageReplyDO> replies = messageReplyMapper.selectActiveByMessageIds(messageIds);
         Map<String, Long> replyCountMap = replies.stream()
                 .collect(Collectors.groupingBy(MessageReplyDO::getMessageId, Collectors.counting()));
 
@@ -82,8 +72,7 @@ public class AdminMessageServiceImpl implements AdminMessageService {
         messages.forEach(message -> addUserId(userIds, message.getUserId()));
         Map<Long, String> userNameMap = new HashMap<>();
         if (CollUtil.isNotEmpty(userIds)) {
-            userNameMap.putAll(userMapper.selectList(
-                            new LambdaQueryWrapper<UserDO>().in(UserDO::getId, userIds))
+            userNameMap.putAll(userMapper.findUsersByIds(userIds)
                     .stream()
                     .collect(Collectors.toMap(UserDO::getId,
                             user -> StrUtil.blankToDefault(user.getDisplayName(), "恋人"))));
@@ -111,21 +100,12 @@ public class AdminMessageServiceImpl implements AdminMessageService {
     @Transactional(rollbackFor = Exception.class)
     public Response<Void> deleteMessage(DeleteMessageReqVO reqVO) {
         String messageId = reqVO.getMessageId().trim();
-        int updatedRows = messageMapper.update(null,
-                new LambdaUpdateWrapper<MessageDO>()
-                        .eq(MessageDO::getId, messageId)
-                        .eq(MessageDO::getIsDeleted, false)
-                        .set(MessageDO::getIsDeleted, true)
-                        .set(MessageDO::getUpdateTime, LocalDateTime.now()));
+        int updatedRows = messageMapper.softDelete(messageId, LocalDateTime.now());
         if (updatedRows == 0) {
             throw new BizException(ResponseCodeEnum.MESSAGE_NOT_EXIST);
         }
 
-        messageReplyMapper.update(null,
-                new LambdaUpdateWrapper<MessageReplyDO>()
-                        .eq(MessageReplyDO::getMessageId, messageId)
-                        .eq(MessageReplyDO::getIsDeleted, false)
-                        .set(MessageReplyDO::getIsDeleted, true));
+        messageReplyMapper.softDeleteByMessageId(messageId);
         return Response.success();
     }
 

@@ -3,10 +3,6 @@ package com.chengliuxiang.amour.web.service.impl;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.chengliuxiang.amour.common.domain.dos.MessageDO;
 import com.chengliuxiang.amour.common.domain.dos.MessageReplyDO;
 import com.chengliuxiang.amour.common.domain.dos.UserDO;
@@ -47,11 +43,8 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public Response<PageResult<MessagePageItemVO>> pageMessages(MessagePageQueryReqVO reqVO) {
-        Page<MessageDO> page = new Page<>(reqVO.getCurrent(), reqVO.getSize());
-        LambdaQueryWrapper<MessageDO> wrapper = new LambdaQueryWrapper<MessageDO>()
-                .eq(MessageDO::getIsDeleted, false)
-                .orderByDesc(MessageDO::getCreateTime);
-        IPage<MessageDO> messagePage = messageMapper.selectPage(page, wrapper);
+        com.baomidou.mybatisplus.core.metadata.IPage<MessageDO> messagePage = messageMapper.selectVisiblePage(
+                reqVO.getCurrent(), reqVO.getSize());
 
         List<MessageDO> messages = messagePage.getRecords();
         if (CollUtil.isEmpty(messages)) {
@@ -72,11 +65,7 @@ public class MessageServiceImpl implements MessageService {
                 .collect(Collectors.toList());
 
         // 查询这些留言的所有回复，按创建时间升序
-        List<MessageReplyDO> allReplies = messageReplyMapper.selectList(
-                new LambdaQueryWrapper<MessageReplyDO>()
-                        .in(MessageReplyDO::getMessageId, messageIds)
-                        .eq(MessageReplyDO::getIsDeleted, false)
-                        .orderByAsc(MessageReplyDO::getCreateTime));
+        List<MessageReplyDO> allReplies = messageReplyMapper.selectVisibleByMessageIds(messageIds);
 
         Map<String, List<MessageReplyDO>> replyMap = allReplies.stream()
                 .collect(Collectors.groupingBy(MessageReplyDO::getMessageId));
@@ -94,8 +83,7 @@ public class MessageServiceImpl implements MessageService {
         // 查询用户，展示资料与登录 username 分离，留言板不会暴露登录名。
         Map<Long, UserDO> userMap;
         if (CollUtil.isNotEmpty(userIds)) {
-            List<UserDO> users = userMapper.selectList(
-                    new LambdaQueryWrapper<UserDO>().in(UserDO::getId, userIds));
+            List<UserDO> users = userMapper.findUsersByIds(userIds);
             userMap = users.stream()
                     .collect(Collectors.toMap(UserDO::getId, user -> user));
         } else {
@@ -147,13 +135,13 @@ public class MessageServiceImpl implements MessageService {
                 .updateTime(now)
                 .isDeleted(false)
                 .build();
-        messageMapper.insert(message);
+        messageMapper.insertMessage(message);
         return Response.success();
     }
 
     @Override
     public Response<Void> replyMessage(MessageReplyReqVO reqVO) {
-        MessageDO message = messageMapper.selectById(reqVO.getMessageId().trim());
+        MessageDO message = messageMapper.findById(reqVO.getMessageId().trim());
         if (message == null || Boolean.TRUE.equals(message.getIsDeleted())) {
             throw new BizException(ResponseCodeEnum.MESSAGE_NOT_EXIST);
         }
@@ -161,7 +149,7 @@ public class MessageServiceImpl implements MessageService {
         String toUserId = message.getUserId();
         String parentReplyId = null;
         if (StrUtil.isNotBlank(reqVO.getReplyId())) {
-            MessageReplyDO targetReply = messageReplyMapper.selectById(reqVO.getReplyId().trim());
+            MessageReplyDO targetReply = messageReplyMapper.findById(reqVO.getReplyId().trim());
             if (targetReply == null
                     || Boolean.TRUE.equals(targetReply.getIsDeleted())
                     || !message.getId().equals(targetReply.getMessageId())) {
@@ -180,7 +168,7 @@ public class MessageServiceImpl implements MessageService {
                 .createTime(LocalDateTime.now())
                 .isDeleted(false)
                 .build();
-        messageReplyMapper.insert(reply);
+        messageReplyMapper.insertReply(reply);
         return Response.success();
     }
 
@@ -188,7 +176,7 @@ public class MessageServiceImpl implements MessageService {
     @Transactional(rollbackFor = Exception.class)
     public Response<Void> deleteMessage(MessageDeleteReqVO reqVO) {
         String messageId = reqVO.getMessageId().trim();
-        MessageDO message = messageMapper.selectById(messageId);
+        MessageDO message = messageMapper.findById(messageId);
         if (message == null || Boolean.TRUE.equals(message.getIsDeleted())) {
             throw new BizException(ResponseCodeEnum.MESSAGE_NOT_EXIST);
         }
@@ -198,22 +186,12 @@ public class MessageServiceImpl implements MessageService {
             throw new BizException(ResponseCodeEnum.MESSAGE_DELETE_FORBIDDEN);
         }
 
-        int updatedRows = messageMapper.update(null,
-                new LambdaUpdateWrapper<MessageDO>()
-                        .eq(MessageDO::getId, messageId)
-                        .eq(MessageDO::getUserId, currentUserId)
-                        .eq(MessageDO::getIsDeleted, false)
-                        .set(MessageDO::getIsDeleted, true)
-                        .set(MessageDO::getUpdateTime, LocalDateTime.now()));
+        int updatedRows = messageMapper.softDeleteOwned(messageId, currentUserId, LocalDateTime.now());
         if (updatedRows == 0) {
             throw new BizException(ResponseCodeEnum.MESSAGE_NOT_EXIST);
         }
 
-        messageReplyMapper.update(null,
-                new LambdaUpdateWrapper<MessageReplyDO>()
-                        .eq(MessageReplyDO::getMessageId, messageId)
-                        .eq(MessageReplyDO::getIsDeleted, false)
-                        .set(MessageReplyDO::getIsDeleted, true));
+        messageReplyMapper.softDeleteByMessageId(messageId);
         return Response.success();
     }
 
@@ -221,12 +199,12 @@ public class MessageServiceImpl implements MessageService {
     @Transactional(rollbackFor = Exception.class)
     public Response<Void> deleteReply(MessageReplyDeleteReqVO reqVO) {
         String replyId = reqVO.getReplyId().trim();
-        MessageReplyDO reply = messageReplyMapper.selectById(replyId);
+        MessageReplyDO reply = messageReplyMapper.findById(replyId);
         if (reply == null || Boolean.TRUE.equals(reply.getIsDeleted())) {
             throw new BizException(ResponseCodeEnum.MESSAGE_REPLY_NOT_EXIST);
         }
 
-        MessageDO message = messageMapper.selectById(reply.getMessageId());
+        MessageDO message = messageMapper.findById(reply.getMessageId());
         if (message == null || Boolean.TRUE.equals(message.getIsDeleted())) {
             throw new BizException(ResponseCodeEnum.MESSAGE_REPLY_NOT_EXIST);
         }
@@ -236,37 +214,12 @@ public class MessageServiceImpl implements MessageService {
             throw new BizException(ResponseCodeEnum.MESSAGE_REPLY_DELETE_FORBIDDEN);
         }
 
-        Set<String> replyIds = collectReplyTreeIds(replyId);
-        int updatedRows = messageReplyMapper.update(null,
-                new LambdaUpdateWrapper<MessageReplyDO>()
-                        .in(MessageReplyDO::getId, replyIds)
-                        .eq(MessageReplyDO::getIsDeleted, false)
-                        .set(MessageReplyDO::getIsDeleted, true));
+        Set<String> replyIds = messageReplyMapper.collectReplyTreeIds(replyId);
+        int updatedRows = messageReplyMapper.softDeleteByIds(replyIds);
         if (updatedRows == 0) {
             throw new BizException(ResponseCodeEnum.MESSAGE_REPLY_NOT_EXIST);
         }
         return Response.success();
-    }
-
-    private Set<String> collectReplyTreeIds(String rootReplyId) {
-        Set<String> replyIds = new HashSet<>();
-        replyIds.add(rootReplyId);
-
-        Set<String> parentIds = Collections.singleton(rootReplyId);
-        while (CollUtil.isNotEmpty(parentIds)) {
-            List<MessageReplyDO> children = messageReplyMapper.selectList(
-                    new LambdaQueryWrapper<MessageReplyDO>()
-                            .select(MessageReplyDO::getId)
-                            .in(MessageReplyDO::getParentReplyId, parentIds)
-                            .eq(MessageReplyDO::getIsDeleted, false));
-            Set<String> childIds = children.stream()
-                    .map(MessageReplyDO::getId)
-                    .filter(StrUtil::isNotBlank)
-                    .filter(replyIds::add)
-                    .collect(Collectors.toSet());
-            parentIds = childIds;
-        }
-        return replyIds;
     }
 
     private void addUserId(Set<Long> userIds, String userIdStr) {

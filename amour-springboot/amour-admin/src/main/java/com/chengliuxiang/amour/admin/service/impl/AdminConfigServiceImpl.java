@@ -1,9 +1,7 @@
 package com.chengliuxiang.amour.admin.service.impl;
 
 import cn.hutool.core.util.StrUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.chengliuxiang.amour.admin.model.vo.config.DeleteSiteConfigReqVO;
 import com.chengliuxiang.amour.admin.model.vo.config.FindSiteConfigPageListReqVO;
 import com.chengliuxiang.amour.admin.model.vo.config.FindSiteConfigPageListRspVO;
@@ -66,19 +64,11 @@ public class AdminConfigServiceImpl implements AdminConfigService {
     public Response<PageResult<FindSiteConfigPageListRspVO>> findSiteConfigPageList(FindSiteConfigPageListReqVO reqVO) {
         String keyword = StrUtil.nullToEmpty(reqVO.getKeyword()).trim();
         String requestedValueType = StrUtil.nullToEmpty(reqVO.getValueType()).trim();
-        Page<SiteConfigDO> page = new Page<>(
+        IPage<SiteConfigDO> result = siteConfigMapper.selectConfigPage(
                 normalizePageNumber(reqVO.getCurrent(), 1L),
-                normalizePageNumber(reqVO.getSize(), 10L));
-        LambdaQueryWrapper<SiteConfigDO> wrapper = new LambdaQueryWrapper<SiteConfigDO>()
-                .eq(StrUtil.isNotBlank(requestedValueType), SiteConfigDO::getValueType, requestedValueType)
-                .and(StrUtil.isNotBlank(keyword), query -> query
-                        .like(SiteConfigDO::getConfigKey, keyword)
-                        .or().like(SiteConfigDO::getConfigName, keyword)
-                        .or().like(SiteConfigDO::getConfigValue, keyword)
-                        .or().like(SiteConfigDO::getRemark, keyword))
-                .orderByAsc(SiteConfigDO::getSortOrder)
-                .orderByDesc(SiteConfigDO::getId);
-        IPage<SiteConfigDO> result = siteConfigMapper.selectPage(page, wrapper);
+                normalizePageNumber(reqVO.getSize(), 10L),
+                requestedValueType,
+                keyword);
         List<FindSiteConfigPageListRspVO> records = result.getRecords().stream()
                 .map(config -> FindSiteConfigPageListRspVO.builder()
                         .id(config.getId())
@@ -102,16 +92,14 @@ public class AdminConfigServiceImpl implements AdminConfigService {
     @Override
     public Response<Void> saveSiteConfig(SaveSiteConfigReqVO reqVO) {
         String configKey = reqVO.getConfigKey().trim();
-        Long duplicateCount = siteConfigMapper.selectCount(new LambdaQueryWrapper<SiteConfigDO>()
-                .eq(SiteConfigDO::getConfigKey, configKey)
-                .ne(reqVO.getId() != null, SiteConfigDO::getId, reqVO.getId()));
+        Long duplicateCount = siteConfigMapper.countByConfigKey(configKey, reqVO.getId());
         if (duplicateCount != null && duplicateCount > 0) {
             throw new BizException(ResponseCodeEnum.SITE_CONFIG_DUPLICATE);
         }
 
         LocalDateTime now = LocalDateTime.now();
         if (reqVO.getId() == null) {
-            siteConfigMapper.insert(SiteConfigDO.builder()
+            siteConfigMapper.insertConfig(SiteConfigDO.builder()
                     .configKey(configKey)
                     .configName(reqVO.getConfigName().trim())
                     .configValue(StrUtil.nullToEmpty(reqVO.getConfigValue()))
@@ -124,7 +112,7 @@ public class AdminConfigServiceImpl implements AdminConfigService {
             return Response.success();
         }
 
-        SiteConfigDO current = siteConfigMapper.selectById(reqVO.getId());
+        SiteConfigDO current = siteConfigMapper.selectConfigById(reqVO.getId());
         if (current == null) {
             throw new BizException(ResponseCodeEnum.SITE_CONFIG_NOT_EXIST);
         }
@@ -135,16 +123,16 @@ public class AdminConfigServiceImpl implements AdminConfigService {
         current.setSortOrder(defaultSortOrder(reqVO.getSortOrder()));
         current.setRemark(StrUtil.nullToEmpty(reqVO.getRemark()).trim());
         current.setUpdateTime(now);
-        siteConfigMapper.updateById(current);
+        siteConfigMapper.updateConfig(current);
         return Response.success();
     }
 
     @Override
     public Response<Void> deleteSiteConfig(DeleteSiteConfigReqVO reqVO) {
-        if (siteConfigMapper.selectById(reqVO.getId()) == null) {
+        if (siteConfigMapper.selectConfigById(reqVO.getId()) == null) {
             throw new BizException(ResponseCodeEnum.SITE_CONFIG_NOT_EXIST);
         }
-        siteConfigMapper.deleteById(reqVO.getId());
+        siteConfigMapper.deleteConfigById(reqVO.getId());
         return Response.success();
     }
 
@@ -206,7 +194,7 @@ public class AdminConfigServiceImpl implements AdminConfigService {
         LocalDateTime now = LocalDateTime.now();
         DictTypeConfig value = new DictTypeConfig(dictType, reqVO.getStatus());
         if (reqVO.getId() == null) {
-            siteConfigMapper.insert(SiteConfigDO.builder()
+            siteConfigMapper.insertConfig(SiteConfigDO.builder()
                     .configKey(generateConfigKey(DICT_TYPE_KEY_PREFIX))
                     .configName(dictName)
                     .configValue(writeJson(value))
@@ -227,7 +215,7 @@ public class AdminConfigServiceImpl implements AdminConfigService {
         current.setSortOrder(defaultSortOrder(reqVO.getSortOrder()));
         current.setRemark(StrUtil.nullToEmpty(reqVO.getRemark()).trim());
         current.setUpdateTime(now);
-        siteConfigMapper.updateById(current);
+        siteConfigMapper.updateConfig(current);
 
         if (previousValue != null && StrUtil.isNotBlank(previousValue.getDictType())
                 && !previousValue.getDictType().equals(dictType)) {
@@ -249,10 +237,10 @@ public class AdminConfigServiceImpl implements AdminConfigService {
         for (SiteConfigDO itemConfig : loadConfigs(DICT_ITEM_VALUE_TYPE)) {
             DictItemConfig itemValue = readItemValue(itemConfig);
             if (itemValue != null && typeValue.getDictType().equals(itemValue.getDictType())) {
-                siteConfigMapper.deleteById(itemConfig.getId());
+                siteConfigMapper.deleteConfigById(itemConfig.getId());
             }
         }
-        siteConfigMapper.deleteById(typeConfig.getId());
+        siteConfigMapper.deleteConfigById(typeConfig.getId());
         return Response.success();
     }
 
@@ -292,7 +280,7 @@ public class AdminConfigServiceImpl implements AdminConfigService {
                 StrUtil.nullToEmpty(reqVO.getCssClass()).trim(),
                 reqVO.getStatus());
         if (reqVO.getId() == null) {
-            siteConfigMapper.insert(SiteConfigDO.builder()
+            siteConfigMapper.insertConfig(SiteConfigDO.builder()
                     .configKey(generateConfigKey(DICT_ITEM_KEY_PREFIX))
                     .configName(reqVO.getItemLabel().trim())
                     .configValue(writeJson(value))
@@ -312,33 +300,29 @@ public class AdminConfigServiceImpl implements AdminConfigService {
         current.setSortOrder(defaultSortOrder(reqVO.getSortOrder()));
         current.setRemark(StrUtil.nullToEmpty(reqVO.getRemark()).trim());
         current.setUpdateTime(now);
-        siteConfigMapper.updateById(current);
+        siteConfigMapper.updateConfig(current);
         return Response.success();
     }
 
     @Override
     public Response<Void> deleteDictItem(DeleteDictItemReqVO reqVO) {
-        SiteConfigDO legacyConfig = siteConfigMapper.selectById(reqVO.getId());
+        SiteConfigDO legacyConfig = siteConfigMapper.selectConfigById(reqVO.getId());
         if (legacyConfig != null && isLegacyConfig(legacyConfig)) {
-            siteConfigMapper.deleteById(legacyConfig.getId());
+            siteConfigMapper.deleteConfigById(legacyConfig.getId());
             return Response.success();
         }
         SiteConfigDO item = findConfig(reqVO.getId(), DICT_ITEM_VALUE_TYPE,
                 ResponseCodeEnum.DICT_ITEM_NOT_EXIST);
-        siteConfigMapper.deleteById(item.getId());
+        siteConfigMapper.deleteConfigById(item.getId());
         return Response.success();
     }
 
     private List<SiteConfigDO> loadConfigs(String valueType) {
-        return siteConfigMapper.selectList(new LambdaQueryWrapper<SiteConfigDO>()
-                .eq(SiteConfigDO::getValueType, valueType));
+        return siteConfigMapper.selectByValueType(valueType);
     }
 
     private List<SiteConfigDO> loadLegacyConfigs() {
-        return siteConfigMapper.selectList(new LambdaQueryWrapper<SiteConfigDO>()
-                .notIn(SiteConfigDO::getValueType, DICT_TYPE_VALUE_TYPE, DICT_ITEM_VALUE_TYPE)
-                .orderByAsc(SiteConfigDO::getSortOrder)
-                .orderByDesc(SiteConfigDO::getId));
+        return siteConfigMapper.selectLegacyConfigs(DICT_TYPE_VALUE_TYPE, DICT_ITEM_VALUE_TYPE);
     }
 
     private boolean shouldIncludeLegacyType(String keyword, List<SiteConfigDO> legacyConfigs) {
@@ -374,9 +358,7 @@ public class AdminConfigServiceImpl implements AdminConfigService {
     }
 
     private Response<Void> saveLegacyConfig(SaveDictItemReqVO reqVO, String configKey) {
-        SiteConfigDO duplicate = siteConfigMapper.selectOne(new LambdaQueryWrapper<SiteConfigDO>()
-                .eq(SiteConfigDO::getConfigKey, configKey)
-                .last("LIMIT 1"));
+        SiteConfigDO duplicate = siteConfigMapper.selectByConfigKey(configKey);
         if (duplicate != null && !duplicate.getId().equals(reqVO.getId())) {
             throw new BizException(ResponseCodeEnum.DICT_ITEM_DUPLICATE);
         }
@@ -384,7 +366,7 @@ public class AdminConfigServiceImpl implements AdminConfigService {
         LocalDateTime now = LocalDateTime.now();
         String valueType = StrUtil.isBlank(reqVO.getCssClass()) ? "text" : reqVO.getCssClass().trim();
         if (reqVO.getId() == null) {
-            siteConfigMapper.insert(SiteConfigDO.builder()
+            siteConfigMapper.insertConfig(SiteConfigDO.builder()
                     .configKey(configKey)
                     .configName(reqVO.getItemLabel().trim())
                     .configValue(StrUtil.nullToEmpty(reqVO.getConfigValue()))
@@ -397,7 +379,7 @@ public class AdminConfigServiceImpl implements AdminConfigService {
             return Response.success();
         }
 
-        SiteConfigDO current = siteConfigMapper.selectById(reqVO.getId());
+        SiteConfigDO current = siteConfigMapper.selectConfigById(reqVO.getId());
         if (!isLegacyConfig(current)) {
             throw new BizException(ResponseCodeEnum.DICT_ITEM_NOT_EXIST);
         }
@@ -408,14 +390,12 @@ public class AdminConfigServiceImpl implements AdminConfigService {
         current.setSortOrder(defaultSortOrder(reqVO.getSortOrder()));
         current.setRemark(StrUtil.nullToEmpty(reqVO.getRemark()).trim());
         current.setUpdateTime(now);
-        siteConfigMapper.updateById(current);
+        siteConfigMapper.updateConfig(current);
         return Response.success();
     }
 
     private SiteConfigDO findConfig(Long id, String valueType, ResponseCodeEnum notExistCode) {
-        SiteConfigDO config = siteConfigMapper.selectOne(new LambdaQueryWrapper<SiteConfigDO>()
-                .eq(SiteConfigDO::getId, id)
-                .eq(SiteConfigDO::getValueType, valueType));
+        SiteConfigDO config = siteConfigMapper.selectByIdAndValueType(id, valueType);
         if (config == null) {
             throw new BizException(notExistCode);
         }
@@ -460,7 +440,7 @@ public class AdminConfigServiceImpl implements AdminConfigService {
                 value.setDictType(nextType);
                 config.setConfigValue(writeJson(value));
                 config.setUpdateTime(updateTime);
-                siteConfigMapper.updateById(config);
+                siteConfigMapper.updateConfig(config);
             }
         }
     }

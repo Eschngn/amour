@@ -5,7 +5,6 @@ import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.digest.DigestUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.chengliuxiang.amour.common.constant.RedisKeyConstants;
 import com.chengliuxiang.amour.common.domain.dos.SiteConfigDO;
 import com.chengliuxiang.amour.common.domain.dos.UserDO;
@@ -98,7 +97,7 @@ public class WechatLoginServiceImpl implements WechatLoginService {
             if (user != null) {
                 user.setWechatOpenid(openid);
                 user.setUpdateTime(LocalDateTime.now());
-                userMapper.updateById(user);
+                userMapper.save(user);
             }
         }
         if (user == null) {
@@ -114,7 +113,7 @@ public class WechatLoginServiceImpl implements WechatLoginService {
                     .isDeleted(false)
                     .build();
             try {
-                userMapper.insert(user);
+                userMapper.save(user);
                 shouldAssignCommonRole = true;
             } catch (DataIntegrityViolationException e) {
                 // 并发首次登录时，另一请求可能已经创建了相同的 openid/用户名。
@@ -145,7 +144,7 @@ public class WechatLoginServiceImpl implements WechatLoginService {
             return null;
         }
         try {
-            UserDO user = userMapper.selectById(Long.valueOf(userIdValue));
+            UserDO user = userMapper.selectActiveById(Long.valueOf(userIdValue));
             if (user != null && !Boolean.TRUE.equals(user.getIsDeleted())) {
                 return user;
             }
@@ -159,12 +158,7 @@ public class WechatLoginServiceImpl implements WechatLoginService {
      * 查询 site_config 表中 config_key=default_avatar 配置的头像地址，未配置时返回空串。
      */
     private String queryDefaultAvatar() {
-        SiteConfigDO siteConfig = siteConfigMapper.selectOne(
-                new LambdaQueryWrapper<SiteConfigDO>()
-                        .select(SiteConfigDO::getConfigValue)
-                        .eq(SiteConfigDO::getConfigKey, DEFAULT_AVATAR_CONFIG_KEY)
-                        .last("LIMIT 1")
-        );
+        SiteConfigDO siteConfig = siteConfigMapper.selectValueByKey(DEFAULT_AVATAR_CONFIG_KEY);
         return siteConfig == null ? "" : StrUtil.nullToEmpty(siteConfig.getConfigValue());
     }
 

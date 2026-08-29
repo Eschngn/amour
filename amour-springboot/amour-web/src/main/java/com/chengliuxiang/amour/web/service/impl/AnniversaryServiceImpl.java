@@ -1,6 +1,5 @@
 package com.chengliuxiang.amour.web.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.chengliuxiang.amour.common.domain.dos.AnniversaryDO;
 import com.chengliuxiang.amour.common.domain.mapper.AnniversaryMapper;
 import com.chengliuxiang.amour.common.utils.Response;
@@ -20,13 +19,7 @@ public class AnniversaryServiceImpl implements AnniversaryService {
 
     @Override
     public Response<List<AnniversaryVO>> listAnniversaries() {
-        List<AnniversaryVO> records = anniversaryMapper.selectList(
-                        new LambdaQueryWrapper<AnniversaryDO>()
-                                .eq(AnniversaryDO::getIsDeleted, false)
-                                .eq(AnniversaryDO::getIsVisible, true)
-                                .orderByAsc(AnniversaryDO::getSortOrder)
-                                .orderByAsc(AnniversaryDO::getAnniversaryDate)
-                                .orderByAsc(AnniversaryDO::getId))
+        List<AnniversaryVO> records = anniversaryMapper.selectVisibleList()
                 .stream()
                 .map(this::toVO)
                 .collect(Collectors.toList());

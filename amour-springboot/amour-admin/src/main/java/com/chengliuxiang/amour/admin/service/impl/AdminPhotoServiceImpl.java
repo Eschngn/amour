@@ -2,10 +2,6 @@ package com.chengliuxiang.amour.admin.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.StrUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.chengliuxiang.amour.admin.model.vo.photo.AddPhotoReqVO;
 import com.chengliuxiang.amour.admin.model.vo.photo.DeletePhotoCategoryReqVO;
 import com.chengliuxiang.amour.admin.model.vo.photo.DeletePhotoReqVO;
@@ -20,6 +16,7 @@ import com.chengliuxiang.amour.common.domain.dos.PhotoCategoryDO;
 import com.chengliuxiang.amour.common.domain.dos.PhotoDO;
 import com.chengliuxiang.amour.common.domain.mapper.PhotoCategoryMapper;
 import com.chengliuxiang.amour.common.domain.mapper.PhotoMapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
 import com.chengliuxiang.amour.common.exception.BizException;
 import com.chengliuxiang.amour.common.model.PageResult;
@@ -53,16 +50,8 @@ public class AdminPhotoServiceImpl implements AdminPhotoService {
         long current = normalizePositive(reqVO.getCurrent(), 1L);
         long size = Math.min(normalizePositive(reqVO.getSize(), DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
 
-        LambdaQueryWrapper<PhotoDO> wrapper = new LambdaQueryWrapper<PhotoDO>()
-                .eq(PhotoDO::getIsDeleted, false)
-                .like(StrUtil.isNotBlank(reqVO.getTitle()), PhotoDO::getTitle, StrUtil.trim(reqVO.getTitle()))
-                .eq(reqVO.getPhotoCategoryId() != null, PhotoDO::getPhotoCategoryId, reqVO.getPhotoCategoryId())
-                .eq(reqVO.getIsVisible() != null, PhotoDO::getIsVisible, reqVO.getIsVisible())
-                .orderByAsc(PhotoDO::getSortOrder)
-                .orderByDesc(PhotoDO::getTakenTime)
-                .orderByDesc(PhotoDO::getId);
-
-        IPage<PhotoDO> result = photoMapper.selectPage(new Page<>(current, size), wrapper);
+        IPage<PhotoDO> result = photoMapper.findAdminPage(
+                current, size, reqVO.getTitle(), reqVO.getPhotoCategoryId(), reqVO.getIsVisible());
         Map<Long, PhotoCategoryDO> categoryMap = loadCategoryMap(result.getRecords());
         List<FindPhotoPageListRspVO> records = result.getRecords().stream()
                 .map(photo -> toPageItem(photo, categoryMap))
@@ -102,7 +91,7 @@ public class AdminPhotoServiceImpl implements AdminPhotoService {
                 .updateTime(now)
                 .isDeleted(false)
                 .build();
-        photoMapper.insert(photo);
+        photoMapper.saveAdminPhoto(photo);
         return Response.success(photo.getId());
     }
 
@@ -118,33 +107,18 @@ public class AdminPhotoServiceImpl implements AdminPhotoService {
             clearOtherCovers(reqVO.getId(), now);
         }
 
-        LambdaUpdateWrapper<PhotoDO> wrapper = new LambdaUpdateWrapper<PhotoDO>()
-                .eq(PhotoDO::getId, reqVO.getId())
-                .eq(PhotoDO::getIsDeleted, false)
-                .set(PhotoDO::getTitle, StrUtil.trim(reqVO.getTitle()))
-                .set(PhotoDO::getDescription, StrUtil.nullToEmpty(StrUtil.trim(reqVO.getDescription())))
-                .set(PhotoDO::getPhotoCategoryId, reqVO.getPhotoCategoryId())
-                .set(PhotoDO::getUrl, StrUtil.trim(reqVO.getUrl()))
-                .set(PhotoDO::getTakenTime, reqVO.getTakenTime())
-                .set(PhotoDO::getLocation, StrUtil.nullToEmpty(StrUtil.trim(reqVO.getLocation())))
-                .set(PhotoDO::getSortOrder, reqVO.getSortOrder() == null ? 0 : reqVO.getSortOrder())
-                .set(PhotoDO::getIsCover, isCover)
-                .set(PhotoDO::getIsVisible, isVisible)
-                .set(PhotoDO::getUpdateTime, now);
-        photoMapper.update(null, wrapper);
+        photoMapper.modifyPhoto(reqVO.getId(), StrUtil.trim(reqVO.getTitle()),
+                StrUtil.nullToEmpty(StrUtil.trim(reqVO.getDescription())), reqVO.getPhotoCategoryId(),
+                StrUtil.trim(reqVO.getUrl()), reqVO.getTakenTime(),
+                StrUtil.nullToEmpty(StrUtil.trim(reqVO.getLocation())),
+                reqVO.getSortOrder() == null ? 0 : reqVO.getSortOrder(), isCover, isVisible, now);
         return Response.success();
     }
 
     @Override
     public Response<Void> updateVisibleStatus(UpdatePhotoVisibleStatusReqVO reqVO) {
         requirePhoto(reqVO.getId());
-        LambdaUpdateWrapper<PhotoDO> wrapper = new LambdaUpdateWrapper<PhotoDO>()
-                .eq(PhotoDO::getId, reqVO.getId())
-                .eq(PhotoDO::getIsDeleted, false)
-                .set(PhotoDO::getIsVisible, reqVO.getIsVisible())
-                .set(!reqVO.getIsVisible(), PhotoDO::getIsCover, false)
-                .set(PhotoDO::getUpdateTime, LocalDateTime.now());
-        photoMapper.update(null, wrapper);
+        photoMapper.modifyVisibleStatus(reqVO.getId(), reqVO.getIsVisible(), LocalDateTime.now());
         return Response.success();
     }
 
@@ -157,16 +131,13 @@ public class AdminPhotoServiceImpl implements AdminPhotoService {
                 .isCover(false)
                 .updateTime(LocalDateTime.now())
                 .build();
-        photoMapper.updateById(photo);
+        photoMapper.markDeletedById(photo.getId(), photo.getUpdateTime());
         return Response.success();
     }
 
     @Override
     public Response<List<PhotoCategoryListRspVO>> listPhotoCategories() {
-        List<PhotoCategoryListRspVO> categories = photoCategoryMapper.selectList(
-                        new LambdaQueryWrapper<PhotoCategoryDO>()
-                                .orderByAsc(PhotoCategoryDO::getSortOrder)
-                                .orderByAsc(PhotoCategoryDO::getId))
+        List<PhotoCategoryListRspVO> categories = photoCategoryMapper.findAdminList()
                 .stream()
                 .map(category -> PhotoCategoryListRspVO.builder()
                         .id(category.getId())
@@ -182,19 +153,14 @@ public class AdminPhotoServiceImpl implements AdminPhotoService {
     @Transactional(rollbackFor = Exception.class)
     public Response<Long> savePhotoCategory(SavePhotoCategoryReqVO reqVO) {
         String categoryName = StrUtil.trim(reqVO.getCategoryName());
-        Long duplicateCount = photoCategoryMapper.selectCount(new LambdaQueryWrapper<PhotoCategoryDO>()
-                .eq(PhotoCategoryDO::getCategoryName, categoryName)
-                .ne(reqVO.getId() != null, PhotoCategoryDO::getId, reqVO.getId()));
+        Long duplicateCount = photoCategoryMapper.countByNameExcludingId(categoryName, reqVO.getId());
         if (duplicateCount != null && duplicateCount > 0) {
             throw new BizException(ResponseCodeEnum.PHOTO_CATEGORY_DUPLICATE);
         }
 
         LocalDateTime now = LocalDateTime.now();
         if (reqVO.getId() == null) {
-            PhotoCategoryDO lastCategory = photoCategoryMapper.selectOne(new LambdaQueryWrapper<PhotoCategoryDO>()
-                    .orderByDesc(PhotoCategoryDO::getSortOrder)
-                    .orderByDesc(PhotoCategoryDO::getId)
-                    .last("LIMIT 1"));
+            PhotoCategoryDO lastCategory = photoCategoryMapper.findLastBySortOrder();
             int sortOrder = lastCategory == null || lastCategory.getSortOrder() == null
                     ? 10 : lastCategory.getSortOrder() + 10;
             PhotoCategoryDO category = PhotoCategoryDO.builder()
@@ -206,7 +172,7 @@ public class AdminPhotoServiceImpl implements AdminPhotoService {
                     .createTime(now)
                     .updateTime(now)
                     .build();
-            photoCategoryMapper.insert(category);
+            photoCategoryMapper.saveAdminCategory(category);
             return Response.success(category.getId());
         }
 
@@ -216,7 +182,7 @@ public class AdminPhotoServiceImpl implements AdminPhotoService {
             category.setIsEnabled(reqVO.getIsEnabled());
         }
         category.setUpdateTime(now);
-        photoCategoryMapper.updateById(category);
+        photoCategoryMapper.modifyAdminCategory(category);
         return Response.success(category.getId());
     }
 
@@ -224,20 +190,16 @@ public class AdminPhotoServiceImpl implements AdminPhotoService {
     @Transactional(rollbackFor = Exception.class)
     public Response<Void> deletePhotoCategory(DeletePhotoCategoryReqVO reqVO) {
         requirePhotoCategory(reqVO.getId());
-        Long photoCount = photoMapper.selectCount(new LambdaQueryWrapper<PhotoDO>()
-                .eq(PhotoDO::getPhotoCategoryId, reqVO.getId())
-                .eq(PhotoDO::getIsDeleted, false));
+        Long photoCount = photoMapper.countActiveByCategoryId(reqVO.getId());
         if (photoCount != null && photoCount > 0) {
             throw new BizException(ResponseCodeEnum.PHOTO_CATEGORY_IN_USE);
         }
-        photoCategoryMapper.deleteById(reqVO.getId());
+        photoCategoryMapper.removeAdminCategory(reqVO.getId());
         return Response.success();
     }
 
     private PhotoDO requirePhoto(Long id) {
-        PhotoDO photo = photoMapper.selectOne(new LambdaQueryWrapper<PhotoDO>()
-                .eq(PhotoDO::getId, id)
-                .eq(PhotoDO::getIsDeleted, false));
+        PhotoDO photo = photoMapper.findActiveById(id);
         if (photo == null) {
             throw new BizException(ResponseCodeEnum.PHOTO_NOT_EXIST);
         }
@@ -245,7 +207,7 @@ public class AdminPhotoServiceImpl implements AdminPhotoService {
     }
 
     private PhotoCategoryDO requirePhotoCategory(Long id) {
-        PhotoCategoryDO category = photoCategoryMapper.selectById(id);
+        PhotoCategoryDO category = photoCategoryMapper.findCategoryById(id);
         if (category == null) {
             throw new BizException(ResponseCodeEnum.PHOTO_CATEGORY_NOT_EXIST);
         }
@@ -253,13 +215,7 @@ public class AdminPhotoServiceImpl implements AdminPhotoService {
     }
 
     private void clearOtherCovers(Long excludedId, LocalDateTime updateTime) {
-        LambdaUpdateWrapper<PhotoDO> wrapper = new LambdaUpdateWrapper<PhotoDO>()
-                .eq(PhotoDO::getIsDeleted, false)
-                .eq(PhotoDO::getIsCover, true)
-                .ne(excludedId != null, PhotoDO::getId, excludedId)
-                .set(PhotoDO::getIsCover, false)
-                .set(PhotoDO::getUpdateTime, updateTime);
-        photoMapper.update(null, wrapper);
+        photoMapper.clearOtherCovers(excludedId, updateTime);
     }
 
     private Map<Long, PhotoCategoryDO> loadCategoryMap(List<PhotoDO> photos) {
@@ -271,7 +227,7 @@ public class AdminPhotoServiceImpl implements AdminPhotoService {
         if (categoryIds.isEmpty()) {
             return Collections.emptyMap();
         }
-        return photoCategoryMapper.selectBatchIds(categoryIds).stream()
+        return photoCategoryMapper.findByIds(categoryIds).stream()
                 .collect(Collectors.toMap(PhotoCategoryDO::getId, Function.identity()));
     }
 

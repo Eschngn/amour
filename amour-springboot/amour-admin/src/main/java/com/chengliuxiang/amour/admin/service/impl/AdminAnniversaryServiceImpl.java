@@ -2,9 +2,7 @@ package com.chengliuxiang.amour.admin.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.StrUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.chengliuxiang.amour.admin.model.vo.anniversary.AddAnniversaryReqVO;
 import com.chengliuxiang.amour.admin.model.vo.anniversary.DeleteAnniversaryReqVO;
 import com.chengliuxiang.amour.admin.model.vo.anniversary.FindAnniversaryDetailReqVO;
@@ -41,16 +39,10 @@ public class AdminAnniversaryServiceImpl implements AdminAnniversaryService {
     public Response<PageResult<FindAnniversaryPageListRspVO>> findAnniversaryPageList(FindAnniversaryPageListReqVO reqVO) {
         long current = reqVO.getCurrent() == null || reqVO.getCurrent() < 1 ? 1 : reqVO.getCurrent();
         long size = reqVO.getSize() == null || reqVO.getSize() < 1 ? DEFAULT_PAGE_SIZE : Math.min(reqVO.getSize(), MAX_PAGE_SIZE);
-        LambdaQueryWrapper<AnniversaryDO> wrapper = new LambdaQueryWrapper<AnniversaryDO>()
-                .eq(AnniversaryDO::getIsDeleted, false)
-                .like(StrUtil.isNotBlank(reqVO.getTitle()), AnniversaryDO::getTitle, StrUtil.trim(reqVO.getTitle()))
-                .eq(StrUtil.isNotBlank(reqVO.getCategory()), AnniversaryDO::getCategory, StrUtil.trim(reqVO.getCategory()))
-                .eq(reqVO.getRepeatType() != null, AnniversaryDO::getRepeatType, reqVO.getRepeatType())
-                .eq(reqVO.getIsVisible() != null, AnniversaryDO::getIsVisible, reqVO.getIsVisible())
-                .orderByAsc(AnniversaryDO::getSortOrder)
-                .orderByAsc(AnniversaryDO::getAnniversaryDate)
-                .orderByDesc(AnniversaryDO::getId);
-        IPage<AnniversaryDO> page = anniversaryMapper.selectPage(new Page<>(current, size), wrapper);
+        String title = StrUtil.isNotBlank(reqVO.getTitle()) ? StrUtil.trim(reqVO.getTitle()) : null;
+        String category = StrUtil.isNotBlank(reqVO.getCategory()) ? StrUtil.trim(reqVO.getCategory()) : null;
+        IPage<AnniversaryDO> page = anniversaryMapper.selectAdminPage(
+                current, size, title, category, reqVO.getRepeatType(), reqVO.getIsVisible());
         List<FindAnniversaryPageListRspVO> records = page.getRecords().stream()
                 .map(this::toPageVO)
                 .collect(Collectors.toList());
@@ -81,7 +73,7 @@ public class AdminAnniversaryServiceImpl implements AdminAnniversaryService {
                 .updateTime(now)
                 .isDeleted(false)
                 .build();
-        anniversaryMapper.insert(anniversary);
+        anniversaryMapper.insertAnniversary(anniversary);
         return Response.success(anniversary.getId());
     }
 
@@ -98,7 +90,7 @@ public class AdminAnniversaryServiceImpl implements AdminAnniversaryService {
         current.setSortOrder(reqVO.getSortOrder() == null ? 0 : reqVO.getSortOrder());
         if (reqVO.getIsVisible() != null) current.setIsVisible(reqVO.getIsVisible());
         current.setUpdateTime(LocalDateTime.now());
-        anniversaryMapper.updateById(current);
+        anniversaryMapper.updateAnniversary(current);
         return Response.success();
     }
 
@@ -107,7 +99,7 @@ public class AdminAnniversaryServiceImpl implements AdminAnniversaryService {
         AnniversaryDO current = requireAnniversary(reqVO.getId());
         current.setIsVisible(reqVO.getIsVisible());
         current.setUpdateTime(LocalDateTime.now());
-        anniversaryMapper.updateById(current);
+        anniversaryMapper.updateAnniversary(current);
         return Response.success();
     }
 
@@ -117,14 +109,12 @@ public class AdminAnniversaryServiceImpl implements AdminAnniversaryService {
         current.setIsDeleted(true);
         current.setIsVisible(false);
         current.setUpdateTime(LocalDateTime.now());
-        anniversaryMapper.updateById(current);
+        anniversaryMapper.updateAnniversary(current);
         return Response.success();
     }
 
     private AnniversaryDO requireAnniversary(Long id) {
-        AnniversaryDO anniversary = anniversaryMapper.selectOne(new LambdaQueryWrapper<AnniversaryDO>()
-                .eq(AnniversaryDO::getId, id)
-                .eq(AnniversaryDO::getIsDeleted, false));
+        AnniversaryDO anniversary = anniversaryMapper.selectActiveById(id);
         if (anniversary == null) throw new BizException(ResponseCodeEnum.ANNIVERSARY_NOT_EXIST);
         return anniversary;
     }

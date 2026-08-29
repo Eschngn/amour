@@ -2,9 +2,7 @@ package com.chengliuxiang.amour.admin.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.StrUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.chengliuxiang.amour.admin.model.vo.story.*;
 import com.chengliuxiang.amour.admin.service.AdminStoryService;
 import com.chengliuxiang.amour.common.domain.dos.StoryChapterDO;
@@ -49,18 +47,9 @@ public class AdminStoryServiceImpl implements AdminStoryService {
      */
     @Override
     public Response<PageResult<FindStoryPageListRspVO>> findStoryPageList(FindStoryPageListReqVO reqVO) {
-        // 1. 构建分页参数
-        Page<StoryNodeDO> page = new Page<>(reqVO.getCurrent(), reqVO.getSize());
-
-        // 2. 构建查询条件 - title 模糊匹配，按 chapterId 升序、happenedTime 升序
-        LambdaQueryWrapper<StoryNodeDO> wrapper = new LambdaQueryWrapper<StoryNodeDO>()
-                .like(StrUtil.isNotBlank(reqVO.getTitle()), StoryNodeDO::getTitle, reqVO.getTitle())
-                .eq(StoryNodeDO::getIsDeleted, false)
-                .orderByAsc(StoryNodeDO::getChapterId)
-                .orderByAsc(StoryNodeDO::getHappenedTime);
-
-        // 3. 执行分页查询
-        IPage<StoryNodeDO> nodePage = storyNodeMapper.selectPage(page, wrapper);
+        IPage<StoryNodeDO> nodePage = storyNodeMapper.selectAdminPage(
+                reqVO.getCurrent(), reqVO.getSize(),
+                StrUtil.isNotBlank(reqVO.getTitle()) ? reqVO.getTitle() : null);
 
         // 4. 批量查询章节名称
         List<Long> chapterIds = nodePage.getRecords().stream()
@@ -73,7 +62,7 @@ public class AdminStoryServiceImpl implements AdminStoryService {
         if (chapterIds.isEmpty()) {
             chapterNameMap = Collections.emptyMap();
         } else {
-            chapterNameMap = storyChapterMapper.selectBatchIds(chapterIds).stream()
+            chapterNameMap = storyChapterMapper.selectChaptersByIds(chapterIds).stream()
                     .collect(Collectors.toMap(StoryChapterDO::getId, StoryChapterDO::getName));
         }
 
@@ -113,22 +102,17 @@ public class AdminStoryServiceImpl implements AdminStoryService {
     public Response<FindStoryDetailRspVO> findStoryDetail(FindStoryDetailReqVO findStoryDetailReqVO) {
         Long storyNodeId = findStoryDetailReqVO.getId();
         // 1. 查询故事节点
-        StoryNodeDO node = storyNodeMapper.selectOne(new LambdaQueryWrapper<StoryNodeDO>()
-                .eq(StoryNodeDO::getId, storyNodeId)
-                .eq(StoryNodeDO::getIsDeleted, false));
+        StoryNodeDO node = storyNodeMapper.selectActiveById(storyNodeId);
         if (node == null) {
             throw new BizException(ResponseCodeEnum.STORY_NOT_EXIST);
         }
 
         // 2. 查询章节名称
-        StoryChapterDO chapter = storyChapterMapper.selectById(node.getChapterId());
+        StoryChapterDO chapter = storyChapterMapper.selectChapterById(node.getChapterId());
         String chapterName = chapter != null ? chapter.getName() : null;
 
         // 3. 查询关联图片
-        List<StoryNodeImageDO> imageDOS = storyNodeImageMapper.selectList(
-                new LambdaQueryWrapper<StoryNodeImageDO>()
-                        .eq(StoryNodeImageDO::getNodeId, storyNodeId)
-                        .orderByAsc(StoryNodeImageDO::getSortOrder));
+        List<StoryNodeImageDO> imageDOS = storyNodeImageMapper.selectByNodeId(storyNodeId);
 
         List<FindStoryDetailRspVO.ImageVO> images = imageDOS.stream()
                 .map(img -> FindStoryDetailRspVO.ImageVO.builder()
@@ -163,7 +147,7 @@ public class AdminStoryServiceImpl implements AdminStoryService {
     @Override
     public Response<Long> addStory(AddStoryReqVO reqVO) {
         // 校验章节是否存在
-        StoryChapterDO chapter = storyChapterMapper.selectById(reqVO.getChapterId());
+        StoryChapterDO chapter = storyChapterMapper.selectChapterById(reqVO.getChapterId());
         if (chapter == null) {
             throw new BizException(ResponseCodeEnum.CHAPTER_NOT_EXIST);
         }
@@ -184,22 +168,20 @@ public class AdminStoryServiceImpl implements AdminStoryService {
                 .updateTime(LocalDateTime.now())
                 .build();
 
-        storyNodeMapper.insert(node);
+        storyNodeMapper.insertStoryNode(node);
         return Response.success(node.getId());
     }
 
     @Override
     public Response<Void> updateStory(UpdateStoryReqVO reqVO) {
         // 校验故事是否存在
-        StoryNodeDO existNode = storyNodeMapper.selectOne(new LambdaQueryWrapper<StoryNodeDO>()
-                .eq(StoryNodeDO::getId, reqVO.getId())
-                .eq(StoryNodeDO::getIsDeleted, false));
+        StoryNodeDO existNode = storyNodeMapper.selectActiveById(reqVO.getId());
         if (existNode == null) {
             throw new BizException(ResponseCodeEnum.STORY_NOT_EXIST);
         }
 
         // 校验章节是否存在
-        StoryChapterDO chapter = storyChapterMapper.selectById(reqVO.getChapterId());
+        StoryChapterDO chapter = storyChapterMapper.selectChapterById(reqVO.getChapterId());
         if (chapter == null) {
             throw new BizException(ResponseCodeEnum.CHAPTER_NOT_EXIST);
         }
@@ -220,16 +202,14 @@ public class AdminStoryServiceImpl implements AdminStoryService {
                 .updateTime(LocalDateTime.now())
                 .build();
 
-        storyNodeMapper.updateById(node);
+        storyNodeMapper.updateStoryNode(node);
         return Response.success();
     }
 
     @Override
     public Response<Void> updatePublishStatus(UpdateStoryVisibleStatusReqVO reqVO) {
         // 校验故事是否存在
-        StoryNodeDO existNode = storyNodeMapper.selectOne(new LambdaQueryWrapper<StoryNodeDO>()
-                .eq(StoryNodeDO::getId, reqVO.getId())
-                .eq(StoryNodeDO::getIsDeleted, false));
+        StoryNodeDO existNode = storyNodeMapper.selectActiveById(reqVO.getId());
         if (existNode == null) {
             throw new BizException(ResponseCodeEnum.STORY_NOT_EXIST);
         }
@@ -240,16 +220,14 @@ public class AdminStoryServiceImpl implements AdminStoryService {
                 .updateTime(LocalDateTime.now())
                 .build();
 
-        storyNodeMapper.updateById(node);
+        storyNodeMapper.updateStoryNode(node);
         return Response.success();
     }
 
     @Override
     public Response<Void> deleteStory(DeleteStoryReqVO reqVO) {
         // 校验故事是否存在（未删除的）
-        StoryNodeDO existNode = storyNodeMapper.selectOne(new LambdaQueryWrapper<StoryNodeDO>()
-                .eq(StoryNodeDO::getId, reqVO.getId())
-                .eq(StoryNodeDO::getIsDeleted, false));
+        StoryNodeDO existNode = storyNodeMapper.selectActiveById(reqVO.getId());
         if (existNode == null) {
             throw new BizException(ResponseCodeEnum.STORY_NOT_EXIST);
         }
@@ -260,7 +238,7 @@ public class AdminStoryServiceImpl implements AdminStoryService {
                 .updateTime(LocalDateTime.now())
                 .build();
 
-        storyNodeMapper.updateById(node);
+        storyNodeMapper.updateStoryNode(node);
         return Response.success();
     }
 }

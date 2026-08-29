@@ -1,6 +1,5 @@
 package com.chengliuxiang.amour.web.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.chengliuxiang.amour.common.domain.dos.SiteConfigDO;
 import com.chengliuxiang.amour.common.domain.mapper.SiteConfigMapper;
 import com.chengliuxiang.amour.common.utils.Response;
@@ -17,12 +16,7 @@ public class SiteConfigServiceImpl implements SiteConfigService {
 
     @Override
     public Response<String> queryConfigValue(String configKey) {
-        SiteConfigDO siteConfig = siteConfigMapper.selectOne(
-                new LambdaQueryWrapper<SiteConfigDO>()
-                        .select(SiteConfigDO::getConfigValue)
-                        .eq(SiteConfigDO::getConfigKey, configKey)
-                        .last("LIMIT 1")
-        );
+        SiteConfigDO siteConfig = siteConfigMapper.selectValueByKey(configKey);
         if (siteConfig == null) {
             return Response.fail("未找到配置项：" + configKey);
         }

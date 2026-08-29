@@ -1,8 +1,5 @@
 package com.chengliuxiang.amour.web.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.chengliuxiang.amour.common.domain.dos.PhotoCategoryDO;
 import com.chengliuxiang.amour.common.domain.dos.PhotoDO;
 import com.chengliuxiang.amour.common.domain.mapper.PhotoCategoryMapper;
@@ -39,16 +36,8 @@ public class PhotoServiceImpl implements PhotoService {
         long current = normalizeCurrent(reqVO.getCurrent());
         long size = normalizeSize(reqVO.getSize());
 
-        LambdaQueryWrapper<PhotoDO> queryWrapper = new LambdaQueryWrapper<PhotoDO>()
-                .eq(PhotoDO::getIsDeleted, false)
-                .eq(PhotoDO::getIsVisible, true)
-                .eq(reqVO.getPhotoCategoryId() != null,
-                        PhotoDO::getPhotoCategoryId, reqVO.getPhotoCategoryId())
-                .orderByAsc(PhotoDO::getSortOrder)
-                .orderByDesc(PhotoDO::getTakenTime)
-                .orderByDesc(PhotoDO::getId);
-
-        IPage<PhotoDO> photoPage = photoMapper.selectPage(new Page<>(current, size), queryWrapper);
+        com.baomidou.mybatisplus.core.metadata.IPage<PhotoDO> photoPage = photoMapper.selectVisiblePage(
+                current, size, reqVO.getPhotoCategoryId());
         Map<Long, PhotoCategoryDO> categoryMap = loadCategoryMap(photoPage.getRecords());
         List<PhotoPageItemVO> records = photoPage.getRecords().stream()
                 .map(photo -> buildPhotoVO(photo, categoryMap.get(photo.getPhotoCategoryId())))
@@ -64,27 +53,17 @@ public class PhotoServiceImpl implements PhotoService {
 
     @Override
     public Response<PhotoPageItemVO> findCoverPhoto() {
-        PhotoDO coverPhoto = photoMapper.selectOne(new LambdaQueryWrapper<PhotoDO>()
-                .eq(PhotoDO::getIsDeleted, false)
-                .eq(PhotoDO::getIsVisible, true)
-                .eq(PhotoDO::getIsCover, true)
-                .orderByDesc(PhotoDO::getUpdateTime)
-                .orderByDesc(PhotoDO::getId)
-                .last("LIMIT 1"));
+        PhotoDO coverPhoto = photoMapper.selectCoverPhoto();
         if (coverPhoto == null) {
             return Response.success(null);
         }
         return Response.success(buildPhotoVO(
-                coverPhoto, photoCategoryMapper.selectById(coverPhoto.getPhotoCategoryId())));
+                coverPhoto, photoCategoryMapper.findCategoryById(coverPhoto.getPhotoCategoryId())));
     }
 
     @Override
     public Response<List<PhotoCategoryVO>> listCategories() {
-        List<PhotoCategoryVO> categories = photoCategoryMapper.selectList(
-                        new LambdaQueryWrapper<PhotoCategoryDO>()
-                                .eq(PhotoCategoryDO::getIsEnabled, true)
-                                .orderByAsc(PhotoCategoryDO::getSortOrder)
-                                .orderByAsc(PhotoCategoryDO::getId))
+        List<PhotoCategoryVO> categories = photoCategoryMapper.selectEnabledList()
                 .stream()
                 .map(category -> PhotoCategoryVO.builder()
                         .id(category.getId())
@@ -115,7 +94,7 @@ public class PhotoServiceImpl implements PhotoService {
         if (categoryIds.isEmpty()) {
             return Collections.emptyMap();
         }
-        return photoCategoryMapper.selectBatchIds(categoryIds).stream()
+        return photoCategoryMapper.findByIds(categoryIds).stream()
                 .collect(Collectors.toMap(PhotoCategoryDO::getId, Function.identity()));
     }
 
