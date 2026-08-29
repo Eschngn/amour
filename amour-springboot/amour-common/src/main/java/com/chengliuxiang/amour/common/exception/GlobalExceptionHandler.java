@@ -2,6 +2,9 @@ package com.chengliuxiang.amour.common.exception;
 
 
 import cn.dev33.satoken.exception.NotLoginException;
+import cn.dev33.satoken.exception.NotPermissionException;
+import cn.dev33.satoken.exception.NotRoleException;
+import cn.dev33.satoken.exception.SaTokenException;
 import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
 import com.chengliuxiang.amour.common.utils.Response;
 import lombok.extern.slf4j.Slf4j;
@@ -92,5 +95,17 @@ public class GlobalExceptionHandler {
         log.error("{} request error, ", request.getRequestURI(), e);
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         return Response.fail(ResponseCodeEnum.UNAUTHORIZED);
+    }
+
+    /**
+     * 捕获已登录用户的角色/权限校验异常。
+     */
+    @ExceptionHandler({NotRoleException.class, NotPermissionException.class})
+    @ResponseBody
+    public Response<Object> handleForbiddenException(HttpServletRequest request, HttpServletResponse response,
+                                                     SaTokenException e) {
+        log.warn("{} request forbidden: {}", request.getRequestURI(), e.getMessage());
+        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+        return Response.fail(ResponseCodeEnum.FORBIDDEN);
     }
 }

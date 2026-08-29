@@ -7,6 +7,8 @@ import com.chengliuxiang.amour.common.domain.mapper.UserRoleRelMapper;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
@@ -41,14 +43,42 @@ public class SaTokenPermissionService implements StpInterface {
 
     @Override
     public List<String> getRoleList(Object loginId, String loginType) {
-        Long userId = parseUserId(loginId);
-        return userId == null ? Collections.emptyList() : loadRoles(userId);
+        return getCachedList(loginId, SaSession.ROLE_LIST);
     }
 
     @Override
     public List<String> getPermissionList(Object loginId, String loginType) {
+        return getCachedList(loginId, SaSession.PERMISSION_LIST);
+    }
+
+    /**
+     * Sa-Token performs authorization through this provider. The login flow has already
+     * loaded the effective role and permission lists into the account session, so use that
+     * Redis-backed snapshot for every request instead of querying the database again.
+     */
+    private List<String> getCachedList(Object loginId, String sessionKey) {
         Long userId = parseUserId(loginId);
-        return userId == null ? Collections.emptyList() : loadPermissions(userId);
+        if (userId == null) {
+            return Collections.emptyList();
+        }
+
+        SaSession session = StpUtil.getSessionByLoginId(userId, false);
+        if (session == null) {
+            return Collections.emptyList();
+        }
+
+        Object cachedValues = session.get(sessionKey);
+        if (!(cachedValues instanceof Collection)) {
+            return Collections.emptyList();
+        }
+
+        List<String> values = new ArrayList<>();
+        for (Object value : (Collection<?>) cachedValues) {
+            if (value != null) {
+                values.add(String.valueOf(value));
+            }
+        }
+        return values;
     }
 
     private List<String> loadRoles(Long userId) {
