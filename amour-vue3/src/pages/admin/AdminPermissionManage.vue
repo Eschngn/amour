@@ -60,8 +60,47 @@ onMounted(load)
 </script>
 
 <style scoped>
-:global(.permission-editor-dialog) { --el-color-primary: #e11d48; }
+:global(.permission-editor-dialog) {
+  --el-color-primary: #e11d48;
+  --el-color-primary-light-3: #fb7185;
+  --el-color-primary-light-5: #fda4af;
+  --el-color-primary-light-7: #fecdd3;
+  --el-color-primary-light-8: #ffe4e6;
+  --el-color-primary-light-9: #fff1f2;
+  --el-color-primary-dark-2: #be123c;
+}
+
 .permission-tree :deep(.el-tree-node__content) { min-height: 54px; height: auto; padding: 4px 8px; border-radius: 10px; }
 .permission-tree :deep(.el-tree-node__content:hover) { background: #fff1f2; }
 :global(.permission-editor-dialog .el-form-item) { margin-right: 0; }
+:global(.permission-editor-dialog .el-form-item__content),
+:global(.permission-editor-dialog .el-input),
+:global(.permission-editor-dialog .el-select),
+:global(.permission-editor-dialog .el-tree-select),
+:global(.permission-editor-dialog .el-input-number),
+:global(.permission-editor-dialog .el-input__wrapper),
+:global(.permission-editor-dialog .el-select__wrapper),
+:global(.permission-editor-dialog .el-tree-select .el-select__wrapper) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+
+:global(.permission-editor-dialog .el-input__inner),
+:global(.permission-editor-dialog .el-textarea__inner) {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+:global(.permission-editor-dialog .el-input__wrapper),
+:global(.permission-editor-dialog .el-select__wrapper) {
+  box-shadow: 0 0 0 1px #e2e8f0 inset;
+}
+
+:global(.permission-editor-dialog .el-input__wrapper.is-focus),
+:global(.permission-editor-dialog .el-select__wrapper.is-focused),
+:global(.permission-editor-dialog .el-input__wrapper:focus-within),
+:global(.permission-editor-dialog .el-textarea__inner:focus) {
+  box-shadow: 0 0 0 1px #fb7185 inset !important;
+}
 </style>

@@ -4,6 +4,7 @@ import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Delete;
 
 import java.util.List;
 
@@ -31,6 +32,15 @@ public interface UserRoleRelMapper {
             + "        AND rel.`is_deleted` = b'0'"
             + "  )")
     int insertCommonRoleIfAbsent(@Param("userId") Long userId);
+
+    @Select("SELECT role_id FROM user_role_rel WHERE user_id = #{userId} AND is_deleted = b'0'")
+    List<Long> selectRoleIds(@Param("userId") Long userId);
+
+    @Delete("DELETE FROM user_role_rel WHERE user_id = #{userId}")
+    int deleteByUserId(@Param("userId") Long userId);
+
+    @org.apache.ibatis.annotations.Insert("INSERT INTO user_role_rel (user_id, role_id, create_time, update_time, is_deleted) VALUES (#{userId}, #{roleId}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, b'0')")
+    int insertRelation(@Param("userId") Long userId, @Param("roleId") Long roleId);
 
     /**
      * 查询用户当前有效的角色标识。

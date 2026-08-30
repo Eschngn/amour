@@ -58,7 +58,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { ArrowRight, Calendar, ChatDotRound, Collection, CollectionTag, Expand, Fold, Lock, Menu, Picture, UserFilled } from '@element-plus/icons-vue'
+import { ArrowRight, Calendar, ChatDotRound, Collection, CollectionTag, Expand, Fold, Lock, Menu, Picture, User, UserFilled } from '@element-plus/icons-vue'
 
 defineProps({
   sidebarCollapsed: { type: Boolean, default: false },
@@ -76,6 +76,7 @@ const pageIcons = {
   '/admin/dict': CollectionTag,
   '/admin/role': UserFilled,
   '/admin/permission': Lock,
+  '/admin/user': User,
 }
 
 const pageIconTones = {
@@ -86,6 +87,7 @@ const pageIconTones = {
   '/admin/dict': 'bg-indigo-50 text-indigo-500 ring-1 ring-indigo-100',
   '/admin/role': 'bg-emerald-50 text-emerald-500 ring-1 ring-emerald-100',
   '/admin/permission': 'bg-rose-50 text-rose-500 ring-1 ring-rose-100',
+  '/admin/user': 'bg-sky-50 text-sky-500 ring-1 ring-sky-100',
 }
 
 const pageTitle = computed(() => {
@@ -104,6 +106,7 @@ const descriptions = {
   '/admin/dict': '统一维护站点配置与业务字典',
   '/admin/role': '管理角色与后台访问权限',
   '/admin/permission': '维护权限目录与操作授权标识',
+  '/admin/user': '管理后台账号、角色与登录状态',
 }
 
 const pageDescription = computed(() => descriptions[route.path] || '欢迎回到 Amour 管理控制台')

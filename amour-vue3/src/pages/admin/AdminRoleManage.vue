@@ -126,8 +126,19 @@ onMounted(() => { load(); loadPermissions() })
 :global(.role-editor-dialog .el-form-item) { margin-right: 0; }
 :global(.role-editor-dialog .role-editor-grid > .el-form-item), :global(.role-editor-dialog .role-editor-grid .el-form-item__content) { min-width: 0; }
 :global(.role-editor-dialog .role-editor-grid .el-form-item__content), :global(.role-editor-dialog .role-editor-grid .el-input), :global(.role-editor-dialog .role-editor-grid .el-select), :global(.role-editor-dialog .role-editor-grid .el-input-number) { width: 100%; min-width: 0; }
-:global(.role-editor-dialog .el-input__wrapper), :global(.role-editor-dialog .el-select__wrapper) { box-shadow: 0 0 0 1px #e2e8f0 inset; }
-:global(.role-editor-dialog .el-input__wrapper.is-focus), :global(.role-editor-dialog .el-select__wrapper.is-focused), :global(.role-editor-dialog .el-input__wrapper:focus-within), :global(.role-editor-dialog .el-textarea__inner:focus) { box-shadow: 0 0 0 1px #fb7185 inset, 0 0 0 3px rgba(244, 63, 94, 0.09) !important; }
+:global(.role-editor-dialog .el-input__wrapper), :global(.role-editor-dialog .el-select__wrapper) {
+  box-sizing: border-box;
+  box-shadow: 0 0 0 1px #e2e8f0 inset;
+}
+
+:global(.role-editor-dialog .el-input__inner), :global(.role-editor-dialog .el-textarea__inner) {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+:global(.role-editor-dialog .el-input__wrapper.is-focus), :global(.role-editor-dialog .el-select__wrapper.is-focused), :global(.role-editor-dialog .el-input__wrapper:focus-within), :global(.role-editor-dialog .el-textarea__inner:focus) {
+  box-shadow: 0 0 0 1px #fb7185 inset !important;
+}
 @media (min-width: 1024px) {
   .role-layout { grid-template-columns: 300px minmax(0, 1fr); }
   .role-list-panel { border-right: 1px solid #e2e8f0; }

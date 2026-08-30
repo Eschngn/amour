@@ -8,6 +8,7 @@ import AdminPhotoManage from '@/pages/admin/AdminPhotoManage.vue'
 import AdminStoryManage from '@/pages/admin/AdminStoryManage.vue'
 import AdminRoleManage from '@/pages/admin/AdminRoleManage.vue'
 import AdminPermissionManage from '@/pages/admin/AdminPermissionManage.vue'
+import AdminUserManage from '@/pages/admin/AdminUserManage.vue'
 import AnniversaryPage from '@/pages/frontend/AnniversaryPage.vue'
 import MessageBoardPage from '@/pages/frontend/MessageBoardPage.vue'
 import OurStoryPage from '@/pages/frontend/OurStoryPage.vue'
@@ -114,6 +115,12 @@ const routes = [
         name: 'admin-permission',
         component: AdminPermissionManage,
         meta: { title: '权限管理 · 后台', pageTitle: '权限管理' },
+      },
+      {
+        path: 'user',
+        name: 'admin-user',
+        component: AdminUserManage,
+        meta: { title: '用户管理 · 后台', pageTitle: '用户管理' },
       },
     ],
   },

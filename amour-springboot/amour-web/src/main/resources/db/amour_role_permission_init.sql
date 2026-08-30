@@ -169,6 +169,8 @@ FROM (
      SELECT 'admin', '角色管理', '/admin/role', 'UserFilled', 60, 'admin:role:menu'
       UNION ALL
       SELECT 'admin', '权限管理', '/admin/permission', 'Lock', 70, 'admin:permission:menu'
+       UNION ALL
+       SELECT 'admin', '用户管理', '/admin/user', 'User', 80, 'admin:user:menu'
 ) s
 JOIN `permission` parent
   ON parent.permission_key = s.parent_key
@@ -210,6 +212,10 @@ FROM (
      UNION ALL SELECT 'admin:permission:menu', '新增权限', 20, 'admin:permission:create'
      UNION ALL SELECT 'admin:permission:menu', '修改权限', 30, 'admin:permission:update'
      UNION ALL SELECT 'admin:permission:menu', '删除权限', 40, 'admin:permission:delete'
+      UNION ALL SELECT 'admin:user:menu', '查询用户', 10, 'admin:user:query'
+      UNION ALL SELECT 'admin:user:menu', '新增用户', 20, 'admin:user:create'
+      UNION ALL SELECT 'admin:user:menu', '修改用户', 30, 'admin:user:update'
+      UNION ALL SELECT 'admin:user:menu', '停用用户', 40, 'admin:user:delete'
 ) s
 JOIN `permission` parent
   ON parent.permission_key = s.parent_key
@@ -256,7 +262,8 @@ WHERE `permission_key` IN (
     'admin:anniversary:menu', 'admin:anniversary:query', 'admin:anniversary:create', 'admin:anniversary:update', 'admin:anniversary:delete',
     'admin:dict:menu', 'admin:dict:query', 'admin:dict:create', 'admin:dict:update', 'admin:dict:delete',
      'admin:role:menu', 'admin:role:query', 'admin:role:create', 'admin:role:update', 'admin:role:delete',
-     'admin:permission:menu', 'admin:permission:query', 'admin:permission:create', 'admin:permission:update', 'admin:permission:delete'
+     'admin:permission:menu', 'admin:permission:query', 'admin:permission:create', 'admin:permission:update', 'admin:permission:delete',
+      'admin:user:menu', 'admin:user:query', 'admin:user:create', 'admin:user:update', 'admin:user:delete'
 );
 
 -- common：前台查询 + “我的”全部权限；不授予留言发布/回复权限，也不授予后台权限。

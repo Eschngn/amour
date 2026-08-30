@@ -88,6 +88,7 @@ import {
   Collection,
   CollectionTag,
   Lock,
+  User,
   UserFilled,
   House,
   Picture,
@@ -126,5 +127,6 @@ const menu = [
   { to: '/admin/dict', label: '字典配置', icon: CollectionTag },
   { to: '/admin/role', label: '角色管理', icon: UserFilled },
   { to: '/admin/permission', label: '权限管理', icon: Lock },
+  { to: '/admin/user', label: '用户管理', icon: User },
 ]
 </script>
