@@ -17,7 +17,7 @@ import FrontendLogin from '@/pages/frontend/FrontendLogin.vue'
 import UserProfilePage from '@/pages/frontend/UserProfilePage.vue'
 import PhotoAlbumPage from '@/pages/frontend/PhotoAlbumPage.vue'
 import { isAdminAuthenticated } from '@/utils/adminAuth.js'
-import { clearFrontendSession, isFrontendAuthenticated } from '@/utils/auth.js'
+import { clearFrontendSession, hasFrontendQueryPermission, isFrontendAuthenticated, setFrontendProfile } from '@/utils/auth.js'
 import api from '@/axios'
 import { createRouter, createWebHistory } from 'vue-router'
 
@@ -137,10 +137,19 @@ async function validateFrontendSession() {
   if (!isFrontendAuthenticated()) return true
   if (frontendAuthCheck) return frontendAuthCheck
   frontendAuthCheck = api.post('/login/status')
-    .then((response) => {
+    .then(async (response) => {
       const valid = response.data?.success !== false && response.data?.data !== false
-      if (!valid) clearFrontendSession()
-      return valid
+      if (!valid) {
+        clearFrontendSession()
+        return false
+      }
+      try {
+        const profile = await api.post('/user/profile')
+        if (profile.data?.success && profile.data.data) setFrontendProfile(profile.data.data)
+      } catch {
+        // 网络波动时保留当前会话和已有权限缓存。
+      }
+      return true
     })
     .catch((error) => {
       // 网络异常不清除本地登录态，避免暂时断网导致误退出。
@@ -160,6 +169,9 @@ router.beforeEach(async (to) => {
     return { path: '/login', query: { expired: '1', redirect: to.fullPath } }
   }
   if (!to.path.startsWith('/admin')) {
+    const moduleByPath = { '/story': 'story', '/message': 'message', '/photo': 'photo', '/anniversary': 'anniversary', '/profile': 'profile' }
+    const module = Object.entries(moduleByPath).find(([path]) => to.path === path || to.path.startsWith(`${path}/`))?.[1]
+    if (module && !hasFrontendQueryPermission(module)) return { path: '/' }
     return true
   }
   if (to.path === '/admin/login') {

@@ -77,6 +77,7 @@ public class WechatLoginServiceImpl implements WechatLoginService {
                 .displayName(StrUtil.blankToDefault(user.getDisplayName(), "微信用户"))
                 .avatar(StrUtil.blankToDefault(user.getAvatar(), ""))
                 .passwordSet(StrUtil.isNotBlank(user.getPassword()))
+                .permissions(saTokenPermissionService.getFrontendQueryPermissions(user.getId()))
                 .build());
     }
 

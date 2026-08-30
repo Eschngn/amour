@@ -21,6 +21,7 @@
         aria-label="主导航"
       >
         <RouterLink
+          v-if="hasFrontendQueryPermission('story')"
           to="/story"
           class="transition hover:text-rose-600"
           active-class="font-semibold text-rose-600"
@@ -28,6 +29,7 @@
           我们的故事
         </RouterLink>
         <RouterLink
+          v-if="hasFrontendQueryPermission('message')"
           to="/message"
           class="transition hover:text-rose-600"
           active-class="font-semibold text-rose-600"
@@ -35,6 +37,7 @@
           留言板
         </RouterLink>
         <RouterLink
+          v-if="hasFrontendQueryPermission('photo')"
           to="/photo"
           class="transition hover:text-rose-600"
           active-class="font-semibold text-rose-600"
@@ -42,6 +45,7 @@
           相册
         </RouterLink>
         <RouterLink
+          v-if="hasFrontendQueryPermission('anniversary')"
           to="/anniversary"
           class="transition hover:text-rose-600"
           active-class="font-semibold text-rose-600"
@@ -93,6 +97,7 @@
       aria-label="移动端主导航"
     >
       <RouterLink
+        v-if="hasFrontendQueryPermission('story')"
         to="/story"
         class="shrink-0 rounded-full px-3 py-1.5 transition hover:bg-rose-50 hover:text-rose-600"
         active-class="bg-rose-100/80 text-rose-600"
@@ -100,6 +105,7 @@
         我们的故事
       </RouterLink>
       <RouterLink
+        v-if="hasFrontendQueryPermission('photo')"
         to="/photo"
         class="shrink-0 rounded-full px-3 py-1.5 transition hover:bg-rose-50 hover:text-rose-600"
         active-class="bg-rose-100/80 text-rose-600"
@@ -107,6 +113,7 @@
         相册
       </RouterLink>
       <RouterLink
+        v-if="hasFrontendQueryPermission('anniversary')"
         to="/anniversary"
         class="shrink-0 rounded-full px-3 py-1.5 transition hover:bg-rose-50 hover:text-rose-600"
         active-class="bg-rose-100/80 text-rose-600"
@@ -114,6 +121,7 @@
         纪念日
       </RouterLink>
       <RouterLink
+        v-if="hasFrontendQueryPermission('message')"
         to="/message"
         class="shrink-0 rounded-full px-3 py-1.5 transition hover:bg-rose-50 hover:text-rose-600"
         active-class="bg-rose-100/80 text-rose-600"
@@ -161,6 +169,7 @@ import {
   frontendLoggedIn,
   frontendAvatar,
   frontendUsername,
+  hasFrontendQueryPermission,
 } from '@/utils/auth'
 
 const router = useRouter()

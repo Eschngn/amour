@@ -1,5 +1,5 @@
 import { ApiError, post } from '../../utils/request'
-import { ensureWechatLogin } from '../../utils/auth'
+import { ensureWechatLogin, hasFrontendQueryPermission } from '../../utils/auth'
 
 const PAGE_SIZE = 8
 
@@ -61,7 +61,13 @@ Component({
   },
 
   lifetimes: {
-    attached() {
+    async attached() {
+      const app = getApp<IAppOption>()
+      if (app.globalData.authReady) await app.globalData.authReady.catch(() => undefined)
+      if (!hasFrontendQueryPermission('message')) {
+        wx.reLaunch({ url: '/pages/index/index' })
+        return
+      }
       this.loadMessages(1)
     },
   },

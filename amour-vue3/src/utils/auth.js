@@ -4,9 +4,25 @@ const FRONTEND_TOKEN_KEY = 'amour_token'
 const FRONTEND_USERNAME_KEY = 'amour_username'
 const FRONTEND_DISPLAY_NAME_KEY = 'amour_display_name'
 const FRONTEND_AVATAR_KEY = 'amour_avatar'
+const FRONTEND_PERMISSIONS_KEY = 'amour_permissions'
 
 function readToken() {
   return localStorage.getItem(FRONTEND_TOKEN_KEY) || ''
+}
+
+function readPermissions() {
+  try {
+    const value = JSON.parse(localStorage.getItem(FRONTEND_PERMISSIONS_KEY) || '[]')
+    return Array.isArray(value) ? value.filter(item => typeof item === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+export const frontendPermissions = ref(readPermissions())
+
+export function hasFrontendQueryPermission(module) {
+  return !frontendLoggedIn.value || frontendPermissions.value.includes(`frontend:${module}:query`)
 }
 
 function readUsername() {
@@ -29,6 +45,12 @@ export function setFrontendToken(token) {
   }
 }
 
+export function setFrontendPermissions(permissions) {
+  const value = Array.isArray(permissions) ? permissions.filter(item => typeof item === 'string') : []
+  localStorage.setItem(FRONTEND_PERMISSIONS_KEY, JSON.stringify(value))
+  frontendPermissions.value = value
+}
+
 export function getFrontendUsername() {
   return readUsername()
 }
@@ -42,6 +64,7 @@ export function setFrontendUsername(username) {
 
 export function setFrontendProfile(profile = {}) {
   setFrontendUsername(profile.username)
+  setFrontendPermissions(profile.permissions)
   const displayName = typeof profile.displayName === 'string' ? profile.displayName : ''
   localStorage.setItem(FRONTEND_DISPLAY_NAME_KEY, displayName)
   frontendDisplayName.value = displayName
@@ -63,7 +86,9 @@ export function clearFrontendSession() {
   localStorage.removeItem(FRONTEND_USERNAME_KEY)
   localStorage.removeItem(FRONTEND_DISPLAY_NAME_KEY)
   localStorage.removeItem(FRONTEND_AVATAR_KEY)
+  localStorage.removeItem(FRONTEND_PERMISSIONS_KEY)
   frontendLoggedIn.value = false
+  frontendPermissions.value = []
   frontendUsername.value = ''
   frontendDisplayName.value = ''
   frontendAvatar.value = ''

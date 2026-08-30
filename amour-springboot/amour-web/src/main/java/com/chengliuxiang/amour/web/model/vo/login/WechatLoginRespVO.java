@@ -20,4 +20,7 @@ public class WechatLoginRespVO {
     private String avatar;
 
     private boolean passwordSet;
+
+    /** 当前用户拥有的前台模块查询权限。 */
+    private java.util.Set<String> permissions;
 }

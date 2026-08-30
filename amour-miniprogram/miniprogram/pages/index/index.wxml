@@ -9,7 +9,7 @@
           <text class="hero-title-accent">过成两个人的纪念册</text>
         </text>
         <text class="hero-description">从相遇的那一刻起，时间有了温度，日常也有了值得反复翻阅的意义。</text>
-        <button class="primary-button" bindtap="openStory" hover-class="button-hover">
+        <button wx:if="{{showStory}}" class="primary-button" bindtap="openStory" hover-class="button-hover">
           <text>翻阅我们的故事</text><text class="button-arrow">→</text>
         </button>
       </view>
@@ -42,13 +42,13 @@
     <view class="explore-section">
       <view class="section-heading explore-heading"><view><text class="section-kicker">OUR CORNERS</text><text class="section-title">收藏每一种心动</text></view><text class="section-aside">故事、照片和想对彼此说的话</text></view>
       <view class="quick-grid">
-        <view class="quick-card quick-card-story" data-section="story" bindtap="openSection" hover-class="card-hover" aria-role="button" aria-label="查看我们的故事">
+        <view wx:if="{{showStory}}" class="quick-card quick-card-story" data-section="story" bindtap="openSection" hover-class="card-hover" aria-role="button" aria-label="查看我们的故事">
           <view class="card-icon">✦</view><text class="card-title">我们的故事</text><text class="card-description">沿着时间线，重温一路走来的重要章节。</text><text class="card-link">{{storyStat}} <text>→</text></text>
         </view>
-        <view class="quick-card quick-card-photo" data-section="photo" bindtap="openSection" hover-class="card-hover" aria-role="button" aria-label="打开恋爱相册">
+        <view wx:if="{{showPhoto}}" class="quick-card quick-card-photo" data-section="photo" bindtap="openSection" hover-class="card-hover" aria-role="button" aria-label="打开恋爱相册">
           <view class="card-icon">◫</view><text class="card-title">恋爱相册</text><text class="card-description">把旅行、日常和彼此的笑容装进同一本相册。</text><text class="card-link">打开相册 <text>→</text></text>
         </view>
-        <view class="quick-card quick-card-note" data-section="message" bindtap="openSection" hover-class="card-hover" aria-role="button" aria-label="打开悄悄话">
+        <view wx:if="{{showMessage}}" class="quick-card quick-card-note" data-section="message" bindtap="openSection" hover-class="card-hover" aria-role="button" aria-label="打开悄悄话">
           <view class="card-icon">♡</view><text class="card-title">悄悄话</text><text class="card-description">写下此刻想说的话，让温柔一直有迹可循。</text><text class="card-link">留一句话 <text>→</text></text>
         </view>
       </view>

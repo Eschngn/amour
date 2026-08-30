@@ -24,6 +24,7 @@
 
           <div class="mt-8 flex flex-wrap justify-center gap-3 lg:justify-start">
             <RouterLink
+              v-if="hasFrontendQueryPermission('story')"
               to="/story"
               class="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-300/40 transition duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-rose-300/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
             >
@@ -33,6 +34,7 @@
               </svg>
             </RouterLink>
             <RouterLink
+              v-if="hasFrontendQueryPermission('photo')"
               to="/photo"
               class="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-white/75 px-6 py-3 text-sm font-semibold text-rose-700 shadow-sm backdrop-blur-sm transition duration-300 hover:-translate-y-0.5 hover:border-rose-300 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
             >
@@ -59,7 +61,7 @@
           <div class="absolute left-1/2 top-1/2 h-[72%] w-[72%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-rose-200/45 blur-3xl" aria-hidden="true" />
 
           <figure class="photo-card photo-card-main absolute left-[8%] top-[8%] w-[67%] -rotate-[5deg] overflow-hidden rounded-[2rem] border-[7px] border-white bg-white shadow-2xl shadow-rose-300/35">
-            <RouterLink to="/photo" class="group block" aria-label="查看恋爱相册">
+            <RouterLink v-if="hasFrontendQueryPermission('photo')" to="/photo" class="group block" aria-label="查看恋爱相册">
               <div class="relative overflow-hidden">
                 <img
                   v-if="heroPhotosReady && albumPreview1"
@@ -156,7 +158,7 @@
               <h2 id="story-heading" class="mt-2 font-display text-3xl font-bold text-rose-950 sm:text-4xl">一起走过的日子</h2>
               <p class="mt-3 max-w-xl text-sm leading-7 text-rose-800/55 sm:text-base">时间不会停下，但我们可以把那些闪闪发光的瞬间留住。</p>
             </div>
-            <RouterLink to="/story" class="group inline-flex items-center gap-2 text-sm font-semibold text-rose-500 transition hover:text-rose-700">
+            <RouterLink v-if="hasFrontendQueryPermission('story')" to="/story" class="group inline-flex items-center gap-2 text-sm font-semibold text-rose-500 transition hover:text-rose-700">
               查看全部故事
               <svg class="h-4 w-4 transition group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14m-5-5 5 5-5 5" />
@@ -220,6 +222,7 @@ import CouplePageScaffold from '@/components/frontend/CouplePageScaffold.vue'
 import defaultBoyAvatar from '@/assets/boy.jpeg'
 import defaultGirlAvatar from '@/assets/girl.jpeg'
 import api from '@/axios'
+import { frontendLoggedIn, hasFrontendQueryPermission } from '@/utils/auth'
 
 const OSS_AMOUR_BASE = 'https://chengliuxiang.oss-cn-hangzhou.aliyuncs.com/amour'
 const DEFAULT_LOVE_START_TIME = '2024-05-20 18:30:00'
@@ -301,43 +304,11 @@ const elapsedUnits = computed(() => [
 ])
 
 const exploreCards = computed(() => [
-  {
-    to: '/story',
-    icon: '✦',
-    title: '我们的故事',
-    description: '沿着时间线，重温一路走来的重要章节。',
-    stat: storyMilestones.value.length ? `已收藏 ${storyMilestones.value.length} 个瞬间` : '等待新的章节',
-    iconBg: 'bg-rose-100 text-rose-500',
-    glow: 'bg-rose-100/80',
-  },
-  {
-    to: '/photo',
-    icon: '◫',
-    title: '恋爱相册',
-    description: '把旅行、日常和彼此的笑容装进同一本相册。',
-    stat: '定格每一次心动',
-    iconBg: 'bg-pink-100 text-pink-500',
-    glow: 'bg-pink-100/80',
-  },
-  {
-    to: '/anniversary',
-    icon: '⌁',
-    title: '纪念日',
-    description: '记住那些值得期待，也值得庆祝的特殊日期。',
-    stat: `相伴第 ${togetherTotalDays.value} 天`,
-    iconBg: 'bg-orange-100 text-orange-500',
-    glow: 'bg-orange-100/70',
-  },
-  {
-    to: '/message',
-    icon: '♡',
-    title: '悄悄话',
-    description: '写下此刻想说的话，让温柔一直有迹可循。',
-    stat: '给 Ta 留一句话',
-    iconBg: 'bg-fuchsia-100 text-fuchsia-500',
-    glow: 'bg-fuchsia-100/70',
-  },
-])
+  { module: 'story', to: '/story', icon: '✦', title: '我们的故事', description: '沿着时间线，重温一路走来的重要章节。', stat: storyMilestones.value.length ? `已收藏 ${storyMilestones.value.length} 个瞬间` : '等待新的章节', iconBg: 'bg-rose-100 text-rose-500', glow: 'bg-rose-100/80' },
+  { module: 'photo', to: '/photo', icon: '◫', title: '恋爱相册', description: '把旅行、日常和彼此的笑容装进同一本相册。', stat: '定格每一次心动', iconBg: 'bg-pink-100 text-pink-500', glow: 'bg-pink-100/80' },
+  { module: 'anniversary', to: '/anniversary', icon: '⌁', title: '纪念日', description: '记住那些值得期待，也值得庆祝的特殊日期。', stat: `相伴第 ${togetherTotalDays.value} 天`, iconBg: 'bg-orange-100 text-orange-500', glow: 'bg-orange-100/70' },
+  { module: 'message', to: '/message', icon: '♡', title: '悄悄话', description: '写下此刻想说的话，让温柔一直有迹可循。', stat: '给 Ta 留一句话', iconBg: 'bg-fuchsia-100 text-fuchsia-500', glow: 'bg-fuchsia-100/70' },
+].filter(card => hasFrontendQueryPermission(card.module)))
 
 const storyMilestones = ref([])
 const storyLoading = ref(true)

@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
+import com.chengliuxiang.amour.common.service.SaTokenPermissionService;
 
 @Service
 @Slf4j
@@ -46,6 +47,8 @@ public class UserProfileServiceImpl implements UserProfileService {
     private LoginCryptoService loginCryptoService;
     @Resource
     private AliyunOSSUtil aliyunOSSUtil;
+    @Resource
+    private SaTokenPermissionService saTokenPermissionService;
 
     @Override
     public Response<UserProfileVO> getProfile() {
@@ -160,6 +163,7 @@ public class UserProfileServiceImpl implements UserProfileService {
                 .passwordSet(StrUtil.isNotBlank(user.getPassword()))
                 .usernameChangeAvailableAt(user.getUsernameUpdateTime() == null
                         ? null : user.getUsernameUpdateTime().plusDays(USERNAME_CHANGE_COOLDOWN_DAYS))
+                .permissions(saTokenPermissionService.getFrontendQueryPermissions(user.getId()))
                 .build();
     }
 }

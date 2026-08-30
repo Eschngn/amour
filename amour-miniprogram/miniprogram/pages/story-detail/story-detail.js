@@ -1,4 +1,5 @@
 const { post } = require('../../utils/request')
+const { hasFrontendQueryPermission } = require('../../utils/auth')
 
 function stripInlineMarkdown(value) {
   return String(value || '')
@@ -166,6 +167,10 @@ Page({
   },
 
   onLoad(options) {
+    if (!hasFrontendQueryPermission('story')) {
+      wx.reLaunch({ url: '/pages/index/index' })
+      return
+    }
     const id = Number(options.id)
     this.storyContextCache = new Map()
     this.storyContextRequests = new Map()

@@ -11,6 +11,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Sa-Token 角色和权限数据提供者。
@@ -89,6 +91,15 @@ public class SaTokenPermissionService implements StpInterface {
     private List<String> loadPermissions(Long userId) {
         List<String> permissions = userRoleRelMapper.selectPermissionKeys(userId);
         return permissions == null ? Collections.emptyList() : permissions;
+    }
+
+    /** 返回前台入口使用的模块查询权限，避免各端重复理解权限目录结构。 */
+    public Set<String> getFrontendQueryPermissions(Object loginId) {
+        Long userId = parseUserId(loginId);
+        if (userId == null) return Collections.emptySet();
+        return loadPermissions(userId).stream()
+                .filter(key -> key != null && key.startsWith("frontend:") && key.endsWith(":query"))
+                .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
     }
 
     private Long parseUserId(Object loginId) {

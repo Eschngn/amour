@@ -1,4 +1,5 @@
 import { post } from '../../utils/request'
+import { hasFrontendQueryPermission } from '../../utils/auth'
 
 interface StoryChapter {
   id: number
@@ -55,7 +56,13 @@ Component({
   },
 
   lifetimes: {
-    attached() {
+    async attached() {
+      const app = getApp<IAppOption>()
+      if (app.globalData.authReady) await app.globalData.authReady.catch(() => undefined)
+      if (!hasFrontendQueryPermission('story')) {
+        wx.reLaunch({ url: '/pages/index/index' })
+        return
+      }
       this.loadOverview()
     },
   },

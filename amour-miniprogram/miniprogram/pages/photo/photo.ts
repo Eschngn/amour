@@ -1,4 +1,5 @@
 import { post } from '../../utils/request'
+import { hasFrontendQueryPermission } from '../../utils/auth'
 
 const PAGE_SIZE = 6
 let latestPhotoRequestId = 0
@@ -47,7 +48,13 @@ Component({
   },
 
   lifetimes: {
-    attached() {
+    async attached() {
+      const app = getApp<IAppOption>()
+      if (app.globalData.authReady) await app.globalData.authReady.catch(() => undefined)
+      if (!hasFrontendQueryPermission('photo')) {
+        wx.reLaunch({ url: '/pages/index/index' })
+        return
+      }
       this.initialize()
     },
   },

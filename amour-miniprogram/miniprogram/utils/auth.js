@@ -5,6 +5,7 @@ const USERNAME_KEY = 'amour_username'
 const DISPLAY_NAME_KEY = 'amour_display_name'
 const AVATAR_KEY = 'amour_avatar'
 const PASSWORD_SET_KEY = 'amour_password_set'
+const PERMISSIONS_KEY = 'amour_permissions'
 const VALIDATION_CACHE_MS = 30000
 
 let loginPromise = null
@@ -16,12 +17,14 @@ function readString(key) {
 }
 
 function getStoredAuth() {
+  const permissions = wx.getStorageSync(PERMISSIONS_KEY)
   return {
     token: readString(TOKEN_KEY),
     username: readString(USERNAME_KEY),
     displayName: readString(DISPLAY_NAME_KEY),
     avatar: readString(AVATAR_KEY),
     passwordSet: wx.getStorageSync(PASSWORD_SET_KEY) === true,
+    permissions: Array.isArray(permissions) ? permissions.filter(item => typeof item === 'string') : [],
   }
 }
 
@@ -31,6 +34,7 @@ function saveAuth(auth) {
   wx.setStorageSync(DISPLAY_NAME_KEY, auth.displayName || '')
   wx.setStorageSync(AVATAR_KEY, auth.avatar || '')
   wx.setStorageSync(PASSWORD_SET_KEY, Boolean(auth.passwordSet))
+  wx.setStorageSync(PERMISSIONS_KEY, Array.isArray(auth.permissions) ? auth.permissions : [])
   return getStoredAuth()
 }
 
@@ -42,6 +46,7 @@ function updateStoredProfile(profile = {}) {
     displayName: typeof profile.displayName === 'string' ? profile.displayName : current.displayName,
     avatar: typeof profile.avatar === 'string' ? profile.avatar : current.avatar,
     passwordSet: typeof profile.passwordSet === 'boolean' ? profile.passwordSet : current.passwordSet,
+    permissions: Array.isArray(profile.permissions) ? profile.permissions : current.permissions,
   })
 }
 
@@ -51,6 +56,7 @@ function clearAuth() {
   wx.removeStorageSync(DISPLAY_NAME_KEY)
   wx.removeStorageSync(AVATAR_KEY)
   wx.removeStorageSync(PASSWORD_SET_KEY)
+  wx.removeStorageSync(PERMISSIONS_KEY)
   lastValidatedAt = 0
   const app = typeof getApp === 'function' ? getApp() : null
   if (app && app.globalData) {
@@ -93,6 +99,7 @@ async function exchangeWechatCode() {
     displayName: typeof result.displayName === 'string' ? result.displayName.trim() : '',
     avatar: typeof result.avatar === 'string' ? result.avatar.trim() : '',
     passwordSet: result.passwordSet === true,
+    permissions: Array.isArray(result.permissions) ? result.permissions : [],
   })
   lastValidatedAt = Date.now()
   return auth
@@ -107,6 +114,7 @@ async function validateStoredAuth(storedAuth) {
       displayName: profile && typeof profile.displayName === 'string' ? profile.displayName.trim() : '',
       avatar: profile && typeof profile.avatar === 'string' ? profile.avatar.trim() : '',
       passwordSet: Boolean(profile && profile.passwordSet),
+      permissions: Array.isArray(profile && profile.permissions) ? profile.permissions : storedAuth.permissions,
     })
     lastValidatedAt = Date.now()
     return auth
@@ -145,6 +153,11 @@ function ensureWechatLogin(options = {}) {
   return loginPromise
 }
 
+function hasFrontendQueryPermission(module) {
+  const auth = getStoredAuth()
+  return !auth.token || auth.permissions.includes(`frontend:${module}:query`)
+}
+
 async function logoutWechat() {
   let logoutError = null
   try {
@@ -163,4 +176,5 @@ module.exports = {
   getStoredAuth,
   logoutWechat,
   updateStoredProfile,
+  hasFrontendQueryPermission,
 }

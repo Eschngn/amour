@@ -52,6 +52,9 @@ Component({
     loveStartDate: '2024 · 05 · 20',
     togetherDays: 0,
     storyStat: '等待新的章节',
+    showStory: false,
+    showPhoto: false,
+    showMessage: false,
     elapsedUnits: [
       { label: '天', value: '000' },
       { label: '小时', value: '00' },
@@ -61,10 +64,16 @@ Component({
   },
 
   lifetimes: {
-    attached() {
+    async attached() {
+      const app = getApp<IAppOption>()
+      if (app.globalData.authReady) await app.globalData.authReady.catch(() => undefined)
       this.updateTime()
       timeTicker = setInterval(() => this.updateTime(), 1000)
-      this.loadHomeData()
+      this.setData({
+        showStory: this.hasQueryPermission('story'),
+        showPhoto: this.hasQueryPermission('photo'),
+        showMessage: this.hasQueryPermission('message'),
+      }, () => this.loadHomeData())
     },
     detached() {
       if (timeTicker) {
@@ -75,6 +84,11 @@ Component({
   },
 
   methods: {
+    hasQueryPermission(module: string) {
+      const auth = getApp<IAppOption>().globalData.auth
+      return !auth || !auth.token || (auth.permissions || []).includes(`frontend:${module}:query`)
+    },
+
     updateTime() {
       const start = parseLoveStart(this.data.loveStartTime)
       const elapsed = Math.max(0, Date.now() - start)

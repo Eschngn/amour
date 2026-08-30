@@ -58,6 +58,7 @@ public class LoginServiceImpl implements LoginService {
                 .username(username)
                 .displayName(StrUtil.blankToDefault(userDO.getDisplayName(), "恋人"))
                 .avatar(StrUtil.blankToDefault(userDO.getAvatar(), ""))
+                .permissions(saTokenPermissionService.getFrontendQueryPermissions(userId))
                 .build());
     }
 

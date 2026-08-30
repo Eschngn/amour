@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
 @Data
 @Builder
@@ -17,4 +18,5 @@ public class UserProfileVO {
     private String avatar;
     private boolean passwordSet;
     private LocalDateTime usernameChangeAvailableAt;
+    private Set<String> permissions;
 }

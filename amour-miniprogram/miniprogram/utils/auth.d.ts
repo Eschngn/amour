@@ -4,7 +4,10 @@ export interface AuthSession {
   displayName: string
   avatar: string
   passwordSet: boolean
+  permissions: string[]
 }
+
+export function hasFrontendQueryPermission(module: string): boolean
 
 export function getStoredAuth(): AuthSession
 export function clearAuth(): void
