@@ -1,7 +1,10 @@
 :host { display: block; flex: none; }
 .bottom-nav { position: relative; z-index: 100; height: calc(112rpx + env(safe-area-inset-bottom)); flex: none; background: #fff; box-shadow: 0 -8rpx 28rpx rgba(89, 52, 62, .1); }
-.nav-bar { display: grid; height: 112rpx; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 0 18rpx; border-top: 1rpx solid #efe3e5; box-sizing: border-box; }
-.nav-item { position: relative; display: flex; min-width: 0; align-items: center; justify-content: center; flex-direction: column; color: #a78c92; }
+.nav-bar { display: grid; height: 112rpx; grid-template-columns: minmax(0, 1fr) 144rpx minmax(0, 1fr); padding: 0 18rpx; border-top: 1rpx solid #efe3e5; box-sizing: border-box; }
+.nav-side { display: flex; min-width: 0; align-items: stretch; justify-content: space-evenly; }
+.nav-side-left { padding-right: 12rpx; }
+.nav-side-right { padding-left: 12rpx; }
+.nav-item { position: relative; display: flex; min-width: 0; flex: 1 1 0; align-items: center; justify-content: center; flex-direction: column; color: #a78c92; }
 .nav-icon { display: flex; width: 48rpx; height: 48rpx; align-items: center; justify-content: center; font-family: Georgia, serif; font-size: 35rpx; line-height: 1; }
 .photo-icon { font-size: 31rpx; }.message-icon { font-size: 40rpx; }
 .nav-label { margin-top: 3rpx; font-size: 19rpx; font-weight: 600; line-height: 1; }

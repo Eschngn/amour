@@ -75,9 +75,20 @@ const filteredRoles = computed(() => {
   return roles.value.filter((role) => `${role.roleName || ''} ${role.roleKey || ''}`.toLowerCase().includes(keyword))
 })
 const selectedRole = computed(() => roles.value.find(role => role.id === selectedRoleId.value) || roles.value[0] || null)
+const permissionParentMap = computed(() => {
+  const parents = new Map()
+  const visit = (nodes) => {
+    for (const node of nodes || []) {
+      if (node.parentId !== null && node.parentId !== undefined && node.parentId !== 0) parents.set(String(node.id), node.parentId)
+      visit(node.children)
+    }
+  }
+  visit(permissionTree.value)
+  return parents
+})
 const selectedPermissionIds = computed(() => {
   const validIds = new Set(flattenPermissionIds(permissionTree.value).map((id) => String(id)))
-  return (selectedRole.value?.permissionIds || []).filter((id) => validIds.has(String(id)))
+  return addPermissionAncestors((selectedRole.value?.permissionIds || []).filter((id) => validIds.has(String(id))))
 })
 const selectedPermissionCount = computed(() => { permissionVersion.value; return viewTreeRef.value?.getCheckedKeys(false).length || 0 })
 function flattenPermissionIds(nodes, result = []) {
@@ -87,16 +98,35 @@ function flattenPermissionIds(nodes, result = []) {
   }
   return result
 }
+function addPermissionAncestors(ids) {
+  const normalized = new Set(ids)
+  for (const id of [...normalized]) {
+    let parentId = permissionParentMap.value.get(String(id))
+    while (parentId !== undefined && parentId !== null && parentId !== 0) {
+      normalized.add(parentId)
+      parentId = permissionParentMap.value.get(String(parentId))
+    }
+  }
+  return [...normalized]
+}
 function onPermissionCheck(node, state) {
   permissionVersion.value++
-  if (syncingPermissions || !node.children?.length || !viewTreeRef.value) return
+  if (syncingPermissions || !viewTreeRef.value) return
   syncingPermissions = true
   const checkedIds = new Set(state.checkedKeys || [])
   const childIds = flattenPermissionIds(node.children)
   const isChecked = [...checkedIds].some((id) => String(id) === String(node.id))
-  if (isChecked) childIds.forEach((id) => checkedIds.add(id))
-  else childIds.forEach((id) => checkedIds.delete(id))
-  viewTreeRef.value.setCheckedKeys([...checkedIds])
+  if (node.children?.length) {
+    if (isChecked) childIds.forEach((id) => checkedIds.add(id))
+    else childIds.forEach((id) => checkedIds.delete(id))
+  } else if (!isChecked) {
+    let parentId = permissionParentMap.value.get(String(node.id))
+    while (parentId !== undefined && parentId !== null && parentId !== 0) {
+      checkedIds.delete(parentId)
+      parentId = permissionParentMap.value.get(String(parentId))
+    }
+  }
+  viewTreeRef.value.setCheckedKeys(addPermissionAncestors([...checkedIds]))
   syncingPermissions = false
   permissionVersion.value++
 }

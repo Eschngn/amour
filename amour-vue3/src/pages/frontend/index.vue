@@ -26,6 +26,7 @@
             <RouterLink
               v-if="hasFrontendQueryPermission('story')"
               to="/story"
+              @click="guardNavigation($event, 'story')"
               class="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-300/40 transition duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-rose-300/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
             >
               翻阅我们的故事
@@ -34,8 +35,8 @@
               </svg>
             </RouterLink>
             <RouterLink
-              v-if="hasFrontendQueryPermission('photo')"
               to="/photo"
+              @click="guardNavigation($event, 'photo')"
               class="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-white/75 px-6 py-3 text-sm font-semibold text-rose-700 shadow-sm backdrop-blur-sm transition duration-300 hover:-translate-y-0.5 hover:border-rose-300 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
             >
               看看恋爱相册
@@ -61,7 +62,7 @@
           <div class="absolute left-1/2 top-1/2 h-[72%] w-[72%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-rose-200/45 blur-3xl" aria-hidden="true" />
 
           <figure class="photo-card photo-card-main absolute left-[8%] top-[8%] w-[67%] -rotate-[5deg] overflow-hidden rounded-[2rem] border-[7px] border-white bg-white shadow-2xl shadow-rose-300/35">
-            <RouterLink v-if="hasFrontendQueryPermission('photo')" to="/photo" class="group block" aria-label="查看恋爱相册">
+            <RouterLink to="/photo" class="group block" aria-label="查看恋爱相册" @click="guardNavigation($event, 'photo')">
               <div class="relative overflow-hidden">
                 <img
                   v-if="heroPhotosReady && albumPreview1"
@@ -125,6 +126,7 @@
             v-for="card in exploreCards"
             :key="card.to"
             :to="card.to"
+            @click="guardNavigation($event, card.module)"
             class="explore-card group relative min-h-[210px] overflow-hidden rounded-3xl border border-white/80 bg-white/75 p-6 shadow-lg shadow-rose-100/50 backdrop-blur-md transition duration-300 hover:-translate-y-1.5 hover:border-rose-200 hover:shadow-xl hover:shadow-rose-200/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
           >
             <div class="absolute -right-9 -top-9 h-28 w-28 rounded-full transition duration-500 group-hover:scale-125" :class="card.glow" aria-hidden="true" />
@@ -158,7 +160,7 @@
               <h2 id="story-heading" class="mt-2 font-display text-3xl font-bold text-rose-950 sm:text-4xl">一起走过的日子</h2>
               <p class="mt-3 max-w-xl text-sm leading-7 text-rose-800/55 sm:text-base">时间不会停下，但我们可以把那些闪闪发光的瞬间留住。</p>
             </div>
-            <RouterLink v-if="hasFrontendQueryPermission('story')" to="/story" class="group inline-flex items-center gap-2 text-sm font-semibold text-rose-500 transition hover:text-rose-700">
+            <RouterLink v-if="hasFrontendQueryPermission('story')" to="/story" class="group inline-flex items-center gap-2 text-sm font-semibold text-rose-500 transition hover:text-rose-700" @click="guardNavigation($event, 'story')">
               查看全部故事
               <svg class="h-4 w-4 transition group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14m-5-5 5 5-5 5" />
@@ -185,6 +187,7 @@
             <li v-for="(item, i) in storyMilestones.slice(0, 4)" :key="item.id">
               <RouterLink
                 :to="'/story/' + item.id"
+                @click="guardNavigation($event, 'story')"
                 class="story-card group grid h-full overflow-hidden rounded-3xl border border-rose-100/90 bg-white/90 p-3 shadow-md shadow-rose-100/40 transition duration-300 hover:-translate-y-1 hover:border-rose-200 hover:shadow-xl hover:shadow-rose-200/30 sm:grid-cols-[44%_1fr]"
               >
                 <div class="relative min-h-52 overflow-hidden rounded-[1.25rem] bg-gradient-to-br from-rose-100 to-pink-50 sm:min-h-[230px]">
@@ -218,6 +221,8 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { ElMessage } from 'element-plus'
+import 'element-plus/es/components/message/style/css'
 import CouplePageScaffold from '@/components/frontend/CouplePageScaffold.vue'
 import defaultBoyAvatar from '@/assets/boy.jpeg'
 import defaultGirlAvatar from '@/assets/girl.jpeg'
@@ -228,6 +233,14 @@ const OSS_AMOUR_BASE = 'https://chengliuxiang.oss-cn-hangzhou.aliyuncs.com/amour
 const DEFAULT_LOVE_START_TIME = '2024-05-20 18:30:00'
 const DEFAULT_HERO_PHOTO_1 = `${OSS_AMOUR_BASE}/example-photo1.png`
 const DEFAULT_HERO_PHOTO_2 = `${OSS_AMOUR_BASE}/example-photo2.png`
+
+const MODULE_LABELS = { story: '故事', photo: '相册', anniversary: '纪念日', message: '留言' }
+
+function guardNavigation(event, module) {
+  if (hasFrontendQueryPermission(module)) return
+  event.preventDefault()
+  ElMessage.warning(`暂无${MODULE_LABELS[module] || '该模块'}查询权限`)
+}
 
 const homeConfig = reactive({
   boyName: 'HE',

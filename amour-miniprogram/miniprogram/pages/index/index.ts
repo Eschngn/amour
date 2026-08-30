@@ -1,4 +1,5 @@
 import { post } from '../../utils/request'
+import { hasFrontendQueryPermission } from '../../utils/auth'
 
 const DEFAULT_LOVE_START = '2024-05-20 18:30:00'
 const DEFAULT_AVATAR = 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0'
@@ -143,19 +144,40 @@ Component({
       }
     },
 
+    showPermissionDenied(module: string) {
+      const labels: Record<string, string> = {
+        story: '故事',
+        photo: '相册',
+        message: '留言',
+      }
+      wx.showToast({
+        title: `暂无${labels[module] || '该模块'}查询权限`,
+        icon: 'none',
+        duration: 1800,
+      })
+    },
+
     openStory() {
+      if (!this.hasQueryPermission('story')) {
+        this.showPermissionDenied('story')
+        return
+      }
       wx.navigateTo({ url: '../story/story' })
     },
 
     openSection(event: WechatMiniprogram.BaseEvent) {
-      const section = event.currentTarget.dataset.section
+      const section = String(event.currentTarget.dataset.section || '')
       const routes: Record<string, string> = {
         story: '../story/story',
         photo: '../photo/photo',
         message: '../message/message',
       }
-      const url = routes[section]
-      if (url) wx.navigateTo({ url })
+      if (!routes[section]) return
+      if (!this.hasQueryPermission(section)) {
+        this.showPermissionDenied(section)
+        return
+      }
+      wx.navigateTo({ url: routes[section] })
     },
 
     onPhotoError(event: WechatMiniprogram.BaseEvent) {

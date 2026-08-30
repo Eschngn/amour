@@ -22,10 +22,11 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -87,7 +88,19 @@ public class AdminRoleServiceImpl implements AdminRoleService {
         if (role.getId() == null) roleMapper.insert(role); else roleMapper.updateById(role);
         relationMapper.deleteByRoleId(role.getId());
         if (reqVO.getPermissionIds() != null && !reqVO.getPermissionIds().isEmpty()) {
-            List<PermissionDO> valid = permissionMapper.selectBatchIds(reqVO.getPermissionIds());
+            List<PermissionDO> activePermissions = permissionMapper.selectActiveList();
+            Map<Long, PermissionDO> permissionsById = activePermissions.stream()
+                    .collect(Collectors.toMap(PermissionDO::getId, permission -> permission));
+            Set<Long> permissionIds = new LinkedHashSet<>(reqVO.getPermissionIds());
+            for (Long permissionId : new ArrayList<>(permissionIds)) {
+                PermissionDO permission = permissionsById.get(permissionId);
+                while (permission != null && permission.getParentId() != null && permission.getParentId() != 0) {
+                    permissionIds.add(permission.getParentId());
+                    permission = permissionsById.get(permission.getParentId());
+                }
+            }
+            List<PermissionDO> valid = permissionIds.stream().map(permissionsById::get)
+                    .filter(Objects::nonNull).collect(Collectors.toList());
             for (PermissionDO permission : valid) {
                 if (!Objects.equals(permission.getStatus(), 0) || Boolean.TRUE.equals(permission.getIsDeleted())) continue;
                 RolePermissionRelDO rel = new RolePermissionRelDO();
@@ -115,7 +128,23 @@ public class AdminRoleServiceImpl implements AdminRoleService {
         return RolePageRspVO.builder().id(role.getId()).roleName(role.getRoleName()).roleKey(role.getRoleKey())
                 .status(role.getStatus()).sort(role.getSort()).remark(role.getRemark())
                 .createTime(format(role.getCreateTime())).updateTime(format(role.getUpdateTime()))
-                .permissionIds(relationMapper.selectPermissionIds(role.getId())).build();
+                .permissionIds(withPermissionAncestors(relationMapper.selectPermissionIds(role.getId()))).build();
+    }
+
+    private List<Long> withPermissionAncestors(List<Long> permissionIds) {
+        if (permissionIds == null || permissionIds.isEmpty()) return Collections.emptyList();
+        List<PermissionDO> permissions = permissionMapper.selectActiveList();
+        Map<Long, PermissionDO> permissionsById = permissions.stream()
+                .collect(Collectors.toMap(PermissionDO::getId, permission -> permission));
+        Set<Long> normalized = new LinkedHashSet<>(permissionIds);
+        for (Long permissionId : new ArrayList<>(normalized)) {
+            PermissionDO permission = permissionsById.get(permissionId);
+            while (permission != null && permission.getParentId() != null && permission.getParentId() != 0) {
+                normalized.add(permission.getParentId());
+                permission = permissionsById.get(permission.getParentId());
+            }
+        }
+        return new ArrayList<>(normalized);
     }
 
     private PermissionRspVO toPermission(PermissionDO permission, Map<Long, List<PermissionDO>> children) {

@@ -118,16 +118,18 @@
     class="password-sheet"
     style="transform: translateY({{passwordSheetOffset}}rpx); transition: {{passwordSheetTransition}};"
     catchtap="stopPropagation"
-    catchtouchstart="onSheetTouchStart"
-    catchtouchmove="onSheetTouchMove"
-    catchtouchend="onSheetTouchEnd"
   >
-    <view class="sheet-handle"></view>
+    <view
+      class="sheet-handle"
+      catchtouchstart="onSheetTouchStart"
+      catchtouchmove="onSheetTouchMove"
+      catchtouchend="onSheetTouchEnd"
+    ></view>
     <view class="sheet-header"><view class="sheet-copy"><text class="sheet-title">{{passwordSet ? '修改密码' : '设置密码'}}</text><text class="sheet-note">{{passwordSet ? '验证当前密码后进行更新' : '密码长度需为 6-64 个字符'}}</text></view></view>
     <form bindsubmit="onPasswordSubmit">
-      <view wx:if="{{passwordSet}}" class="password-field"><text class="field-label">当前密码</text><input class="password-input" password maxlength="64" value="{{passwordForm.current}}" placeholder="请输入当前密码" data-field="current" bindinput="onPasswordInput" /></view>
-      <view class="password-field"><text class="field-label">新密码</text><input class="password-input" password maxlength="64" value="{{passwordForm.next}}" placeholder="6-64 个字符" data-field="next" bindinput="onPasswordInput" /></view>
-      <view class="password-field"><text class="field-label">确认新密码</text><input class="password-input" password maxlength="64" value="{{passwordForm.confirm}}" placeholder="请再次输入新密码" data-field="confirm" bindinput="onPasswordInput" /></view>
+      <view wx:if="{{passwordSet}}" class="password-field"><text class="field-label">当前密码</text><input class="password-input" password maxlength="64" confirm-type="next" adjust-position value="{{passwordForm.current}}" placeholder="请输入当前密码" data-field="current" bindinput="onPasswordInput" /></view>
+      <view class="password-field"><text class="field-label">新密码</text><input class="password-input" password maxlength="64" confirm-type="next" adjust-position value="{{passwordForm.next}}" placeholder="6-64 个字符" data-field="next" bindinput="onPasswordInput" /></view>
+      <view class="password-field"><text class="field-label">确认新密码</text><input class="password-input" password maxlength="64" confirm-type="done" adjust-position value="{{passwordForm.confirm}}" placeholder="请再次输入新密码" data-field="confirm" bindinput="onPasswordInput" /></view>
       <button class="password-submit" form-type="submit" loading="{{passwordSaving}}" disabled="{{passwordSaving}}">{{passwordSaving ? '正在保存' : (passwordSet ? '确认更新' : '确认设置')}}</button>
     </form>
   </view>
