@@ -1,22 +1,7 @@
 <template>
   <div class="space-y-5">
-    <section class="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6">
-      <div class="flex items-center gap-4">
-        <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-500 ring-1 ring-amber-100">
-          <Calendar class="h-6 w-6" />
-        </span>
-        <div>
-          <h2 class="text-base font-semibold text-slate-900">纪念日管理</h2>
-          <p class="mt-1 text-sm text-slate-500">维护日期、展示状态和前台卡片颜色。</p>
-        </div>
-      </div>
-      <button type="button" class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 text-sm font-medium text-white shadow-lg shadow-rose-200 transition hover:bg-rose-700" @click="openEditor()">
-        <Plus class="h-4 w-4" /> 新增纪念日
-      </button>
-    </section>
-
     <section class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-      <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-[minmax(16rem,1fr)_11rem_11rem_11rem_auto]">
+      <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-[minmax(16rem,1fr)_11rem_11rem_11rem_auto_auto]">
         <label class="relative block">
           <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input v-model="filters.title" type="search" placeholder="搜索纪念日标题…" class="w-full rounded-xl border border-slate-200 py-2 pl-9 pr-3 text-sm outline-none transition focus:border-rose-300 focus:ring-2 focus:ring-rose-100" @keyup.enter="refreshList">
@@ -32,20 +17,12 @@
           <el-option label="前台显示" :value="true" />
           <el-option label="已隐藏" :value="false" />
         </el-select>
-        <button type="button" class="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600" @click="resetFilters">
-          <Refresh class="h-4 w-4" /> 重置
-        </button>
+        <button type="button" class="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600" @click="resetFilters"><Refresh class="h-4 w-4" /> 重置</button>
+        <button type="button" class="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-rose-700" @click="openEditor()"><Plus class="h-4 w-4" /> 新增纪念日</button>
       </div>
     </section>
 
     <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6">
-        <div>
-          <h3 class="text-sm font-semibold text-slate-800">纪念日列表</h3>
-          <p class="mt-1 text-xs text-slate-400">共 {{ totalItems }} 条记录</p>
-        </div>
-        <span class="text-xs text-slate-400">颜色由后台统一维护</span>
-      </div>
       <div v-if="loading" class="flex items-center justify-center py-20 text-sm text-slate-400">加载中…</div>
       <div v-else class="overflow-x-auto">
         <table class="min-w-[980px] w-full divide-y divide-slate-200 text-left text-sm">
@@ -63,7 +40,7 @@
               <td class="px-4 py-4 text-slate-500">{{ categoryLabel(row.category) }}</td>
               <td class="px-4 py-4"><span class="inline-flex items-center gap-2 text-xs text-slate-500"><i class="h-5 w-5 rounded-md border border-white shadow ring-1 ring-slate-200" :style="{ backgroundColor: row.colorCode || '#d94f70' }" />{{ row.colorCode || '#d94f70' }}</span></td>
               <td class="px-4 py-4 text-center"><el-switch v-model="row.isVisible" size="small" @change="toggleVisible(row)" /></td>
-              <td class="whitespace-nowrap px-6 py-4 text-right"><div class="inline-flex items-center gap-1"><button type="button" class="action-button" @click="openEditor(row)"><Edit class="h-3.5 w-3.5" /> 编辑</button><button type="button" class="action-button text-rose-600 hover:bg-rose-50" @click="removeRow(row)"><Delete class="h-3.5 w-3.5" /> 删除</button></div></td>
+              <td class="whitespace-nowrap px-6 py-4 text-right"><div class="inline-flex items-center gap-1"><button type="button" class="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-100" @click="openEditor(row)"><Edit class="h-3.5 w-3.5" /> 编辑</button><button type="button" class="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-rose-600 transition hover:bg-rose-50" @click="removeRow(row)"><Delete class="h-3.5 w-3.5" /> 删除</button></div></td>
             </tr>
             <tr v-if="!rows.length"><td colspan="7" class="px-4 py-16 text-center text-sm text-slate-400">暂无符合条件的纪念日</td></tr>
           </tbody>
@@ -180,11 +157,23 @@ onMounted(loadList)
 </script>
 
 <style scoped>
-.action-button { display: inline-flex; align-items: center; gap: 0.25rem; border-radius: 0.375rem; padding: 0.375rem 0.625rem; font-size: 0.75rem; font-weight: 500; color: rgb(71 85 105); transition: background-color 160ms ease; }
-.action-button:hover { background: rgb(241 245 249); }
+
+:global(.anniversary-editor-dialog) {
+  --el-color-primary: #e11d48;
+  --el-color-primary-light-3: #fb7185;
+  --el-color-primary-light-5: #fda4af;
+  --el-color-primary-light-7: #fecdd3;
+  --el-color-primary-light-8: #ffe4e6;
+  --el-color-primary-light-9: #fff1f2;
+  --el-color-primary-dark-2: #be123c;
+}
+
+:global(.anniversary-editor-dialog .el-form-item) { margin-right: 0; }
 
 :global(.anniversary-editor-dialog .anniversary-editor-grid > .el-form-item),
 :global(.anniversary-editor-dialog .anniversary-editor-grid .el-form-item__content) { min-width: 0; }
+
+:global(.anniversary-editor-dialog .anniversary-editor-grid .el-form-item__content) { width: 100%; }
 
 :global(.anniversary-editor-dialog .anniversary-editor-grid .el-input),
 :global(.anniversary-editor-dialog .anniversary-editor-grid .el-select),
@@ -198,5 +187,35 @@ onMounted(loadList)
 :global(.anniversary-editor-dialog .anniversary-date-picker .el-input__inner) {
   box-sizing: border-box;
   min-width: 0;
+}
+
+:global(.anniversary-editor-dialog .el-input),
+:global(.anniversary-editor-dialog .el-select),
+:global(.anniversary-editor-dialog .el-input-number),
+:global(.anniversary-editor-dialog .el-date-editor),
+:global(.anniversary-editor-dialog .el-form-item__content),
+:global(.anniversary-editor-dialog .el-input__wrapper),
+:global(.anniversary-editor-dialog .el-select__wrapper) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+
+:global(.anniversary-editor-dialog .el-input__inner),
+:global(.anniversary-editor-dialog .el-textarea__inner) {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+:global(.anniversary-editor-dialog .el-input__wrapper),
+:global(.anniversary-editor-dialog .el-select__wrapper) {
+  box-shadow: 0 0 0 1px #e2e8f0 inset;
+}
+
+:global(.anniversary-editor-dialog .el-input__wrapper.is-focus),
+:global(.anniversary-editor-dialog .el-select__wrapper.is-focused),
+:global(.anniversary-editor-dialog .el-input__wrapper:focus-within),
+:global(.anniversary-editor-dialog .el-textarea__inner:focus) {
+  box-shadow: 0 0 0 1px #fb7185 inset, 0 0 0 3px rgba(244, 63, 94, 0.09) !important;
 }
 </style>

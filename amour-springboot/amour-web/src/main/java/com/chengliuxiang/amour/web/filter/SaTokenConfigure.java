@@ -11,6 +11,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class SaTokenConfigure implements WebMvcConfigurer {
 
     private static final String MESSAGE_USER_ROLE = "message_user";
+    private static final String MESSAGE_MODULE_PERMISSION = "frontend:message";
     private static final String MESSAGE_PUBLISH_PERMISSION = "frontend:message:publish";
     private static final String MESSAGE_REPLY_PERMISSION = "frontend:message:reply";
 
@@ -31,6 +32,8 @@ public class SaTokenConfigure implements WebMvcConfigurer {
     private static void checkMessagePermission(String permission) {
         StpUtil.checkLogin();
         StpUtil.checkRole(MESSAGE_USER_ROLE);
+        // 操作权限必须建立在留言模块权限之上，避免只授予按钮权限时绕过模块授权。
+        StpUtil.checkPermission(MESSAGE_MODULE_PERMISSION);
         StpUtil.checkPermission(permission);
     }
 }

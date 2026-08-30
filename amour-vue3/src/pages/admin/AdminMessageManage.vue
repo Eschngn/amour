@@ -1,18 +1,7 @@
 <template>
   <div class="space-y-5">
-    <div class="flex flex-col gap-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 lg:flex-row lg:items-center lg:justify-between">
-      <div class="flex min-w-0 items-center gap-4">
-        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-violet-50 text-violet-500 ring-1 ring-violet-100">
-          <ChatDotRound class="h-6 w-6" />
-        </span>
-        <div>
-          <h2 class="text-base font-semibold text-slate-900">访客留言</h2>
-          <p class="mt-1 text-sm text-slate-500">
-            已收到 <span class="font-semibold text-violet-500">{{ totalItems }}</span> 条留言，认真回应每一份真诚。
-          </p>
-        </div>
-      </div>
-      <div class="relative w-full lg:w-72">
+    <div class="admin-page-toolbar flex justify-end">
+      <div class="relative w-full sm:w-72">
         <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <input
           v-model="keyword"
@@ -69,9 +58,10 @@
               <button
                 type="button"
                 :disabled="deletingId === message.messageId"
-                class="rounded-md px-2.5 py-1 text-xs font-medium text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                class="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
                 @click="deleteMessage(message)"
               >
+                <Delete class="h-3.5 w-3.5" />
                 {{ deletingId === message.messageId ? '删除中…' : '删除' }}
               </button>
             </td>
@@ -125,7 +115,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { ChatDotRound, Search } from '@element-plus/icons-vue'
+import { ChatDotRound, Delete, Search } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import 'element-plus/es/components/message/style/css'
 import 'element-plus/es/components/message-box/style/css'

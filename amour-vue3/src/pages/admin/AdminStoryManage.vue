@@ -1,18 +1,7 @@
 <template>
   <div class="space-y-5">
-    <div class="flex flex-col gap-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 lg:flex-row lg:items-center lg:justify-between">
-      <div class="flex min-w-0 items-center gap-4">
-        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-500 ring-1 ring-rose-100">
-          <Collection class="h-6 w-6" />
-        </span>
-        <div class="min-w-0">
-          <h2 class="text-base font-semibold text-slate-900">故事内容</h2>
-          <p class="mt-1 text-sm text-slate-500">
-            共收录 <span class="font-semibold text-rose-500">{{ totalItems }}</span> 篇故事，继续书写属于你们的时间线。
-          </p>
-        </div>
-      </div>
-      <div class="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
+    <div class="admin-page-toolbar flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+      <div class="flex w-full flex-col gap-3 sm:flex-row sm:w-auto">
         <div class="relative min-w-0 flex-1 sm:w-64">
           <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input v-model="keyword" placeholder="搜索故事标题…"

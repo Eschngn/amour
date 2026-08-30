@@ -87,6 +87,8 @@ import {
   Close,
   Collection,
   CollectionTag,
+  Lock,
+  UserFilled,
   House,
   Picture,
   SwitchButton,
@@ -122,5 +124,7 @@ const menu = [
   { to: '/admin/photo', label: '相册管理', icon: Picture },
   { to: '/admin/anniversary', label: '纪念日管理', icon: Calendar },
   { to: '/admin/dict', label: '字典配置', icon: CollectionTag },
+  { to: '/admin/role', label: '角色管理', icon: UserFilled },
+  { to: '/admin/permission', label: '权限管理', icon: Lock },
 ]
 </script>

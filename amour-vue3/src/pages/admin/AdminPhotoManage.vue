@@ -1,39 +1,7 @@
 <template>
   <div class="space-y-5">
-    <div class="flex flex-col gap-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 lg:flex-row lg:items-center lg:justify-between">
-      <div class="flex min-w-0 items-center gap-4">
-        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sky-50 text-sky-500 ring-1 ring-sky-100">
-          <Picture class="h-6 w-6" />
-        </span>
-        <div class="min-w-0">
-          <h2 class="text-base font-semibold text-slate-900">相册资源</h2>
-          <p class="mt-1 text-sm text-slate-500">
-            共收录 <span class="font-semibold text-rose-500">{{ totalItems }}</span> 张照片，管理分类、展示顺序与前台可见状态。
-          </p>
-        </div>
-      </div>
-      <div class="flex w-full gap-3 sm:w-auto">
-        <button
-          type="button"
-          class="inline-flex min-h-10 flex-1 shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 sm:flex-none"
-          @click="openCategoryManager"
-        >
-          <CollectionTag class="h-4 w-4" />
-          分类管理
-        </button>
-        <button
-          type="button"
-          class="inline-flex min-h-10 flex-1 shrink-0 items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 text-sm font-medium text-white shadow-lg shadow-rose-200 transition hover:-translate-y-0.5 hover:bg-rose-700 hover:shadow-xl sm:flex-none"
-          @click="openEditor()"
-        >
-          <Upload class="h-4 w-4" />
-          上传照片
-        </button>
-      </div>
-    </div>
-
     <section class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-      <div class="grid gap-3 md:grid-cols-3 xl:grid-cols-[minmax(15rem,1fr)_12rem_12rem_auto]">
+      <div class="grid gap-3 md:grid-cols-3 xl:grid-cols-[minmax(15rem,1fr)_12rem_12rem_auto_auto]">
         <label class="relative block">
           <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
@@ -76,25 +44,15 @@
           <option value="false">已隐藏</option>
         </select>
 
-        <button
-          type="button"
-          class="min-h-10 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
-          @click="resetFilters"
-        >
-          重置筛选
-        </button>
+        <button type="button" class="min-h-10 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600" @click="resetFilters">重置筛选</button>
+        <div class="flex min-h-10 gap-2 md:col-span-3 xl:col-span-1">
+          <button type="button" class="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 xl:flex-none" @click="openCategoryManager"><CollectionTag class="h-4 w-4" />分类管理</button>
+          <button type="button" class="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-3 text-sm font-medium text-white shadow-sm transition hover:bg-rose-700 xl:flex-none" @click="openEditor()"><Upload class="h-4 w-4" />上传照片</button>
+        </div>
       </div>
     </section>
 
     <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div class="flex flex-col gap-2 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h3 class="text-sm font-semibold text-slate-800">全部照片</h3>
-          <p class="mt-1 text-xs text-slate-400">排序值越小越靠前；封面标记全站仅保留一张。</p>
-        </div>
-        <span class="text-xs text-slate-400">第 {{ currentPage }} / {{ totalPages }} 页</span>
-      </div>
-
       <div v-if="loading" class="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         <div v-for="index in pageSize" :key="index" class="overflow-hidden rounded-2xl border border-slate-100">
           <div class="aspect-[4/3] animate-pulse bg-slate-100" />
@@ -156,11 +114,13 @@
                 前台显示
               </label>
               <div class="flex items-center gap-1">
-                <button type="button" class="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700" aria-label="编辑照片" @click="openEditor(row)">
-                  <Edit class="h-4 w-4" />
+                <button type="button" class="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-100" aria-label="编辑照片" @click="openEditor(row)">
+                  <Edit class="h-3.5 w-3.5" />
+                  编辑
                 </button>
-                <button type="button" class="rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600" aria-label="删除照片" @click="deletePhoto(row)">
-                  <Delete class="h-4 w-4" />
+                <button type="button" class="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-rose-600 transition hover:bg-rose-50" aria-label="删除照片" @click="deletePhoto(row)">
+                  <Delete class="h-3.5 w-3.5" />
+                  删除
                 </button>
               </div>
             </div>

@@ -1,20 +1,5 @@
 <template>
   <div class="space-y-5">
-    <section class="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 lg:flex-row lg:items-center lg:justify-between">
-      <div class="flex min-w-0 items-center gap-4">
-        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-500 ring-1 ring-indigo-100">
-          <CollectionTag class="h-6 w-6" />
-        </span>
-        <div class="min-w-0">
-          <h2 class="text-base font-semibold text-slate-900">配置中心</h2>
-          <p class="mt-1 text-sm text-slate-500">统一维护站点配置、字典值与前端展示参数。</p>
-        </div>
-      </div>
-      <button type="button" class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 text-sm font-medium text-white shadow-lg shadow-rose-200 transition hover:-translate-y-0.5 hover:bg-rose-700 hover:shadow-xl" @click="openEditor()">
-        <Plus class="h-4 w-4" /> 新增配置
-      </button>
-    </section>
-
     <section class="grid gap-4 sm:grid-cols-3">
       <div v-for="stat in stats" :key="stat.label" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <div class="flex items-center justify-between"><span class="text-xs font-medium text-slate-400">{{ stat.label }}</span><component :is="stat.icon" class="h-4 w-4" :class="stat.color" /></div>
@@ -24,11 +9,7 @@
     </section>
 
     <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div class="flex flex-col gap-3 border-b border-slate-100 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h3 class="text-sm font-semibold text-slate-800">全部配置</h3>
-          <p class="mt-1 text-xs text-slate-400">一条配置对应 `site_config` 表中的一条记录</p>
-        </div>
+      <div class="flex flex-col gap-3 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-end">
         <div class="flex flex-col gap-2 sm:flex-row">
           <div class="relative sm:w-64">
             <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -40,9 +21,8 @@
               <el-option v-for="option in typeOptions" :key="option.value" :label="option.label" :value="option.value" />
             </el-select>
           </div>
-          <button type="button" class="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-200 px-3 text-xs font-medium text-slate-500 transition hover:bg-slate-50 hover:text-slate-800" @click="fetchConfigs">
-            <Refresh class="h-3.5 w-3.5" :class="{ 'animate-spin': loading }" /> 刷新
-          </button>
+          <button type="button" class="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-200 px-3 text-xs font-medium text-slate-500 transition hover:bg-slate-50 hover:text-slate-800" @click="fetchConfigs"><Refresh class="h-3.5 w-3.5" :class="{ 'animate-spin': loading }" /> 刷新</button>
+          <button type="button" class="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-3 text-xs font-medium text-white shadow-sm transition hover:bg-rose-700" @click="openEditor()"><Plus class="h-3.5 w-3.5" /> 新增配置</button>
         </div>
       </div>
 
@@ -84,7 +64,7 @@
               <td class="px-4 py-4"><span class="rounded-full px-2.5 py-1 text-[11px] font-medium" :class="typeClass(config.valueType)">{{ typeLabel(config.valueType) }}</span></td>
               <td class="px-4 py-4 text-slate-500">{{ config.sortOrder ?? 0 }}</td>
               <td class="whitespace-nowrap px-4 py-4 text-xs text-slate-400">{{ config.updateTime || '-' }}</td>
-              <td class="whitespace-nowrap px-6 py-4 text-right"><div class="inline-flex gap-1"><button type="button" class="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-800" @click="openEditor(config)"><Edit class="h-3.5 w-3.5" />编辑</button><button type="button" class="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-rose-500 transition hover:bg-rose-50" @click="deleteConfig(config)"><Delete class="h-3.5 w-3.5" />删除</button></div></td>
+              <td class="whitespace-nowrap px-6 py-4 text-right"><div class="inline-flex items-center gap-1"><button type="button" class="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-100" @click="openEditor(config)"><Edit class="h-3.5 w-3.5" />编辑</button><button type="button" class="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-rose-600 transition hover:bg-rose-50" @click="deleteConfig(config)"><Delete class="h-3.5 w-3.5" />删除</button></div></td>
             </tr>
           </tbody>
         </table>
@@ -96,60 +76,68 @@
       </div>
     </section>
 
-    <Teleport to="body">
-      <div v-if="dialog.visible" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-sm" @click.self="dialog.visible = false">
-        <form class="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl" @submit.prevent="saveConfig">
-          <div class="flex items-start justify-between"><div><h3 class="text-base font-semibold text-slate-900">{{ dialog.form.id ? '编辑配置' : '新增配置' }}</h3><p class="mt-1 text-xs text-slate-400">配置键必须唯一，供前台或业务接口引用。</p></div><button type="button" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100" aria-label="关闭" @click="dialog.visible = false"><Close class="h-4 w-4" /></button></div>
-          <div class="mt-6 grid gap-4 sm:grid-cols-2">
-            <label><span class="form-label">配置名称</span><input v-model="dialog.form.configName" class="form-input" placeholder="例如：首页标题" /></label>
-            <label><span class="form-label">配置键</span><input v-model="dialog.form.configKey" class="form-input font-mono" placeholder="例如：site_title" /></label>
-            <div class="sm:col-span-2">
-              <span class="form-label">配置值</span>
-              <textarea v-if="dialog.form.valueType === 'text'" v-model="dialog.form.configValue" class="form-input min-h-24 resize-y" placeholder="请输入配置内容" />
-              <el-date-picker
-                v-else-if="dialog.form.valueType === 'datetime'"
-                v-model="dialog.form.configValue"
-                type="datetime"
-                value-format="YYYY-MM-DD HH:mm:ss"
-                format="YYYY-MM-DD HH:mm:ss"
-                placeholder="请选择日期时间"
-                clearable
-                class="form-date-picker w-full"
-              />
-              <div v-else class="config-image-input">
-                <div v-if="dialog.form.configValue" class="config-image-preview">
-                  <img
-                    :src="dialog.form.configValue"
-                    alt="配置图片预览"
-                    title="点击预览大图"
-                    @click.stop="openImagePreview(dialog.form.configValue, dialog.form.configName || '配置图片')"
-                  />
-                </div>
-                <el-upload
-                  class="config-image-upload"
-                  action="#"
-                  accept="image/*"
-                  :auto-upload="false"
-                  :show-file-list="false"
-                  :on-change="handleConfigImageChange"
-                >
-                  <button type="button" class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-600 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-50" :disabled="uploadingImage">
-                    <Loading v-if="uploadingImage" class="h-4 w-4 animate-spin" />
-                    <Upload v-else class="h-4 w-4" />
-                    {{ uploadingImage ? '上传中…' : (dialog.form.configValue ? '重新上传图片' : '上传图片') }}
-                  </button>
-                </el-upload>
-                <p class="mt-2 text-xs text-slate-400">支持 JPG、PNG、GIF、WEBP 等图片格式。</p>
+    <el-dialog
+      v-model="dialog.visible"
+      :title="dialog.form.id ? '编辑配置' : '新增配置'"
+      width="min(640px, calc(100vw - 32px))"
+      class="dict-editor-dialog"
+      append-to-body
+      destroy-on-close
+    >
+      <el-form :model="dialog.form" label-position="top" @submit.prevent="saveConfig">
+        <div class="dict-editor-grid grid gap-4 sm:grid-cols-2">
+          <el-form-item label="配置名称" required><el-input v-model="dialog.form.configName" maxlength="50" placeholder="例如：首页标题" class="!w-full" /></el-form-item>
+          <el-form-item label="配置键" required><el-input v-model="dialog.form.configKey" maxlength="100" placeholder="例如：site_title" class="!w-full font-mono" /></el-form-item>
+          <el-form-item label="配置值" class="sm:col-span-2">
+            <el-input v-if="dialog.form.valueType === 'text'" v-model="dialog.form.configValue" type="textarea" :rows="4" placeholder="请输入配置内容" class="!w-full" />
+            <el-date-picker
+              v-else-if="dialog.form.valueType === 'datetime'"
+              v-model="dialog.form.configValue"
+              type="datetime"
+              value-format="YYYY-MM-DD HH:mm:ss"
+              format="YYYY-MM-DD HH:mm:ss"
+              placeholder="请选择日期时间"
+              clearable
+              class="dict-date-picker !w-full"
+            />
+            <div v-else class="config-image-input w-full">
+              <div v-if="dialog.form.configValue" class="config-image-preview">
+                <img
+                  :src="dialog.form.configValue"
+                  alt="配置图片预览"
+                  title="点击预览大图"
+                  @click.stop="openImagePreview(dialog.form.configValue, dialog.form.configName || '配置图片')"
+                />
               </div>
+              <el-upload
+                class="config-image-upload"
+                action="#"
+                accept="image/*"
+                :auto-upload="false"
+                :show-file-list="false"
+                :on-change="handleConfigImageChange"
+              >
+                <button type="button" class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-50" :disabled="uploadingImage">
+                  <Loading v-if="uploadingImage" class="h-4 w-4 animate-spin" />
+                  <Upload v-else class="h-4 w-4" />
+                  {{ uploadingImage ? '上传中…' : (dialog.form.configValue ? '重新上传图片' : '上传图片') }}
+                </button>
+              </el-upload>
+              <p class="mt-2 text-xs text-slate-400">支持 JPG、PNG、GIF、WEBP 等图片格式。</p>
             </div>
-            <label><span class="form-label">值类型</span><el-select v-model="dialog.form.valueType" class="form-type-select w-full" placeholder="请选择值类型" @change="handleValueTypeChange"><el-option v-for="option in editableTypeOptions" :key="option.value" :label="option.label" :value="option.value" /></el-select></label>
-            <label><span class="form-label">排序</span><input v-model.number="dialog.form.sortOrder" type="number" min="0" class="form-input" /></label>
-            <label class="sm:col-span-2"><span class="form-label">备注</span><textarea v-model="dialog.form.remark" class="form-input min-h-20 resize-y" placeholder="补充说明（可选）" /></label>
-          </div>
-          <div class="mt-7 flex justify-end gap-2"><button type="button" class="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50" @click="dialog.visible = false">取消</button><button type="submit" :disabled="saving" class="rounded-xl bg-rose-600 px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-rose-700 disabled:opacity-50">{{ saving ? '保存中…' : '保存' }}</button></div>
-        </form>
-      </div>
-    </Teleport>
+          </el-form-item>
+          <el-form-item label="值类型" required><el-select v-model="dialog.form.valueType" class="!w-full" placeholder="请选择值类型" @change="handleValueTypeChange"><el-option v-for="option in editableTypeOptions" :key="option.value" :label="option.label" :value="option.value" /></el-select></el-form-item>
+          <el-form-item label="排序"><el-input-number v-model="dialog.form.sortOrder" :min="0" :max="9999" class="!w-full" /></el-form-item>
+          <el-form-item label="备注" class="sm:col-span-2"><el-input v-model="dialog.form.remark" type="textarea" :rows="3" maxlength="255" show-word-limit placeholder="补充说明（可选）" class="!w-full" /></el-form-item>
+        </div>
+      </el-form>
+      <template #footer>
+        <div class="flex justify-end gap-3">
+          <el-button @click="dialog.visible = false">取消</el-button>
+          <el-button type="primary" :loading="saving" @click="saveConfig">保存</el-button>
+        </div>
+      </template>
+    </el-dialog>
 
     <Teleport to="body">
       <div v-if="imagePreview.visible" class="image-preview-overlay" @click.self="closeImagePreview">
@@ -311,9 +299,67 @@ onMounted(fetchConfigs)
 </script>
 
 <style scoped>
-.form-label { display: block; margin-bottom: 0.5rem; font-size: 0.75rem; font-weight: 600; color: #475569; }
-.form-input { width: 100%; min-height: 40px; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 0.625rem 0.75rem; font-size: 0.875rem; color: #334155; outline: none; transition: border-color 160ms ease, box-shadow 160ms ease; }
-.form-input:focus { border-color: rgba(99, 102, 241, 0.48); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.09); }
+:global(.dict-editor-dialog) {
+  --el-color-primary: #e11d48;
+  --el-color-primary-light-3: #fb7185;
+  --el-color-primary-light-5: #fda4af;
+  --el-color-primary-light-7: #fecdd3;
+  --el-color-primary-light-8: #ffe4e6;
+  --el-color-primary-light-9: #fff1f2;
+  --el-color-primary-dark-2: #be123c;
+}
+
+:global(.dict-editor-dialog .el-form-item) { margin-right: 0; }
+
+:global(.dict-editor-dialog .dict-editor-grid > .el-form-item),
+:global(.dict-editor-dialog .dict-editor-grid .el-form-item__content) { min-width: 0; }
+
+:global(.dict-editor-dialog .dict-editor-grid .el-form-item__content) { width: 100%; }
+
+:global(.dict-editor-dialog .dict-editor-grid .el-input),
+:global(.dict-editor-dialog .dict-editor-grid .el-select),
+:global(.dict-editor-dialog .dict-editor-grid .el-input-number),
+:global(.dict-editor-dialog .dict-editor-grid .el-date-editor) {
+  width: 100%;
+  min-width: 0;
+}
+
+:global(.dict-editor-dialog .dict-date-picker .el-input__wrapper),
+:global(.dict-editor-dialog .dict-date-picker .el-input__inner) {
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+:global(.dict-editor-dialog .el-input),
+:global(.dict-editor-dialog .el-select),
+:global(.dict-editor-dialog .el-input-number),
+:global(.dict-editor-dialog .el-date-editor),
+:global(.dict-editor-dialog .el-form-item__content),
+:global(.dict-editor-dialog .el-input__wrapper),
+:global(.dict-editor-dialog .el-select__wrapper) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+
+:global(.dict-editor-dialog .el-input__inner),
+:global(.dict-editor-dialog .el-textarea__inner) {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+:global(.dict-editor-dialog .el-input__wrapper),
+:global(.dict-editor-dialog .el-select__wrapper) {
+  box-shadow: 0 0 0 1px #e2e8f0 inset;
+}
+
+:global(.dict-editor-dialog .el-input__wrapper.is-focus),
+:global(.dict-editor-dialog .el-select__wrapper.is-focused),
+:global(.dict-editor-dialog .el-input__wrapper:focus-within),
+:global(.dict-editor-dialog .el-textarea__inner:focus) {
+  box-shadow: 0 0 0 1px #fb7185 inset, 0 0 0 3px rgba(244, 63, 94, 0.09) !important;
+}
+
 .config-value-cell { width: 1%; min-width: 140px; }
 .config-table-image { display: block; width: auto; height: auto; max-width: min(280px, 32vw); max-height: 140px; cursor: zoom-in; border-radius: 0.5rem; background: #f8fafc; object-fit: contain; box-shadow: 0 0 0 1px #e2e8f0; }
 .config-image-input { display: flex; min-height: 116px; flex-wrap: wrap; align-items: center; gap: 1rem; border: 1px dashed #cbd5e1; border-radius: 0.75rem; padding: 0.75rem; }
@@ -324,17 +370,9 @@ onMounted(fetchConfigs)
 .image-preview-full { max-height: 90vh; max-width: 92vw; object-fit: contain; border-radius: 0.75rem; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35); }
 .image-preview-close { position: absolute; right: 1.25rem; top: 1.25rem; display: inline-flex; align-items: center; justify-content: center; border-radius: 0.75rem; padding: 0.625rem; color: #fff; background: rgba(255, 255, 255, 0.14); transition: background 160ms ease; }
 .image-preview-close:hover { background: rgba(255, 255, 255, 0.24); }
-:deep(.config-type-select .el-select__wrapper),
-:deep(.form-type-select .el-select__wrapper),
-:deep(.form-date-picker .el-input__wrapper) { min-height: 40px; border-radius: 12px; background: #fff; box-shadow: 0 0 0 1px #e2e8f0 inset; transition: box-shadow 160ms ease, transform 160ms ease; }
+:deep(.config-type-select .el-select__wrapper) { min-height: 40px; border-radius: 12px; background: #fff; box-shadow: 0 0 0 1px #e2e8f0 inset; transition: box-shadow 160ms ease, transform 160ms ease; }
 :deep(.config-type-select .el-select__wrapper) { padding-left: 34px; }
-:deep(.config-type-select .el-select__wrapper:hover),
-:deep(.form-type-select .el-select__wrapper:hover),
-:deep(.form-date-picker .el-input__wrapper:hover) { box-shadow: 0 0 0 1px #c7d2fe inset; }
-:deep(.config-type-select .el-select__wrapper.is-focused),
-:deep(.form-type-select .el-select__wrapper.is-focused),
-:deep(.form-date-picker .el-input__wrapper.is-focus) { box-shadow: 0 0 0 1px #818cf8 inset, 0 0 0 3px rgba(99, 102, 241, 0.1); }
-:deep(.config-type-select .el-select__placeholder),
-:deep(.form-type-select .el-select__placeholder),
-:deep(.form-date-picker .el-input__inner) { font-size: 13px; color: #64748b; }
+:deep(.config-type-select .el-select__wrapper:hover) { box-shadow: 0 0 0 1px #c7d2fe inset; }
+:deep(.config-type-select .el-select__wrapper.is-focused) { box-shadow: 0 0 0 1px #818cf8 inset, 0 0 0 3px rgba(99, 102, 241, 0.1); }
+:deep(.config-type-select .el-select__placeholder) { font-size: 13px; color: #64748b; }
 </style>

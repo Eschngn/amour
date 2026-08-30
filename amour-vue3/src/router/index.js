@@ -6,6 +6,8 @@ import AdminLogin from '@/pages/admin/AdminLogin.vue'
 import AdminMessageManage from '@/pages/admin/AdminMessageManage.vue'
 import AdminPhotoManage from '@/pages/admin/AdminPhotoManage.vue'
 import AdminStoryManage from '@/pages/admin/AdminStoryManage.vue'
+import AdminRoleManage from '@/pages/admin/AdminRoleManage.vue'
+import AdminPermissionManage from '@/pages/admin/AdminPermissionManage.vue'
 import AnniversaryPage from '@/pages/frontend/AnniversaryPage.vue'
 import MessageBoardPage from '@/pages/frontend/MessageBoardPage.vue'
 import OurStoryPage from '@/pages/frontend/OurStoryPage.vue'
@@ -100,6 +102,18 @@ const routes = [
         name: 'admin-dict',
         component: AdminDictManage,
         meta: { title: '字典配置 · 后台', pageTitle: '字典配置' },
+      },
+      {
+        path: 'role',
+        name: 'admin-role',
+        component: AdminRoleManage,
+        meta: { title: '角色管理 · 后台', pageTitle: '角色管理' },
+      },
+      {
+        path: 'permission',
+        name: 'admin-permission',
+        component: AdminPermissionManage,
+        meta: { title: '权限管理 · 后台', pageTitle: '权限管理' },
       },
     ],
   },
