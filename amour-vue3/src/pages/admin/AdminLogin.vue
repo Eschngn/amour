@@ -1,6 +1,7 @@
 <template>
-  <div class="admin-login-shell flex min-h-screen items-center justify-center overflow-hidden px-4 py-8 font-sans sm:px-6">
-    <div class="relative flex w-full max-w-5xl overflow-hidden rounded-[28px] border border-white/10 bg-slate-900/80 shadow-2xl shadow-black/40 backdrop-blur-xl lg:min-h-[600px]">
+  <div class="admin-login-shell flex min-h-screen flex-col overflow-hidden font-sans">
+    <main class="flex flex-1 items-center justify-center px-4 py-8 sm:px-6">
+      <div class="relative flex w-full max-w-5xl overflow-hidden rounded-[28px] border border-white/10 bg-slate-900/80 shadow-2xl shadow-black/40 backdrop-blur-xl lg:min-h-[600px]">
       <div class="relative hidden w-[46%] flex-col justify-between overflow-hidden bg-gradient-to-br from-rose-600 via-rose-700 to-slate-900 p-10 lg:flex">
         <div class="absolute -right-24 -top-24 h-72 w-72 rounded-full border-[32px] border-white/10" />
         <div class="absolute -bottom-28 -left-20 h-80 w-80 rounded-full border-[48px] border-white/[0.06]" />
@@ -61,7 +62,11 @@
           </p>
         </div>
       </div>
-    </div>
+      </div>
+    </main>
+    <footer class="px-4 py-6 text-center text-xs text-slate-400">
+      <a href="https://beian.miit.gov.cn/" target="_blank" rel="noreferrer" class="transition hover:text-white hover:underline">浙ICP备2026073792号</a>
+    </footer>
   </div>
 </template>
 

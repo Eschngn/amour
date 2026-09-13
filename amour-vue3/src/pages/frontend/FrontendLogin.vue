@@ -1,7 +1,8 @@
 <template>
-  <div class="flex min-h-screen items-center justify-center bg-gradient-to-b from-rose-50 to-pink-50 px-4 font-sans">
-    <div class="w-full max-w-md rounded-2xl border border-rose-100 bg-white/80 p-8 shadow-xl shadow-rose-100/50 backdrop-blur">
-      <div class="text-center">
+  <div class="flex min-h-screen flex-col bg-gradient-to-b from-rose-50 to-pink-50 font-sans">
+    <main class="flex flex-1 items-center justify-center px-4">
+      <div class="w-full max-w-md rounded-2xl border border-rose-100 bg-white/80 p-8 shadow-xl shadow-rose-100/50 backdrop-blur">
+        <div class="text-center">
         <span
           class="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-rose-400 to-pink-500 text-lg text-white shadow-md shadow-rose-300/60"
           aria-hidden="true"
@@ -10,7 +11,7 @@
         <p class="mt-1 text-sm text-rose-700/60">登录以继续使用</p>
       </div>
 
-      <form
+        <form
         class="mt-8 space-y-4"
         @submit.prevent="onSubmit"
       >
@@ -58,17 +59,21 @@
         >
           {{ loading ? '登录中…' : '登录' }}
         </button>
-      </form>
+        </form>
 
-      <p class="mt-6 text-center">
-        <RouterLink
+        <p class="mt-6 text-center">
+          <RouterLink
           to="/"
           class="text-sm text-rose-400 underline-offset-2 hover:text-rose-600 hover:underline"
         >
           返回首页
-        </RouterLink>
-      </p>
-    </div>
+          </RouterLink>
+        </p>
+      </div>
+    </main>
+    <footer class="px-4 py-6 text-center text-xs text-rose-700/55">
+      <a href="https://beian.miit.gov.cn/" target="_blank" rel="noreferrer" class="transition hover:text-rose-700 hover:underline">浙ICP备2026073792号</a>
+    </footer>
   </div>
 </template>
 
