@@ -1,4 +1,25 @@
-const DEFAULT_API_BASE_URL = 'http://192.168.7.8:8080'
+// 微信小程序 envVersion：develop 开发版，trial 体验版，release 正式版。
+// trial/release 使用已配置 HTTPS 和小程序 request 合法域名的服务地址。
+const API_BASE_URLS = {
+  develop: 'http://192.168.7.8:8080',
+  trial: 'https://www.chengliuxiang.top/api',
+  release: 'https://www.chengliuxiang.top/api',
+}
+
+function getWechatEnvVersion() {
+  try {
+    const accountInfo = wx.getAccountInfoSync()
+    const envVersion = accountInfo && accountInfo.miniProgram && accountInfo.miniProgram.envVersion
+    if (envVersion && API_BASE_URLS[envVersion]) return envVersion
+  } catch (error) {
+    // 兼容旧版本基础库或非微信运行环境，回退到正式环境。
+  }
+  return 'release'
+}
+
+function getDefaultApiBaseUrl() {
+  return API_BASE_URLS[getWechatEnvVersion()]
+}
 
 class ApiError extends Error {
   constructor(message, statusCode, errorCode) {
@@ -25,11 +46,15 @@ function clearStoredAuth() {
 }
 
 function getApiBaseUrl() {
-  const storedBaseUrl = wx.getStorageSync('apiBaseUrl')
-  if (typeof storedBaseUrl === 'string' && storedBaseUrl.trim()) {
-    return storedBaseUrl.trim().replace(/\/$/, '')
+  const envVersion = getWechatEnvVersion()
+  // 仅开发版允许通过缓存临时切换到本机或局域网服务，避免污染体验版/正式版。
+  if (envVersion === 'develop') {
+    const storedBaseUrl = wx.getStorageSync('apiBaseUrl')
+    if (typeof storedBaseUrl === 'string' && storedBaseUrl.trim()) {
+      return storedBaseUrl.trim().replace(/\/$/, '')
+    }
   }
-  return DEFAULT_API_BASE_URL
+  return API_BASE_URLS[envVersion]
 }
 
 function parseResponseBody(data) {
