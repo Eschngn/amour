@@ -14,7 +14,7 @@
           aria-hidden="true"
         >A</span>
         <div class="min-w-0 transition-opacity" :class="{ 'lg:hidden': collapsed }">
-          <p class="truncate text-[15px] font-semibold tracking-wide text-white">Amour</p>
+          <p class="truncate text-[15px] font-semibold tracking-wide text-white">恋语间</p>
           <p class="mt-0.5 truncate text-[10px] font-medium uppercase tracking-[0.2em] text-slate-500">
             Content studio
           </p>

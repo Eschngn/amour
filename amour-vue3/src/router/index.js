@@ -25,54 +25,54 @@ const routes = [
   {
     path: '/',
     component: Index,
-    meta: { title: 'Amour 首页' },
+    meta: { title: '恋语间 首页' },
   },
   {
     path: '/story',
     component: OurStoryPage,
-    meta: { title: '我们的故事 · Amour' },
+    meta: { title: '我们的故事 · 恋语间' },
   },
   {
     path: '/story/:id',
     component: StoryDetail,
-    meta: { title: '故事详情 · Amour' },
+    meta: { title: '故事详情 · 恋语间' },
   },
   {
     path: '/message',
     component: MessageBoardPage,
-    meta: { title: '留言板 · Amour' },
+    meta: { title: '留言板 · 恋语间' },
   },
   {
     path: '/photo',
     component: PhotoAlbumPage,
-    meta: { title: '相册 · Amour' },
+    meta: { title: '相册 · 恋语间' },
   },
   {
     path: '/anniversary',
     component: AnniversaryPage,
-    meta: { title: '纪念日 · Amour' },
+    meta: { title: '纪念日 · 恋语间' },
   },
   {
     path: '/login',
     component: FrontendLogin,
-    meta: { title: '登录 · Amour' },
+    meta: { title: '登录 · 恋语间' },
   },
   {
     path: '/profile',
     component: UserProfilePage,
-    meta: { title: '个人设置 · Amour', requiresFrontendAuth: true },
+    meta: { title: '个人设置 · 恋语间', requiresFrontendAuth: true },
   },
   {
     path: '/admin/login',
     name: 'admin-login',
     component: AdminLogin,
-    meta: { title: '后台登录 · Amour' },
+    meta: { title: '后台登录 · 恋语间' },
   },
   {
     path: '/admin',
     component: AdminLayout,
     redirect: '/admin/story',
-    meta: { title: '后台管理 · Amour' },
+    meta: { title: '后台管理 · 恋语间' },
     children: [
       {
         path: 'story',

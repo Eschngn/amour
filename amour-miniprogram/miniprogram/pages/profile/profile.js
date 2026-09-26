@@ -28,7 +28,7 @@ if (false) Component({
     authenticating: false,
     loggingOut: false,
     loginError: '',
-    displayName: 'Amour 用户',
+    displayName: '恋语间 用户',
     accountLabel: '微信用户',
     avatar: '',
     avatarError: false,
@@ -66,7 +66,7 @@ if (false) Component({
     loadStoredProfile() {
       const auth = getStoredAuth()
       const loggedIn = Boolean(auth.token)
-      const displayName = auth.displayName || 'Amour 用户'
+      const displayName = auth.displayName || '恋语间 用户'
       this.setData({
         loggedIn,
         displayName,
@@ -98,7 +98,7 @@ if (false) Component({
         const app = getApp()
         if (app && app.globalData) app.globalData.authReady = authPromise
         const auth = await authPromise
-        const displayName = auth.displayName || 'Amour 用户'
+        const displayName = auth.displayName || '恋语间 用户'
         this.setData({
           loggedIn: true,
           authenticating: false,
@@ -172,7 +172,7 @@ if (false) Component({
         authenticating: false,
         loggingOut: false,
         loginError: '',
-        displayName: 'Amour 用户',
+        displayName: '恋语间 用户',
         accountLabel: '微信用户',
         avatar: '',
         avatarError: false,
@@ -191,7 +191,7 @@ Component({
     authenticating: false,
     loginError: '',
     username: '',
-    displayName: 'Amour 用户',
+    displayName: '恋语间 用户',
     avatar: '',
     avatarError: false,
     initial: 'A',
@@ -219,7 +219,7 @@ Component({
 
   methods: {
     applyAuth(auth = {}) {
-      const displayName = auth.displayName || 'Amour 用户'
+      const displayName = auth.displayName || '恋语间 用户'
       this.setData({
         loggedIn: Boolean(auth.token),
         username: auth.username || '',

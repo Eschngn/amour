@@ -39,7 +39,7 @@
     </view>
 
     <view class="profile-section">
-      <text class="section-kicker">MY AMOUR</text>
+      <text class="section-kicker">恋语间</text>
       <text class="section-title">个人空间</text>
       <view class="setting-list">
         <view class="setting-row">

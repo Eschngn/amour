@@ -8,7 +8,7 @@
         <div class="relative">
           <div class="flex items-center gap-3">
             <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15 text-lg font-bold text-white ring-1 ring-white/20">A</span>
-            <span class="text-lg font-semibold tracking-wide text-white">Amour</span>
+            <span class="text-lg font-semibold tracking-wide text-white">恋语间</span>
           </div>
           <p class="mt-20 text-xs font-semibold uppercase tracking-[0.24em] text-rose-100/75">Your little universe</p>
           <h2 class="mt-4 max-w-xs text-4xl font-semibold leading-tight tracking-tight text-white">把每个值得记住的瞬间，认真收藏。</h2>
@@ -24,7 +24,7 @@
         <div class="mx-auto max-w-md">
           <div class="flex items-center gap-3 lg:hidden">
             <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-600 text-sm font-bold text-white">A</span>
-            <span class="text-base font-semibold tracking-wide text-white">Amour</span>
+            <span class="text-base font-semibold tracking-wide text-white">恋语间</span>
           </div>
           <div class="mt-8 lg:mt-5">
             <p class="text-xs font-semibold uppercase tracking-[0.2em] text-rose-400">Content studio</p>

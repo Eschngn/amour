@@ -109,7 +109,7 @@ const descriptions = {
   '/admin/user': '管理后台账号、角色与登录状态',
 }
 
-const pageDescription = computed(() => descriptions[route.path] || '欢迎回到 Amour 管理控制台')
+const pageDescription = computed(() => descriptions[route.path] || '欢迎回到 恋语间 管理控制台')
 
 const todayText = new Intl.DateTimeFormat('zh-CN', {
   month: 'long',

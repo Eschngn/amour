@@ -81,7 +81,7 @@ defineProps({
   },
   attribution: {
     type: String,
-    default: '— 来自 Amour 内测用户',
+    default: '— 来自 恋语间 内测用户',
   },
 })
 </script>

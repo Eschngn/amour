@@ -13,7 +13,7 @@
           class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-rose-400 to-pink-500 text-base text-white shadow-md shadow-rose-300/60 transition group-hover:scale-105"
           aria-hidden="true"
         >♥</span>
-        <span class="text-rose-500">我们俩</span>
+        <span class="text-rose-500">恋语间</span>
       </RouterLink>
 
       <nav

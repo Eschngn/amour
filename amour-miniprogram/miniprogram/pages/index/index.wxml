@@ -1,4 +1,4 @@
-<navigation-bar title="AMOUR" back="{{false}}" color="#572c37" background="#fcf8f5"></navigation-bar>
+<navigation-bar title="恋语间" back="{{false}}" color="#572c37" background="#fcf8f5"></navigation-bar>
 
 <scroll-view class="scrollarea" scroll-y bounces="{{false}}" type="list" enhanced show-scrollbar="false">
   <view class="home-page">
