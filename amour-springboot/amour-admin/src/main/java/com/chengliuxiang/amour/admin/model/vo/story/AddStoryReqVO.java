@@ -27,7 +27,7 @@ public class AddStoryReqVO {
     private String tagLabel;
 
     @NotNull(message = "所属章节不能为空")
-    private Long chapterId;
+    private String chapterId;
 
     @NotNull(message = "是否里程碑不能为空")
     private Boolean isMilestone;

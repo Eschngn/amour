@@ -21,7 +21,7 @@ public interface AnniversaryMapper extends BaseMapper<AnniversaryDO> {
                 .orderByDesc(AnniversaryDO::getId));
     }
 
-    default AnniversaryDO selectActiveById(Long id) {
+    default AnniversaryDO selectActiveById(String id) {
         return selectOne(new LambdaQueryWrapper<AnniversaryDO>()
                 .eq(AnniversaryDO::getId, id)
                 .eq(AnniversaryDO::getIsDeleted, false));

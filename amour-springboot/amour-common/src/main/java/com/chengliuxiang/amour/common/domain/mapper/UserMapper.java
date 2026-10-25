@@ -34,7 +34,7 @@ public interface UserMapper extends BaseMapper<UserDO> {
                 .eq(UserDO::getWechatOpenid, openid));
     }
 
-    default UserDO findById(Long id) {
+    default UserDO findById(String id) {
         return selectById(id);
     }
 
@@ -42,17 +42,17 @@ public interface UserMapper extends BaseMapper<UserDO> {
         return user.getId() == null ? insert(user) : updateById(user);
     }
 
-    default UserDO selectActiveById(Long id) {
+    default UserDO selectActiveById(String id) {
         return selectOne(new LambdaQueryWrapper<UserDO>()
                 .eq(UserDO::getId, id)
                 .eq(UserDO::getIsDeleted, false));
     }
 
-    default UserDO selectAdminById(Long id) {
+    default UserDO selectAdminById(String id) {
         return selectOne(new LambdaQueryWrapper<UserDO>().eq(UserDO::getId, id));
     }
 
-    default List<UserDO> findUsersByIds(Collection<Long> ids) {
+    default List<UserDO> findUsersByIds(Collection<String> ids) {
         return selectList(new LambdaQueryWrapper<UserDO>().in(UserDO::getId, ids));
     }
 }

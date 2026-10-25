@@ -40,7 +40,7 @@ public class AdminPhotoController {
 
     @PostMapping("/add")
     @ApiOperationLog(description = "新增照片")
-    public Response<Long> addPhoto(@Valid @RequestBody AddPhotoReqVO reqVO) {
+    public Response<String> addPhoto(@Valid @RequestBody AddPhotoReqVO reqVO) {
         return adminPhotoService.addPhoto(reqVO);
     }
 
@@ -70,7 +70,7 @@ public class AdminPhotoController {
 
     @PostMapping("/category/save")
     @ApiOperationLog(description = "保存照片分类")
-    public Response<Long> savePhotoCategory(@Valid @RequestBody SavePhotoCategoryReqVO reqVO) {
+    public Response<String> savePhotoCategory(@Valid @RequestBody SavePhotoCategoryReqVO reqVO) {
         return adminPhotoService.savePhotoCategory(reqVO);
     }
 

@@ -12,7 +12,7 @@ import javax.validation.constraints.Size;
 @NoArgsConstructor
 @AllArgsConstructor
 public class SaveSiteConfigReqVO {
-    private Long id;
+    private String id;
 
     @NotBlank(message = "配置键不能为空")
     @Size(max = 64, message = "配置键不能超过64个字符")

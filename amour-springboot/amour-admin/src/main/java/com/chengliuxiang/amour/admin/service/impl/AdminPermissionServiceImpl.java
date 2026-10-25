@@ -38,8 +38,8 @@ public class AdminPermissionServiceImpl implements AdminPermissionService {
     public Response<List<PermissionPageRspVO>> findTree() {
         List<PermissionDO> permissions = permissionMapper.selectList(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<PermissionDO>()
                 .eq(PermissionDO::getIsDeleted, false).orderByAsc(PermissionDO::getSort).orderByAsc(PermissionDO::getId));
-        Map<Long, List<PermissionDO>> children = permissions.stream().collect(Collectors.groupingBy(p -> p.getParentId() == null ? 0L : p.getParentId()));
-        return Response.success(permissions.stream().filter(p -> p.getParentId() == null || p.getParentId() == 0)
+        Map<String, List<PermissionDO>> children = permissions.stream().collect(Collectors.groupingBy(p -> p.getParentId() == null ? "0" : p.getParentId()));
+        return Response.success(permissions.stream().filter(p -> p.getParentId() == null || "0".equals(p.getParentId()))
                 .map(p -> toResponse(p, children)).collect(Collectors.toList()));
     }
 
@@ -54,8 +54,8 @@ public class AdminPermissionServiceImpl implements AdminPermissionService {
         if (current != null && SYSTEM_KEYS.contains(current.getPermissionKey()) && !Objects.equals(current.getPermissionKey(), key)) throw new BizException(ResponseCodeEnum.FORBIDDEN);
         PermissionDO duplicate = permissionMapper.selectByKey(key, reqVO.getId());
         if (duplicate != null && !Boolean.TRUE.equals(duplicate.getIsDeleted())) throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID);
-        Long parentId = reqVO.getParentId() == null ? 0L : reqVO.getParentId();
-        if (parentId > 0) {
+        String parentId = reqVO.getParentId() == null ? "0" : reqVO.getParentId();
+        if (!"0".equals(parentId)) {
             PermissionDO parent = permissionMapper.selectActiveById(parentId);
             if (parent == null || parent.getType() >= reqVO.getType()) throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID);
             if (Objects.equals(parentId, reqVO.getId()) || isDescendantOf(parentId, reqVO.getId())) throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID);
@@ -82,7 +82,7 @@ public class AdminPermissionServiceImpl implements AdminPermissionService {
         return Response.success();
     }
 
-    private PermissionPageRspVO toResponse(PermissionDO p, Map<Long, List<PermissionDO>> children) {
+    private PermissionPageRspVO toResponse(PermissionDO p, Map<String, List<PermissionDO>> children) {
         List<PermissionDO> childList = children.getOrDefault(p.getId(), Collections.emptyList());
         return PermissionPageRspVO.builder().id(p.getId()).parentId(p.getParentId()).name(p.getName()).type(p.getType())
                 .menuUrl(p.getMenuUrl()).menuIcon(p.getMenuIcon()).sort(p.getSort()).permissionKey(p.getPermissionKey())
@@ -90,11 +90,11 @@ public class AdminPermissionServiceImpl implements AdminPermissionService {
                 .roleCount(relationMapper.countRoles(p.getId())).children(childList.stream().map(c -> toResponse(c, children)).collect(Collectors.toList())).build();
     }
 
-    private boolean isDescendantOf(Long candidateParentId, Long permissionId) {
+    private boolean isDescendantOf(String candidateParentId, String permissionId) {
         if (permissionId == null) return false;
-        Set<Long> visited = new HashSet<>();
-        Long current = candidateParentId;
-        while (current != null && current > 0 && visited.add(current)) {
+        Set<String> visited = new HashSet<>();
+        String current = candidateParentId;
+        while (current != null && !"0".equals(current) && visited.add(current)) {
             if (Objects.equals(current, permissionId)) return true;
             PermissionDO node = permissionMapper.selectActiveById(current);
             current = node == null ? null : node.getParentId();

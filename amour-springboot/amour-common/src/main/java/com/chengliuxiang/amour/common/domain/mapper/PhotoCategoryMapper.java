@@ -22,15 +22,15 @@ public interface PhotoCategoryMapper extends BaseMapper<PhotoCategoryDO> {
         return updateById(category);
     }
 
-    default int removeAdminCategory(Long id) {
+    default int removeAdminCategory(String id) {
         return deleteById(id);
     }
 
-    default PhotoCategoryDO findCategoryById(Long id) {
+    default PhotoCategoryDO findCategoryById(String id) {
         return selectById(id);
     }
 
-    default List<PhotoCategoryDO> findByIds(List<Long> ids) {
+    default List<PhotoCategoryDO> findByIds(List<String> ids) {
         return selectBatchIds(ids);
     }
 
@@ -40,7 +40,7 @@ public interface PhotoCategoryMapper extends BaseMapper<PhotoCategoryDO> {
                 .orderByAsc(PhotoCategoryDO::getId));
     }
 
-    default Long countByNameExcludingId(String categoryName, Long excludedId) {
+    default Long countByNameExcludingId(String categoryName, String excludedId) {
         return selectCount(new LambdaQueryWrapper<PhotoCategoryDO>()
                 .eq(PhotoCategoryDO::getCategoryName, categoryName)
                 .ne(excludedId != null, PhotoCategoryDO::getId, excludedId));

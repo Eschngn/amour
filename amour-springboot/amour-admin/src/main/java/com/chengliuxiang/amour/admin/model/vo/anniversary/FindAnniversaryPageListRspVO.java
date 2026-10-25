@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class FindAnniversaryPageListRspVO {
-    private Long id;
+    private String id;
     private String title;
     private String description;
     private LocalDate anniversaryDate;

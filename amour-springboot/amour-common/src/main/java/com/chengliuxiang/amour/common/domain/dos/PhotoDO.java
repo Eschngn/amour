@@ -17,14 +17,14 @@ import java.time.LocalDateTime;
 @TableName("photo")
 public class PhotoDO {
 
-    @TableId(type = IdType.AUTO)
-    private Long id;
+    @TableId(type = IdType.ASSIGN_UUID)
+    private String id;
 
     private String title;
 
     private String description;
 
-    private Long photoCategoryId;
+private String photoCategoryId;
 
     private String url;
 
@@ -38,7 +38,7 @@ public class PhotoDO {
 
     private Boolean isVisible;
 
-    private Long createdBy;
+private String createdBy;
 
     private LocalDateTime createTime;
 

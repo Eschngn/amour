@@ -12,5 +12,5 @@ import javax.validation.constraints.NotNull;
 public class DeleteDictTypeReqVO {
 
     @NotNull(message = "字典类型ID不能为空")
-    private Long id;
+    private String id;
 }

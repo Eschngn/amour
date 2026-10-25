@@ -9,11 +9,11 @@ import java.util.List;
 
 @Data
 public class UserSaveReqVO {
-    private Long id;
+    private String id;
     @NotBlank @Size(max = 60) private String username;
     @Size(max = 60) private String password;
     @NotBlank @Size(max = 60) private String displayName;
     @Size(max = 500) private String avatar;
     @NotNull private Integer status;
-    private List<Long> roleIds;
+    private List<String> roleIds;
 }

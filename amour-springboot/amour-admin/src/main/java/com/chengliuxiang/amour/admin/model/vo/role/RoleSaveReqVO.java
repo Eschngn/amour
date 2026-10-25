@@ -8,7 +8,7 @@ import java.util.List;
 
 @Data
 public class RoleSaveReqVO {
-    private Long id;
+    private String id;
     @NotBlank @Size(max = 32)
     private String roleName;
     @NotBlank @Size(max = 32)
@@ -18,5 +18,5 @@ public class RoleSaveReqVO {
     private Integer sort;
     @Size(max = 255)
     private String remark;
-    private List<Long> permissionIds;
+    private List<String> permissionIds;
 }

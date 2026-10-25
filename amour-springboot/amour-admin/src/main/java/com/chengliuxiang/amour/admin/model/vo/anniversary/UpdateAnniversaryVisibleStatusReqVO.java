@@ -13,7 +13,7 @@ import javax.validation.constraints.NotNull;
 @AllArgsConstructor
 public class UpdateAnniversaryVisibleStatusReqVO {
     @NotNull(message = "纪念日ID不能为空")
-    private Long id;
+    private String id;
     @NotNull(message = "显示状态不能为空")
     private Boolean isVisible;
 }

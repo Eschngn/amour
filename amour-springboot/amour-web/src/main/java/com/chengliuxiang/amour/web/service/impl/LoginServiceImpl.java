@@ -49,7 +49,7 @@ public class LoginServiceImpl implements LoginService {
         if (!isPasswordCorrect) {
             throw new BizException(ResponseCodeEnum.USERNAME_OR_PWD_ERROR);
         }
-        Long userId = userDO.getId();
+        String userId = userDO.getId();
         StpUtil.login(userId);
         saTokenPermissionService.refreshSession(userId);
         SaTokenInfo tokenInfo = StpUtil.getTokenInfo();

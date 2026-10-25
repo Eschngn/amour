@@ -16,9 +16,9 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @TableName("permission")
 public class PermissionDO {
-    @TableId(type = IdType.AUTO)
-    private Long id;
-    private Long parentId;
+    @TableId(type = IdType.ASSIGN_UUID)
+    private String id;
+private String parentId;
     private String name;
     private Integer type;
     private String menuUrl;

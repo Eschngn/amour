@@ -89,7 +89,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     }
 
     private UserPageRspVO toResponse(UserDO user) {
-        List<Long> roleIds = relationMapper.selectRoleIds(user.getId());
+        List<String> roleIds = relationMapper.selectRoleIds(user.getId());
         List<RoleDO> roles = roleIds == null || roleIds.isEmpty() ? Collections.emptyList() : roleMapper.selectBatchIds(roleIds);
         return UserPageRspVO.builder().id(user.getId()).username(user.getUsername()).displayName(user.getDisplayName()).avatar(user.getAvatar())
                 .status(!Boolean.TRUE.equals(user.getIsDeleted())).wechatOpenid(user.getWechatOpenid()).createTime(format(user.getCreateTime()))

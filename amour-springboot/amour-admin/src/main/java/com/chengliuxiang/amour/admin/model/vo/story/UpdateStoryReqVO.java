@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 public class UpdateStoryReqVO {
 
     @NotNull(message = "故事ID不能为空")
-    private Long id;
+    private String id;
 
     @NotBlank(message = "故事标题不能为空")
     private String title;
@@ -34,7 +34,7 @@ public class UpdateStoryReqVO {
     private Integer sortOrder;
 
     @NotNull(message = "所属章节不能为空")
-    private Long chapterId;
+    private String chapterId;
 
     @NotNull(message = "是否里程碑不能为空")
     private Boolean isMilestone;

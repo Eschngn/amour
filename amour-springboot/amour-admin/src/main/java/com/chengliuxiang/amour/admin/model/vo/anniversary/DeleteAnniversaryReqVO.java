@@ -13,5 +13,5 @@ import javax.validation.constraints.NotNull;
 @AllArgsConstructor
 public class DeleteAnniversaryReqVO {
     @NotNull(message = "纪念日ID不能为空")
-    private Long id;
+    private String id;
 }

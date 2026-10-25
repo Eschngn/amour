@@ -10,7 +10,7 @@ public class FindPhotoPageListReqVO extends BasePageQuery {
 
     private String title;
 
-    private Long photoCategoryId;
+    private String photoCategoryId;
 
     private Boolean isVisible;
 }

@@ -16,7 +16,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class UpdateAnniversaryReqVO {
     @NotNull(message = "纪念日ID不能为空")
-    private Long id;
+    private String id;
     @NotBlank(message = "纪念日标题不能为空")
     private String title;
     private String description;

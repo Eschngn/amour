@@ -7,9 +7,9 @@ logging:
 spring:
   datasource:
     driver-class-name: com.p6spy.engine.spy.P6SpyDriver
-    url: jdbc:p6spy:mysql://${MYSQL_HOST:127.0.0.1}:${MYSQL_ROOT:3306}/amour?useUnicode=true&characterEncoding=UTF-8&autoReconnect=true&useSSL=false&allowPublicKeyRetrieval=true&zeroDateTimeBehavior=convertToNull
-    username: ${MYSQL_USERNAME:root}
-    password: ${MYSQL_PASSWORD:}
+    url: jdbc:p6spy:postgresql://${PG_HOST:127.0.0.1}:${PG_PORT:5432}/${PG_DATABASE:amour}
+    username: ${PG_USERNAME:postgres}
+    password: ${PG_PASSWORD:}
     hikari:
       minimum-idle: 5
       maximum-pool-size: 20

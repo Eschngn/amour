@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 @Data
 @TableName("message")
 public class MessageDO {
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.ASSIGN_UUID)
     private String id;
 
     private String userId;

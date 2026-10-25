@@ -5,5 +5,5 @@ import javax.validation.constraints.NotNull;
 
 @Data
 public class UserIdReqVO {
-    @NotNull private Long id;
+    @NotNull private String id;
 }

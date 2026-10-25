@@ -19,7 +19,7 @@ public interface AdminStoryService {
     /**
      * 新增故事
      */
-    Response<Long> addStory(AddStoryReqVO reqVO);
+    Response<String> addStory(AddStoryReqVO reqVO);
 
     /**
      * 更新故事

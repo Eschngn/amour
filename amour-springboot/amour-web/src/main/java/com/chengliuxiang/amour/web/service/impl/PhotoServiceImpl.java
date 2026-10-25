@@ -38,7 +38,7 @@ public class PhotoServiceImpl implements PhotoService {
 
         com.baomidou.mybatisplus.core.metadata.IPage<PhotoDO> photoPage = photoMapper.selectVisiblePage(
                 current, size, reqVO.getPhotoCategoryId());
-        Map<Long, PhotoCategoryDO> categoryMap = loadCategoryMap(photoPage.getRecords());
+        Map<String, PhotoCategoryDO> categoryMap = loadCategoryMap(photoPage.getRecords());
         List<PhotoPageItemVO> records = photoPage.getRecords().stream()
                 .map(photo -> buildPhotoVO(photo, categoryMap.get(photo.getPhotoCategoryId())))
                 .collect(Collectors.toList());
@@ -85,8 +85,8 @@ public class PhotoServiceImpl implements PhotoService {
         return Math.min(size, MAX_PAGE_SIZE);
     }
 
-    private Map<Long, PhotoCategoryDO> loadCategoryMap(List<PhotoDO> photos) {
-        List<Long> categoryIds = photos.stream()
+    private Map<String, PhotoCategoryDO> loadCategoryMap(List<PhotoDO> photos) {
+        List<String> categoryIds = photos.stream()
                 .map(PhotoDO::getPhotoCategoryId)
                 .filter(Objects::nonNull)
                 .distinct()

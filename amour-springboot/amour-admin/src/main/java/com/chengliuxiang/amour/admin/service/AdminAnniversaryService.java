@@ -14,7 +14,7 @@ import com.chengliuxiang.amour.common.utils.Response;
 public interface AdminAnniversaryService {
     Response<PageResult<FindAnniversaryPageListRspVO>> findAnniversaryPageList(FindAnniversaryPageListReqVO reqVO);
     Response<FindAnniversaryDetailRspVO> findAnniversaryDetail(FindAnniversaryDetailReqVO reqVO);
-    Response<Long> addAnniversary(AddAnniversaryReqVO reqVO);
+    Response<String> addAnniversary(AddAnniversaryReqVO reqVO);
     Response<Void> updateAnniversary(UpdateAnniversaryReqVO reqVO);
     Response<Void> updateVisibleStatus(UpdateAnniversaryVisibleStatusReqVO reqVO);
     Response<Void> deleteAnniversary(DeleteAnniversaryReqVO reqVO);

@@ -68,9 +68,9 @@ public class AdminMessageServiceImpl implements AdminMessageService {
         Map<String, Long> replyCountMap = replies.stream()
                 .collect(Collectors.groupingBy(MessageReplyDO::getMessageId, Collectors.counting()));
 
-        Set<Long> userIds = new HashSet<>();
+        Set<String> userIds = new HashSet<>();
         messages.forEach(message -> addUserId(userIds, message.getUserId()));
-        Map<Long, String> userNameMap = new HashMap<>();
+        Map<String, String> userNameMap = new HashMap<>();
         if (CollUtil.isNotEmpty(userIds)) {
             userNameMap.putAll(userMapper.findUsersByIds(userIds)
                     .stream()
@@ -109,25 +109,17 @@ public class AdminMessageServiceImpl implements AdminMessageService {
         return Response.success();
     }
 
-    private void addUserId(Set<Long> userIds, String userId) {
+    private void addUserId(Set<String> userIds, String userId) {
         if (StrUtil.isNotBlank(userId)) {
-            try {
-                userIds.add(Long.valueOf(userId));
-            } catch (NumberFormatException ignored) {
-                log.warn("Invalid message user id: {}", userId);
-            }
+            userIds.add(userId);
         }
     }
 
-    private String getUserName(Map<Long, String> userNameMap, String userId) {
+    private String getUserName(Map<String, String> userNameMap, String userId) {
         if (StrUtil.isBlank(userId)) {
             return null;
         }
-        try {
-            return userNameMap.get(Long.valueOf(userId));
-        } catch (NumberFormatException ignored) {
-            return null;
-        }
+        return userNameMap.get(userId);
     }
 
     private String formatDateTime(LocalDateTime dateTime) {

@@ -8,7 +8,7 @@ import javax.validation.constraints.Size;
 @Data
 public class SavePhotoCategoryReqVO {
 
-    private Long id;
+    private String id;
 
     @NotBlank(message = "分类名称不能为空")
     @Size(max = 100, message = "分类名称不能超过100个字符")

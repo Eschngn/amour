@@ -14,7 +14,7 @@ import javax.validation.constraints.NotNull;
 public class UpdateStoryVisibleStatusReqVO {
 
     @NotNull(message = "故事ID不能为空")
-    private Long id;
+    private String id;
 
     @NotNull(message = "显示状态不能为空")
     private Boolean isVisible;

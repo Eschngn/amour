@@ -17,10 +17,10 @@ import java.time.LocalDateTime;
 @TableName("story_node_image")
 public class StoryNodeImageDO {
 
-    @TableId(type = IdType.AUTO)
-    private Long id;
+    @TableId(type = IdType.ASSIGN_UUID)
+    private String id;
 
-    private Long nodeId;
+private String nodeId;
 
     private String url;
 

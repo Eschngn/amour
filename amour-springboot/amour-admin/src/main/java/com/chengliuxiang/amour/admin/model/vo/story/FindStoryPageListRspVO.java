@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @Data
 public class FindStoryPageListRspVO {
-    private Long id;
+    private String id;
     private String title;
     private String summary;
     private String coverImage;

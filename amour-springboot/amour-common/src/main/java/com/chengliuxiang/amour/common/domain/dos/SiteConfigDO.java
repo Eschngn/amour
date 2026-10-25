@@ -17,8 +17,8 @@ import java.time.LocalDateTime;
 @TableName("site_config")
 public class SiteConfigDO {
 
-    @TableId(type = IdType.AUTO)
-    private Long id;
+    @TableId(type = IdType.ASSIGN_UUID)
+    private String id;
 
     private String configKey;
 

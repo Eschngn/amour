@@ -56,7 +56,7 @@ public class AdminAnniversaryServiceImpl implements AdminAnniversaryService {
     }
 
     @Override
-    public Response<Long> addAnniversary(AddAnniversaryReqVO reqVO) {
+    public Response<String> addAnniversary(AddAnniversaryReqVO reqVO) {
         LocalDateTime now = LocalDateTime.now();
         AnniversaryDO anniversary = AnniversaryDO.builder()
                 .title(StrUtil.trim(reqVO.getTitle()))
@@ -68,7 +68,7 @@ public class AdminAnniversaryServiceImpl implements AdminAnniversaryService {
                 .location(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getLocation())))
                 .sortOrder(reqVO.getSortOrder() == null ? 0 : reqVO.getSortOrder())
                 .isVisible(reqVO.getIsVisible() == null || reqVO.getIsVisible())
-                .createdBy(StpUtil.getLoginIdAsLong())
+                .createdBy(String.valueOf(StpUtil.getLoginId()))
                 .createTime(now)
                 .updateTime(now)
                 .isDeleted(false)
@@ -113,7 +113,7 @@ public class AdminAnniversaryServiceImpl implements AdminAnniversaryService {
         return Response.success();
     }
 
-    private AnniversaryDO requireAnniversary(Long id) {
+    private AnniversaryDO requireAnniversary(String id) {
         AnniversaryDO anniversary = anniversaryMapper.selectActiveById(id);
         if (anniversary == null) throw new BizException(ResponseCodeEnum.ANNIVERSARY_NOT_EXIST);
         return anniversary;

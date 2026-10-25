@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @Builder
 public class MilestoneStoryNodeVO {
 
-    private Long id;
+    private String id;
     private String title;
     private String summary;
     private LocalDateTime happenedTime;

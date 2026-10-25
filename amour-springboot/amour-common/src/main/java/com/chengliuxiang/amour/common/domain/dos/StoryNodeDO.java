@@ -17,10 +17,10 @@ import java.time.LocalDateTime;
 @TableName("story_node")
 public class StoryNodeDO {
 
-    @TableId(type = IdType.AUTO)
-    private Long id;
+    @TableId(type = IdType.ASSIGN_UUID)
+    private String id;
 
-    private Long chapterId;
+private String chapterId;
 
     private String title;
 
@@ -46,7 +46,7 @@ public class StoryNodeDO {
 
     private Boolean isDeleted;
 
-    private Long createdBy;
+private String createdBy;
 
     private LocalDateTime createTime;
 

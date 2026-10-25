@@ -34,7 +34,7 @@ public class AdminStoryController {
 
     @PostMapping("/add")
     @ApiOperationLog(description = "新增故事")
-    public Response<Long> addStory(@RequestBody @Validated AddStoryReqVO reqVO) {
+    public Response<String> addStory(@RequestBody @Validated AddStoryReqVO reqVO) {
         return adminStoryService.addStory(reqVO);
     }
 

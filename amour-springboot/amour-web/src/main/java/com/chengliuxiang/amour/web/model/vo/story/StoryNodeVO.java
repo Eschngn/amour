@@ -13,7 +13,7 @@ import java.util.List;
 @Builder
 @Data
 public class StoryNodeVO {
-    private Long id;
+    private String id;
     private String title;
     private String summary;
     private String content;

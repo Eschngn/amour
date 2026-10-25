@@ -14,7 +14,7 @@ import javax.validation.constraints.Size;
 @AllArgsConstructor
 public class SaveDictTypeReqVO {
 
-    private Long id;
+    private String id;
 
     @NotBlank(message = "字典名称不能为空")
     @Size(max = 64, message = "字典名称不能超过64个字符")

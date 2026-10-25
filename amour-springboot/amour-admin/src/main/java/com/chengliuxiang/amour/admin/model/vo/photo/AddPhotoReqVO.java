@@ -24,7 +24,7 @@ public class AddPhotoReqVO {
     private String description;
 
     @NotNull(message = "照片分类不能为空")
-    private Long photoCategoryId;
+    private String photoCategoryId;
 
     @NotBlank(message = "照片地址不能为空")
     @Size(max = 500, message = "照片地址不能超过500个字符")

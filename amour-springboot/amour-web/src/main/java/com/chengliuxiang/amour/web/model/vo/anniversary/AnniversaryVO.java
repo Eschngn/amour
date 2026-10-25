@@ -13,7 +13,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class AnniversaryVO {
 
-    private Long id;
+    private String id;
 
     private String title;
 

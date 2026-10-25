@@ -8,7 +8,7 @@ import java.util.List;
 @Data
 @Builder
 public class RolePageRspVO {
-    private Long id;
+    private String id;
     private String roleName;
     private String roleKey;
     private Integer status;
@@ -16,5 +16,5 @@ public class RolePageRspVO {
     private String remark;
     private String createTime;
     private String updateTime;
-    private List<Long> permissionIds;
+    private List<String> permissionIds;
 }

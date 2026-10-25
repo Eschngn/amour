@@ -17,8 +17,8 @@ import java.time.LocalDateTime;
 @TableName("photo_category")
 public class PhotoCategoryDO {
 
-    @TableId(type = IdType.AUTO)
-    private Long id;
+    @TableId(type = IdType.ASSIGN_UUID)
+    private String id;
 
     private String categoryName;
 
@@ -28,7 +28,7 @@ public class PhotoCategoryDO {
 
     private String remark;
 
-    private Long createdBy;
+private String createdBy;
 
     private LocalDateTime createTime;
 

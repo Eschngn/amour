@@ -13,7 +13,7 @@ import javax.validation.constraints.Size;
 @AllArgsConstructor
 public class SaveDictItemReqVO {
 
-    private Long id;
+    private String id;
 
     @NotBlank(message = "字典编码不能为空")
     private String dictType;

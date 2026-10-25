@@ -52,7 +52,7 @@ public class AdminPhotoServiceImpl implements AdminPhotoService {
 
         IPage<PhotoDO> result = photoMapper.findAdminPage(
                 current, size, reqVO.getTitle(), reqVO.getPhotoCategoryId(), reqVO.getIsVisible());
-        Map<Long, PhotoCategoryDO> categoryMap = loadCategoryMap(result.getRecords());
+        Map<String, PhotoCategoryDO> categoryMap = loadCategoryMap(result.getRecords());
         List<FindPhotoPageListRspVO> records = result.getRecords().stream()
                 .map(photo -> toPageItem(photo, categoryMap))
                 .collect(Collectors.toList());
@@ -67,7 +67,7 @@ public class AdminPhotoServiceImpl implements AdminPhotoService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Response<Long> addPhoto(AddPhotoReqVO reqVO) {
+    public Response<String> addPhoto(AddPhotoReqVO reqVO) {
         requirePhotoCategory(reqVO.getPhotoCategoryId());
         LocalDateTime now = LocalDateTime.now();
         boolean isCover = Boolean.TRUE.equals(reqVO.getIsCover());
@@ -86,7 +86,7 @@ public class AdminPhotoServiceImpl implements AdminPhotoService {
                 .sortOrder(reqVO.getSortOrder() == null ? 0 : reqVO.getSortOrder())
                 .isCover(isCover)
                 .isVisible(isVisible)
-                .createdBy(StpUtil.getLoginIdAsLong())
+                .createdBy(String.valueOf(StpUtil.getLoginId()))
                 .createTime(now)
                 .updateTime(now)
                 .isDeleted(false)
@@ -151,7 +151,7 @@ public class AdminPhotoServiceImpl implements AdminPhotoService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Response<Long> savePhotoCategory(SavePhotoCategoryReqVO reqVO) {
+    public Response<String> savePhotoCategory(SavePhotoCategoryReqVO reqVO) {
         String categoryName = StrUtil.trim(reqVO.getCategoryName());
         Long duplicateCount = photoCategoryMapper.countByNameExcludingId(categoryName, reqVO.getId());
         if (duplicateCount != null && duplicateCount > 0) {
@@ -168,7 +168,7 @@ public class AdminPhotoServiceImpl implements AdminPhotoService {
                     .sortOrder(sortOrder)
                     .isEnabled(reqVO.getIsEnabled() == null || reqVO.getIsEnabled())
                     .remark("")
-                    .createdBy(StpUtil.getLoginIdAsLong())
+                    .createdBy(String.valueOf(StpUtil.getLoginId()))
                     .createTime(now)
                     .updateTime(now)
                     .build();
@@ -198,7 +198,7 @@ public class AdminPhotoServiceImpl implements AdminPhotoService {
         return Response.success();
     }
 
-    private PhotoDO requirePhoto(Long id) {
+    private PhotoDO requirePhoto(String id) {
         PhotoDO photo = photoMapper.findActiveById(id);
         if (photo == null) {
             throw new BizException(ResponseCodeEnum.PHOTO_NOT_EXIST);
@@ -206,7 +206,7 @@ public class AdminPhotoServiceImpl implements AdminPhotoService {
         return photo;
     }
 
-    private PhotoCategoryDO requirePhotoCategory(Long id) {
+    private PhotoCategoryDO requirePhotoCategory(String id) {
         PhotoCategoryDO category = photoCategoryMapper.findCategoryById(id);
         if (category == null) {
             throw new BizException(ResponseCodeEnum.PHOTO_CATEGORY_NOT_EXIST);
@@ -214,12 +214,12 @@ public class AdminPhotoServiceImpl implements AdminPhotoService {
         return category;
     }
 
-    private void clearOtherCovers(Long excludedId, LocalDateTime updateTime) {
+    private void clearOtherCovers(String excludedId, LocalDateTime updateTime) {
         photoMapper.clearOtherCovers(excludedId, updateTime);
     }
 
-    private Map<Long, PhotoCategoryDO> loadCategoryMap(List<PhotoDO> photos) {
-        List<Long> categoryIds = photos.stream()
+    private Map<String, PhotoCategoryDO> loadCategoryMap(List<PhotoDO> photos) {
+        List<String> categoryIds = photos.stream()
                 .map(PhotoDO::getPhotoCategoryId)
                 .filter(Objects::nonNull)
                 .distinct()
@@ -231,7 +231,7 @@ public class AdminPhotoServiceImpl implements AdminPhotoService {
                 .collect(Collectors.toMap(PhotoCategoryDO::getId, Function.identity()));
     }
 
-    private FindPhotoPageListRspVO toPageItem(PhotoDO photo, Map<Long, PhotoCategoryDO> categoryMap) {
+    private FindPhotoPageListRspVO toPageItem(PhotoDO photo, Map<String, PhotoCategoryDO> categoryMap) {
         PhotoCategoryDO category = categoryMap.get(photo.getPhotoCategoryId());
         return FindPhotoPageListRspVO.builder()
                 .id(photo.getId())

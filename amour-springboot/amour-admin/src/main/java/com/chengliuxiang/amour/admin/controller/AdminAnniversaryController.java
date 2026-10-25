@@ -35,7 +35,7 @@ public class AdminAnniversaryController {
 
     @PostMapping("/add")
     @ApiOperationLog(description = "新增纪念日")
-    public Response<Long> addAnniversary(@Validated @RequestBody AddAnniversaryReqVO reqVO) {
+    public Response<String> addAnniversary(@Validated @RequestBody AddAnniversaryReqVO reqVO) {
         return adminAnniversaryService.addAnniversary(reqVO);
     }
 

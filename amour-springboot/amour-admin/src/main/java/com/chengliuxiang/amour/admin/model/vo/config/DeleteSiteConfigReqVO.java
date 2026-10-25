@@ -11,5 +11,5 @@ import javax.validation.constraints.NotNull;
 @AllArgsConstructor
 public class DeleteSiteConfigReqVO {
     @NotNull(message = "配置ID不能为空")
-    private Long id;
+    private String id;
 }

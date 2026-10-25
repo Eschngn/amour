@@ -12,7 +12,7 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 public class FindStoryDetailRspVO {
-    private Long id;
+    private String id;
     private String title;
     private String content;
     private String chapterId;
@@ -30,7 +30,7 @@ public class FindStoryDetailRspVO {
     @NoArgsConstructor
     @Builder
     public static class ImageVO {
-        private Long id;
+        private String id;
         private String url;
         private String altText;
         private Integer sortOrder;

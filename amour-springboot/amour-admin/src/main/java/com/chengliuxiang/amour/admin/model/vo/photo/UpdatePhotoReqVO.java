@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 public class UpdatePhotoReqVO {
 
     @NotNull(message = "照片ID不能为空")
-    private Long id;
+    private String id;
 
     @NotBlank(message = "照片标题不能为空")
     @Size(max = 100, message = "照片标题不能超过100个字符")
@@ -27,7 +27,7 @@ public class UpdatePhotoReqVO {
     private String description;
 
     @NotNull(message = "照片分类不能为空")
-    private Long photoCategoryId;
+    private String photoCategoryId;
 
     @NotBlank(message = "照片地址不能为空")
     @Size(max = 500, message = "照片地址不能超过500个字符")

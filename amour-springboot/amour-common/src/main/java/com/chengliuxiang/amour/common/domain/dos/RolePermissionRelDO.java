@@ -10,10 +10,10 @@ import java.time.LocalDateTime;
 @Data
 @TableName("role_permission_rel")
 public class RolePermissionRelDO {
-    @TableId(type = IdType.AUTO)
-    private Long id;
-    private Long roleId;
-    private Long permissionId;
+    @TableId(type = IdType.ASSIGN_UUID)
+    private String id;
+    private String roleId;
+    private String permissionId;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
     private Boolean isDeleted;

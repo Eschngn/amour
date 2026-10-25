@@ -14,17 +14,17 @@ public interface PermissionMapper extends BaseMapper<PermissionDO> {
                 .eq(PermissionDO::getIsDeleted, false).orderByAsc(PermissionDO::getSort).orderByAsc(PermissionDO::getId));
     }
 
-    default PermissionDO selectActiveById(Long id) {
+    default PermissionDO selectActiveById(String id) {
         return selectOne(new LambdaQueryWrapper<PermissionDO>().eq(PermissionDO::getId, id)
                 .eq(PermissionDO::getIsDeleted, false));
     }
 
-    default PermissionDO selectByKey(String key, Long excludedId) {
+    default PermissionDO selectByKey(String key, String excludedId) {
         return selectOne(new LambdaQueryWrapper<PermissionDO>().eq(PermissionDO::getPermissionKey, key)
                 .ne(excludedId != null, PermissionDO::getId, excludedId));
     }
 
-    default long countChildren(Long parentId) {
+    default long countChildren(String parentId) {
         return selectCount(new LambdaQueryWrapper<PermissionDO>().eq(PermissionDO::getParentId, parentId)
                 .eq(PermissionDO::getIsDeleted, false));
     }

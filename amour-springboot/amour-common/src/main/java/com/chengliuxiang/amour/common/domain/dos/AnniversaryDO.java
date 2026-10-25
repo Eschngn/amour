@@ -18,8 +18,8 @@ import java.time.LocalDateTime;
 @TableName("anniversary")
 public class AnniversaryDO {
 
-    @TableId(type = IdType.AUTO)
-    private Long id;
+    @TableId(type = IdType.ASSIGN_UUID)
+    private String id;
 
     private String title;
 
@@ -39,7 +39,7 @@ public class AnniversaryDO {
 
     private Boolean isVisible;
 
-    private Long createdBy;
+private String createdBy;
 
     private LocalDateTime createTime;
 

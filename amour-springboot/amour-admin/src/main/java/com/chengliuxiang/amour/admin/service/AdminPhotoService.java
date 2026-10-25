@@ -18,7 +18,7 @@ public interface AdminPhotoService {
 
     Response<PageResult<FindPhotoPageListRspVO>> findPhotoPageList(FindPhotoPageListReqVO reqVO);
 
-    Response<Long> addPhoto(AddPhotoReqVO reqVO);
+    Response<String> addPhoto(AddPhotoReqVO reqVO);
 
     Response<Void> updatePhoto(UpdatePhotoReqVO reqVO);
 
@@ -28,7 +28,7 @@ public interface AdminPhotoService {
 
     Response<List<PhotoCategoryListRspVO>> listPhotoCategories();
 
-    Response<Long> savePhotoCategory(SavePhotoCategoryReqVO reqVO);
+    Response<String> savePhotoCategory(SavePhotoCategoryReqVO reqVO);
 
     Response<Void> deletePhotoCategory(DeletePhotoCategoryReqVO reqVO);
 }

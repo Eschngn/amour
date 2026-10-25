@@ -10,6 +10,7 @@ import com.chengliuxiang.amour.common.domain.dos.RolePermissionRelDO;
 import com.chengliuxiang.amour.common.domain.mapper.PermissionMapper;
 import com.chengliuxiang.amour.common.domain.mapper.RoleMapper;
 import com.chengliuxiang.amour.common.domain.mapper.RolePermissionRelMapper;
+import com.chengliuxiang.amour.common.domain.mapper.UserRoleRelMapper;
 import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
 import com.chengliuxiang.amour.common.exception.BizException;
 import com.chengliuxiang.amour.common.model.PageResult;
@@ -37,6 +38,7 @@ public class AdminRoleServiceImpl implements AdminRoleService {
     @Resource private RoleMapper roleMapper;
     @Resource private PermissionMapper permissionMapper;
     @Resource private RolePermissionRelMapper relationMapper;
+    @Resource private UserRoleRelMapper userRoleRelMapper;
 
     @Override
     public Response<PageResult<RolePageRspVO>> findPage(RolePageReqVO reqVO) {
@@ -57,9 +59,9 @@ public class AdminRoleServiceImpl implements AdminRoleService {
     @Override
     public Response<List<PermissionRspVO>> findPermissions() {
         List<PermissionDO> permissions = permissionMapper.selectActiveList();
-        Map<Long, List<PermissionDO>> children = permissions.stream().collect(Collectors.groupingBy(
-                p -> p.getParentId() == null ? 0L : p.getParentId()));
-        return Response.success(permissions.stream().filter(p -> p.getParentId() == null || p.getParentId() == 0)
+        Map<String, List<PermissionDO>> children = permissions.stream().collect(Collectors.groupingBy(
+                p -> p.getParentId() == null ? "0" : p.getParentId()));
+        return Response.success(permissions.stream().filter(p -> p.getParentId() == null || "0".equals(p.getParentId()))
                 .map(p -> toPermission(p, children)).collect(Collectors.toList()));
     }
 
@@ -89,12 +91,12 @@ public class AdminRoleServiceImpl implements AdminRoleService {
         relationMapper.deleteByRoleId(role.getId());
         if (reqVO.getPermissionIds() != null && !reqVO.getPermissionIds().isEmpty()) {
             List<PermissionDO> activePermissions = permissionMapper.selectActiveList();
-            Map<Long, PermissionDO> permissionsById = activePermissions.stream()
+            Map<String, PermissionDO> permissionsById = activePermissions.stream()
                     .collect(Collectors.toMap(PermissionDO::getId, permission -> permission));
-            Set<Long> permissionIds = new LinkedHashSet<>(reqVO.getPermissionIds());
-            for (Long permissionId : new ArrayList<>(permissionIds)) {
+            Set<String> permissionIds = new LinkedHashSet<>(reqVO.getPermissionIds());
+            for (String permissionId : new ArrayList<>(permissionIds)) {
                 PermissionDO permission = permissionsById.get(permissionId);
-                while (permission != null && permission.getParentId() != null && permission.getParentId() != 0) {
+                while (permission != null && permission.getParentId() != null && !"0".equals(permission.getParentId())) {
                     permissionIds.add(permission.getParentId());
                     permission = permissionsById.get(permission.getParentId());
                 }
@@ -116,7 +118,7 @@ public class AdminRoleServiceImpl implements AdminRoleService {
     @Transactional(rollbackFor = Exception.class)
     public Response<Void> delete(RoleIdReqVO reqVO) {
         RoleDO role = getRole(reqVO.getId());
-        if (SYSTEM_ROLE_KEYS.contains(role.getRoleKey()) || relationMapper.countUsers(role.getId()) > 0) {
+        if (SYSTEM_ROLE_KEYS.contains(role.getRoleKey()) || userRoleRelMapper.countUsers(role.getId()) > 0) {
             throw new BizException(ResponseCodeEnum.FORBIDDEN);
         }
         role.setIsDeleted(true); role.setUpdateTime(LocalDateTime.now()); roleMapper.updateById(role);
@@ -131,15 +133,15 @@ public class AdminRoleServiceImpl implements AdminRoleService {
                 .permissionIds(withPermissionAncestors(relationMapper.selectPermissionIds(role.getId()))).build();
     }
 
-    private List<Long> withPermissionAncestors(List<Long> permissionIds) {
+    private List<String> withPermissionAncestors(List<String> permissionIds) {
         if (permissionIds == null || permissionIds.isEmpty()) return Collections.emptyList();
         List<PermissionDO> permissions = permissionMapper.selectActiveList();
-        Map<Long, PermissionDO> permissionsById = permissions.stream()
+        Map<String, PermissionDO> permissionsById = permissions.stream()
                 .collect(Collectors.toMap(PermissionDO::getId, permission -> permission));
-        Set<Long> normalized = new LinkedHashSet<>(permissionIds);
-        for (Long permissionId : new ArrayList<>(normalized)) {
+        Set<String> normalized = new LinkedHashSet<>(permissionIds);
+        for (String permissionId : new ArrayList<>(normalized)) {
             PermissionDO permission = permissionsById.get(permissionId);
-            while (permission != null && permission.getParentId() != null && permission.getParentId() != 0) {
+            while (permission != null && permission.getParentId() != null && !"0".equals(permission.getParentId())) {
                 normalized.add(permission.getParentId());
                 permission = permissionsById.get(permission.getParentId());
             }
@@ -147,14 +149,14 @@ public class AdminRoleServiceImpl implements AdminRoleService {
         return new ArrayList<>(normalized);
     }
 
-    private PermissionRspVO toPermission(PermissionDO permission, Map<Long, List<PermissionDO>> children) {
+    private PermissionRspVO toPermission(PermissionDO permission, Map<String, List<PermissionDO>> children) {
         List<PermissionRspVO> childResponses = children.getOrDefault(permission.getId(), Collections.emptyList()).stream()
                 .map(child -> toPermission(child, children)).collect(Collectors.toList());
         return PermissionRspVO.builder().id(permission.getId()).parentId(permission.getParentId()).name(permission.getName())
                 .type(permission.getType()).permissionKey(permission.getPermissionKey()).children(childResponses).build();
     }
 
-    private RoleDO getRole(Long id) {
+    private RoleDO getRole(String id) {
         RoleDO role = roleMapper.selectActiveById(id);
         if (role == null) throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID);
         return role;

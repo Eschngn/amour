@@ -14,5 +14,5 @@ import javax.validation.constraints.NotNull;
 public class StoryDetailReqVO {
 
     @NotNull(message = "故事ID不能为空")
-    private Long id;
+    private String id;
 }

@@ -13,13 +13,13 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class PhotoPageItemVO {
 
-    private Long id;
+    private String id;
 
     private String title;
 
     private String description;
 
-    private Long photoCategoryId;
+    private String photoCategoryId;
 
     private String categoryName;
 

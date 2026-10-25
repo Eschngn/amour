@@ -20,7 +20,7 @@ public class MessageReplyDO {
     /**
      * 回复留言的 ID
      */
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.ASSIGN_UUID)
     private String id;
 
     /**

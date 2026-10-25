@@ -21,11 +21,11 @@ public interface RoleMapper extends BaseMapper<RoleDO> {
                 .orderByAsc(RoleDO::getSort).orderByDesc(RoleDO::getId));
     }
 
-    default RoleDO selectActiveById(Long id) {
+    default RoleDO selectActiveById(String id) {
         return selectOne(new LambdaQueryWrapper<RoleDO>().eq(RoleDO::getId, id).eq(RoleDO::getIsDeleted, false));
     }
 
-    default RoleDO selectByRoleKey(String roleKey, Long excludedId) {
+    default RoleDO selectByRoleKey(String roleKey, String excludedId) {
         return selectOne(new LambdaQueryWrapper<RoleDO>().eq(RoleDO::getRoleKey, roleKey)
                 .ne(excludedId != null, RoleDO::getId, excludedId));
     }

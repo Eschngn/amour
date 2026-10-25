@@ -9,6 +9,7 @@ import com.chengliuxiang.amour.common.constant.RedisKeyConstants;
 import com.chengliuxiang.amour.common.domain.dos.SiteConfigDO;
 import com.chengliuxiang.amour.common.domain.dos.UserDO;
 import com.chengliuxiang.amour.common.domain.mapper.SiteConfigMapper;
+import com.chengliuxiang.amour.common.domain.mapper.RoleMapper;
 import com.chengliuxiang.amour.common.domain.mapper.UserMapper;
 import com.chengliuxiang.amour.common.domain.mapper.UserRoleRelMapper;
 import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
@@ -46,6 +47,9 @@ public class WechatLoginServiceImpl implements WechatLoginService {
 
     @Resource
     private UserRoleRelMapper userRoleRelMapper;
+
+    @Resource
+    private RoleMapper roleMapper;
 
     @Resource
     private SaTokenPermissionService saTokenPermissionService;
@@ -130,7 +134,10 @@ public class WechatLoginServiceImpl implements WechatLoginService {
             throw new BizException(ResponseCodeEnum.USER_NOT_EXIST);
         }
         if (shouldAssignCommonRole) {
-            int inserted = userRoleRelMapper.insertCommonRoleIfAbsent(user.getId());
+            com.chengliuxiang.amour.common.domain.dos.RoleDO commonRole = roleMapper.selectByRoleKey("common", null);
+            int inserted = commonRole == null || !Integer.valueOf(0).equals(commonRole.getStatus())
+                    || Boolean.TRUE.equals(commonRole.getIsDeleted()) ? 0
+                    : userRoleRelMapper.insertRelationIfAbsent(user.getId(), commonRole.getId());
             if (inserted == 0) {
                 // 0 也可能表示并发请求已经完成了关系写入；角色缺失时由日志提示运维补齐初始化数据。
                 log.warn("微信用户 {} 未新增 common 角色关系，请确认 common 角色已初始化", user.getId());
@@ -144,13 +151,9 @@ public class WechatLoginServiceImpl implements WechatLoginService {
         if (StrUtil.isBlank(userIdValue)) {
             return null;
         }
-        try {
-            UserDO user = userMapper.selectActiveById(Long.valueOf(userIdValue));
-            if (user != null && !Boolean.TRUE.equals(user.getIsDeleted())) {
-                return user;
-            }
-        } catch (NumberFormatException e) {
-            log.warn("微信用户映射数据格式错误: {}", userIdValue);
+        UserDO user = userMapper.selectActiveById(userIdValue);
+        if (user != null && !Boolean.TRUE.equals(user.getIsDeleted())) {
+            return user;
         }
         return null;
     }

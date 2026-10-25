@@ -48,7 +48,7 @@ public class AdminConfigServiceImpl implements AdminConfigService {
     private static final String DICT_TYPE_VALUE_TYPE = "dict_type";
     private static final String DICT_ITEM_VALUE_TYPE = "dict_item";
     private static final String LEGACY_DICT_TYPE = "__site_config__";
-    private static final long LEGACY_DICT_TYPE_ID = 0L;
+    private static final String LEGACY_DICT_TYPE_ID = "0";
     private static final String DICT_TYPE_KEY_PREFIX = "dict_type_";
     private static final String DICT_ITEM_KEY_PREFIX = "dict_item_";
     private static final DateTimeFormatter DATE_TIME_FORMATTER =
@@ -394,7 +394,7 @@ public class AdminConfigServiceImpl implements AdminConfigService {
         return Response.success();
     }
 
-    private SiteConfigDO findConfig(Long id, String valueType, ResponseCodeEnum notExistCode) {
+    private SiteConfigDO findConfig(String id, String valueType, ResponseCodeEnum notExistCode) {
         SiteConfigDO config = siteConfigMapper.selectByIdAndValueType(id, valueType);
         if (config == null) {
             throw new BizException(notExistCode);
@@ -412,22 +412,22 @@ public class AdminConfigServiceImpl implements AdminConfigService {
         throw new BizException(ResponseCodeEnum.DICT_TYPE_NOT_EXIST);
     }
 
-    private void ensureTypeCodeUnique(String dictType, Long currentId) {
+    private void ensureTypeCodeUnique(String dictType, String currentId) {
         for (SiteConfigDO config : loadConfigs(DICT_TYPE_VALUE_TYPE)) {
             DictTypeConfig value = readTypeValue(config);
             if (value != null && dictType.equals(value.getDictType())
-                    && !config.getId().equals(currentId)) {
+                    && !java.util.Objects.equals(config.getId(), currentId)) {
                 throw new BizException(ResponseCodeEnum.DICT_TYPE_DUPLICATE);
             }
         }
     }
 
-    private void ensureItemValueUnique(String dictType, String itemValue, Long currentId) {
+    private void ensureItemValueUnique(String dictType, String itemValue, String currentId) {
         for (SiteConfigDO config : loadConfigs(DICT_ITEM_VALUE_TYPE)) {
             DictItemConfig value = readItemValue(config);
             if (value != null && dictType.equals(value.getDictType())
                     && itemValue.equals(value.getItemValue())
-                    && !config.getId().equals(currentId)) {
+                    && !java.util.Objects.equals(config.getId(), currentId)) {
                 throw new BizException(ResponseCodeEnum.DICT_ITEM_DUPLICATE);
             }
         }

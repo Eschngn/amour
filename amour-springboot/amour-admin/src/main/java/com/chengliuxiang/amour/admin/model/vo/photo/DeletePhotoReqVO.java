@@ -8,5 +8,5 @@ import javax.validation.constraints.NotNull;
 public class DeletePhotoReqVO {
 
     @NotNull(message = "照片ID不能为空")
-    private Long id;
+    private String id;
 }

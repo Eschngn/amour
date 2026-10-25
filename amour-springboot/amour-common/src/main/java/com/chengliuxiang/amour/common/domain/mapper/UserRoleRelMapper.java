@@ -1,73 +1,55 @@
 package com.chengliuxiang.amour.common.domain.mapper;
 
-import org.apache.ibatis.annotations.Insert;
-import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Select;
-import org.apache.ibatis.annotations.Delete;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.chengliuxiang.amour.common.domain.dos.UserRoleRelDO;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
  * 用户角色关系 Mapper。
  */
-@Mapper
-public interface UserRoleRelMapper {
+public interface UserRoleRelMapper extends BaseMapper<UserRoleRelDO> {
 
     /**
      * 为用户分配启用的 common 角色；已存在有效关系时不重复插入。
      *
      * @return 实际插入的关系数，角色不存在时为 0
      */
-    @Insert("INSERT INTO `user_role_rel` (`user_id`, `role_id`, `create_time`, `update_time`, `is_deleted`) "
-            + "SELECT #{userId}, r.id, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, b'0' "
-            + "FROM `role` r "
-            + "WHERE r.`role_key` = 'common' "
-            + "  AND r.`status` = 0 "
-            + "  AND r.`is_deleted` = b'0' "
-            + "  AND NOT EXISTS ("
-            + "      SELECT 1 FROM `user_role_rel` rel "
-            + "      WHERE rel.`user_id` = #{userId} "
-            + "        AND rel.`role_id` = r.id "
-            + "        AND rel.`is_deleted` = b'0'"
-            + "  )")
-    int insertCommonRoleIfAbsent(@Param("userId") Long userId);
+    default List<String> selectRoleIds(String userId) {
+        return selectList(new LambdaQueryWrapper<UserRoleRelDO>()
+                .select(UserRoleRelDO::getRoleId)
+                .eq(UserRoleRelDO::getUserId, userId)
+                .eq(UserRoleRelDO::getIsDeleted, false))
+                .stream().map(UserRoleRelDO::getRoleId).collect(java.util.stream.Collectors.toList());
+    }
 
-    @Select("SELECT role_id FROM user_role_rel WHERE user_id = #{userId} AND is_deleted = b'0'")
-    List<Long> selectRoleIds(@Param("userId") Long userId);
+    default int deleteByUserId(String userId) {
+        return delete(new LambdaQueryWrapper<UserRoleRelDO>().eq(UserRoleRelDO::getUserId, userId));
+    }
 
-    @Delete("DELETE FROM user_role_rel WHERE user_id = #{userId}")
-    int deleteByUserId(@Param("userId") Long userId);
+    default int insertRelation(String userId, String roleId) {
+        UserRoleRelDO relation = new UserRoleRelDO();
+        relation.setUserId(userId);
+        relation.setRoleId(roleId);
+        relation.setCreateTime(LocalDateTime.now());
+        relation.setUpdateTime(LocalDateTime.now());
+        relation.setIsDeleted(false);
+        return insert(relation);
+    }
 
-    @org.apache.ibatis.annotations.Insert("INSERT INTO user_role_rel (user_id, role_id, create_time, update_time, is_deleted) VALUES (#{userId}, #{roleId}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, b'0')")
-    int insertRelation(@Param("userId") Long userId, @Param("roleId") Long roleId);
+    default int insertRelationIfAbsent(String userId, String roleId) {
+        long existing = selectCount(new LambdaQueryWrapper<UserRoleRelDO>()
+                .eq(UserRoleRelDO::getUserId, userId)
+                .eq(UserRoleRelDO::getRoleId, roleId)
+                .eq(UserRoleRelDO::getIsDeleted, false));
+        return existing > 0 ? 0 : insertRelation(userId, roleId);
+    }
 
-    /**
-     * 查询用户当前有效的角色标识。
-     */
-    @Select("SELECT DISTINCT r.`role_key` "
-            + "FROM `user_role_rel` rel "
-            + "JOIN `role` r ON r.`id` = rel.`role_id` "
-            + "WHERE rel.`user_id` = #{userId} "
-            + "  AND rel.`is_deleted` = b'0' "
-            + "  AND r.`status` = 0 "
-            + "  AND r.`is_deleted` = b'0'")
-    List<String> selectRoleKeys(@Param("userId") Long userId);
-
-    /**
-     * 查询用户通过角色获得的当前有效权限标识。
-     */
-    @Select("SELECT DISTINCT p.`permission_key` "
-            + "FROM `user_role_rel` rel "
-            + "JOIN `role` r ON r.`id` = rel.`role_id` "
-            + "JOIN `role_permission_rel` role_rel ON role_rel.`role_id` = r.`id` "
-            + "JOIN `permission` p ON p.`id` = role_rel.`permission_id` "
-            + "WHERE rel.`user_id` = #{userId} "
-            + "  AND rel.`is_deleted` = b'0' "
-            + "  AND r.`status` = 0 "
-            + "  AND r.`is_deleted` = b'0' "
-            + "  AND role_rel.`is_deleted` = b'0' "
-            + "  AND p.`status` = 0 "
-            + "  AND p.`is_deleted` = b'0'")
-    List<String> selectPermissionKeys(@Param("userId") Long userId);
+    default long countUsers(String roleId) {
+        return selectCount(new LambdaQueryWrapper<UserRoleRelDO>()
+                .eq(UserRoleRelDO::getRoleId, roleId)
+                .eq(UserRoleRelDO::getIsDeleted, false));
+    }
 }

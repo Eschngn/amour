@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 
 public interface PhotoMapper extends BaseMapper<PhotoDO> {
 
-    default IPage<PhotoDO> selectVisiblePage(long current, long size, Long categoryId) {
+    default IPage<PhotoDO> selectVisiblePage(long current, long size, String categoryId) {
         return selectPage(new Page<>(current, size), new LambdaQueryWrapper<PhotoDO>()
                 .eq(PhotoDO::getIsDeleted, false)
                 .eq(PhotoDO::getIsVisible, true)
@@ -31,7 +31,7 @@ public interface PhotoMapper extends BaseMapper<PhotoDO> {
     }
 
     default IPage<PhotoDO> findAdminPage(long current, long size, String title,
-                                            Long categoryId, Boolean visible) {
+                                            String categoryId, Boolean visible) {
         return selectPage(new Page<>(current, size), new LambdaQueryWrapper<PhotoDO>()
                 .eq(PhotoDO::getIsDeleted, false)
                 .like(cn.hutool.core.util.StrUtil.isNotBlank(title), PhotoDO::getTitle,
@@ -47,12 +47,12 @@ public interface PhotoMapper extends BaseMapper<PhotoDO> {
         return insert(photo);
     }
 
-    default int markDeletedById(Long id, LocalDateTime updateTime) {
+    default int markDeletedById(String id, LocalDateTime updateTime) {
         return updateById(PhotoDO.builder().id(id).isDeleted(true).isCover(false)
                 .updateTime(updateTime).build());
     }
 
-    default int modifyPhoto(Long id, String title, String description, Long categoryId, String url,
+    default int modifyPhoto(String id, String title, String description, String categoryId, String url,
                             java.time.LocalDateTime takenTime, String location, Integer sortOrder,
                             boolean cover, boolean visible, LocalDateTime updateTime) {
         return update(null, new LambdaUpdateWrapper<PhotoDO>()
@@ -70,7 +70,7 @@ public interface PhotoMapper extends BaseMapper<PhotoDO> {
                 .set(PhotoDO::getUpdateTime, updateTime));
     }
 
-    default int modifyVisibleStatus(Long id, Boolean visible, LocalDateTime updateTime) {
+    default int modifyVisibleStatus(String id, Boolean visible, LocalDateTime updateTime) {
         return update(null, new LambdaUpdateWrapper<PhotoDO>()
                 .eq(PhotoDO::getId, id)
                 .eq(PhotoDO::getIsDeleted, false)
@@ -79,7 +79,7 @@ public interface PhotoMapper extends BaseMapper<PhotoDO> {
                 .set(PhotoDO::getUpdateTime, updateTime));
     }
 
-    default int clearOtherCovers(Long excludedId, LocalDateTime updateTime) {
+    default int clearOtherCovers(String excludedId, LocalDateTime updateTime) {
         return update(null, new LambdaUpdateWrapper<PhotoDO>()
                 .eq(PhotoDO::getIsDeleted, false)
                 .eq(PhotoDO::getIsCover, true)
@@ -88,13 +88,13 @@ public interface PhotoMapper extends BaseMapper<PhotoDO> {
                 .set(PhotoDO::getUpdateTime, updateTime));
     }
 
-    default PhotoDO findActiveById(Long id) {
+    default PhotoDO findActiveById(String id) {
         return selectOne(new LambdaQueryWrapper<PhotoDO>()
                 .eq(PhotoDO::getId, id)
                 .eq(PhotoDO::getIsDeleted, false));
     }
 
-    default Long countActiveByCategoryId(Long categoryId) {
+    default Long countActiveByCategoryId(String categoryId) {
         return selectCount(new LambdaQueryWrapper<PhotoDO>()
                 .eq(PhotoDO::getPhotoCategoryId, categoryId)
                 .eq(PhotoDO::getIsDeleted, false));

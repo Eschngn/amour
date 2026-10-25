@@ -8,8 +8,8 @@ import javax.validation.constraints.Size;
 
 @Data
 public class PermissionSaveReqVO {
-    private Long id;
-    private Long parentId;
+    private String id;
+    private String parentId;
 
     @NotBlank
     @Size(max = 16)

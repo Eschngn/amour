@@ -35,7 +35,7 @@ public class RedisKeyConstants {
      * @param userId
      * @return
      */
-    public static String buildUserRoleKey(Long userId) {
+    public static String buildUserRoleKey(String userId) {
         return USER_ROLES_KEY_PREFIX + userId;
     }
 

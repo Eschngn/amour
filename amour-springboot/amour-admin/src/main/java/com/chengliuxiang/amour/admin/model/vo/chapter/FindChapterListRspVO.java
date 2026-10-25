@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder
 public class FindChapterListRspVO {
-    private Long id;
+    private String id;
     private String name;
     private String colorCode;
     private Integer sortOrder;

@@ -49,13 +49,13 @@ public interface SiteConfigMapper extends BaseMapper<SiteConfigDO> {
                 .last("LIMIT 1"));
     }
 
-    default Long countByConfigKey(String configKey, Long excludedId) {
+    default Long countByConfigKey(String configKey, String excludedId) {
         return selectCount(new LambdaQueryWrapper<SiteConfigDO>()
                 .eq(SiteConfigDO::getConfigKey, configKey)
                 .ne(excludedId != null, SiteConfigDO::getId, excludedId));
     }
 
-    default SiteConfigDO selectByIdAndValueType(Long id, String valueType) {
+    default SiteConfigDO selectByIdAndValueType(String id, String valueType) {
         return selectOne(new LambdaQueryWrapper<SiteConfigDO>()
                 .eq(SiteConfigDO::getId, id)
                 .eq(SiteConfigDO::getValueType, valueType));
@@ -69,11 +69,11 @@ public interface SiteConfigMapper extends BaseMapper<SiteConfigDO> {
         updateById(config);
     }
 
-    default SiteConfigDO selectConfigById(Long id) {
+    default SiteConfigDO selectConfigById(String id) {
         return selectById(id);
     }
 
-    default void deleteConfigById(Long id) {
+    default void deleteConfigById(String id) {
         deleteById(id);
     }
 }

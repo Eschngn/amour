@@ -137,7 +137,7 @@ public class UserProfileServiceImpl implements UserProfileService {
     }
 
     private UserDO getCurrentUser() {
-        UserDO user = userMapper.selectActiveById(StpUtil.getLoginIdAsLong());
+        UserDO user = userMapper.selectActiveById(String.valueOf(StpUtil.getLoginId()));
         if (user == null || Boolean.TRUE.equals(user.getIsDeleted())) {
             throw new BizException(ResponseCodeEnum.USER_NOT_EXIST);
         }
