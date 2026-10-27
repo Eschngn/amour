@@ -2,7 +2,9 @@ package com.chengliuxiang.amour.common.domain.dos;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.chengliuxiang.amour.common.config.BooleanSmallIntTypeHandler;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -14,7 +16,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@TableName("app_user")
+@TableName(value = "app_user", autoResultMap = true)
 public class UserDO {
 
     @TableId(type = IdType.ASSIGN_UUID)
@@ -36,5 +38,6 @@ public class UserDO {
 
     private LocalDateTime updateTime;
 
+    @TableField(typeHandler = BooleanSmallIntTypeHandler.class)
     private Boolean isDeleted;
 }

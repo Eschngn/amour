@@ -11,7 +11,7 @@ public interface RolePermissionRelMapper extends BaseMapper<RolePermissionRelDO>
         return selectList(new LambdaQueryWrapper<RolePermissionRelDO>()
                 .select(RolePermissionRelDO::getPermissionId)
                 .eq(RolePermissionRelDO::getRoleId, roleId)
-                .eq(RolePermissionRelDO::getIsDeleted, false))
+                .eq(RolePermissionRelDO::getIsDeleted, 0))
                 .stream().map(RolePermissionRelDO::getPermissionId).collect(java.util.stream.Collectors.toList());
     }
 
@@ -21,6 +21,6 @@ public interface RolePermissionRelMapper extends BaseMapper<RolePermissionRelDO>
 
     default long countRoles(String permissionId) {
         return selectCount(new LambdaQueryWrapper<RolePermissionRelDO>().eq(RolePermissionRelDO::getPermissionId, permissionId)
-                .eq(RolePermissionRelDO::getIsDeleted, false));
+                .eq(RolePermissionRelDO::getIsDeleted, 0));
     }
 }

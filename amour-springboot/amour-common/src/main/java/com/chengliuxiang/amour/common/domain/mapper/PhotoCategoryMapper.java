@@ -9,7 +9,7 @@ public interface PhotoCategoryMapper extends BaseMapper<PhotoCategoryDO> {
 
     default List<PhotoCategoryDO> selectEnabledList() {
         return selectList(new LambdaQueryWrapper<PhotoCategoryDO>()
-                .eq(PhotoCategoryDO::getIsEnabled, true)
+                .eq(PhotoCategoryDO::getIsEnabled, 1)
                 .orderByAsc(PhotoCategoryDO::getSortOrder)
                 .orderByAsc(PhotoCategoryDO::getId));
     }

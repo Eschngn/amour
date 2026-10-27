@@ -20,29 +20,29 @@ public interface MessageMapper extends BaseMapper<MessageDO> {
 
     default IPage<MessageDO> selectVisiblePage(long current, long size) {
         return selectPage(new Page<>(current, size), new LambdaQueryWrapper<MessageDO>()
-                .eq(MessageDO::getIsDeleted, false)
+                .eq(MessageDO::getIsDeleted, 0)
                 .orderByDesc(MessageDO::getCreateTime));
     }
 
     default IPage<MessageDO> selectAdminPage(long current, long size, String content) {
         return selectPage(new Page<>(current, size), new LambdaQueryWrapper<MessageDO>()
                 .like(cn.hutool.core.util.StrUtil.isNotBlank(content), MessageDO::getContent, content)
-                .eq(MessageDO::getIsDeleted, false)
+                .eq(MessageDO::getIsDeleted, 0)
                 .orderByDesc(MessageDO::getCreateTime));
     }
 
     default int softDelete(String messageId, LocalDateTime updateTime) {
         return update(null, new LambdaUpdateWrapper<MessageDO>()
                 .eq(MessageDO::getId, messageId)
-                .eq(MessageDO::getIsDeleted, false)
-                .set(MessageDO::getIsDeleted, true)
+                .eq(MessageDO::getIsDeleted, 0)
+                .set(MessageDO::getIsDeleted, 1)
                 .set(MessageDO::getUpdateTime, updateTime));
     }
 
     default int softDeleteOwned(String messageId, String userId, LocalDateTime updateTime) {
         return update(null, new LambdaUpdateWrapper<MessageDO>()
                 .eq(MessageDO::getId, messageId).eq(MessageDO::getUserId, userId)
-                .eq(MessageDO::getIsDeleted, false).set(MessageDO::getIsDeleted, true)
+                .eq(MessageDO::getIsDeleted, 0).set(MessageDO::getIsDeleted, 1)
                 .set(MessageDO::getUpdateTime, updateTime));
     }
 }

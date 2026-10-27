@@ -13,7 +13,7 @@ public interface StoryNodeMapper extends BaseMapper<StoryNodeDO> {
     default IPage<StoryNodeDO> selectAdminPage(long current, long size, String title) {
         return selectPage(new Page<>(current, size), new LambdaQueryWrapper<StoryNodeDO>()
                 .like(title != null, StoryNodeDO::getTitle, title)
-                .eq(StoryNodeDO::getIsDeleted, false)
+                .eq(StoryNodeDO::getIsDeleted, 0)
                 .orderByAsc(StoryNodeDO::getChapterId)
                 .orderByAsc(StoryNodeDO::getHappenedTime));
     }
@@ -21,7 +21,7 @@ public interface StoryNodeMapper extends BaseMapper<StoryNodeDO> {
     default StoryNodeDO selectActiveById(String id) {
         return selectOne(new LambdaQueryWrapper<StoryNodeDO>()
                 .eq(StoryNodeDO::getId, id)
-                .eq(StoryNodeDO::getIsDeleted, false));
+                .eq(StoryNodeDO::getIsDeleted, 0));
     }
 
     default int insertStoryNode(StoryNodeDO node) {
@@ -34,29 +34,29 @@ public interface StoryNodeMapper extends BaseMapper<StoryNodeDO> {
 
     default List<StoryNodeDO> selectMilestones() {
         return selectList(new LambdaQueryWrapper<StoryNodeDO>()
-                .eq(StoryNodeDO::getIsMilestone, true)
-                .eq(StoryNodeDO::getIsDeleted, false)
+                .eq(StoryNodeDO::getIsMilestone, 1)
+                .eq(StoryNodeDO::getIsDeleted, 0)
                 .orderByAsc(StoryNodeDO::getHappenedTime));
     }
 
     default List<StoryNodeDO> selectVisibleList() {
         return selectList(new LambdaQueryWrapper<StoryNodeDO>()
                 .eq(StoryNodeDO::getIsVisible, 1)
-                .eq(StoryNodeDO::getIsDeleted, false)
+                .eq(StoryNodeDO::getIsDeleted, 0)
                 .orderByAsc(StoryNodeDO::getChapterId)
                 .orderByAsc(StoryNodeDO::getSortOrder));
     }
 
     default StoryNodeDO selectVisibleById(String id) {
         return selectOne(new LambdaQueryWrapper<StoryNodeDO>().eq(StoryNodeDO::getId, id)
-                .eq(StoryNodeDO::getIsDeleted, false).eq(StoryNodeDO::getIsVisible, 1));
+                .eq(StoryNodeDO::getIsDeleted, 0).eq(StoryNodeDO::getIsVisible, 1));
     }
 
     default List<StoryNodeDO> selectVisibleByChapterId(String chapterId) {
         return selectList(new LambdaQueryWrapper<StoryNodeDO>()
                 .eq(StoryNodeDO::getChapterId, chapterId)
                 .eq(StoryNodeDO::getIsVisible, 1)
-                .eq(StoryNodeDO::getIsDeleted, false)
+                .eq(StoryNodeDO::getIsDeleted, 0)
                 .orderByAsc(StoryNodeDO::getHappenedTime)
                 .orderByAsc(StoryNodeDO::getId));
     }
@@ -65,6 +65,6 @@ public interface StoryNodeMapper extends BaseMapper<StoryNodeDO> {
         return selectList(new LambdaQueryWrapper<StoryNodeDO>()
                 .in(StoryNodeDO::getChapterId, chapterIds)
                 .eq(StoryNodeDO::getIsVisible, 1)
-                .eq(StoryNodeDO::getIsDeleted, false));
+                .eq(StoryNodeDO::getIsDeleted, 0));
     }
 }

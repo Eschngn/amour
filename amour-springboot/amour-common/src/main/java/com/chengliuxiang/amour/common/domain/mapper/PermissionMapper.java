@@ -11,12 +11,12 @@ import java.util.List;
 public interface PermissionMapper extends BaseMapper<PermissionDO> {
     default List<PermissionDO> selectActiveList() {
         return selectList(new LambdaQueryWrapper<PermissionDO>().eq(PermissionDO::getStatus, 0)
-                .eq(PermissionDO::getIsDeleted, false).orderByAsc(PermissionDO::getSort).orderByAsc(PermissionDO::getId));
+                .eq(PermissionDO::getIsDeleted, 0).orderByAsc(PermissionDO::getSort).orderByAsc(PermissionDO::getId));
     }
 
     default PermissionDO selectActiveById(String id) {
         return selectOne(new LambdaQueryWrapper<PermissionDO>().eq(PermissionDO::getId, id)
-                .eq(PermissionDO::getIsDeleted, false));
+                .eq(PermissionDO::getIsDeleted, 0));
     }
 
     default PermissionDO selectByKey(String key, String excludedId) {
@@ -26,6 +26,6 @@ public interface PermissionMapper extends BaseMapper<PermissionDO> {
 
     default long countChildren(String parentId) {
         return selectCount(new LambdaQueryWrapper<PermissionDO>().eq(PermissionDO::getParentId, parentId)
-                .eq(PermissionDO::getIsDeleted, false));
+                .eq(PermissionDO::getIsDeleted, 0));
     }
 }

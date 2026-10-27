@@ -11,11 +11,11 @@ public interface AnniversaryMapper extends BaseMapper<AnniversaryDO> {
     default IPage<AnniversaryDO> selectAdminPage(long current, long size, String title, String category,
                                                   Integer repeatType, Boolean isVisible) {
         return selectPage(new Page<>(current, size), new LambdaQueryWrapper<AnniversaryDO>()
-                .eq(AnniversaryDO::getIsDeleted, false)
+                .eq(AnniversaryDO::getIsDeleted, 0)
                 .like(title != null, AnniversaryDO::getTitle, title)
                 .eq(category != null, AnniversaryDO::getCategory, category)
                 .eq(repeatType != null, AnniversaryDO::getRepeatType, repeatType)
-                .eq(isVisible != null, AnniversaryDO::getIsVisible, isVisible)
+                .eq(isVisible != null, AnniversaryDO::getIsVisible, isVisible == null ? null : (isVisible ? 1 : 0))
                 .orderByAsc(AnniversaryDO::getSortOrder)
                 .orderByAsc(AnniversaryDO::getAnniversaryDate)
                 .orderByDesc(AnniversaryDO::getId));
@@ -24,7 +24,7 @@ public interface AnniversaryMapper extends BaseMapper<AnniversaryDO> {
     default AnniversaryDO selectActiveById(String id) {
         return selectOne(new LambdaQueryWrapper<AnniversaryDO>()
                 .eq(AnniversaryDO::getId, id)
-                .eq(AnniversaryDO::getIsDeleted, false));
+                .eq(AnniversaryDO::getIsDeleted, 0));
     }
 
     default int insertAnniversary(AnniversaryDO anniversary) {
@@ -37,8 +37,8 @@ public interface AnniversaryMapper extends BaseMapper<AnniversaryDO> {
 
     default java.util.List<AnniversaryDO> selectVisibleList() {
         return selectList(new LambdaQueryWrapper<AnniversaryDO>()
-                .eq(AnniversaryDO::getIsDeleted, false)
-                .eq(AnniversaryDO::getIsVisible, true)
+                .eq(AnniversaryDO::getIsDeleted, 0)
+                .eq(AnniversaryDO::getIsVisible, 1)
                 .orderByAsc(AnniversaryDO::getSortOrder)
                 .orderByAsc(AnniversaryDO::getAnniversaryDate)
                 .orderByAsc(AnniversaryDO::getId));

@@ -12,8 +12,8 @@ public interface PhotoMapper extends BaseMapper<PhotoDO> {
 
     default IPage<PhotoDO> selectVisiblePage(long current, long size, String categoryId) {
         return selectPage(new Page<>(current, size), new LambdaQueryWrapper<PhotoDO>()
-                .eq(PhotoDO::getIsDeleted, false)
-                .eq(PhotoDO::getIsVisible, true)
+                .eq(PhotoDO::getIsDeleted, 0)
+                .eq(PhotoDO::getIsVisible, 1)
                 .eq(categoryId != null, PhotoDO::getPhotoCategoryId, categoryId)
                 .orderByAsc(PhotoDO::getSortOrder)
                 .orderByDesc(PhotoDO::getTakenTime)
@@ -22,9 +22,9 @@ public interface PhotoMapper extends BaseMapper<PhotoDO> {
 
     default PhotoDO selectCoverPhoto() {
         return selectOne(new LambdaQueryWrapper<PhotoDO>()
-                .eq(PhotoDO::getIsDeleted, false)
-                .eq(PhotoDO::getIsVisible, true)
-                .eq(PhotoDO::getIsCover, true)
+                .eq(PhotoDO::getIsDeleted, 0)
+                .eq(PhotoDO::getIsVisible, 1)
+                .eq(PhotoDO::getIsCover, 1)
                 .orderByDesc(PhotoDO::getUpdateTime)
                 .orderByDesc(PhotoDO::getId)
                 .last("LIMIT 1"));
@@ -33,11 +33,11 @@ public interface PhotoMapper extends BaseMapper<PhotoDO> {
     default IPage<PhotoDO> findAdminPage(long current, long size, String title,
                                             String categoryId, Boolean visible) {
         return selectPage(new Page<>(current, size), new LambdaQueryWrapper<PhotoDO>()
-                .eq(PhotoDO::getIsDeleted, false)
+                .eq(PhotoDO::getIsDeleted, 0)
                 .like(cn.hutool.core.util.StrUtil.isNotBlank(title), PhotoDO::getTitle,
                         cn.hutool.core.util.StrUtil.trim(title))
                 .eq(categoryId != null, PhotoDO::getPhotoCategoryId, categoryId)
-                .eq(visible != null, PhotoDO::getIsVisible, visible)
+                .eq(visible != null, PhotoDO::getIsVisible, visible == null ? null : (visible ? 1 : 0))
                 .orderByAsc(PhotoDO::getSortOrder)
                 .orderByDesc(PhotoDO::getTakenTime)
                 .orderByDesc(PhotoDO::getId));
@@ -57,7 +57,7 @@ public interface PhotoMapper extends BaseMapper<PhotoDO> {
                             boolean cover, boolean visible, LocalDateTime updateTime) {
         return update(null, new LambdaUpdateWrapper<PhotoDO>()
                 .eq(PhotoDO::getId, id)
-                .eq(PhotoDO::getIsDeleted, false)
+                .eq(PhotoDO::getIsDeleted, 0)
                 .set(PhotoDO::getTitle, title)
                 .set(PhotoDO::getDescription, description)
                 .set(PhotoDO::getPhotoCategoryId, categoryId)
@@ -65,38 +65,38 @@ public interface PhotoMapper extends BaseMapper<PhotoDO> {
                 .set(PhotoDO::getTakenTime, takenTime)
                 .set(PhotoDO::getLocation, location)
                 .set(PhotoDO::getSortOrder, sortOrder)
-                .set(PhotoDO::getIsCover, cover)
-                .set(PhotoDO::getIsVisible, visible)
+                .set(PhotoDO::getIsCover, cover ? 1 : 0)
+                .set(PhotoDO::getIsVisible, visible ? 1 : 0)
                 .set(PhotoDO::getUpdateTime, updateTime));
     }
 
     default int modifyVisibleStatus(String id, Boolean visible, LocalDateTime updateTime) {
         return update(null, new LambdaUpdateWrapper<PhotoDO>()
                 .eq(PhotoDO::getId, id)
-                .eq(PhotoDO::getIsDeleted, false)
-                .set(PhotoDO::getIsVisible, visible)
-                .set(!visible, PhotoDO::getIsCover, false)
+                .eq(PhotoDO::getIsDeleted, 0)
+                .set(PhotoDO::getIsVisible, Boolean.TRUE.equals(visible) ? 1 : 0)
+                .set(!Boolean.TRUE.equals(visible), PhotoDO::getIsCover, 0)
                 .set(PhotoDO::getUpdateTime, updateTime));
     }
 
     default int clearOtherCovers(String excludedId, LocalDateTime updateTime) {
         return update(null, new LambdaUpdateWrapper<PhotoDO>()
-                .eq(PhotoDO::getIsDeleted, false)
-                .eq(PhotoDO::getIsCover, true)
+                .eq(PhotoDO::getIsDeleted, 0)
+                .eq(PhotoDO::getIsCover, 1)
                 .ne(excludedId != null, PhotoDO::getId, excludedId)
-                .set(PhotoDO::getIsCover, false)
+                .set(PhotoDO::getIsCover, 0)
                 .set(PhotoDO::getUpdateTime, updateTime));
     }
 
     default PhotoDO findActiveById(String id) {
         return selectOne(new LambdaQueryWrapper<PhotoDO>()
                 .eq(PhotoDO::getId, id)
-                .eq(PhotoDO::getIsDeleted, false));
+                .eq(PhotoDO::getIsDeleted, 0));
     }
 
     default Long countActiveByCategoryId(String categoryId) {
         return selectCount(new LambdaQueryWrapper<PhotoDO>()
                 .eq(PhotoDO::getPhotoCategoryId, categoryId)
-                .eq(PhotoDO::getIsDeleted, false));
+                .eq(PhotoDO::getIsDeleted, 0));
     }
 }

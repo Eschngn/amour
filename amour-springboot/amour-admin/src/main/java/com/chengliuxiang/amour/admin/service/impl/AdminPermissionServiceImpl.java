@@ -37,7 +37,7 @@ public class AdminPermissionServiceImpl implements AdminPermissionService {
     @Override
     public Response<List<PermissionPageRspVO>> findTree() {
         List<PermissionDO> permissions = permissionMapper.selectList(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<PermissionDO>()
-                .eq(PermissionDO::getIsDeleted, false).orderByAsc(PermissionDO::getSort).orderByAsc(PermissionDO::getId));
+                .eq(PermissionDO::getIsDeleted, 0).orderByAsc(PermissionDO::getSort).orderByAsc(PermissionDO::getId));
         Map<String, List<PermissionDO>> children = permissions.stream().collect(Collectors.groupingBy(p -> p.getParentId() == null ? "0" : p.getParentId()));
         return Response.success(permissions.stream().filter(p -> p.getParentId() == null || "0".equals(p.getParentId()))
                 .map(p -> toResponse(p, children)).collect(Collectors.toList()));

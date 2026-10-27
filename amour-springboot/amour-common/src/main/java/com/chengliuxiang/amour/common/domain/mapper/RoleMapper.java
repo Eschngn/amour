@@ -13,7 +13,7 @@ import java.util.List;
 public interface RoleMapper extends BaseMapper<RoleDO> {
     default IPage<RoleDO> selectRolePage(long current, long size, String keyword) {
         return selectPage(new Page<>(current, size), new LambdaQueryWrapper<RoleDO>()
-                .eq(RoleDO::getIsDeleted, false)
+                .eq(RoleDO::getIsDeleted, 0)
                 .and(org.apache.commons.lang3.StringUtils.isNotBlank(keyword), w -> w
                         .like(RoleDO::getRoleName, keyword)
                         .or().like(RoleDO::getRoleKey, keyword)
@@ -22,7 +22,7 @@ public interface RoleMapper extends BaseMapper<RoleDO> {
     }
 
     default RoleDO selectActiveById(String id) {
-        return selectOne(new LambdaQueryWrapper<RoleDO>().eq(RoleDO::getId, id).eq(RoleDO::getIsDeleted, false));
+        return selectOne(new LambdaQueryWrapper<RoleDO>().eq(RoleDO::getId, id).eq(RoleDO::getIsDeleted, 0));
     }
 
     default RoleDO selectByRoleKey(String roleKey, String excludedId) {
@@ -31,7 +31,7 @@ public interface RoleMapper extends BaseMapper<RoleDO> {
     }
 
     default List<RoleDO> selectActiveList() {
-        return selectList(new LambdaQueryWrapper<RoleDO>().eq(RoleDO::getIsDeleted, false)
+        return selectList(new LambdaQueryWrapper<RoleDO>().eq(RoleDO::getIsDeleted, 0)
                 .orderByAsc(RoleDO::getSort).orderByDesc(RoleDO::getId));
     }
 }

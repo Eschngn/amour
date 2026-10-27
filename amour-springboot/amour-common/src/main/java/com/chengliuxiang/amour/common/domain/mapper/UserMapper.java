@@ -12,8 +12,8 @@ public interface UserMapper extends BaseMapper<UserDO> {
 
     default IPage<UserDO> selectAdminPage(long current, long size, String keyword, Integer status) {
         return selectPage(new Page<>(current, size), new LambdaQueryWrapper<UserDO>()
-                .eq(status != null && status == 0, UserDO::getIsDeleted, false)
-                .eq(status != null && status == 1, UserDO::getIsDeleted, true)
+                .eq(status != null && status == 0, UserDO::getIsDeleted, 0)
+                .eq(status != null && status == 1, UserDO::getIsDeleted, 1)
                 .and(org.apache.commons.lang3.StringUtils.isNotBlank(keyword), w -> w
                         .like(UserDO::getUsername, keyword).or().like(UserDO::getDisplayName, keyword))
                 .orderByDesc(UserDO::getId));
@@ -22,7 +22,7 @@ public interface UserMapper extends BaseMapper<UserDO> {
     default UserDO selectByUsername(String username) {
         return selectOne(new LambdaQueryWrapper<UserDO>()
                 .eq(UserDO::getUsername, username)
-                .eq(UserDO::getIsDeleted, false));
+                .eq(UserDO::getIsDeleted, 0));
     }
 
     default UserDO selectAnyByUsername(String username) {
@@ -45,7 +45,7 @@ public interface UserMapper extends BaseMapper<UserDO> {
     default UserDO selectActiveById(String id) {
         return selectOne(new LambdaQueryWrapper<UserDO>()
                 .eq(UserDO::getId, id)
-                .eq(UserDO::getIsDeleted, false));
+                .eq(UserDO::getIsDeleted, 0));
     }
 
     default UserDO selectAdminById(String id) {

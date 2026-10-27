@@ -21,7 +21,7 @@ public interface UserRoleRelMapper extends BaseMapper<UserRoleRelDO> {
         return selectList(new LambdaQueryWrapper<UserRoleRelDO>()
                 .select(UserRoleRelDO::getRoleId)
                 .eq(UserRoleRelDO::getUserId, userId)
-                .eq(UserRoleRelDO::getIsDeleted, false))
+                .eq(UserRoleRelDO::getIsDeleted, 0))
                 .stream().map(UserRoleRelDO::getRoleId).collect(java.util.stream.Collectors.toList());
     }
 
@@ -43,13 +43,13 @@ public interface UserRoleRelMapper extends BaseMapper<UserRoleRelDO> {
         long existing = selectCount(new LambdaQueryWrapper<UserRoleRelDO>()
                 .eq(UserRoleRelDO::getUserId, userId)
                 .eq(UserRoleRelDO::getRoleId, roleId)
-                .eq(UserRoleRelDO::getIsDeleted, false));
+                .eq(UserRoleRelDO::getIsDeleted, 0));
         return existing > 0 ? 0 : insertRelation(userId, roleId);
     }
 
     default long countUsers(String roleId) {
         return selectCount(new LambdaQueryWrapper<UserRoleRelDO>()
                 .eq(UserRoleRelDO::getRoleId, roleId)
-                .eq(UserRoleRelDO::getIsDeleted, false));
+                .eq(UserRoleRelDO::getIsDeleted, 0));
     }
 }

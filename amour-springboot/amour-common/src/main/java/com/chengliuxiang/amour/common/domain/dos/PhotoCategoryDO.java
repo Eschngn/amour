@@ -2,7 +2,9 @@ package com.chengliuxiang.amour.common.domain.dos;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.chengliuxiang.amour.common.config.BooleanSmallIntTypeHandler;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -14,7 +16,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@TableName("photo_category")
+@TableName(value = "photo_category", autoResultMap = true)
 public class PhotoCategoryDO {
 
     @TableId(type = IdType.ASSIGN_UUID)
@@ -24,6 +26,7 @@ public class PhotoCategoryDO {
 
     private Integer sortOrder;
 
+    @TableField(typeHandler = BooleanSmallIntTypeHandler.class)
     private Boolean isEnabled;
 
     private String remark;

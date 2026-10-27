@@ -19,30 +19,30 @@ public interface MessageReplyMapper extends BaseMapper<MessageReplyDO> {
 
     default List<MessageReplyDO> selectVisibleByMessageIds(Collection<String> messageIds) {
         return selectList(new LambdaQueryWrapper<MessageReplyDO>()
-                .in(MessageReplyDO::getMessageId, messageIds).eq(MessageReplyDO::getIsDeleted, false)
+                .in(MessageReplyDO::getMessageId, messageIds).eq(MessageReplyDO::getIsDeleted, 0)
                 .orderByAsc(MessageReplyDO::getCreateTime));
     }
 
     default List<MessageReplyDO> selectActiveByMessageIds(Collection<String> messageIds) {
         return selectList(new LambdaQueryWrapper<MessageReplyDO>()
                 .in(MessageReplyDO::getMessageId, messageIds)
-                .eq(MessageReplyDO::getIsDeleted, false));
+                .eq(MessageReplyDO::getIsDeleted, 0));
     }
 
     default int softDeleteByMessageId(String messageId) {
         return update(null, new LambdaUpdateWrapper<MessageReplyDO>()
-                .eq(MessageReplyDO::getMessageId, messageId).eq(MessageReplyDO::getIsDeleted, false)
-                .set(MessageReplyDO::getIsDeleted, true));
+                .eq(MessageReplyDO::getMessageId, messageId).eq(MessageReplyDO::getIsDeleted, 0)
+                .set(MessageReplyDO::getIsDeleted, 1));
     }
 
     default List<MessageReplyDO> selectActiveChildren(Collection<String> parentIds) {
         return selectList(new LambdaQueryWrapper<MessageReplyDO>().select(MessageReplyDO::getId)
-                .in(MessageReplyDO::getParentReplyId, parentIds).eq(MessageReplyDO::getIsDeleted, false));
+                .in(MessageReplyDO::getParentReplyId, parentIds).eq(MessageReplyDO::getIsDeleted, 0));
     }
 
     default int softDeleteByIds(Collection<String> ids) {
         return update(null, new LambdaUpdateWrapper<MessageReplyDO>().in(MessageReplyDO::getId, ids)
-                .eq(MessageReplyDO::getIsDeleted, false).set(MessageReplyDO::getIsDeleted, true));
+                .eq(MessageReplyDO::getIsDeleted, 0).set(MessageReplyDO::getIsDeleted, 1));
     }
 
     default java.util.Set<String> collectReplyTreeIds(String rootReplyId) {
