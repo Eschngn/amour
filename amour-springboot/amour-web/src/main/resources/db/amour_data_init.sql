@@ -3,7 +3,7 @@
 -- 1. 去掉了 `amour`. 库名前缀和反引号；表 user 改名为 app_user
 -- 2. id / 外键 id / created_by 均为 varchar(64)，所以数字 id 一律写成字符串，如 '1001'
 -- 3. story_node.content 里的 \n 在 MySQL 中是换行转义；这里用 replace(..., '\n', chr(10)) 还原成真正的换行，不依赖 E'...' 语法
--- 4. 需先执行建表脚本 amour_postgresql_table_init.sql
+-- 4. 需先执行建表脚本 amour_table_init.sql
 
 BEGIN;
 

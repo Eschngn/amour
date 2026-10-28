@@ -12,7 +12,7 @@ import com.chengliuxiang.amour.web.model.vo.photo.PhotoPageQueryReqVO;
 import com.chengliuxiang.amour.web.service.PhotoService;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;

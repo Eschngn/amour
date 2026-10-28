@@ -11,7 +11,7 @@ import com.chengliuxiang.amour.common.domain.dos.RoleDO;
 import com.chengliuxiang.amour.common.domain.dos.PermissionDO;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
