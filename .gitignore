@@ -23,6 +23,8 @@ HELP.md
 
 **/target/
 
+*.db
+
 # 保留 Maven Wrapper
 !.mvn/wrapper/maven-wrapper.jar
 
