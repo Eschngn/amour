@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class FindSiteConfigPageListRspVO {
-    private String id;
+    private Long id;
     private String configKey;
     private String configName;
     private String configValue;

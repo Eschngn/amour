@@ -8,8 +8,8 @@ import java.util.List;
 @Data
 @Builder
 public class PermissionPageRspVO {
-    private String id;
-    private String parentId;
+    private Long id;
+    private Long parentId;
     private String name;
     private Integer type;
     private String menuUrl;

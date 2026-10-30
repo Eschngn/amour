@@ -24,7 +24,7 @@ import com.chengliuxiang.amour.common.utils.Response;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import jakarta.annotation.Resource;
+import javax.annotation.Resource;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
@@ -52,7 +52,7 @@ public class AdminPhotoServiceImpl implements AdminPhotoService {
 
         IPage<PhotoDO> result = photoMapper.findAdminPage(
                 current, size, reqVO.getTitle(), reqVO.getPhotoCategoryId(), reqVO.getIsVisible());
-        Map<String, PhotoCategoryDO> categoryMap = loadCategoryMap(result.getRecords());
+        Map<Long, PhotoCategoryDO> categoryMap = loadCategoryMap(result.getRecords());
         List<FindPhotoPageListRspVO> records = result.getRecords().stream()
                 .map(photo -> toPageItem(photo, categoryMap))
                 .collect(Collectors.toList());
@@ -67,7 +67,7 @@ public class AdminPhotoServiceImpl implements AdminPhotoService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Response<String> addPhoto(AddPhotoReqVO reqVO) {
+    public Response<Long> addPhoto(AddPhotoReqVO reqVO) {
         requirePhotoCategory(reqVO.getPhotoCategoryId());
         LocalDateTime now = LocalDateTime.now();
         boolean isCover = Boolean.TRUE.equals(reqVO.getIsCover());
@@ -86,7 +86,7 @@ public class AdminPhotoServiceImpl implements AdminPhotoService {
                 .sortOrder(reqVO.getSortOrder() == null ? 0 : reqVO.getSortOrder())
                 .isCover(isCover)
                 .isVisible(isVisible)
-                .createdBy(String.valueOf(StpUtil.getLoginId()))
+                .createdBy(StpUtil.getLoginIdAsLong())
                 .createTime(now)
                 .updateTime(now)
                 .isDeleted(false)
@@ -151,7 +151,7 @@ public class AdminPhotoServiceImpl implements AdminPhotoService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Response<String> savePhotoCategory(SavePhotoCategoryReqVO reqVO) {
+    public Response<Long> savePhotoCategory(SavePhotoCategoryReqVO reqVO) {
         String categoryName = StrUtil.trim(reqVO.getCategoryName());
         Long duplicateCount = photoCategoryMapper.countByNameExcludingId(categoryName, reqVO.getId());
         if (duplicateCount != null && duplicateCount > 0) {
@@ -168,7 +168,7 @@ public class AdminPhotoServiceImpl implements AdminPhotoService {
                     .sortOrder(sortOrder)
                     .isEnabled(reqVO.getIsEnabled() == null || reqVO.getIsEnabled())
                     .remark("")
-                    .createdBy(String.valueOf(StpUtil.getLoginId()))
+                    .createdBy(StpUtil.getLoginIdAsLong())
                     .createTime(now)
                     .updateTime(now)
                     .build();
@@ -198,7 +198,7 @@ public class AdminPhotoServiceImpl implements AdminPhotoService {
         return Response.success();
     }
 
-    private PhotoDO requirePhoto(String id) {
+    private PhotoDO requirePhoto(Long id) {
         PhotoDO photo = photoMapper.findActiveById(id);
         if (photo == null) {
             throw new BizException(ResponseCodeEnum.PHOTO_NOT_EXIST);
@@ -206,7 +206,7 @@ public class AdminPhotoServiceImpl implements AdminPhotoService {
         return photo;
     }
 
-    private PhotoCategoryDO requirePhotoCategory(String id) {
+    private PhotoCategoryDO requirePhotoCategory(Long id) {
         PhotoCategoryDO category = photoCategoryMapper.findCategoryById(id);
         if (category == null) {
             throw new BizException(ResponseCodeEnum.PHOTO_CATEGORY_NOT_EXIST);
@@ -214,12 +214,12 @@ public class AdminPhotoServiceImpl implements AdminPhotoService {
         return category;
     }
 
-    private void clearOtherCovers(String excludedId, LocalDateTime updateTime) {
+    private void clearOtherCovers(Long excludedId, LocalDateTime updateTime) {
         photoMapper.clearOtherCovers(excludedId, updateTime);
     }
 
-    private Map<String, PhotoCategoryDO> loadCategoryMap(List<PhotoDO> photos) {
-        List<String> categoryIds = photos.stream()
+    private Map<Long, PhotoCategoryDO> loadCategoryMap(List<PhotoDO> photos) {
+        List<Long> categoryIds = photos.stream()
                 .map(PhotoDO::getPhotoCategoryId)
                 .filter(Objects::nonNull)
                 .distinct()
@@ -231,7 +231,7 @@ public class AdminPhotoServiceImpl implements AdminPhotoService {
                 .collect(Collectors.toMap(PhotoCategoryDO::getId, Function.identity()));
     }
 
-    private FindPhotoPageListRspVO toPageItem(PhotoDO photo, Map<String, PhotoCategoryDO> categoryMap) {
+    private FindPhotoPageListRspVO toPageItem(PhotoDO photo, Map<Long, PhotoCategoryDO> categoryMap) {
         PhotoCategoryDO category = categoryMap.get(photo.getPhotoCategoryId());
         return FindPhotoPageListRspVO.builder()
                 .id(photo.getId())

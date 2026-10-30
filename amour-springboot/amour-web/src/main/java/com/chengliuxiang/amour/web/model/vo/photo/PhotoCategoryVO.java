@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class PhotoCategoryVO {
 
-    private String id;
+    private Long id;
 
     private String categoryName;
 

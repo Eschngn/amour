@@ -25,7 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import jakarta.annotation.Resource;
+import javax.annotation.Resource;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -71,7 +71,7 @@ public class MessageServiceImpl implements MessageService {
                 .collect(Collectors.groupingBy(MessageReplyDO::getMessageId));
 
         // 收集所有涉及的用户 ID
-        Set<String> userIds = new HashSet<>();
+        Set<Long> userIds = new HashSet<>();
         for (MessageDO m : messages) {
             addUserId(userIds, m.getUserId());
         }
@@ -81,7 +81,7 @@ public class MessageServiceImpl implements MessageService {
         }
 
         // 查询用户，展示资料与登录 username 分离，留言板不会暴露登录名。
-        Map<String, UserDO> userMap;
+        Map<Long, UserDO> userMap;
         if (CollUtil.isNotEmpty(userIds)) {
             List<UserDO> users = userMapper.findUsersByIds(userIds);
             userMap = users.stream()
@@ -129,7 +129,7 @@ public class MessageServiceImpl implements MessageService {
     public Response<Void> publishMessage(MessagePublishReqVO reqVO) {
         LocalDateTime now = LocalDateTime.now();
         MessageDO message = MessageDO.builder()
-                .userId(String.valueOf(StpUtil.getLoginId()))
+                .userId(String.valueOf(StpUtil.getLoginIdAsLong()))
                 .content(reqVO.getContent())
                 .createTime(now)
                 .updateTime(now)
@@ -162,7 +162,7 @@ public class MessageServiceImpl implements MessageService {
         MessageReplyDO reply = MessageReplyDO.builder()
                 .messageId(message.getId())
                 .parentReplyId(parentReplyId)
-                .fromUserId(String.valueOf(StpUtil.getLoginId()))
+                .fromUserId(String.valueOf(StpUtil.getLoginIdAsLong()))
                 .toUserId(toUserId)
                 .content(reqVO.getContent().trim())
                 .createTime(LocalDateTime.now())
@@ -181,7 +181,7 @@ public class MessageServiceImpl implements MessageService {
             throw new BizException(ResponseCodeEnum.MESSAGE_NOT_EXIST);
         }
 
-        String currentUserId = String.valueOf(StpUtil.getLoginId());
+        String currentUserId = String.valueOf(StpUtil.getLoginIdAsLong());
         if (!Objects.equals(currentUserId, message.getUserId())) {
             throw new BizException(ResponseCodeEnum.MESSAGE_DELETE_FORBIDDEN);
         }
@@ -209,7 +209,7 @@ public class MessageServiceImpl implements MessageService {
             throw new BizException(ResponseCodeEnum.MESSAGE_REPLY_NOT_EXIST);
         }
 
-        String currentUserId = String.valueOf(StpUtil.getLoginId());
+        String currentUserId = String.valueOf(StpUtil.getLoginIdAsLong());
         if (!StrUtil.equals(currentUserId, StrUtil.trim(reply.getFromUserId()))) {
             throw new BizException(ResponseCodeEnum.MESSAGE_REPLY_DELETE_FORBIDDEN);
         }
@@ -222,25 +222,32 @@ public class MessageServiceImpl implements MessageService {
         return Response.success();
     }
 
-    private void addUserId(Set<String> userIds, String userIdStr) {
+    private void addUserId(Set<Long> userIds, String userIdStr) {
         if (StrUtil.isNotBlank(userIdStr)) {
-            userIds.add(userIdStr.trim());
+            try {
+                userIds.add(Long.valueOf(userIdStr));
+            } catch (NumberFormatException ignored) {
+            }
         }
     }
 
-    private UserDO getUser(Map<String, UserDO> userMap, String userIdStr) {
+    private UserDO getUser(Map<Long, UserDO> userMap, String userIdStr) {
         if (StrUtil.isBlank(userIdStr)) {
             return null;
         }
-        return userMap.get(userIdStr.trim());
+        try {
+            return userMap.get(Long.valueOf(userIdStr));
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
-    private String getDisplayName(Map<String, UserDO> userMap, String userIdStr) {
+    private String getDisplayName(Map<Long, UserDO> userMap, String userIdStr) {
         UserDO user = getUser(userMap, userIdStr);
         return user == null ? "匿名" : StrUtil.blankToDefault(user.getDisplayName(), "恋人");
     }
 
-    private String getAvatar(Map<String, UserDO> userMap, String userIdStr) {
+    private String getAvatar(Map<Long, UserDO> userMap, String userIdStr) {
         UserDO user = getUser(userMap, userIdStr);
         return user == null ? "" : StrUtil.blankToDefault(user.getAvatar(), "");
     }

@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import jakarta.annotation.Resource;
+import javax.annotation.Resource;
 
 @RestController
 @RequestMapping("/admin/anniversary")
@@ -35,7 +35,7 @@ public class AdminAnniversaryController {
 
     @PostMapping("/add")
     @ApiOperationLog(description = "新增纪念日")
-    public Response<String> addAnniversary(@Validated @RequestBody AddAnniversaryReqVO reqVO) {
+    public Response<Long> addAnniversary(@Validated @RequestBody AddAnniversaryReqVO reqVO) {
         return adminAnniversaryService.addAnniversary(reqVO);
     }
 

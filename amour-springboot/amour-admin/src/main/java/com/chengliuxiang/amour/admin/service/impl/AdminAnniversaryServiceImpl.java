@@ -20,7 +20,7 @@ import com.chengliuxiang.amour.common.model.PageResult;
 import com.chengliuxiang.amour.common.utils.Response;
 import org.springframework.stereotype.Service;
 
-import jakarta.annotation.Resource;
+import javax.annotation.Resource;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -56,7 +56,7 @@ public class AdminAnniversaryServiceImpl implements AdminAnniversaryService {
     }
 
     @Override
-    public Response<String> addAnniversary(AddAnniversaryReqVO reqVO) {
+    public Response<Long> addAnniversary(AddAnniversaryReqVO reqVO) {
         LocalDateTime now = LocalDateTime.now();
         AnniversaryDO anniversary = AnniversaryDO.builder()
                 .title(StrUtil.trim(reqVO.getTitle()))
@@ -68,7 +68,7 @@ public class AdminAnniversaryServiceImpl implements AdminAnniversaryService {
                 .location(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getLocation())))
                 .sortOrder(reqVO.getSortOrder() == null ? 0 : reqVO.getSortOrder())
                 .isVisible(reqVO.getIsVisible() == null || reqVO.getIsVisible())
-                .createdBy(String.valueOf(StpUtil.getLoginId()))
+                .createdBy(StpUtil.getLoginIdAsLong())
                 .createTime(now)
                 .updateTime(now)
                 .isDeleted(false)
@@ -113,7 +113,7 @@ public class AdminAnniversaryServiceImpl implements AdminAnniversaryService {
         return Response.success();
     }
 
-    private AnniversaryDO requireAnniversary(String id) {
+    private AnniversaryDO requireAnniversary(Long id) {
         AnniversaryDO anniversary = anniversaryMapper.selectActiveById(id);
         if (anniversary == null) throw new BizException(ResponseCodeEnum.ANNIVERSARY_NOT_EXIST);
         return anniversary;

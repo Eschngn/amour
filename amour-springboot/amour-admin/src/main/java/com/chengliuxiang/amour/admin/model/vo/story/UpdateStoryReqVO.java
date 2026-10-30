@@ -5,8 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 
 @Data
@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 public class UpdateStoryReqVO {
 
     @NotNull(message = "故事ID不能为空")
-    private String id;
+    private Long id;
 
     @NotBlank(message = "故事标题不能为空")
     private String title;
@@ -34,7 +34,7 @@ public class UpdateStoryReqVO {
     private Integer sortOrder;
 
     @NotNull(message = "所属章节不能为空")
-    private String chapterId;
+    private Long chapterId;
 
     @NotNull(message = "是否里程碑不能为空")
     private Boolean isMilestone;

@@ -2,9 +2,7 @@ package com.chengliuxiang.amour.common.domain.dos;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.chengliuxiang.amour.common.config.BooleanSmallIntTypeHandler;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,11 +14,11 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@TableName(value = "story_chapter", autoResultMap = true)
+@TableName("story_chapter")
 public class StoryChapterDO {
 
-    @TableId(type = IdType.ASSIGN_UUID)
-    private String id;
+    @TableId(type = IdType.AUTO)
+    private Long id;
 
     private String name;
 
@@ -28,7 +26,6 @@ public class StoryChapterDO {
 
     private Integer sortOrder;
 
-    @TableField(typeHandler = BooleanSmallIntTypeHandler.class)
     private Boolean isVisible;
 
     private LocalDateTime createTime;

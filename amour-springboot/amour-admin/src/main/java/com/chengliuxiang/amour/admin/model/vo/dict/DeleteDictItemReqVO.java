@@ -4,7 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import jakarta.validation.constraints.NotNull;
+import javax.validation.constraints.NotNull;
 
 @Data
 @NoArgsConstructor
@@ -12,5 +12,5 @@ import jakarta.validation.constraints.NotNull;
 public class DeleteDictItemReqVO {
 
     @NotNull(message = "字典项ID不能为空")
-    private String id;
+    private Long id;
 }

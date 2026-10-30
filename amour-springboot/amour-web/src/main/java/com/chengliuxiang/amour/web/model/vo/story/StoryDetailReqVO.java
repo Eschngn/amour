@@ -5,7 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import jakarta.validation.constraints.NotNull;
+import javax.validation.constraints.NotNull;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -14,5 +14,5 @@ import jakarta.validation.constraints.NotNull;
 public class StoryDetailReqVO {
 
     @NotNull(message = "故事ID不能为空")
-    private String id;
+    private Long id;
 }

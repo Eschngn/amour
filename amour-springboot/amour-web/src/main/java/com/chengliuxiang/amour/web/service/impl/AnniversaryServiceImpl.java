@@ -7,7 +7,7 @@ import com.chengliuxiang.amour.web.model.vo.anniversary.AnniversaryVO;
 import com.chengliuxiang.amour.web.service.AnniversaryService;
 import org.springframework.stereotype.Service;
 
-import jakarta.annotation.Resource;
+import javax.annotation.Resource;
 import java.util.List;
 import java.util.stream.Collectors;
 

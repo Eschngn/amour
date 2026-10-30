@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @Data
 public class StoryDetailRspVO {
 
-    private String id;
+    private Long id;
 
     private String title;
 

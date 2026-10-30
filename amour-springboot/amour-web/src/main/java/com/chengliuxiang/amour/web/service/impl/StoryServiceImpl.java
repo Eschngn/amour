@@ -11,7 +11,7 @@ import com.chengliuxiang.amour.web.service.StoryService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import jakarta.annotation.Resource;
+import javax.annotation.Resource;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -62,7 +62,7 @@ public class StoryServiceImpl implements StoryService {
         List<StoryNodeDO> storyNodeDOS = storyNodeMapper.selectVisibleList();
 
         // 故事节点按 chapter_id 分组
-        Map<String, List<StoryNodeDO>> chapterIdAndNodeMap = storyNodeDOS.stream()
+        Map<Long, List<StoryNodeDO>> chapterIdAndNodeMap = storyNodeDOS.stream()
                 .collect(Collectors.groupingBy(StoryNodeDO::getChapterId));
 
         // 转换得到故事章节 VO 列表
@@ -100,7 +100,7 @@ public class StoryServiceImpl implements StoryService {
      */
     @Override
     public Response<List<StoryNodeVO>> getStoryByChapterId(GetStoryByChapterIdReqVO getStoryByChapterIdReqVO) {
-        String chapterId = getStoryByChapterIdReqVO.getChapterId();
+        Long chapterId = Long.valueOf(getStoryByChapterIdReqVO.getChapterId());
         List<StoryNodeDO> storyNodeDOS = storyNodeMapper.selectVisibleByChapterId(chapterId);
         if (CollUtil.isEmpty(storyNodeDOS)) {
             return Response.success();
@@ -185,7 +185,7 @@ public class StoryServiceImpl implements StoryService {
             return Collections.emptyList();
         }
 
-        Map<String, Integer> chapterOrder = new HashMap<>();
+        Map<Long, Integer> chapterOrder = new HashMap<>();
         for (int i = 0; i < chapters.size(); i++) {
             chapterOrder.put(chapters.get(i).getId(), i);
         }
@@ -193,7 +193,7 @@ public class StoryServiceImpl implements StoryService {
         List<StoryNodeDO> stories = storyNodeMapper.selectVisibleByChapterIds(chapterOrder.keySet());
 
         Comparator<LocalDateTime> happenedTimeComparator = Comparator.nullsLast(Comparator.naturalOrder());
-        Comparator<String> idComparator = Comparator.nullsLast(Comparator.naturalOrder());
+        Comparator<Long> idComparator = Comparator.nullsLast(Comparator.naturalOrder());
         stories.sort(Comparator
                 .comparingInt((StoryNodeDO story) -> chapterOrder.get(story.getChapterId()))
                 .thenComparing(StoryNodeDO::getHappenedTime, happenedTimeComparator)
@@ -202,7 +202,7 @@ public class StoryServiceImpl implements StoryService {
     }
 
     private StoryChapterVO buildChapterVO(StoryChapterDO storyChapterDO,
-                                          Map<String, List<StoryNodeDO>> chapterIdAndNodeMap) {
+                                          Map<Long, List<StoryNodeDO>> chapterIdAndNodeMap) {
         List<StoryNodeDO> storyNodeDOS = chapterIdAndNodeMap
                 .getOrDefault(storyChapterDO.getId(), Collections.emptyList());
 

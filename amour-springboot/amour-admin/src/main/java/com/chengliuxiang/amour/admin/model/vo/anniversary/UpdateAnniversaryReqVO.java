@@ -5,9 +5,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Pattern;
 import java.time.LocalDate;
 
 @Data
@@ -16,7 +16,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class UpdateAnniversaryReqVO {
     @NotNull(message = "纪念日ID不能为空")
-    private String id;
+    private Long id;
     @NotBlank(message = "纪念日标题不能为空")
     private String title;
     private String description;

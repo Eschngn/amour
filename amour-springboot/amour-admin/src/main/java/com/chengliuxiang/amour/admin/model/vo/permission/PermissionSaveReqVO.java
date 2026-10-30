@@ -2,14 +2,14 @@ package com.chengliuxiang.amour.admin.model.vo.permission;
 
 import lombok.Data;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 
 @Data
 public class PermissionSaveReqVO {
-    private String id;
-    private String parentId;
+    private Long id;
+    private Long parentId;
 
     @NotBlank
     @Size(max = 16)

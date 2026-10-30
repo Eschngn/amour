@@ -12,7 +12,7 @@ import com.chengliuxiang.amour.web.model.vo.photo.PhotoPageQueryReqVO;
 import com.chengliuxiang.amour.web.service.PhotoService;
 import org.springframework.stereotype.Service;
 
-import jakarta.annotation.Resource;
+import javax.annotation.Resource;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -38,7 +38,7 @@ public class PhotoServiceImpl implements PhotoService {
 
         com.baomidou.mybatisplus.core.metadata.IPage<PhotoDO> photoPage = photoMapper.selectVisiblePage(
                 current, size, reqVO.getPhotoCategoryId());
-        Map<String, PhotoCategoryDO> categoryMap = loadCategoryMap(photoPage.getRecords());
+        Map<Long, PhotoCategoryDO> categoryMap = loadCategoryMap(photoPage.getRecords());
         List<PhotoPageItemVO> records = photoPage.getRecords().stream()
                 .map(photo -> buildPhotoVO(photo, categoryMap.get(photo.getPhotoCategoryId())))
                 .collect(Collectors.toList());
@@ -85,8 +85,8 @@ public class PhotoServiceImpl implements PhotoService {
         return Math.min(size, MAX_PAGE_SIZE);
     }
 
-    private Map<String, PhotoCategoryDO> loadCategoryMap(List<PhotoDO> photos) {
-        List<String> categoryIds = photos.stream()
+    private Map<Long, PhotoCategoryDO> loadCategoryMap(List<PhotoDO> photos) {
+        List<Long> categoryIds = photos.stream()
                 .map(PhotoDO::getPhotoCategoryId)
                 .filter(Objects::nonNull)
                 .distinct()

@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import jakarta.annotation.Resource;
+import javax.annotation.Resource;
 
 @RestController
 @RequestMapping("/admin/story")
@@ -34,7 +34,7 @@ public class AdminStoryController {
 
     @PostMapping("/add")
     @ApiOperationLog(description = "新增故事")
-    public Response<String> addStory(@RequestBody @Validated AddStoryReqVO reqVO) {
+    public Response<Long> addStory(@RequestBody @Validated AddStoryReqVO reqVO) {
         return adminStoryService.addStory(reqVO);
     }
 

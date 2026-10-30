@@ -18,7 +18,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import jakarta.annotation.Resource;
+import javax.annotation.Resource;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
@@ -89,7 +89,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     }
 
     private UserPageRspVO toResponse(UserDO user) {
-        List<String> roleIds = relationMapper.selectRoleIds(user.getId());
+        List<Long> roleIds = relationMapper.selectRoleIds(user.getId());
         List<RoleDO> roles = roleIds == null || roleIds.isEmpty() ? Collections.emptyList() : roleMapper.selectBatchIds(roleIds);
         return UserPageRspVO.builder().id(user.getId()).username(user.getUsername()).displayName(user.getDisplayName()).avatar(user.getAvatar())
                 .status(!Boolean.TRUE.equals(user.getIsDeleted())).wechatOpenid(user.getWechatOpenid()).createTime(format(user.getCreateTime()))

@@ -2,9 +2,7 @@ package com.chengliuxiang.amour.common.domain.dos;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.chengliuxiang.amour.common.config.BooleanSmallIntTypeHandler;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,10 +14,10 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@TableName(value = "role", autoResultMap = true)
+@TableName("role")
 public class RoleDO {
-    @TableId(type = IdType.ASSIGN_UUID)
-    private String id;
+    @TableId(type = IdType.AUTO)
+    private Long id;
     private String roleName;
     private String roleKey;
     private Integer status;
@@ -27,6 +25,5 @@ public class RoleDO {
     private String remark;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
-    @TableField(typeHandler = BooleanSmallIntTypeHandler.class)
     private Boolean isDeleted;
 }

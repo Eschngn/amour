@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class FindDictTypePageListRspVO {
 
-    private String id;
+    private Long id;
 
     private String dictName;
 

@@ -7,11 +7,11 @@ import java.util.List;
 
 public interface StoryChapterMapper extends BaseMapper<StoryChapterDO> {
 
-    default StoryChapterDO selectChapterById(String id) {
+    default StoryChapterDO selectChapterById(Long id) {
         return selectById(id);
     }
 
-    default List<StoryChapterDO> selectChaptersByIds(List<String> ids) {
+    default List<StoryChapterDO> selectChaptersByIds(List<Long> ids) {
         return selectBatchIds(ids);
     }
 

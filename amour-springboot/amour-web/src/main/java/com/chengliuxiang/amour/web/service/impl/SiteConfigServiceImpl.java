@@ -6,7 +6,7 @@ import com.chengliuxiang.amour.common.utils.Response;
 import com.chengliuxiang.amour.web.service.SiteConfigService;
 import org.springframework.stereotype.Service;
 
-import jakarta.annotation.Resource;
+import javax.annotation.Resource;
 
 @Service
 public class SiteConfigServiceImpl implements SiteConfigService {

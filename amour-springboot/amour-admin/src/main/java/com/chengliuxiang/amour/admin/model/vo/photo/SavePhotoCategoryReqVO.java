@@ -2,13 +2,13 @@ package com.chengliuxiang.amour.admin.model.vo.photo;
 
 import lombok.Data;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.Size;
 
 @Data
 public class SavePhotoCategoryReqVO {
 
-    private String id;
+    private Long id;
 
     @NotBlank(message = "分类名称不能为空")
     @Size(max = 100, message = "分类名称不能超过100个字符")

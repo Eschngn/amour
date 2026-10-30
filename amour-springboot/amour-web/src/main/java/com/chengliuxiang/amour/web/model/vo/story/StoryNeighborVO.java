@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @Data
 public class StoryNeighborVO {
 
-    private String id;
+    private Long id;
 
     private String title;
 }

@@ -18,7 +18,7 @@ import com.chengliuxiang.amour.common.utils.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import jakarta.annotation.Resource;
+import javax.annotation.Resource;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
@@ -52,13 +52,13 @@ public class AdminStoryServiceImpl implements AdminStoryService {
                 StrUtil.isNotBlank(reqVO.getTitle()) ? reqVO.getTitle() : null);
 
         // 4. 批量查询章节名称
-        List<String> chapterIds = nodePage.getRecords().stream()
+        List<Long> chapterIds = nodePage.getRecords().stream()
                 .map(StoryNodeDO::getChapterId)
                 .filter(Objects::nonNull)
                 .distinct()
                 .collect(Collectors.toList());
 
-        Map<String, String> chapterNameMap;
+        Map<Long, String> chapterNameMap;
         if (chapterIds.isEmpty()) {
             chapterNameMap = Collections.emptyMap();
         } else {
@@ -74,7 +74,7 @@ public class AdminStoryServiceImpl implements AdminStoryService {
                         .summary(node.getSummary())
                         .coverImage(node.getCoverImage())
                         .isVisible(node.getIsVisible())
-                        .chapterId(node.getChapterId())
+                        .chapterId(node.getChapterId() != null ? String.valueOf(node.getChapterId()) : null)
                         .chapterName(chapterNameMap.get(node.getChapterId()))
                         .happenedTime(node.getHappenedTime() != null
                                 ? node.getHappenedTime().format(DATE_FORMATTER)
@@ -100,7 +100,7 @@ public class AdminStoryServiceImpl implements AdminStoryService {
      */
     @Override
     public Response<FindStoryDetailRspVO> findStoryDetail(FindStoryDetailReqVO findStoryDetailReqVO) {
-        String storyNodeId = findStoryDetailReqVO.getId();
+        Long storyNodeId = findStoryDetailReqVO.getId();
         // 1. 查询故事节点
         StoryNodeDO node = storyNodeMapper.selectActiveById(storyNodeId);
         if (node == null) {
@@ -145,7 +145,7 @@ public class AdminStoryServiceImpl implements AdminStoryService {
     }
 
     @Override
-    public Response<String> addStory(AddStoryReqVO reqVO) {
+    public Response<Long> addStory(AddStoryReqVO reqVO) {
         // 校验章节是否存在
         StoryChapterDO chapter = storyChapterMapper.selectChapterById(reqVO.getChapterId());
         if (chapter == null) {
@@ -163,7 +163,7 @@ public class AdminStoryServiceImpl implements AdminStoryService {
                 .chapterId(reqVO.getChapterId())
                 .isMilestone(reqVO.getIsMilestone())
                 .isVisible(true)
-                .createdBy(String.valueOf(StpUtil.getLoginId()))
+                .createdBy(StpUtil.getLoginIdAsLong())
                 .createTime(LocalDateTime.now())
                 .updateTime(LocalDateTime.now())
                 .build();

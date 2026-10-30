@@ -5,7 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import jakarta.validation.constraints.NotNull;
+import javax.validation.constraints.NotNull;
 
 @Data
 @Builder
@@ -13,7 +13,7 @@ import jakarta.validation.constraints.NotNull;
 @AllArgsConstructor
 public class UpdateAnniversaryVisibleStatusReqVO {
     @NotNull(message = "纪念日ID不能为空")
-    private String id;
+    private Long id;
     @NotNull(message = "显示状态不能为空")
     private Boolean isVisible;
 }

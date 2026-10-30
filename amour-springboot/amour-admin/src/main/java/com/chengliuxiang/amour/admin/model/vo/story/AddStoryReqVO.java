@@ -5,8 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 
 @Data
@@ -27,7 +27,7 @@ public class AddStoryReqVO {
     private String tagLabel;
 
     @NotNull(message = "所属章节不能为空")
-    private String chapterId;
+    private Long chapterId;
 
     @NotNull(message = "是否里程碑不能为空")
     private Boolean isMilestone;

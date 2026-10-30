@@ -20,7 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import jakarta.annotation.Resource;
+import javax.annotation.Resource;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -137,7 +137,7 @@ public class UserProfileServiceImpl implements UserProfileService {
     }
 
     private UserDO getCurrentUser() {
-        UserDO user = userMapper.selectActiveById(String.valueOf(StpUtil.getLoginId()));
+        UserDO user = userMapper.selectActiveById(StpUtil.getLoginIdAsLong());
         if (user == null || Boolean.TRUE.equals(user.getIsDeleted())) {
             throw new BizException(ResponseCodeEnum.USER_NOT_EXIST);
         }

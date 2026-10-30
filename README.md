@@ -22,7 +22,7 @@ amour/
 - Spring Boot 2.6.3 / Java 8 / Maven
 - MyBatis Plus — ORM
 - Sa-Token + Redis — 认证与权限
-- PostgreSQL — 数据库
+- MySQL — 数据库
 - 阿里云 OSS — 文件存储
 - Lombok / Guava / Hutool — 工具库
 
@@ -43,7 +43,7 @@ cd amour-springboot
 ./mvnw -pl amour-web spring-boot:run -DskipTests
 ```
 
-生产环境激活 `application-prod.yml`，通过 `PG_HOST`、`PG_PORT`、`PG_DATABASE`、`PG_USERNAME`、`PG_PASSWORD` 配置 PostgreSQL，并配置 Redis 连接。首次初始化时先创建 `amour` 数据库，再依次执行 `amour_postgresql_schema.sql` 和 `amour_postgresql_role_permission_init.sql`。
+激活 `application-prod.yml`，需要配置可用的 MySQL 和 Redis 连接。
 
 ### 前端
 

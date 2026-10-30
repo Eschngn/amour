@@ -11,5 +11,5 @@ public class PhotoPageQueryReqVO extends BasePageQuery {
     /**
      * 为空表示查询全部分类。
      */
-    private String photoCategoryId;
+    private Long photoCategoryId;
 }

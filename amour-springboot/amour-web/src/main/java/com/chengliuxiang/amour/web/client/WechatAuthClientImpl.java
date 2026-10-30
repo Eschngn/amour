@@ -13,7 +13,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import jakarta.annotation.Resource;
+import javax.annotation.Resource;
 
 @Component
 @Slf4j

@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @Data
 public class StoryNodeImageVO {
-    private String id;
+    private Long id;
     private String url;
     private String altText;
     private Integer sortOrder;

@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data @Builder
 public class RoleOptionRspVO {
-    private String id;
+    private Long id;
     private String roleName;
     private String roleKey;
 }

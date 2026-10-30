@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface StoryNodeImageMapper extends BaseMapper<StoryNodeImageDO> {
 
-    default List<StoryNodeImageDO> selectByNodeId(String nodeId) {
+    default List<StoryNodeImageDO> selectByNodeId(Long nodeId) {
         return selectList(new LambdaQueryWrapper<StoryNodeImageDO>()
                 .eq(StoryNodeImageDO::getNodeId, nodeId)
                 .orderByAsc(StoryNodeImageDO::getSortOrder));

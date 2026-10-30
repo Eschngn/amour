@@ -4,14 +4,9 @@ import cn.dev33.satoken.session.SaSession;
 import cn.dev33.satoken.stp.StpInterface;
 import cn.dev33.satoken.stp.StpUtil;
 import com.chengliuxiang.amour.common.domain.mapper.UserRoleRelMapper;
-import com.chengliuxiang.amour.common.domain.mapper.RoleMapper;
-import com.chengliuxiang.amour.common.domain.mapper.RolePermissionRelMapper;
-import com.chengliuxiang.amour.common.domain.mapper.PermissionMapper;
-import com.chengliuxiang.amour.common.domain.dos.RoleDO;
-import com.chengliuxiang.amour.common.domain.dos.PermissionDO;
 import org.springframework.stereotype.Component;
 
-import jakarta.annotation.Resource;
+import javax.annotation.Resource;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -30,19 +25,13 @@ public class SaTokenPermissionService implements StpInterface {
 
     @Resource
     private UserRoleRelMapper userRoleRelMapper;
-    @Resource
-    private RoleMapper roleMapper;
-    @Resource
-    private RolePermissionRelMapper rolePermissionRelMapper;
-    @Resource
-    private PermissionMapper permissionMapper;
 
     /**
      * 刷新当前登录用户的账户 Session 中的角色和权限。
      * 必须在 {@link StpUtil#login(Object)} 之后调用。
      */
     public void refreshSession(Object loginId) {
-        String userId = parseUserId(loginId);
+        Long userId = parseUserId(loginId);
         if (userId == null || !StpUtil.isLogin(userId)) {
             return;
         }
@@ -70,7 +59,7 @@ public class SaTokenPermissionService implements StpInterface {
      * Redis-backed snapshot for every request instead of querying the database again.
      */
     private List<String> getCachedList(Object loginId, String sessionKey) {
-        String userId = parseUserId(loginId);
+        Long userId = parseUserId(loginId);
         if (userId == null) {
             return Collections.emptyList();
         }
@@ -94,40 +83,33 @@ public class SaTokenPermissionService implements StpInterface {
         return values;
     }
 
-    private List<String> loadRoles(String userId) {
-        List<String> roleIds = userRoleRelMapper.selectRoleIds(userId);
-        if (roleIds == null || roleIds.isEmpty()) return Collections.emptyList();
-        return roleMapper.selectBatchIds(roleIds).stream()
-                .filter(role -> role.getStatus() != null && role.getStatus() == 0 && !Boolean.TRUE.equals(role.getIsDeleted()))
-                .map(RoleDO::getRoleKey).collect(Collectors.toList());
+    private List<String> loadRoles(Long userId) {
+        List<String> roles = userRoleRelMapper.selectRoleKeys(userId);
+        return roles == null ? Collections.emptyList() : roles;
     }
 
-    private List<String> loadPermissions(String userId) {
-        List<String> roleIds = userRoleRelMapper.selectRoleIds(userId);
-        if (roleIds == null || roleIds.isEmpty()) return Collections.emptyList();
-        Set<String> permissionIds = roleIds.stream()
-                .flatMap(roleId -> rolePermissionRelMapper.selectPermissionIds(roleId).stream())
-                .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
-        return permissionMapper.selectBatchIds(permissionIds).stream()
-                .filter(permission -> permission.getStatus() != null && permission.getStatus() == 0
-                        && !Boolean.TRUE.equals(permission.getIsDeleted()))
-                .map(PermissionDO::getPermissionKey).distinct().collect(Collectors.toList());
+    private List<String> loadPermissions(Long userId) {
+        List<String> permissions = userRoleRelMapper.selectPermissionKeys(userId);
+        return permissions == null ? Collections.emptyList() : permissions;
     }
 
     /** 返回前台入口使用的模块查询权限，避免各端重复理解权限目录结构。 */
     public Set<String> getFrontendQueryPermissions(Object loginId) {
-        String userId = parseUserId(loginId);
+        Long userId = parseUserId(loginId);
         if (userId == null) return Collections.emptySet();
         return loadPermissions(userId).stream()
                 .filter(key -> key != null && key.startsWith("frontend:") && key.endsWith(":query"))
                 .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
     }
 
-    private String parseUserId(Object loginId) {
+    private Long parseUserId(Object loginId) {
         if (loginId == null) {
             return null;
         }
-        String value = String.valueOf(loginId).trim();
-        return value.isEmpty() ? null : value;
+        try {
+            return Long.valueOf(String.valueOf(loginId));
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }

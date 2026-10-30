@@ -17,7 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import jakarta.annotation.Resource;
+import javax.annotation.Resource;
 import java.util.Objects;
 
 @Service
@@ -49,7 +49,7 @@ public class LoginServiceImpl implements LoginService {
         if (!isPasswordCorrect) {
             throw new BizException(ResponseCodeEnum.USERNAME_OR_PWD_ERROR);
         }
-        String userId = userDO.getId();
+        Long userId = userDO.getId();
         StpUtil.login(userId);
         saTokenPermissionService.refreshSession(userId);
         SaTokenInfo tokenInfo = StpUtil.getTokenInfo();

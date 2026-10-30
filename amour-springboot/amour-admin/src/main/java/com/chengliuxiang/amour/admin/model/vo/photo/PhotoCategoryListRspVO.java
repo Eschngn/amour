@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class PhotoCategoryListRspVO {
 
-    private String id;
+    private Long id;
     private String categoryName;
     private Integer sortOrder;
     private Boolean isEnabled;

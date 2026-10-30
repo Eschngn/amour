@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @Builder
 @Data
 public class StoryChapterVO {
-    private String id;
+    private Long id;
     private String name;              // 章节名称
     private String colorCode;         // 主题色
     private Integer sortOrder;

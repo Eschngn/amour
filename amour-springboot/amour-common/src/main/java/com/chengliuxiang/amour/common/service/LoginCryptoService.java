@@ -10,8 +10,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.Resource;
+import javax.annotation.PostConstruct;
+import javax.annotation.Resource;
 import javax.crypto.Cipher;
 import javax.crypto.spec.OAEPParameterSpec;
 import javax.crypto.spec.PSource;

@@ -13,10 +13,10 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class FindPhotoPageListRspVO {
 
-    private String id;
+    private Long id;
     private String title;
     private String description;
-    private String photoCategoryId;
+    private Long photoCategoryId;
     private String categoryName;
     private String url;
     private LocalDateTime takenTime;

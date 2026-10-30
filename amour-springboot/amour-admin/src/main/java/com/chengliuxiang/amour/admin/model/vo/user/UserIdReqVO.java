@@ -1,9 +1,9 @@
 package com.chengliuxiang.amour.admin.model.vo.user;
 
 import lombok.Data;
-import jakarta.validation.constraints.NotNull;
+import javax.validation.constraints.NotNull;
 
 @Data
 public class UserIdReqVO {
-    @NotNull private String id;
+    @NotNull private Long id;
 }

@@ -2,10 +2,10 @@ package com.chengliuxiang.amour.admin.model.vo.permission;
 
 import lombok.Data;
 
-import jakarta.validation.constraints.NotNull;
+import javax.validation.constraints.NotNull;
 
 @Data
 public class PermissionIdReqVO {
     @NotNull
-    private String id;
+    private Long id;
 }

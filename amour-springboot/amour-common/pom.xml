@@ -68,10 +68,6 @@
             <artifactId>jakarta.validation-api</artifactId>
         </dependency>
         <dependency>
-            <groupId>jakarta.annotation</groupId>
-            <artifactId>jakarta.annotation-api</artifactId>
-        </dependency>
-        <dependency>
             <groupId>org.hibernate.validator</groupId>
             <artifactId>hibernate-validator</artifactId>
         </dependency>
@@ -84,13 +80,13 @@
         <!-- Mybatis Plus -->
         <dependency>
             <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+            <artifactId>mybatis-plus-boot-starter</artifactId>
         </dependency>
 
-        <!-- PostgreSQL JDBC 驱动 -->
+        <!-- mysql 依赖 -->
         <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
         </dependency>
 
         <dependency>
@@ -101,7 +97,7 @@
         <!-- Sa-Token 权限认证 -->
         <dependency>
             <groupId>cn.dev33</groupId>
-            <artifactId>sa-token-spring-boot3-starter</artifactId>
+            <artifactId>sa-token-spring-boot-starter</artifactId>
         </dependency>
 
         <!-- Sa-Token 整合 Redis （使用 jackson 序列化方式） -->

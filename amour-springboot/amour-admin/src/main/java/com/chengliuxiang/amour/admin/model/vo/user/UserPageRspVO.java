@@ -6,7 +6,7 @@ import java.util.List;
 
 @Data @Builder
 public class UserPageRspVO {
-    private String id;
+    private Long id;
     private String username;
     private String displayName;
     private String avatar;
@@ -14,6 +14,6 @@ public class UserPageRspVO {
     private String wechatOpenid;
     private String createTime;
     private String updateTime;
-    private List<String> roleIds;
+    private List<Long> roleIds;
     private List<String> roleNames;
 }
