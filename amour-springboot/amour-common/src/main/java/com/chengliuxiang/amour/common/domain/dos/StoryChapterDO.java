@@ -20,6 +20,8 @@ public class StoryChapterDO {
     @TableId(type = IdType.AUTO)
     private Long id;
 
+    private Long spaceId;
+
     private String name;
 
     private String colorCode;
@@ -27,6 +29,8 @@ public class StoryChapterDO {
     private Integer sortOrder;
 
     private Boolean isVisible;
+
+    private Long createdBy;
 
     private LocalDateTime createTime;
 

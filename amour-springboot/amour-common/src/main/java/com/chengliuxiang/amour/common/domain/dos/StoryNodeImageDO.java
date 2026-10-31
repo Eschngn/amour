@@ -20,6 +20,8 @@ public class StoryNodeImageDO {
     @TableId(type = IdType.AUTO)
     private Long id;
 
+    private Long spaceId;
+
     private Long nodeId;
 
     private String url;
@@ -27,6 +29,8 @@ public class StoryNodeImageDO {
     private String altText;
 
     private Integer sortOrder;
+
+    private Long createdBy;
 
     private LocalDateTime createTime;
 }

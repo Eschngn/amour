@@ -20,6 +20,8 @@ public class PhotoCategoryDO {
     @TableId(type = IdType.AUTO)
     private Long id;
 
+    private Long spaceId;
+
     private String categoryName;
 
     private Integer sortOrder;

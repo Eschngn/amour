@@ -11,26 +11,32 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Data
-@AllArgsConstructor
-@NoArgsConstructor
 @Builder
-@TableName("site_config")
-public class SiteConfigDO {
+@NoArgsConstructor
+@AllArgsConstructor
+@TableName("couple_member")
+public class CoupleMemberDO {
 
     @TableId(type = IdType.AUTO)
     private Long id;
 
-    private String configKey;
+    private Long spaceId;
 
-    private String configName;
+    private Long userId;
 
-    private String configValue;
+    /**
+     * 成员身份：1-空间发起人 2-另一半
+     */
+    private Integer memberRole;
 
-    private String valueType;
+    /**
+     * 成员状态：0-邀请中 1-有效 2-暂停 3-已退出 4-已移除
+     */
+    private Integer status;
 
-    private Integer sortOrder;
+    private LocalDateTime joinedAt;
 
-    private String remark;
+    private LocalDateTime leftAt;
 
     private LocalDateTime createTime;
 

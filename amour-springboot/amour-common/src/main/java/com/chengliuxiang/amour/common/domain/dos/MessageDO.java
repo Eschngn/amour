@@ -16,16 +16,19 @@ import java.time.LocalDateTime;
 @Data
 @TableName("message")
 public class MessageDO {
-    @TableId(type = IdType.AUTO)
-    private String id;
 
-    private String userId;
+    @TableId(type = IdType.AUTO)
+    private Long id;
+
+    private Long spaceId;
+
+    private Long userId;
 
     private String content;
+
+    private Boolean isDeleted;
 
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;
-
-    private Boolean isDeleted;
 }

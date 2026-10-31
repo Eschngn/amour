@@ -14,16 +14,35 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@TableName("role")
-public class RoleDO {
+@TableName("content_report")
+public class ContentReportDO {
+
     @TableId(type = IdType.AUTO)
     private Long id;
-    private String roleName;
-    private String roleKey;
+
+    private Long reporterUserId;
+
+    private Long spaceId;
+
+    /**
+     * 被举报类型：space/story/photo/anniversary
+     */
+    private String contentType;
+
+    private Long contentId;
+
+    private String reason;
+
+    /**
+     * 处理状态：0-待处理 1-已处理 2-已驳回
+     */
     private Integer status;
-    private Integer sort;
-    private String remark;
+
+    private Long processedBy;
+
+    private LocalDateTime processedAt;
+
     private LocalDateTime createTime;
+
     private LocalDateTime updateTime;
-    private Boolean isDeleted;
 }

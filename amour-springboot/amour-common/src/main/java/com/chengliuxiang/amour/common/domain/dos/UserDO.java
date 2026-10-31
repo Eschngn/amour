@@ -20,6 +20,11 @@ public class UserDO {
     @TableId(type = IdType.AUTO)
     private Long id;
 
+    /**
+     * 恋语ID，系统随机生成且对外展示
+     */
+    private String amourId;
+
     private String username;
 
     private String password;
@@ -37,4 +42,9 @@ public class UserDO {
     private LocalDateTime updateTime;
 
     private Boolean isDeleted;
+
+    /**
+     * 是否为平台管理员
+     */
+    private Boolean isPlatformAdmin;
 }

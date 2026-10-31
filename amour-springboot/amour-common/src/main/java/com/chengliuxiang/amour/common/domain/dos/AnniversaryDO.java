@@ -21,6 +21,8 @@ public class AnniversaryDO {
     @TableId(type = IdType.AUTO)
     private Long id;
 
+    private Long spaceId;
+
     private String title;
 
     private String description;
@@ -37,13 +39,18 @@ public class AnniversaryDO {
 
     private Integer sortOrder;
 
-    private Boolean isVisible;
+    /**
+     * 可见性：0-仅空间成员 1-公开到恋爱广场 2-隐藏
+     */
+    private Integer visibility;
+
+    private Boolean isDeleted;
 
     private Long createdBy;
+
+    private Long updatedBy;
 
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;
-
-    private Boolean isDeleted;
 }

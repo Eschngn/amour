@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
  * Sa-Token 角色和权限数据提供者。
  *
  * <p>角色关系保存在业务库中，登录成功后同步到 Sa-Token 账户 Session，
- * 因此 Redis 中的 Session 可直接用于后续授权判断。</p>
+ * 后续授权判断使用 Session 中的内存快照。</p>
  */
 @Component
 public class SaTokenPermissionService implements StpInterface {
@@ -56,7 +56,7 @@ public class SaTokenPermissionService implements StpInterface {
     /**
      * Sa-Token performs authorization through this provider. The login flow has already
      * loaded the effective role and permission lists into the account session, so use that
-     * Redis-backed snapshot for every request instead of querying the database again.
+     * in-memory session snapshot for every request instead of querying the database again.
      */
     private List<String> getCachedList(Object loginId, String sessionKey) {
         Long userId = parseUserId(loginId);

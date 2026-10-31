@@ -14,35 +14,47 @@ public interface MessageMapper extends BaseMapper<MessageDO> {
         return insert(message);
     }
 
-    default MessageDO findById(String id) {
-        return selectById(id);
+    default MessageDO findById(Long spaceId, Long id) {
+        return selectOne(new LambdaQueryWrapper<MessageDO>()
+                .eq(MessageDO::getSpaceId, spaceId)
+                .eq(MessageDO::getId, id));
     }
 
-    default IPage<MessageDO> selectVisiblePage(long current, long size) {
+    default IPage<MessageDO> selectSpacePage(long current, long size, Long spaceId) {
         return selectPage(new Page<>(current, size), new LambdaQueryWrapper<MessageDO>()
+                .eq(MessageDO::getSpaceId, spaceId)
                 .eq(MessageDO::getIsDeleted, false)
                 .orderByDesc(MessageDO::getCreateTime));
     }
 
-    default IPage<MessageDO> selectAdminPage(long current, long size, String content) {
+    default IPage<MessageDO> selectAdminPage(long current, long size, Long spaceId, String content) {
         return selectPage(new Page<>(current, size), new LambdaQueryWrapper<MessageDO>()
+                .eq(spaceId != null, MessageDO::getSpaceId, spaceId)
                 .like(cn.hutool.core.util.StrUtil.isNotBlank(content), MessageDO::getContent, content)
                 .eq(MessageDO::getIsDeleted, false)
                 .orderByDesc(MessageDO::getCreateTime));
     }
 
-    default int softDelete(String messageId, LocalDateTime updateTime) {
+    default int softDelete(Long spaceId, Long messageId, LocalDateTime updateTime) {
         return update(null, new LambdaUpdateWrapper<MessageDO>()
+                .eq(MessageDO::getSpaceId, spaceId)
                 .eq(MessageDO::getId, messageId)
                 .eq(MessageDO::getIsDeleted, false)
                 .set(MessageDO::getIsDeleted, true)
                 .set(MessageDO::getUpdateTime, updateTime));
     }
 
-    default int softDeleteOwned(String messageId, String userId, LocalDateTime updateTime) {
+    default int softDeleteOwned(Long spaceId, Long messageId, Long userId, LocalDateTime updateTime) {
         return update(null, new LambdaUpdateWrapper<MessageDO>()
+                .eq(MessageDO::getSpaceId, spaceId)
                 .eq(MessageDO::getId, messageId).eq(MessageDO::getUserId, userId)
                 .eq(MessageDO::getIsDeleted, false).set(MessageDO::getIsDeleted, true)
                 .set(MessageDO::getUpdateTime, updateTime));
+    }
+
+    default Long countActiveBySpaceId(Long spaceId) {
+        return selectCount(new LambdaQueryWrapper<MessageDO>()
+                .eq(MessageDO::getSpaceId, spaceId)
+                .eq(MessageDO::getIsDeleted, false));
     }
 }

@@ -1,28 +1,33 @@
 package com.chengliuxiang.amour.common.domain.mapper;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.chengliuxiang.amour.common.domain.dos.AnniversaryDO;
 
+import java.util.List;
+
 public interface AnniversaryMapper extends BaseMapper<AnniversaryDO> {
 
-    default IPage<AnniversaryDO> selectAdminPage(long current, long size, String title, String category,
-                                                  Integer repeatType, Boolean isVisible) {
+    default IPage<AnniversaryDO> selectAdminPage(long current, long size, Long spaceId, String title,
+                                                 String category, Integer repeatType, Integer visibility) {
         return selectPage(new Page<>(current, size), new LambdaQueryWrapper<AnniversaryDO>()
                 .eq(AnniversaryDO::getIsDeleted, false)
+                .eq(spaceId != null, AnniversaryDO::getSpaceId, spaceId)
                 .like(title != null, AnniversaryDO::getTitle, title)
                 .eq(category != null, AnniversaryDO::getCategory, category)
                 .eq(repeatType != null, AnniversaryDO::getRepeatType, repeatType)
-                .eq(isVisible != null, AnniversaryDO::getIsVisible, isVisible)
+                .eq(visibility != null, AnniversaryDO::getVisibility, visibility)
                 .orderByAsc(AnniversaryDO::getSortOrder)
                 .orderByAsc(AnniversaryDO::getAnniversaryDate)
                 .orderByDesc(AnniversaryDO::getId));
     }
 
-    default AnniversaryDO selectActiveById(Long id) {
+    default AnniversaryDO selectActiveById(Long spaceId, Long id) {
         return selectOne(new LambdaQueryWrapper<AnniversaryDO>()
+                .eq(AnniversaryDO::getSpaceId, spaceId)
                 .eq(AnniversaryDO::getId, id)
                 .eq(AnniversaryDO::getIsDeleted, false));
     }
@@ -32,13 +37,32 @@ public interface AnniversaryMapper extends BaseMapper<AnniversaryDO> {
     }
 
     default int updateAnniversary(AnniversaryDO anniversary) {
-        return updateById(anniversary);
+        return update(anniversary, new LambdaUpdateWrapper<AnniversaryDO>()
+                .eq(AnniversaryDO::getId, anniversary.getId())
+                .eq(AnniversaryDO::getSpaceId, anniversary.getSpaceId()));
     }
 
-    default java.util.List<AnniversaryDO> selectVisibleList() {
+    /**
+     * 查询空间内对成员可见的纪念日（排除隐藏内容）。
+     */
+    default List<AnniversaryDO> selectSpaceList(Long spaceId) {
         return selectList(new LambdaQueryWrapper<AnniversaryDO>()
+                .eq(AnniversaryDO::getSpaceId, spaceId)
                 .eq(AnniversaryDO::getIsDeleted, false)
-                .eq(AnniversaryDO::getIsVisible, true)
+                .ne(AnniversaryDO::getVisibility, 2)
+                .orderByAsc(AnniversaryDO::getSortOrder)
+                .orderByAsc(AnniversaryDO::getAnniversaryDate)
+                .orderByAsc(AnniversaryDO::getId));
+    }
+
+    /**
+     * 查询空间内公开到恋爱广场的纪念日。
+     */
+    default List<AnniversaryDO> selectPublicList(Long spaceId) {
+        return selectList(new LambdaQueryWrapper<AnniversaryDO>()
+                .eq(AnniversaryDO::getSpaceId, spaceId)
+                .eq(AnniversaryDO::getIsDeleted, false)
+                .eq(AnniversaryDO::getVisibility, 1)
                 .orderByAsc(AnniversaryDO::getSortOrder)
                 .orderByAsc(AnniversaryDO::getAnniversaryDate)
                 .orderByAsc(AnniversaryDO::getId));

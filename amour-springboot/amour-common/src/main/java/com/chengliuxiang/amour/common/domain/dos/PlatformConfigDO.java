@@ -11,22 +11,31 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Data
-@Builder
-@NoArgsConstructor
 @AllArgsConstructor
-@TableName("permission")
-public class PermissionDO {
+@NoArgsConstructor
+@Builder
+@TableName("platform_config")
+public class PlatformConfigDO {
+
     @TableId(type = IdType.AUTO)
     private Long id;
-    private Long parentId;
-    private String name;
-    private Integer type;
-    private String menuUrl;
-    private String menuIcon;
-    private Integer sort;
-    private String permissionKey;
-    private Integer status;
+
+    private String configKey;
+
+    private String configName;
+
+    private String configValue;
+
+    /**
+     * 值类型：text-文本 image-图片 number-数字 json-JSON
+     */
+    private String valueType;
+
+    private Integer sortOrder;
+
+    private String remark;
+
     private LocalDateTime createTime;
+
     private LocalDateTime updateTime;
-    private Boolean isDeleted;
 }

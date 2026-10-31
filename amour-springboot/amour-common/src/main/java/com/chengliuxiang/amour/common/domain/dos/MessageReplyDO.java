@@ -17,35 +17,27 @@ import java.time.LocalDateTime;
 @TableName("message_reply")
 public class MessageReplyDO {
 
-    /**
-     * 回复留言的 ID
-     */
     @TableId(type = IdType.AUTO)
-    private String id;
+    private Long id;
+
+    private Long spaceId;
+
+    private Long messageId;
 
     /**
-     * 留言 ID
+     * 父回复 ID，为空时表示直接回复留言
      */
-    private String messageId;
+    private Long parentReplyId;
 
-    /**
-     * 父回复 ID。为空时表示直接回复留言。
-     */
-    private String parentReplyId;
+    private Long fromUserId;
 
-    /**
-     * 回复人
-     */
-    private String fromUserId;
-
-    /**
-     * 被回复人
-     */
-    private String toUserId;
+    private Long toUserId;
 
     private String content;
 
+    private Boolean isDeleted;
+
     private LocalDateTime createTime;
 
-    private Boolean isDeleted;
+    private LocalDateTime updateTime;
 }

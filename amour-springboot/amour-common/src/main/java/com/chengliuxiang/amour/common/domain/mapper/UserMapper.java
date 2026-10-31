@@ -15,7 +15,9 @@ public interface UserMapper extends BaseMapper<UserDO> {
                 .eq(status != null && status == 0, UserDO::getIsDeleted, false)
                 .eq(status != null && status == 1, UserDO::getIsDeleted, true)
                 .and(org.apache.commons.lang3.StringUtils.isNotBlank(keyword), w -> w
-                        .like(UserDO::getUsername, keyword).or().like(UserDO::getDisplayName, keyword))
+                        .like(UserDO::getUsername, keyword)
+                        .or().like(UserDO::getDisplayName, keyword)
+                        .or().like(UserDO::getAmourId, keyword))
                 .orderByDesc(UserDO::getId));
     }
 
@@ -27,6 +29,12 @@ public interface UserMapper extends BaseMapper<UserDO> {
 
     default UserDO selectAnyByUsername(String username) {
         return selectOne(new LambdaQueryWrapper<UserDO>().eq(UserDO::getUsername, username));
+    }
+
+    default UserDO selectByAmourId(String amourId) {
+        return selectOne(new LambdaQueryWrapper<UserDO>()
+                .eq(UserDO::getAmourId, amourId)
+                .eq(UserDO::getIsDeleted, false));
     }
 
     default UserDO selectByWechatOpenid(String openid) {
@@ -54,5 +62,12 @@ public interface UserMapper extends BaseMapper<UserDO> {
 
     default List<UserDO> findUsersByIds(Collection<Long> ids) {
         return selectList(new LambdaQueryWrapper<UserDO>().in(UserDO::getId, ids));
+    }
+
+    default List<UserDO> selectActiveAdmins() {
+        return selectList(new LambdaQueryWrapper<UserDO>()
+                .eq(UserDO::getIsDeleted, false)
+                .eq(UserDO::getIsPlatformAdmin, true)
+                .orderByAsc(UserDO::getId));
     }
 }

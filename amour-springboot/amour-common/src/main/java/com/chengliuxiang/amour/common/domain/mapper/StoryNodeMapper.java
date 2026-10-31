@@ -1,6 +1,7 @@
 package com.chengliuxiang.amour.common.domain.mapper;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -10,16 +11,18 @@ import java.util.List;
 
 public interface StoryNodeMapper extends BaseMapper<StoryNodeDO> {
 
-    default IPage<StoryNodeDO> selectAdminPage(long current, long size, String title) {
+    default IPage<StoryNodeDO> selectAdminPage(long current, long size, Long spaceId, String title) {
         return selectPage(new Page<>(current, size), new LambdaQueryWrapper<StoryNodeDO>()
+                .eq(spaceId != null, StoryNodeDO::getSpaceId, spaceId)
                 .like(title != null, StoryNodeDO::getTitle, title)
                 .eq(StoryNodeDO::getIsDeleted, false)
                 .orderByAsc(StoryNodeDO::getChapterId)
                 .orderByAsc(StoryNodeDO::getHappenedTime));
     }
 
-    default StoryNodeDO selectActiveById(Long id) {
+    default StoryNodeDO selectActiveById(Long spaceId, Long id) {
         return selectOne(new LambdaQueryWrapper<StoryNodeDO>()
+                .eq(StoryNodeDO::getSpaceId, spaceId)
                 .eq(StoryNodeDO::getId, id)
                 .eq(StoryNodeDO::getIsDeleted, false));
     }
@@ -29,42 +32,82 @@ public interface StoryNodeMapper extends BaseMapper<StoryNodeDO> {
     }
 
     default int updateStoryNode(StoryNodeDO node) {
-        return updateById(node);
+        return update(node, new LambdaUpdateWrapper<StoryNodeDO>()
+                .eq(StoryNodeDO::getId, node.getId())
+                .eq(StoryNodeDO::getSpaceId, node.getSpaceId()));
     }
 
-    default List<StoryNodeDO> selectMilestones() {
+    default List<StoryNodeDO> selectMilestones(Long spaceId) {
         return selectList(new LambdaQueryWrapper<StoryNodeDO>()
+                .eq(StoryNodeDO::getSpaceId, spaceId)
                 .eq(StoryNodeDO::getIsMilestone, true)
                 .eq(StoryNodeDO::getIsDeleted, false)
+                .ne(StoryNodeDO::getVisibility, 2)
                 .orderByAsc(StoryNodeDO::getHappenedTime));
     }
 
-    default List<StoryNodeDO> selectVisibleList() {
+    /**
+     * 查询空间内对成员可见的故事节点（排除隐藏内容）。
+     */
+    default List<StoryNodeDO> selectSpaceList(Long spaceId) {
         return selectList(new LambdaQueryWrapper<StoryNodeDO>()
-                .eq(StoryNodeDO::getIsVisible, 1)
+                .eq(StoryNodeDO::getSpaceId, spaceId)
                 .eq(StoryNodeDO::getIsDeleted, false)
+                .ne(StoryNodeDO::getVisibility, 2)
                 .orderByAsc(StoryNodeDO::getChapterId)
                 .orderByAsc(StoryNodeDO::getSortOrder));
     }
 
-    default StoryNodeDO selectVisibleById(Long id) {
-        return selectOne(new LambdaQueryWrapper<StoryNodeDO>().eq(StoryNodeDO::getId, id)
-                .eq(StoryNodeDO::getIsDeleted, false).eq(StoryNodeDO::getIsVisible, 1));
+    /**
+     * 查询空间内公开到恋爱广场的故事节点。
+     */
+    default List<StoryNodeDO> selectPublicList(Long spaceId) {
+        return selectList(new LambdaQueryWrapper<StoryNodeDO>()
+                .eq(StoryNodeDO::getSpaceId, spaceId)
+                .eq(StoryNodeDO::getIsDeleted, false)
+                .eq(StoryNodeDO::getVisibility, 1)
+                .orderByAsc(StoryNodeDO::getChapterId)
+                .orderByAsc(StoryNodeDO::getSortOrder));
     }
 
-    default List<StoryNodeDO> selectVisibleByChapterId(Long chapterId) {
-        return selectList(new LambdaQueryWrapper<StoryNodeDO>()
-                .eq(StoryNodeDO::getChapterId, chapterId)
-                .eq(StoryNodeDO::getIsVisible, 1)
+    default StoryNodeDO selectSpaceNodeById(Long spaceId, Long id) {
+        return selectOne(new LambdaQueryWrapper<StoryNodeDO>()
+                .eq(StoryNodeDO::getSpaceId, spaceId)
+                .eq(StoryNodeDO::getId, id)
                 .eq(StoryNodeDO::getIsDeleted, false)
+                .ne(StoryNodeDO::getVisibility, 2));
+    }
+
+    default StoryNodeDO selectPublicById(Long spaceId, Long id) {
+        return selectOne(new LambdaQueryWrapper<StoryNodeDO>()
+                .eq(StoryNodeDO::getSpaceId, spaceId)
+                .eq(StoryNodeDO::getId, id)
+                .eq(StoryNodeDO::getIsDeleted, false)
+                .eq(StoryNodeDO::getVisibility, 1));
+    }
+
+    default List<StoryNodeDO> selectSpaceNodesByChapterId(Long spaceId, Long chapterId) {
+        return selectList(new LambdaQueryWrapper<StoryNodeDO>()
+                .eq(StoryNodeDO::getSpaceId, spaceId)
+                .eq(StoryNodeDO::getChapterId, chapterId)
+                .eq(StoryNodeDO::getIsDeleted, false)
+                .ne(StoryNodeDO::getVisibility, 2)
                 .orderByAsc(StoryNodeDO::getHappenedTime)
                 .orderByAsc(StoryNodeDO::getId));
     }
 
-    default List<StoryNodeDO> selectVisibleByChapterIds(Collection<Long> chapterIds) {
+    default List<StoryNodeDO> selectSpaceNodesByChapterIds(Long spaceId, Collection<Long> chapterIds) {
         return selectList(new LambdaQueryWrapper<StoryNodeDO>()
+                .eq(StoryNodeDO::getSpaceId, spaceId)
                 .in(StoryNodeDO::getChapterId, chapterIds)
-                .eq(StoryNodeDO::getIsVisible, 1)
+                .eq(StoryNodeDO::getIsDeleted, false)
+                .ne(StoryNodeDO::getVisibility, 2));
+    }
+
+    default Long countByChapterId(Long spaceId, Long chapterId) {
+        return selectCount(new LambdaQueryWrapper<StoryNodeDO>()
+                .eq(StoryNodeDO::getSpaceId, spaceId)
+                .eq(StoryNodeDO::getChapterId, chapterId)
                 .eq(StoryNodeDO::getIsDeleted, false));
     }
 }
