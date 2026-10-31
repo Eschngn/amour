@@ -3,8 +3,14 @@ package com.chengliuxiang.amour.web.service;
 import com.chengliuxiang.amour.common.utils.Response;
 import com.chengliuxiang.amour.web.model.vo.login.LoginReqVO;
 import com.chengliuxiang.amour.web.model.vo.login.LoginRespVO;
+import com.chengliuxiang.amour.web.model.vo.login.RegisterReqVO;
 
 public interface LoginService {
+
+    /**
+     * 前台用户注册
+     */
+    Response<LoginRespVO> register(RegisterReqVO registerReqVO);
 
     /**
      * 前台用户登录

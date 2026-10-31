@@ -7,6 +7,7 @@ import com.chengliuxiang.amour.common.utils.Response;
 import cn.dev33.satoken.stp.StpUtil;
 import com.chengliuxiang.amour.web.model.vo.login.LoginReqVO;
 import com.chengliuxiang.amour.web.model.vo.login.LoginRespVO;
+import com.chengliuxiang.amour.web.model.vo.login.RegisterReqVO;
 import com.chengliuxiang.amour.web.service.LoginService;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,6 +31,12 @@ public class LoginController {
     @ApiOperationLog(description = "获取用户登录挑战码")
     public Response<LoginChallengeVO> challenge() {
         return Response.success(loginCryptoService.createChallenge());
+    }
+
+    @PostMapping("/register")
+    @ApiOperationLog(description = "用户注册")
+    public Response<LoginRespVO> register(@RequestBody @Validated RegisterReqVO registerReqVO) {
+        return loginService.register(registerReqVO);
     }
 
     @PostMapping("/userLogin")

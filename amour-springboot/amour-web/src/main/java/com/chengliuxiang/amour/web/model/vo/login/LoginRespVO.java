@@ -13,12 +13,14 @@ public class LoginRespVO {
 
     private String token;
 
+    private String amourId;
+
     private String username;
 
     private String displayName;
 
     private String avatar;
 
-    /** 当前用户拥有的前台模块查询权限。 */
+    /** 前台模块展示权限，兼容现有前端；服务端不再做权限校验。 */
     private java.util.Set<String> permissions;
 }

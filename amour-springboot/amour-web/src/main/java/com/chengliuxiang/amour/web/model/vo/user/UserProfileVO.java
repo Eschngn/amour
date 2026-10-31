@@ -13,6 +13,7 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserProfileVO {
+    private String amourId;
     private String username;
     private String displayName;
     private String avatar;

@@ -5,7 +5,6 @@ import lombok.Data;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
-import java.util.List;
 
 @Data
 public class UserSaveReqVO {
@@ -15,5 +14,6 @@ public class UserSaveReqVO {
     @NotBlank @Size(max = 60) private String displayName;
     @Size(max = 500) private String avatar;
     @NotNull private Integer status;
-    private List<Long> roleIds;
+    /** 是否为平台管理员 */
+    private Boolean platformAdmin;
 }

@@ -19,5 +19,6 @@ public class PasswordEncoderConfig {
         System.out.println(encoder.encode("test"));
         System.out.println(encoder.encode("chengliuxiang"));
         System.out.println(encoder.encode("shangguanziyi"));
+        System.out.println(encoder.encode("000000"));
     }
 }

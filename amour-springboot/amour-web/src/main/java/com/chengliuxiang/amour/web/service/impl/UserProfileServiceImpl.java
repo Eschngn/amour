@@ -3,6 +3,7 @@ package com.chengliuxiang.amour.web.service.impl;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.StrUtil;
 import com.chengliuxiang.amour.admin.utils.AliyunOSSUtil;
+import com.chengliuxiang.amour.common.constant.FrontendPermissionConstants;
 import com.chengliuxiang.amour.common.domain.dos.UserDO;
 import com.chengliuxiang.amour.common.domain.mapper.UserMapper;
 import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
@@ -26,7 +27,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
-import com.chengliuxiang.amour.common.service.SaTokenPermissionService;
 
 @Service
 @Slf4j
@@ -47,8 +47,6 @@ public class UserProfileServiceImpl implements UserProfileService {
     private LoginCryptoService loginCryptoService;
     @Resource
     private AliyunOSSUtil aliyunOSSUtil;
-    @Resource
-    private SaTokenPermissionService saTokenPermissionService;
 
     @Override
     public Response<UserProfileVO> getProfile() {
@@ -157,13 +155,14 @@ public class UserProfileServiceImpl implements UserProfileService {
 
     private UserProfileVO toProfile(UserDO user) {
         return UserProfileVO.builder()
+                .amourId(user.getAmourId())
                 .username(user.getUsername())
                 .displayName(StrUtil.blankToDefault(user.getDisplayName(), "恋人"))
                 .avatar(StrUtil.blankToDefault(user.getAvatar(), ""))
                 .passwordSet(StrUtil.isNotBlank(user.getPassword()))
                 .usernameChangeAvailableAt(user.getUsernameUpdateTime() == null
                         ? null : user.getUsernameUpdateTime().plusDays(USERNAME_CHANGE_COOLDOWN_DAYS))
-                .permissions(saTokenPermissionService.getFrontendQueryPermissions(user.getId()))
+                .permissions(FrontendPermissionConstants.QUERY_PERMISSIONS)
                 .build();
     }
 }

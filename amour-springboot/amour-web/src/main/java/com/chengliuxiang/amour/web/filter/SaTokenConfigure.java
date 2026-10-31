@@ -7,33 +7,21 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+/**
+ * 前台登录拦截配置。
+ *
+ * <p>平台已切换到空间成员模型，不再使用 Sa-Token 的角色和权限校验，
+ * 这里只保留必要的登录状态校验。</p>
+ */
 @Configuration
 public class SaTokenConfigure implements WebMvcConfigurer {
-
-    private static final String MESSAGE_USER_ROLE = "message_user";
-    private static final String MESSAGE_MODULE_PERMISSION = "frontend:message";
-    private static final String MESSAGE_PUBLISH_PERMISSION = "frontend:message:publish";
-    private static final String MESSAGE_REPLY_PERMISSION = "frontend:message:reply";
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(new SaInterceptor(handler -> {
-                    // Each rule starts a new router chain; chaining different paths would
-                    // turn the conditions into an unintended logical AND.
-                    SaRouter.match("/message/publish", route -> checkMessagePermission(MESSAGE_PUBLISH_PERMISSION));
-                    SaRouter.match("/message/reply", route -> checkMessagePermission(MESSAGE_REPLY_PERMISSION));
-                    SaRouter.match("/message/reply/delete", route -> StpUtil.checkLogin());
-                    SaRouter.match("/message/delete", route -> StpUtil.checkLogin());
+                    SaRouter.match("/message/**", route -> StpUtil.checkLogin());
                     SaRouter.match("/user/**", route -> StpUtil.checkLogin());
                 }))
                 .addPathPatterns("/**");
-    }
-
-    private static void checkMessagePermission(String permission) {
-        StpUtil.checkLogin();
-        StpUtil.checkRole(MESSAGE_USER_ROLE);
-        // 操作权限必须建立在留言模块权限之上，避免只授予按钮权限时绕过模块授权。
-        StpUtil.checkPermission(MESSAGE_MODULE_PERMISSION);
-        StpUtil.checkPermission(permission);
     }
 }
