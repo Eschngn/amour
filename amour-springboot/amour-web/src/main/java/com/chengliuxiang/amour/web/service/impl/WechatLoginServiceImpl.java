@@ -7,9 +7,7 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.digest.DigestUtil;
 import com.chengliuxiang.amour.common.constant.FrontendPermissionConstants;
 import com.chengliuxiang.amour.common.constant.RedisKeyConstants;
-import com.chengliuxiang.amour.common.domain.dos.PlatformConfigDO;
 import com.chengliuxiang.amour.common.domain.dos.UserDO;
-import com.chengliuxiang.amour.common.domain.mapper.PlatformConfigMapper;
 import com.chengliuxiang.amour.common.domain.mapper.UserMapper;
 import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
 import com.chengliuxiang.amour.common.exception.BizException;
@@ -35,8 +33,18 @@ public class WechatLoginServiceImpl implements WechatLoginService {
     /** 新注册微信用户的默认昵称前缀 */
     private static final String DEFAULT_DISPLAY_NAME_PREFIX = "微信用户";
 
-    /** 新注册微信用户的默认头像配置键 */
-    private static final String DEFAULT_AVATAR_CONFIG_KEY = "default_avatar";
+    /** 注册初始化时使用的随机字符集：小写字母和数字 */
+    private static final String RANDOM_NAME_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
+
+    /** 用户名前缀 */
+    private static final String WECHAT_USERNAME_PREFIX = "wx_";
+
+    /** 用户名和昵称中随机后缀的长度 */
+    private static final int RANDOM_SUFFIX_LENGTH = 6;
+
+    /** 新注册微信用户的默认头像 */
+    private static final String DEFAULT_AVATAR_URL =
+            "https://chengliuxiang.oss-cn-hangzhou.aliyuncs.com/amour/default-avatar.png";
 
     /** 恋语 ID 或用户名冲突时的最大重试次数 */
     private static final int CREATE_USER_MAX_RETRIES = 5;
@@ -46,9 +54,6 @@ public class WechatLoginServiceImpl implements WechatLoginService {
 
     @Resource
     private UserMapper userMapper;
-
-    @Resource
-    private PlatformConfigMapper platformConfigMapper;
 
     @Resource
     private StringRedisTemplate stringRedisTemplate;
@@ -70,7 +75,7 @@ public class WechatLoginServiceImpl implements WechatLoginService {
                 .token(tokenInfo.tokenValue)
                 .amourId(user.getAmourId())
                 .username(user.getUsername())
-                .displayName(StrUtil.blankToDefault(user.getDisplayName(), "微信用户"))
+                .displayName(StrUtil.blankToDefault(user.getDisplayName(), DEFAULT_DISPLAY_NAME_PREFIX))
                 .avatar(StrUtil.blankToDefault(user.getAvatar(), ""))
                 .passwordSet(StrUtil.isNotBlank(user.getPassword()))
                 .permissions(FrontendPermissionConstants.QUERY_PERMISSIONS)
@@ -115,12 +120,8 @@ public class WechatLoginServiceImpl implements WechatLoginService {
      * 创建微信用户，用户名或恋语 ID 冲突时重新生成并重试。
      */
     private UserDO createWechatUser(String openid) {
-        String defaultAvatar = queryDefaultAvatar();
-        String legacyUsername = buildLegacyUsername(openid);
         for (int attempt = 0; attempt < CREATE_USER_MAX_RETRIES; attempt++) {
-            String username = attempt == 0
-                    ? legacyUsername
-                    : legacyUsername + RandomUtil.randomNumbers(3);
+            String username = WECHAT_USERNAME_PREFIX + randomSuffix();
             if (userMapper.selectAnyByUsername(username) != null) {
                 continue;
             }
@@ -131,10 +132,10 @@ public class WechatLoginServiceImpl implements WechatLoginService {
             UserDO user = UserDO.builder()
                     .amourId(amourId)
                     .username(username)
-                    // 微信用户注册时密码默认为空，微信登录不依赖密码。
+                    // 微信注册用户默认没有密码，微信登录不依赖密码。
                     .password(null)
-                    .displayName(DEFAULT_DISPLAY_NAME_PREFIX + RandomUtil.randomString(6))
-                    .avatar(defaultAvatar)
+                    .displayName(DEFAULT_DISPLAY_NAME_PREFIX + randomSuffix())
+                    .avatar(DEFAULT_AVATAR_URL)
                     .wechatOpenid(openid)
                     .createTime(LocalDateTime.now())
                     .updateTime(LocalDateTime.now())
@@ -156,8 +157,12 @@ public class WechatLoginServiceImpl implements WechatLoginService {
         throw new BizException(ResponseCodeEnum.WECHAT_LOGIN_FAILED);
     }
 
+    private String randomSuffix() {
+        return RandomUtil.randomString(RANDOM_NAME_CHARS, RANDOM_SUFFIX_LENGTH);
+    }
+
     private String buildLegacyUsername(String openid) {
-        return "wx_" + DigestUtil.sha256Hex(openid).substring(0, 6);
+        return WECHAT_USERNAME_PREFIX + DigestUtil.sha256Hex(openid).substring(0, RANDOM_SUFFIX_LENGTH);
     }
 
     private UserDO findUserById(String userIdValue) {
@@ -173,13 +178,5 @@ public class WechatLoginServiceImpl implements WechatLoginService {
             log.warn("微信用户映射数据格式错误: {}", userIdValue);
         }
         return null;
-    }
-
-    /**
-     * 查询平台配置 default_avatar 的头像地址，未配置时返回空串。
-     */
-    private String queryDefaultAvatar() {
-        PlatformConfigDO config = platformConfigMapper.selectValueByKey(DEFAULT_AVATAR_CONFIG_KEY);
-        return config == null ? "" : StrUtil.nullToEmpty(config.getConfigValue());
     }
 }
