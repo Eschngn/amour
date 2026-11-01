@@ -184,12 +184,13 @@ const activeChapter = ref(0)
 async function fetchStoryOverview() {
   const res = await api.post('/story/overview')
   if (res.data.success) {
-    const data = res.data.data
+    // 空空间时后端可能返回 data=null，按空故事处理，不要误显示为加载失败。
+    const data = res.data.data || {}
     stats.value = {
-      totalNodes: data.totalNodes,
-      totalSeasons: data.totalSeasons,
-      totalChapters: data.totalChapters,
-      startDate: data.startDate,
+      totalNodes: data.totalNodes ?? 0,
+      totalSeasons: data.totalSeasons ?? 0,
+      totalChapters: data.totalChapters ?? 0,
+      startDate: data.startDate || '',
     }
 
     chapters.value = (data.chapters || []).map(ch => ({

@@ -70,6 +70,29 @@ public interface StoryNodeMapper extends BaseMapper<StoryNodeDO> {
                 .orderByAsc(StoryNodeDO::getSortOrder));
     }
 
+    /**
+     * 统计空间内公开到恋爱广场且未删除的故事数量。
+     */
+    default Long countPublicBySpaceId(Long spaceId) {
+        return selectCount(new LambdaQueryWrapper<StoryNodeDO>()
+                .eq(StoryNodeDO::getSpaceId, spaceId)
+                .eq(StoryNodeDO::getIsDeleted, false)
+                .eq(StoryNodeDO::getVisibility, 1));
+    }
+
+    /**
+     * 查询空间内最新公开故事，用于恋爱广场卡片摘要。
+     */
+    default List<StoryNodeDO> selectLatestPublic(Long spaceId, int limit) {
+        return selectPage(new Page<>(1, limit, false), new LambdaQueryWrapper<StoryNodeDO>()
+                .eq(StoryNodeDO::getSpaceId, spaceId)
+                .eq(StoryNodeDO::getIsDeleted, false)
+                .eq(StoryNodeDO::getVisibility, 1)
+                .orderByDesc(StoryNodeDO::getHappenedTime)
+                .orderByDesc(StoryNodeDO::getId))
+                .getRecords();
+    }
+
     default StoryNodeDO selectSpaceNodeById(Long spaceId, Long id) {
         return selectOne(new LambdaQueryWrapper<StoryNodeDO>()
                 .eq(StoryNodeDO::getSpaceId, spaceId)

@@ -67,4 +67,27 @@ public interface AnniversaryMapper extends BaseMapper<AnniversaryDO> {
                 .orderByAsc(AnniversaryDO::getAnniversaryDate)
                 .orderByAsc(AnniversaryDO::getId));
     }
+
+    /**
+     * 统计空间内公开到恋爱广场且未删除的纪念日数量。
+     */
+    default Long countPublicBySpaceId(Long spaceId) {
+        return selectCount(new LambdaQueryWrapper<AnniversaryDO>()
+                .eq(AnniversaryDO::getSpaceId, spaceId)
+                .eq(AnniversaryDO::getIsDeleted, false)
+                .eq(AnniversaryDO::getVisibility, 1));
+    }
+
+    /**
+     * 查询空间内最新公开纪念日，用于恋爱广场卡片摘要。
+     */
+    default List<AnniversaryDO> selectLatestPublic(Long spaceId, int limit) {
+        return selectPage(new Page<>(1, limit, false), new LambdaQueryWrapper<AnniversaryDO>()
+                .eq(AnniversaryDO::getSpaceId, spaceId)
+                .eq(AnniversaryDO::getIsDeleted, false)
+                .eq(AnniversaryDO::getVisibility, 1)
+                .orderByDesc(AnniversaryDO::getAnniversaryDate)
+                .orderByDesc(AnniversaryDO::getId))
+                .getRecords();
+    }
 }

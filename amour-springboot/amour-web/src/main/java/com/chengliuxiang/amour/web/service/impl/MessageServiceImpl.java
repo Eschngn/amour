@@ -3,9 +3,11 @@ package com.chengliuxiang.amour.web.service.impl;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
+import com.chengliuxiang.amour.common.domain.dos.CoupleMemberDO;
 import com.chengliuxiang.amour.common.domain.dos.MessageDO;
 import com.chengliuxiang.amour.common.domain.dos.MessageReplyDO;
 import com.chengliuxiang.amour.common.domain.dos.UserDO;
+import com.chengliuxiang.amour.common.domain.mapper.CoupleMemberMapper;
 import com.chengliuxiang.amour.common.domain.mapper.MessageMapper;
 import com.chengliuxiang.amour.common.domain.mapper.MessageReplyMapper;
 import com.chengliuxiang.amour.common.domain.mapper.UserMapper;
@@ -40,11 +42,14 @@ public class MessageServiceImpl implements MessageService {
     private MessageReplyMapper messageReplyMapper;
     @Resource
     private UserMapper userMapper;
+    @Resource
+    private CoupleMemberMapper coupleMemberMapper;
 
     @Override
     public Response<PageResult<MessagePageItemVO>> pageMessages(MessagePageQueryReqVO reqVO) {
-        com.baomidou.mybatisplus.core.metadata.IPage<MessageDO> messagePage = messageMapper.selectVisiblePage(
-                reqVO.getCurrent(), reqVO.getSize());
+        Long spaceId = requireCurrentSpaceId();
+        com.baomidou.mybatisplus.core.metadata.IPage<MessageDO> messagePage = messageMapper.selectSpacePage(
+                reqVO.getCurrent(), reqVO.getSize(), spaceId);
 
         List<MessageDO> messages = messagePage.getRecords();
         if (CollUtil.isEmpty(messages)) {
@@ -56,18 +61,17 @@ public class MessageServiceImpl implements MessageService {
                     .build());
         }
 
-        Object loginId = StpUtil.getLoginIdDefaultNull();
-        String currentUserId = loginId == null ? null : String.valueOf(loginId);
+        Long currentUserId = StpUtil.getLoginIdAsLong();
 
         // 收集所有留言 ID
-        List<String> messageIds = messages.stream()
+        List<Long> messageIds = messages.stream()
                 .map(MessageDO::getId)
                 .collect(Collectors.toList());
 
         // 查询这些留言的所有回复，按创建时间升序
-        List<MessageReplyDO> allReplies = messageReplyMapper.selectVisibleByMessageIds(messageIds);
+        List<MessageReplyDO> allReplies = messageReplyMapper.selectVisibleByMessageIds(spaceId, messageIds);
 
-        Map<String, List<MessageReplyDO>> replyMap = allReplies.stream()
+        Map<Long, List<MessageReplyDO>> replyMap = allReplies.stream()
                 .collect(Collectors.groupingBy(MessageReplyDO::getMessageId));
 
         // 收集所有涉及的用户 ID
@@ -95,21 +99,21 @@ public class MessageServiceImpl implements MessageService {
                 .map(m -> {
                     List<MessageReplyDO> replies = replyMap.getOrDefault(m.getId(), Collections.emptyList());
                     return MessagePageItemVO.builder()
-                            .messageId(m.getId())
+                            .messageId(String.valueOf(m.getId()))
                             .content(m.getContent())
                             .userName(getDisplayName(userMap, m.getUserId()))
                             .userAvatar(getAvatar(userMap, m.getUserId()))
-                            .canDelete(StrUtil.equals(currentUserId, StrUtil.trim(m.getUserId())))
+                            .canDelete(Objects.equals(currentUserId, m.getUserId()))
                             .createTime(m.getCreateTime())
                             .updateTime(m.getUpdateTime())
                             .replies(replies.stream()
                                     .map(r -> MessageReplyVO.builder()
-                                            .replyId(r.getId())
+                                            .replyId(String.valueOf(r.getId()))
                                             .content(r.getContent())
                                             .fromUserName(getDisplayName(userMap, r.getFromUserId()))
                                             .fromUserAvatar(getAvatar(userMap, r.getFromUserId()))
                                             .toUserName(getDisplayName(userMap, r.getToUserId()))
-                                            .canDelete(StrUtil.equals(currentUserId, StrUtil.trim(r.getFromUserId())))
+                                            .canDelete(Objects.equals(currentUserId, r.getFromUserId()))
                                             .createTime(r.getCreateTime())
                                             .build())
                                     .collect(Collectors.toList()))
@@ -127,9 +131,11 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public Response<Void> publishMessage(MessagePublishReqVO reqVO) {
+        Long spaceId = requireCurrentSpaceId();
         LocalDateTime now = LocalDateTime.now();
         MessageDO message = MessageDO.builder()
-                .userId(String.valueOf(StpUtil.getLoginIdAsLong()))
+                .spaceId(spaceId)
+                .userId(StpUtil.getLoginIdAsLong())
                 .content(reqVO.getContent())
                 .createTime(now)
                 .updateTime(now)
@@ -141,18 +147,21 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public Response<Void> replyMessage(MessageReplyReqVO reqVO) {
-        MessageDO message = messageMapper.findById(reqVO.getMessageId().trim());
+        Long spaceId = requireCurrentSpaceId();
+        Long messageId = parseId(reqVO.getMessageId(), ResponseCodeEnum.MESSAGE_NOT_EXIST);
+        MessageDO message = messageMapper.findById(spaceId, messageId);
         if (message == null || Boolean.TRUE.equals(message.getIsDeleted())) {
             throw new BizException(ResponseCodeEnum.MESSAGE_NOT_EXIST);
         }
 
-        String toUserId = message.getUserId();
-        String parentReplyId = null;
+        Long toUserId = message.getUserId();
+        Long parentReplyId = null;
         if (StrUtil.isNotBlank(reqVO.getReplyId())) {
-            MessageReplyDO targetReply = messageReplyMapper.findById(reqVO.getReplyId().trim());
+            Long replyId = parseId(reqVO.getReplyId(), ResponseCodeEnum.MESSAGE_REPLY_NOT_EXIST);
+            MessageReplyDO targetReply = messageReplyMapper.findById(spaceId, replyId);
             if (targetReply == null
                     || Boolean.TRUE.equals(targetReply.getIsDeleted())
-                    || !message.getId().equals(targetReply.getMessageId())) {
+                    || !Objects.equals(message.getId(), targetReply.getMessageId())) {
                 throw new BizException(ResponseCodeEnum.MESSAGE_REPLY_NOT_EXIST);
             }
             toUserId = targetReply.getFromUserId();
@@ -160,9 +169,10 @@ public class MessageServiceImpl implements MessageService {
         }
 
         MessageReplyDO reply = MessageReplyDO.builder()
+                .spaceId(spaceId)
                 .messageId(message.getId())
                 .parentReplyId(parentReplyId)
-                .fromUserId(String.valueOf(StpUtil.getLoginIdAsLong()))
+                .fromUserId(StpUtil.getLoginIdAsLong())
                 .toUserId(toUserId)
                 .content(reqVO.getContent().trim())
                 .createTime(LocalDateTime.now())
@@ -175,80 +185,88 @@ public class MessageServiceImpl implements MessageService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Response<Void> deleteMessage(MessageDeleteReqVO reqVO) {
-        String messageId = reqVO.getMessageId().trim();
-        MessageDO message = messageMapper.findById(messageId);
+        Long spaceId = requireCurrentSpaceId();
+        Long messageId = parseId(reqVO.getMessageId(), ResponseCodeEnum.MESSAGE_NOT_EXIST);
+        MessageDO message = messageMapper.findById(spaceId, messageId);
         if (message == null || Boolean.TRUE.equals(message.getIsDeleted())) {
             throw new BizException(ResponseCodeEnum.MESSAGE_NOT_EXIST);
         }
 
-        String currentUserId = String.valueOf(StpUtil.getLoginIdAsLong());
+        Long currentUserId = StpUtil.getLoginIdAsLong();
         if (!Objects.equals(currentUserId, message.getUserId())) {
             throw new BizException(ResponseCodeEnum.MESSAGE_DELETE_FORBIDDEN);
         }
 
-        int updatedRows = messageMapper.softDeleteOwned(messageId, currentUserId, LocalDateTime.now());
+        int updatedRows = messageMapper.softDeleteOwned(spaceId, messageId, currentUserId, LocalDateTime.now());
         if (updatedRows == 0) {
             throw new BizException(ResponseCodeEnum.MESSAGE_NOT_EXIST);
         }
 
-        messageReplyMapper.softDeleteByMessageId(messageId);
+        messageReplyMapper.softDeleteByMessageId(spaceId, messageId, LocalDateTime.now());
         return Response.success();
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Response<Void> deleteReply(MessageReplyDeleteReqVO reqVO) {
-        String replyId = reqVO.getReplyId().trim();
-        MessageReplyDO reply = messageReplyMapper.findById(replyId);
+        Long spaceId = requireCurrentSpaceId();
+        Long replyId = parseId(reqVO.getReplyId(), ResponseCodeEnum.MESSAGE_REPLY_NOT_EXIST);
+        MessageReplyDO reply = messageReplyMapper.findById(spaceId, replyId);
         if (reply == null || Boolean.TRUE.equals(reply.getIsDeleted())) {
             throw new BizException(ResponseCodeEnum.MESSAGE_REPLY_NOT_EXIST);
         }
 
-        MessageDO message = messageMapper.findById(reply.getMessageId());
+        MessageDO message = messageMapper.findById(spaceId, reply.getMessageId());
         if (message == null || Boolean.TRUE.equals(message.getIsDeleted())) {
             throw new BizException(ResponseCodeEnum.MESSAGE_REPLY_NOT_EXIST);
         }
 
-        String currentUserId = String.valueOf(StpUtil.getLoginIdAsLong());
-        if (!StrUtil.equals(currentUserId, StrUtil.trim(reply.getFromUserId()))) {
+        Long currentUserId = StpUtil.getLoginIdAsLong();
+        if (!Objects.equals(currentUserId, reply.getFromUserId())) {
             throw new BizException(ResponseCodeEnum.MESSAGE_REPLY_DELETE_FORBIDDEN);
         }
 
-        Set<String> replyIds = messageReplyMapper.collectReplyTreeIds(replyId);
-        int updatedRows = messageReplyMapper.softDeleteByIds(replyIds);
+        Set<Long> replyIds = messageReplyMapper.collectReplyTreeIds(spaceId, replyId);
+        int updatedRows = messageReplyMapper.softDeleteByIds(spaceId, replyIds, LocalDateTime.now());
         if (updatedRows == 0) {
             throw new BizException(ResponseCodeEnum.MESSAGE_REPLY_NOT_EXIST);
         }
         return Response.success();
     }
 
-    private void addUserId(Set<Long> userIds, String userIdStr) {
-        if (StrUtil.isNotBlank(userIdStr)) {
-            try {
-                userIds.add(Long.valueOf(userIdStr));
-            } catch (NumberFormatException ignored) {
-            }
+    private Long requireCurrentSpaceId() {
+        List<CoupleMemberDO> memberships = coupleMemberMapper.selectActiveByUserId(StpUtil.getLoginIdAsLong());
+        if (memberships == null || memberships.isEmpty()) {
+            throw new BizException(ResponseCodeEnum.SPACE_NOT_EXIST);
         }
+        return memberships.get(0).getSpaceId();
     }
 
-    private UserDO getUser(Map<Long, UserDO> userMap, String userIdStr) {
-        if (StrUtil.isBlank(userIdStr)) {
-            return null;
-        }
+    private Long parseId(String rawId, ResponseCodeEnum errorCode) {
         try {
-            return userMap.get(Long.valueOf(userIdStr));
+            return Long.valueOf(rawId.trim());
         } catch (NumberFormatException e) {
-            return null;
+            throw new BizException(errorCode);
         }
     }
 
-    private String getDisplayName(Map<Long, UserDO> userMap, String userIdStr) {
-        UserDO user = getUser(userMap, userIdStr);
+    private void addUserId(Set<Long> userIds, Long userId) {
+        if (userId != null) {
+            userIds.add(userId);
+        }
+    }
+
+    private UserDO getUser(Map<Long, UserDO> userMap, Long userId) {
+        return userId == null ? null : userMap.get(userId);
+    }
+
+    private String getDisplayName(Map<Long, UserDO> userMap, Long userId) {
+        UserDO user = getUser(userMap, userId);
         return user == null ? "匿名" : StrUtil.blankToDefault(user.getDisplayName(), "恋人");
     }
 
-    private String getAvatar(Map<Long, UserDO> userMap, String userIdStr) {
-        UserDO user = getUser(userMap, userIdStr);
+    private String getAvatar(Map<Long, UserDO> userMap, Long userId) {
+        UserDO user = getUser(userMap, userId);
         return user == null ? "" : StrUtil.blankToDefault(user.getAvatar(), "");
     }
 }

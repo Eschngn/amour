@@ -1,6 +1,7 @@
 package com.chengliuxiang.amour.admin.service.impl;
 
 import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.chengliuxiang.amour.admin.model.vo.config.DeleteSiteConfigReqVO;
 import com.chengliuxiang.amour.admin.model.vo.config.FindSiteConfigPageListReqVO;
@@ -15,8 +16,8 @@ import com.chengliuxiang.amour.admin.model.vo.dict.FindDictTypePageListRspVO;
 import com.chengliuxiang.amour.admin.model.vo.dict.SaveDictItemReqVO;
 import com.chengliuxiang.amour.admin.model.vo.dict.SaveDictTypeReqVO;
 import com.chengliuxiang.amour.admin.service.AdminConfigService;
-import com.chengliuxiang.amour.common.domain.dos.SiteConfigDO;
-import com.chengliuxiang.amour.common.domain.mapper.SiteConfigMapper;
+import com.chengliuxiang.amour.common.domain.dos.PlatformConfigDO;
+import com.chengliuxiang.amour.common.domain.mapper.PlatformConfigMapper;
 import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
 import com.chengliuxiang.amour.common.exception.BizException;
 import com.chengliuxiang.amour.common.model.PageResult;
@@ -55,7 +56,7 @@ public class AdminConfigServiceImpl implements AdminConfigService {
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Resource
-    private SiteConfigMapper siteConfigMapper;
+    private PlatformConfigMapper platformConfigMapper;
 
     @Resource
     private ObjectMapper objectMapper;
@@ -64,7 +65,7 @@ public class AdminConfigServiceImpl implements AdminConfigService {
     public Response<PageResult<FindSiteConfigPageListRspVO>> findSiteConfigPageList(FindSiteConfigPageListReqVO reqVO) {
         String keyword = StrUtil.nullToEmpty(reqVO.getKeyword()).trim();
         String requestedValueType = StrUtil.nullToEmpty(reqVO.getValueType()).trim();
-        IPage<SiteConfigDO> result = siteConfigMapper.selectConfigPage(
+        IPage<PlatformConfigDO> result = platformConfigMapper.selectConfigPage(
                 normalizePageNumber(reqVO.getCurrent(), 1L),
                 normalizePageNumber(reqVO.getSize(), 10L),
                 requestedValueType,
@@ -92,14 +93,14 @@ public class AdminConfigServiceImpl implements AdminConfigService {
     @Override
     public Response<Void> saveSiteConfig(SaveSiteConfigReqVO reqVO) {
         String configKey = reqVO.getConfigKey().trim();
-        Long duplicateCount = siteConfigMapper.countByConfigKey(configKey, reqVO.getId());
+        Long duplicateCount = platformConfigMapper.countByConfigKey(configKey, reqVO.getId());
         if (duplicateCount != null && duplicateCount > 0) {
             throw new BizException(ResponseCodeEnum.SITE_CONFIG_DUPLICATE);
         }
 
         LocalDateTime now = LocalDateTime.now();
         if (reqVO.getId() == null) {
-            siteConfigMapper.insertConfig(SiteConfigDO.builder()
+            platformConfigMapper.insertConfig(PlatformConfigDO.builder()
                     .configKey(configKey)
                     .configName(reqVO.getConfigName().trim())
                     .configValue(StrUtil.nullToEmpty(reqVO.getConfigValue()))
@@ -112,7 +113,7 @@ public class AdminConfigServiceImpl implements AdminConfigService {
             return Response.success();
         }
 
-        SiteConfigDO current = siteConfigMapper.selectConfigById(reqVO.getId());
+        PlatformConfigDO current = platformConfigMapper.selectConfigById(reqVO.getId());
         if (current == null) {
             throw new BizException(ResponseCodeEnum.SITE_CONFIG_NOT_EXIST);
         }
@@ -123,16 +124,16 @@ public class AdminConfigServiceImpl implements AdminConfigService {
         current.setSortOrder(defaultSortOrder(reqVO.getSortOrder()));
         current.setRemark(StrUtil.nullToEmpty(reqVO.getRemark()).trim());
         current.setUpdateTime(now);
-        siteConfigMapper.updateConfig(current);
+        platformConfigMapper.updateConfig(current);
         return Response.success();
     }
 
     @Override
     public Response<Void> deleteSiteConfig(DeleteSiteConfigReqVO reqVO) {
-        if (siteConfigMapper.selectConfigById(reqVO.getId()) == null) {
+        if (platformConfigMapper.selectConfigById(reqVO.getId()) == null) {
             throw new BizException(ResponseCodeEnum.SITE_CONFIG_NOT_EXIST);
         }
-        siteConfigMapper.deleteConfigById(reqVO.getId());
+        platformConfigMapper.deleteConfigById(reqVO.getId());
         return Response.success();
     }
 
@@ -151,7 +152,7 @@ public class AdminConfigServiceImpl implements AdminConfigService {
                         .thenComparing(FindDictTypePageListRspVO::getId, Comparator.reverseOrder()))
                 .collect(Collectors.toList());
 
-        List<SiteConfigDO> legacyConfigs = loadLegacyConfigs();
+        List<PlatformConfigDO> legacyConfigs = loadLegacyConfigs();
         if (!legacyConfigs.isEmpty() && shouldIncludeLegacyType(keyword, legacyConfigs)) {
             allTypes.add(FindDictTypePageListRspVO.builder()
                     .id(LEGACY_DICT_TYPE_ID)
@@ -162,7 +163,7 @@ public class AdminConfigServiceImpl implements AdminConfigService {
                     .remark("兼容现有 site_config 数据")
                     .itemCount((long) legacyConfigs.size())
                     .updateTime(formatDateTime(legacyConfigs.stream()
-                            .map(SiteConfigDO::getUpdateTime)
+                            .map(PlatformConfigDO::getUpdateTime)
                             .filter(java.util.Objects::nonNull)
                             .max(LocalDateTime::compareTo)
                             .orElse(null)))
@@ -194,7 +195,7 @@ public class AdminConfigServiceImpl implements AdminConfigService {
         LocalDateTime now = LocalDateTime.now();
         DictTypeConfig value = new DictTypeConfig(dictType, reqVO.getStatus());
         if (reqVO.getId() == null) {
-            siteConfigMapper.insertConfig(SiteConfigDO.builder()
+            platformConfigMapper.insertConfig(PlatformConfigDO.builder()
                     .configKey(generateConfigKey(DICT_TYPE_KEY_PREFIX))
                     .configName(dictName)
                     .configValue(writeJson(value))
@@ -207,7 +208,7 @@ public class AdminConfigServiceImpl implements AdminConfigService {
             return Response.success();
         }
 
-        SiteConfigDO current = findConfig(reqVO.getId(), DICT_TYPE_VALUE_TYPE,
+        PlatformConfigDO current = findConfig(reqVO.getId(), DICT_TYPE_VALUE_TYPE,
                 ResponseCodeEnum.DICT_TYPE_NOT_EXIST);
         DictTypeConfig previousValue = readTypeValue(current);
         current.setConfigName(dictName);
@@ -215,7 +216,7 @@ public class AdminConfigServiceImpl implements AdminConfigService {
         current.setSortOrder(defaultSortOrder(reqVO.getSortOrder()));
         current.setRemark(StrUtil.nullToEmpty(reqVO.getRemark()).trim());
         current.setUpdateTime(now);
-        siteConfigMapper.updateConfig(current);
+        platformConfigMapper.updateConfig(current);
 
         if (previousValue != null && StrUtil.isNotBlank(previousValue.getDictType())
                 && !previousValue.getDictType().equals(dictType)) {
@@ -227,20 +228,20 @@ public class AdminConfigServiceImpl implements AdminConfigService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Response<Void> deleteDictType(DeleteDictTypeReqVO reqVO) {
-        SiteConfigDO typeConfig = findConfig(reqVO.getId(), DICT_TYPE_VALUE_TYPE,
+        PlatformConfigDO typeConfig = findConfig(reqVO.getId(), DICT_TYPE_VALUE_TYPE,
                 ResponseCodeEnum.DICT_TYPE_NOT_EXIST);
         DictTypeConfig typeValue = readTypeValue(typeConfig);
         if (typeValue == null) {
             throw new BizException(ResponseCodeEnum.DICT_TYPE_NOT_EXIST);
         }
 
-        for (SiteConfigDO itemConfig : loadConfigs(DICT_ITEM_VALUE_TYPE)) {
+        for (PlatformConfigDO itemConfig : loadConfigs(DICT_ITEM_VALUE_TYPE)) {
             DictItemConfig itemValue = readItemValue(itemConfig);
             if (itemValue != null && typeValue.getDictType().equals(itemValue.getDictType())) {
-                siteConfigMapper.deleteConfigById(itemConfig.getId());
+                platformConfigMapper.deleteConfigById(itemConfig.getId());
             }
         }
-        siteConfigMapper.deleteConfigById(typeConfig.getId());
+        platformConfigMapper.deleteConfigById(typeConfig.getId());
         return Response.success();
     }
 
@@ -280,7 +281,7 @@ public class AdminConfigServiceImpl implements AdminConfigService {
                 StrUtil.nullToEmpty(reqVO.getCssClass()).trim(),
                 reqVO.getStatus());
         if (reqVO.getId() == null) {
-            siteConfigMapper.insertConfig(SiteConfigDO.builder()
+            platformConfigMapper.insertConfig(PlatformConfigDO.builder()
                     .configKey(generateConfigKey(DICT_ITEM_KEY_PREFIX))
                     .configName(reqVO.getItemLabel().trim())
                     .configValue(writeJson(value))
@@ -293,39 +294,42 @@ public class AdminConfigServiceImpl implements AdminConfigService {
             return Response.success();
         }
 
-        SiteConfigDO current = findConfig(reqVO.getId(), DICT_ITEM_VALUE_TYPE,
+        PlatformConfigDO current = findConfig(reqVO.getId(), DICT_ITEM_VALUE_TYPE,
                 ResponseCodeEnum.DICT_ITEM_NOT_EXIST);
         current.setConfigName(reqVO.getItemLabel().trim());
         current.setConfigValue(writeJson(value));
         current.setSortOrder(defaultSortOrder(reqVO.getSortOrder()));
         current.setRemark(StrUtil.nullToEmpty(reqVO.getRemark()).trim());
         current.setUpdateTime(now);
-        siteConfigMapper.updateConfig(current);
+        platformConfigMapper.updateConfig(current);
         return Response.success();
     }
 
     @Override
     public Response<Void> deleteDictItem(DeleteDictItemReqVO reqVO) {
-        SiteConfigDO legacyConfig = siteConfigMapper.selectConfigById(reqVO.getId());
+        PlatformConfigDO legacyConfig = platformConfigMapper.selectConfigById(reqVO.getId());
         if (legacyConfig != null && isLegacyConfig(legacyConfig)) {
-            siteConfigMapper.deleteConfigById(legacyConfig.getId());
+            platformConfigMapper.deleteConfigById(legacyConfig.getId());
             return Response.success();
         }
-        SiteConfigDO item = findConfig(reqVO.getId(), DICT_ITEM_VALUE_TYPE,
+        PlatformConfigDO item = findConfig(reqVO.getId(), DICT_ITEM_VALUE_TYPE,
                 ResponseCodeEnum.DICT_ITEM_NOT_EXIST);
-        siteConfigMapper.deleteConfigById(item.getId());
+        platformConfigMapper.deleteConfigById(item.getId());
         return Response.success();
     }
 
-    private List<SiteConfigDO> loadConfigs(String valueType) {
-        return siteConfigMapper.selectByValueType(valueType);
+    private List<PlatformConfigDO> loadConfigs(String valueType) {
+        return platformConfigMapper.selectByValueType(valueType);
     }
 
-    private List<SiteConfigDO> loadLegacyConfigs() {
-        return siteConfigMapper.selectLegacyConfigs(DICT_TYPE_VALUE_TYPE, DICT_ITEM_VALUE_TYPE);
+    private List<PlatformConfigDO> loadLegacyConfigs() {
+        return platformConfigMapper.selectList(new LambdaQueryWrapper<PlatformConfigDO>()
+                .notIn(PlatformConfigDO::getValueType, DICT_TYPE_VALUE_TYPE, DICT_ITEM_VALUE_TYPE)
+                .orderByAsc(PlatformConfigDO::getSortOrder)
+                .orderByDesc(PlatformConfigDO::getId));
     }
 
-    private boolean shouldIncludeLegacyType(String keyword, List<SiteConfigDO> legacyConfigs) {
+    private boolean shouldIncludeLegacyType(String keyword, List<PlatformConfigDO> legacyConfigs) {
         if (StrUtil.isBlank(keyword)
                 || "已有网站配置".contains(keyword)
                 || LEGACY_DICT_TYPE.contains(keyword)) {
@@ -336,13 +340,13 @@ public class AdminConfigServiceImpl implements AdminConfigService {
                         || StrUtil.nullToEmpty(config.getConfigName()).toLowerCase().contains(keyword));
     }
 
-    private boolean isLegacyConfig(SiteConfigDO config) {
+    private boolean isLegacyConfig(PlatformConfigDO config) {
         return config != null
                 && !DICT_TYPE_VALUE_TYPE.equals(config.getValueType())
                 && !DICT_ITEM_VALUE_TYPE.equals(config.getValueType());
     }
 
-    private FindDictItemListRspVO toLegacyItemResponse(SiteConfigDO config) {
+    private FindDictItemListRspVO toLegacyItemResponse(PlatformConfigDO config) {
         return FindDictItemListRspVO.builder()
                 .id(config.getId())
                 .dictType(LEGACY_DICT_TYPE)
@@ -358,7 +362,7 @@ public class AdminConfigServiceImpl implements AdminConfigService {
     }
 
     private Response<Void> saveLegacyConfig(SaveDictItemReqVO reqVO, String configKey) {
-        SiteConfigDO duplicate = siteConfigMapper.selectByConfigKey(configKey);
+        PlatformConfigDO duplicate = platformConfigMapper.selectByConfigKey(configKey);
         if (duplicate != null && !duplicate.getId().equals(reqVO.getId())) {
             throw new BizException(ResponseCodeEnum.DICT_ITEM_DUPLICATE);
         }
@@ -366,7 +370,7 @@ public class AdminConfigServiceImpl implements AdminConfigService {
         LocalDateTime now = LocalDateTime.now();
         String valueType = StrUtil.isBlank(reqVO.getCssClass()) ? "text" : reqVO.getCssClass().trim();
         if (reqVO.getId() == null) {
-            siteConfigMapper.insertConfig(SiteConfigDO.builder()
+            platformConfigMapper.insertConfig(PlatformConfigDO.builder()
                     .configKey(configKey)
                     .configName(reqVO.getItemLabel().trim())
                     .configValue(StrUtil.nullToEmpty(reqVO.getConfigValue()))
@@ -379,7 +383,7 @@ public class AdminConfigServiceImpl implements AdminConfigService {
             return Response.success();
         }
 
-        SiteConfigDO current = siteConfigMapper.selectConfigById(reqVO.getId());
+        PlatformConfigDO current = platformConfigMapper.selectConfigById(reqVO.getId());
         if (!isLegacyConfig(current)) {
             throw new BizException(ResponseCodeEnum.DICT_ITEM_NOT_EXIST);
         }
@@ -390,20 +394,20 @@ public class AdminConfigServiceImpl implements AdminConfigService {
         current.setSortOrder(defaultSortOrder(reqVO.getSortOrder()));
         current.setRemark(StrUtil.nullToEmpty(reqVO.getRemark()).trim());
         current.setUpdateTime(now);
-        siteConfigMapper.updateConfig(current);
+        platformConfigMapper.updateConfig(current);
         return Response.success();
     }
 
-    private SiteConfigDO findConfig(Long id, String valueType, ResponseCodeEnum notExistCode) {
-        SiteConfigDO config = siteConfigMapper.selectByIdAndValueType(id, valueType);
-        if (config == null) {
+    private PlatformConfigDO findConfig(Long id, String valueType, ResponseCodeEnum notExistCode) {
+        PlatformConfigDO config = platformConfigMapper.selectConfigById(id);
+        if (config == null || !valueType.equals(config.getValueType())) {
             throw new BizException(notExistCode);
         }
         return config;
     }
 
-    private SiteConfigDO findTypeByCode(String dictType) {
-        for (SiteConfigDO config : loadConfigs(DICT_TYPE_VALUE_TYPE)) {
+    private PlatformConfigDO findTypeByCode(String dictType) {
+        for (PlatformConfigDO config : loadConfigs(DICT_TYPE_VALUE_TYPE)) {
             DictTypeConfig value = readTypeValue(config);
             if (value != null && dictType.equals(value.getDictType())) {
                 return config;
@@ -413,7 +417,7 @@ public class AdminConfigServiceImpl implements AdminConfigService {
     }
 
     private void ensureTypeCodeUnique(String dictType, Long currentId) {
-        for (SiteConfigDO config : loadConfigs(DICT_TYPE_VALUE_TYPE)) {
+        for (PlatformConfigDO config : loadConfigs(DICT_TYPE_VALUE_TYPE)) {
             DictTypeConfig value = readTypeValue(config);
             if (value != null && dictType.equals(value.getDictType())
                     && !config.getId().equals(currentId)) {
@@ -423,7 +427,7 @@ public class AdminConfigServiceImpl implements AdminConfigService {
     }
 
     private void ensureItemValueUnique(String dictType, String itemValue, Long currentId) {
-        for (SiteConfigDO config : loadConfigs(DICT_ITEM_VALUE_TYPE)) {
+        for (PlatformConfigDO config : loadConfigs(DICT_ITEM_VALUE_TYPE)) {
             DictItemConfig value = readItemValue(config);
             if (value != null && dictType.equals(value.getDictType())
                     && itemValue.equals(value.getItemValue())
@@ -434,20 +438,20 @@ public class AdminConfigServiceImpl implements AdminConfigService {
     }
 
     private void updateItemTypeCode(String previousType, String nextType, LocalDateTime updateTime) {
-        for (SiteConfigDO config : loadConfigs(DICT_ITEM_VALUE_TYPE)) {
+        for (PlatformConfigDO config : loadConfigs(DICT_ITEM_VALUE_TYPE)) {
             DictItemConfig value = readItemValue(config);
             if (value != null && previousType.equals(value.getDictType())) {
                 value.setDictType(nextType);
                 config.setConfigValue(writeJson(value));
                 config.setUpdateTime(updateTime);
-                siteConfigMapper.updateConfig(config);
+                platformConfigMapper.updateConfig(config);
             }
         }
     }
 
     private Map<String, Long> countItemsByType() {
         Map<String, Long> result = new HashMap<>();
-        for (SiteConfigDO config : loadConfigs(DICT_ITEM_VALUE_TYPE)) {
+        for (PlatformConfigDO config : loadConfigs(DICT_ITEM_VALUE_TYPE)) {
             DictItemConfig value = readItemValue(config);
             if (value != null && StrUtil.isNotBlank(value.getDictType())) {
                 result.put(value.getDictType(), result.getOrDefault(value.getDictType(), 0L) + 1L);
@@ -456,7 +460,7 @@ public class AdminConfigServiceImpl implements AdminConfigService {
         return result;
     }
 
-    private FindDictTypePageListRspVO toTypeResponse(SiteConfigDO config, Map<String, Long> itemCountMap) {
+    private FindDictTypePageListRspVO toTypeResponse(PlatformConfigDO config, Map<String, Long> itemCountMap) {
         DictTypeConfig value = readTypeValue(config);
         if (value == null || StrUtil.isBlank(value.getDictType())) {
             return null;
@@ -473,7 +477,7 @@ public class AdminConfigServiceImpl implements AdminConfigService {
                 .build();
     }
 
-    private FindDictItemListRspVO toItemResponse(SiteConfigDO config) {
+    private FindDictItemListRspVO toItemResponse(PlatformConfigDO config) {
         DictItemConfig value = readItemValue(config);
         if (value == null || StrUtil.isBlank(value.getDictType()) || StrUtil.isBlank(value.getItemValue())) {
             return null;
@@ -492,7 +496,7 @@ public class AdminConfigServiceImpl implements AdminConfigService {
                 .build();
     }
 
-    private DictTypeConfig readTypeValue(SiteConfigDO config) {
+    private DictTypeConfig readTypeValue(PlatformConfigDO config) {
         try {
             return objectMapper.readValue(config.getConfigValue(), DictTypeConfig.class);
         } catch (Exception exception) {
@@ -501,7 +505,7 @@ public class AdminConfigServiceImpl implements AdminConfigService {
         }
     }
 
-    private DictItemConfig readItemValue(SiteConfigDO config) {
+    private DictItemConfig readItemValue(PlatformConfigDO config) {
         try {
             return objectMapper.readValue(config.getConfigValue(), DictItemConfig.class);
         } catch (Exception exception) {

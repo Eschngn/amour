@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.chengliuxiang.amour.common.domain.dos.PhotoDO;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public interface PhotoMapper extends BaseMapper<PhotoDO> {
 
@@ -36,6 +37,42 @@ public interface PhotoMapper extends BaseMapper<PhotoDO> {
                 .orderByAsc(PhotoDO::getSortOrder)
                 .orderByDesc(PhotoDO::getTakenTime)
                 .orderByDesc(PhotoDO::getId));
+    }
+
+    /**
+     * 查询空间内全部公开照片，用于恋爱广场空间详情。
+     */
+    default List<PhotoDO> selectPublicList(Long spaceId) {
+        return selectList(new LambdaQueryWrapper<PhotoDO>()
+                .eq(PhotoDO::getSpaceId, spaceId)
+                .eq(PhotoDO::getIsDeleted, false)
+                .eq(PhotoDO::getVisibility, 1)
+                .orderByAsc(PhotoDO::getSortOrder)
+                .orderByDesc(PhotoDO::getTakenTime)
+                .orderByDesc(PhotoDO::getId));
+    }
+
+    /**
+     * 统计空间内公开到恋爱广场且未删除的照片数量。
+     */
+    default Long countPublicBySpaceId(Long spaceId) {
+        return selectCount(new LambdaQueryWrapper<PhotoDO>()
+                .eq(PhotoDO::getSpaceId, spaceId)
+                .eq(PhotoDO::getIsDeleted, false)
+                .eq(PhotoDO::getVisibility, 1));
+    }
+
+    /**
+     * 查询空间内最新公开照片，用于恋爱广场卡片摘要。
+     */
+    default List<PhotoDO> selectLatestPublic(Long spaceId, int limit) {
+        return selectPage(new Page<>(1, limit, false), new LambdaQueryWrapper<PhotoDO>()
+                .eq(PhotoDO::getSpaceId, spaceId)
+                .eq(PhotoDO::getIsDeleted, false)
+                .eq(PhotoDO::getVisibility, 1)
+                .orderByDesc(PhotoDO::getTakenTime)
+                .orderByDesc(PhotoDO::getId))
+                .getRecords();
     }
 
     default PhotoDO selectCoverPhoto(Long spaceId) {

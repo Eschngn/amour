@@ -1,5 +1,6 @@
 package com.chengliuxiang.amour.admin.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.chengliuxiang.amour.admin.model.vo.chapter.FindChapterListRspVO;
 import com.chengliuxiang.amour.admin.service.AdminChapterService;
 import com.chengliuxiang.amour.common.domain.dos.StoryChapterDO;
@@ -21,7 +22,10 @@ public class AdminChapterServiceImpl implements AdminChapterService {
 
     @Override
     public Response<List<FindChapterListRspVO>> findChapterList() {
-        List<StoryChapterDO> chapterDOS = storyChapterMapper.selectVisibleList();
+        List<StoryChapterDO> chapterDOS = storyChapterMapper.selectList(new LambdaQueryWrapper<StoryChapterDO>()
+                .eq(StoryChapterDO::getIsVisible, true)
+                .orderByAsc(StoryChapterDO::getSortOrder)
+                .orderByAsc(StoryChapterDO::getId));
 
         List<FindChapterListRspVO> voList = chapterDOS.stream()
                 .map(chapter -> FindChapterListRspVO.builder()

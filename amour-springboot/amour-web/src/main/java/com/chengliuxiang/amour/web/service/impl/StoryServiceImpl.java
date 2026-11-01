@@ -1,10 +1,15 @@
 package com.chengliuxiang.amour.web.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.collection.CollUtil;
+import com.chengliuxiang.amour.common.domain.dos.CoupleMemberDO;
 import com.chengliuxiang.amour.common.domain.dos.StoryChapterDO;
 import com.chengliuxiang.amour.common.domain.dos.StoryNodeDO;
+import com.chengliuxiang.amour.common.domain.mapper.CoupleMemberMapper;
 import com.chengliuxiang.amour.common.domain.mapper.StoryChapterMapper;
 import com.chengliuxiang.amour.common.domain.mapper.StoryNodeMapper;
+import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
+import com.chengliuxiang.amour.common.exception.BizException;
 import com.chengliuxiang.amour.common.utils.Response;
 import com.chengliuxiang.amour.web.model.vo.story.*;
 import com.chengliuxiang.amour.web.service.StoryService;
@@ -24,6 +29,8 @@ public class StoryServiceImpl implements StoryService {
     private StoryNodeMapper storyNodeMapper;
     @Resource
     private StoryChapterMapper storyChapterMapper;
+    @Resource
+    private CoupleMemberMapper coupleMemberMapper;
 
     /**
      * 查询所有里程碑节点，按发生时间升序排列
@@ -32,7 +39,8 @@ public class StoryServiceImpl implements StoryService {
      */
     @Override
     public Response<List<MilestoneStoryNodeVO>> queryMilestoneList() {
-        List<StoryNodeDO> storyNodeDOS = storyNodeMapper.selectMilestones();
+        Long spaceId = requireCurrentSpaceId();
+        List<StoryNodeDO> storyNodeDOS = storyNodeMapper.selectMilestones(spaceId);
         List<MilestoneStoryNodeVO> milestoneStoryNodeVOS = storyNodeDOS.stream()
                 .map(storyNodeDO -> MilestoneStoryNodeVO.builder()
                         .id(storyNodeDO.getId())
@@ -52,14 +60,15 @@ public class StoryServiceImpl implements StoryService {
      */
     @Override
     public Response<StoryOverviewVO> getOverview() {
+        Long spaceId = requireCurrentSpaceId();
         // 查询所有可见章节。按 sort_order 升序
-        List<StoryChapterDO> storyChapterDOS = storyChapterMapper.selectVisibleList();
+        List<StoryChapterDO> storyChapterDOS = storyChapterMapper.selectVisibleBySpaceId(spaceId);
         if (CollUtil.isEmpty(storyChapterDOS)) {
             return Response.success();
         }
 
         // 查所有可见故事节点，按 chapter_id + sort_order 升序
-        List<StoryNodeDO> storyNodeDOS = storyNodeMapper.selectVisibleList();
+        List<StoryNodeDO> storyNodeDOS = storyNodeMapper.selectSpaceList(spaceId);
 
         // 故事节点按 chapter_id 分组
         Map<Long, List<StoryNodeDO>> chapterIdAndNodeMap = storyNodeDOS.stream()
@@ -100,8 +109,9 @@ public class StoryServiceImpl implements StoryService {
      */
     @Override
     public Response<List<StoryNodeVO>> getStoryByChapterId(GetStoryByChapterIdReqVO getStoryByChapterIdReqVO) {
+        Long spaceId = requireCurrentSpaceId();
         Long chapterId = Long.valueOf(getStoryByChapterIdReqVO.getChapterId());
-        List<StoryNodeDO> storyNodeDOS = storyNodeMapper.selectVisibleByChapterId(chapterId);
+        List<StoryNodeDO> storyNodeDOS = storyNodeMapper.selectSpaceNodesByChapterId(spaceId, chapterId);
         if (CollUtil.isEmpty(storyNodeDOS)) {
             return Response.success();
         }
@@ -124,15 +134,16 @@ public class StoryServiceImpl implements StoryService {
 
     @Override
     public Response<StoryDetailRspVO> getStoryDetail(StoryDetailReqVO reqVO) {
+        Long spaceId = requireCurrentSpaceId();
         // 1. 查询当前故事
-        StoryNodeDO current = storyNodeMapper.selectVisibleById(reqVO.getId());
+        StoryNodeDO current = storyNodeMapper.selectSpaceNodeById(spaceId, reqVO.getId());
         if (current == null) {
             return Response.success();
         }
 
         // 2. 按“章节顺序 -> 章节内发生时间 -> 故事 ID”查找相邻故事。
         // 不能只按全局时间或 ID 查找，否则补录旧故事、章节时间交叉时会跳错章节。
-        List<StoryNodeDO> orderedStories = queryOrderedVisibleStories();
+        List<StoryNodeDO> orderedStories = queryOrderedVisibleStories(spaceId);
         int currentIndex = -1;
         for (int i = 0; i < orderedStories.size(); i++) {
             if (Objects.equals(orderedStories.get(i).getId(), current.getId())) {
@@ -149,7 +160,7 @@ public class StoryServiceImpl implements StoryService {
         // 3. 查询章节名称
         String chapterName = null;
         if (current.getChapterId() != null) {
-            StoryChapterDO chapter = storyChapterMapper.selectChapterById(current.getChapterId());
+            StoryChapterDO chapter = storyChapterMapper.selectChapterById(spaceId, current.getChapterId());
             chapterName = chapter != null ? chapter.getName() : null;
         }
 
@@ -179,8 +190,8 @@ public class StoryServiceImpl implements StoryService {
      * 查询前台可见故事的完整阅读顺序。
      * 第一排序维度是章节 sort_order；同一章节内按发生时间、ID 升序。
      */
-    private List<StoryNodeDO> queryOrderedVisibleStories() {
-        List<StoryChapterDO> chapters = storyChapterMapper.selectVisibleList();
+    private List<StoryNodeDO> queryOrderedVisibleStories(Long spaceId) {
+        List<StoryChapterDO> chapters = storyChapterMapper.selectVisibleBySpaceId(spaceId);
         if (CollUtil.isEmpty(chapters)) {
             return Collections.emptyList();
         }
@@ -190,7 +201,7 @@ public class StoryServiceImpl implements StoryService {
             chapterOrder.put(chapters.get(i).getId(), i);
         }
 
-        List<StoryNodeDO> stories = storyNodeMapper.selectVisibleByChapterIds(chapterOrder.keySet());
+        List<StoryNodeDO> stories = storyNodeMapper.selectSpaceNodesByChapterIds(spaceId, chapterOrder.keySet());
 
         Comparator<LocalDateTime> happenedTimeComparator = Comparator.nullsLast(Comparator.naturalOrder());
         Comparator<Long> idComparator = Comparator.nullsLast(Comparator.naturalOrder());
@@ -199,6 +210,14 @@ public class StoryServiceImpl implements StoryService {
                 .thenComparing(StoryNodeDO::getHappenedTime, happenedTimeComparator)
                 .thenComparing(StoryNodeDO::getId, idComparator));
         return stories;
+    }
+
+    private Long requireCurrentSpaceId() {
+        List<CoupleMemberDO> memberships = coupleMemberMapper.selectActiveByUserId(StpUtil.getLoginIdAsLong());
+        if (memberships == null || memberships.isEmpty()) {
+            throw new BizException(ResponseCodeEnum.SPACE_NOT_EXIST);
+        }
+        return memberships.get(0).getSpaceId();
     }
 
     private StoryChapterVO buildChapterVO(StoryChapterDO storyChapterDO,

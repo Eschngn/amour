@@ -49,7 +49,7 @@ public class AdminMessageServiceImpl implements AdminMessageService {
     @Override
     public Response<PageResult<FindMessagePageListRspVO>> findMessagePageList(FindMessagePageListReqVO reqVO) {
         IPage<MessageDO> messagePage = messageMapper.selectAdminPage(
-                reqVO.getCurrent(), reqVO.getSize(), reqVO.getContent());
+                reqVO.getCurrent(), reqVO.getSize(), null, reqVO.getContent());
 
         List<MessageDO> messages = messagePage.getRecords();
         if (CollUtil.isEmpty(messages)) {
@@ -61,11 +61,8 @@ public class AdminMessageServiceImpl implements AdminMessageService {
                     .build());
         }
 
-        List<String> messageIds = messages.stream()
-                .map(MessageDO::getId)
-                .collect(Collectors.toList());
-        List<MessageReplyDO> replies = messageReplyMapper.selectActiveByMessageIds(messageIds);
-        Map<String, Long> replyCountMap = replies.stream()
+        List<MessageReplyDO> replies = loadReplies(messages);
+        Map<Long, Long> replyCountMap = replies.stream()
                 .collect(Collectors.groupingBy(MessageReplyDO::getMessageId, Collectors.counting()));
 
         Set<Long> userIds = new HashSet<>();
@@ -80,7 +77,7 @@ public class AdminMessageServiceImpl implements AdminMessageService {
 
         List<FindMessagePageListRspVO> records = messages.stream()
                 .map(message -> FindMessagePageListRspVO.builder()
-                        .messageId(message.getId())
+                        .messageId(String.valueOf(message.getId()))
                         .userName(getUserName(userNameMap, message.getUserId()))
                         .content(message.getContent())
                         .replyCount(replyCountMap.getOrDefault(message.getId(), 0L))
@@ -99,35 +96,48 @@ public class AdminMessageServiceImpl implements AdminMessageService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Response<Void> deleteMessage(DeleteMessageReqVO reqVO) {
-        String messageId = reqVO.getMessageId().trim();
-        int updatedRows = messageMapper.softDelete(messageId, LocalDateTime.now());
+        Long messageId = parseMessageId(reqVO.getMessageId());
+        MessageDO message = messageMapper.selectById(messageId);
+        if (message == null || Boolean.TRUE.equals(message.getIsDeleted())) {
+            throw new BizException(ResponseCodeEnum.MESSAGE_NOT_EXIST);
+        }
+
+        int updatedRows = messageMapper.softDelete(message.getSpaceId(), messageId, LocalDateTime.now());
         if (updatedRows == 0) {
             throw new BizException(ResponseCodeEnum.MESSAGE_NOT_EXIST);
         }
 
-        messageReplyMapper.softDeleteByMessageId(messageId);
+        messageReplyMapper.softDeleteByMessageId(message.getSpaceId(), messageId, LocalDateTime.now());
         return Response.success();
     }
 
-    private void addUserId(Set<Long> userIds, String userId) {
-        if (StrUtil.isNotBlank(userId)) {
-            try {
-                userIds.add(Long.valueOf(userId));
-            } catch (NumberFormatException ignored) {
-                log.warn("Invalid message user id: {}", userId);
-            }
+    private List<MessageReplyDO> loadReplies(List<MessageDO> messages) {
+        Map<Long, List<Long>> messageIdsBySpaceId = messages.stream()
+                .filter(message -> message.getSpaceId() != null)
+                .collect(Collectors.groupingBy(MessageDO::getSpaceId,
+                        Collectors.mapping(MessageDO::getId, Collectors.toList())));
+        return messageIdsBySpaceId.entrySet().stream()
+                .flatMap(entry -> messageReplyMapper
+                        .selectActiveByMessageIds(entry.getKey(), entry.getValue()).stream())
+                .collect(Collectors.toList());
+    }
+
+    private Long parseMessageId(String messageId) {
+        try {
+            return Long.valueOf(StrUtil.trim(messageId));
+        } catch (NumberFormatException exception) {
+            throw new BizException(ResponseCodeEnum.MESSAGE_NOT_EXIST);
         }
     }
 
-    private String getUserName(Map<Long, String> userNameMap, String userId) {
-        if (StrUtil.isBlank(userId)) {
-            return null;
+    private void addUserId(Set<Long> userIds, Long userId) {
+        if (userId != null) {
+            userIds.add(userId);
         }
-        try {
-            return userNameMap.get(Long.valueOf(userId));
-        } catch (NumberFormatException ignored) {
-            return null;
-        }
+    }
+
+    private String getUserName(Map<Long, String> userNameMap, Long userId) {
+        return userId == null ? null : userNameMap.get(userId);
     }
 
     private String formatDateTime(LocalDateTime dateTime) {

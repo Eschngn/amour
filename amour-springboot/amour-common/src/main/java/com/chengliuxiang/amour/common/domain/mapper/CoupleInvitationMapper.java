@@ -15,6 +15,10 @@ public interface CoupleInvitationMapper extends BaseMapper<CoupleInvitationDO> {
                 .eq(CoupleInvitationDO::getTokenHash, tokenHash));
     }
 
+    default CoupleInvitationDO findById(Long id) {
+        return selectById(id);
+    }
+
     default List<CoupleInvitationDO> selectPendingBySpaceId(Long spaceId) {
         return selectList(new LambdaQueryWrapper<CoupleInvitationDO>()
                 .eq(CoupleInvitationDO::getSpaceId, spaceId)
@@ -22,10 +26,32 @@ public interface CoupleInvitationMapper extends BaseMapper<CoupleInvitationDO> {
                 .orderByDesc(CoupleInvitationDO::getId));
     }
 
+    /**
+     * 查询空间内尚未过期的待接受邀请。
+     */
+    default List<CoupleInvitationDO> selectPendingBySpaceId(Long spaceId, LocalDateTime now) {
+        return selectList(new LambdaQueryWrapper<CoupleInvitationDO>()
+                .eq(CoupleInvitationDO::getSpaceId, spaceId)
+                .eq(CoupleInvitationDO::getStatus, 0)
+                .gt(CoupleInvitationDO::getExpiresAt, now)
+                .orderByDesc(CoupleInvitationDO::getId));
+    }
+
     default List<CoupleInvitationDO> selectPendingByInvitee(Long inviteeUserId) {
         return selectList(new LambdaQueryWrapper<CoupleInvitationDO>()
                 .eq(CoupleInvitationDO::getInviteeUserId, inviteeUserId)
                 .eq(CoupleInvitationDO::getStatus, 0)
+                .orderByDesc(CoupleInvitationDO::getId));
+    }
+
+    /**
+     * 查询指定用户收到的、尚未过期的待接受邀请。
+     */
+    default List<CoupleInvitationDO> selectPendingByInvitee(Long inviteeUserId, LocalDateTime now) {
+        return selectList(new LambdaQueryWrapper<CoupleInvitationDO>()
+                .eq(CoupleInvitationDO::getInviteeUserId, inviteeUserId)
+                .eq(CoupleInvitationDO::getStatus, 0)
+                .gt(CoupleInvitationDO::getExpiresAt, now)
                 .orderByDesc(CoupleInvitationDO::getId));
     }
 
@@ -44,6 +70,13 @@ public interface CoupleInvitationMapper extends BaseMapper<CoupleInvitationDO> {
                 .le(CoupleInvitationDO::getExpiresAt, now));
     }
 
+    default Long countPendingBySpaceId(Long spaceId, LocalDateTime now) {
+        return selectCount(new LambdaQueryWrapper<CoupleInvitationDO>()
+                .eq(CoupleInvitationDO::getSpaceId, spaceId)
+                .eq(CoupleInvitationDO::getStatus, 0)
+                .gt(CoupleInvitationDO::getExpiresAt, now));
+    }
+
     default int insertInvitation(CoupleInvitationDO invitation) {
         return insert(invitation);
     }
@@ -52,5 +85,41 @@ public interface CoupleInvitationMapper extends BaseMapper<CoupleInvitationDO> {
         return update(invitation, new LambdaUpdateWrapper<CoupleInvitationDO>()
                 .eq(CoupleInvitationDO::getId, invitation.getId())
                 .eq(CoupleInvitationDO::getSpaceId, invitation.getSpaceId()));
+    }
+
+    /**
+     * 原子接受邀请：只有仍处于待接受状态且未过期时才能成功。
+     */
+    default int claim(Long id, LocalDateTime acceptedAt) {
+        return update(null, new LambdaUpdateWrapper<CoupleInvitationDO>()
+                .eq(CoupleInvitationDO::getId, id)
+                .eq(CoupleInvitationDO::getStatus, 0)
+                .gt(CoupleInvitationDO::getExpiresAt, acceptedAt)
+                .set(CoupleInvitationDO::getStatus, 1)
+                .set(CoupleInvitationDO::getAcceptedAt, acceptedAt)
+                .set(CoupleInvitationDO::getUpdateTime, acceptedAt));
+    }
+
+    /**
+     * 原子撤销邀请：只有待接受状态才能被撤销。
+     */
+    default int revoke(Long id, Long spaceId, LocalDateTime updateTime) {
+        return update(null, new LambdaUpdateWrapper<CoupleInvitationDO>()
+                .eq(CoupleInvitationDO::getId, id)
+                .eq(CoupleInvitationDO::getSpaceId, spaceId)
+                .eq(CoupleInvitationDO::getStatus, 0)
+                .set(CoupleInvitationDO::getStatus, 2)
+                .set(CoupleInvitationDO::getUpdateTime, updateTime));
+    }
+
+    /**
+     * 撤销空间内所有待接受邀请。
+     */
+    default int revokePendingBySpaceId(Long spaceId, LocalDateTime updateTime) {
+        return update(null, new LambdaUpdateWrapper<CoupleInvitationDO>()
+                .eq(CoupleInvitationDO::getSpaceId, spaceId)
+                .eq(CoupleInvitationDO::getStatus, 0)
+                .set(CoupleInvitationDO::getStatus, 2)
+                .set(CoupleInvitationDO::getUpdateTime, updateTime));
     }
 }

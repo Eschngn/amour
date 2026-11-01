@@ -117,6 +117,21 @@ CREATE INDEX `idx_couple_invitation_space_status` ON `couple_invitation` (`space
 CREATE INDEX `idx_couple_invitation_invitee_status` ON `couple_invitation` (`invitee_user_id`, `status`);
 CREATE INDEX `idx_couple_invitation_expiry` ON `couple_invitation` (`status`, `expires_at`);
 
+CREATE TABLE `couple_space_restore_confirm` (
+    -- 恢复确认主键ID
+    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+    -- 情侣空间ID
+    `space_id` INTEGER NOT NULL,
+    -- 确认恢复的用户ID
+    `user_id` INTEGER NOT NULL,
+    -- 首次确认时间
+    `create_time` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- 最后确认时间，由应用在更新时维护
+    `update_time` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (`space_id`, `user_id`)
+);
+CREATE INDEX `idx_couple_space_restore_confirm_space` ON `couple_space_restore_confirm` (`space_id`);
+
 CREATE TABLE `platform_config` (
     -- 平台配置主键ID
     `id` INTEGER PRIMARY KEY AUTOINCREMENT,

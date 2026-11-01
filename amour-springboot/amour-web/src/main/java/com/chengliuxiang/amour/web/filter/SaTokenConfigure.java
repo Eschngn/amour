@@ -21,6 +21,10 @@ public class SaTokenConfigure implements WebMvcConfigurer {
         registry.addInterceptor(new SaInterceptor(handler -> {
                     SaRouter.match("/message/**", route -> StpUtil.checkLogin());
                     SaRouter.match("/user/**", route -> StpUtil.checkLogin());
+                    // 邀请预览允许未登录查看，其余空间操作必须登录。
+                    SaRouter.match("/space/**")
+                            .notMatch("/space/invitation/preview")
+                            .check(route -> StpUtil.checkLogin());
                 }))
                 .addPathPatterns("/**");
     }

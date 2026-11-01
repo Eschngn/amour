@@ -1,9 +1,14 @@
 package com.chengliuxiang.amour.web.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
+import com.chengliuxiang.amour.common.domain.dos.CoupleMemberDO;
 import com.chengliuxiang.amour.common.domain.dos.PhotoCategoryDO;
 import com.chengliuxiang.amour.common.domain.dos.PhotoDO;
+import com.chengliuxiang.amour.common.domain.mapper.CoupleMemberMapper;
 import com.chengliuxiang.amour.common.domain.mapper.PhotoCategoryMapper;
 import com.chengliuxiang.amour.common.domain.mapper.PhotoMapper;
+import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
+import com.chengliuxiang.amour.common.exception.BizException;
 import com.chengliuxiang.amour.common.model.PageResult;
 import com.chengliuxiang.amour.common.utils.Response;
 import com.chengliuxiang.amour.web.model.vo.photo.PhotoCategoryVO;
@@ -31,14 +36,18 @@ public class PhotoServiceImpl implements PhotoService {
     @Resource
     private PhotoCategoryMapper photoCategoryMapper;
 
+    @Resource
+    private CoupleMemberMapper coupleMemberMapper;
+
     @Override
     public Response<PageResult<PhotoPageItemVO>> pagePhotos(PhotoPageQueryReqVO reqVO) {
         long current = normalizeCurrent(reqVO.getCurrent());
         long size = normalizeSize(reqVO.getSize());
+        Long spaceId = requireCurrentSpaceId();
 
-        com.baomidou.mybatisplus.core.metadata.IPage<PhotoDO> photoPage = photoMapper.selectVisiblePage(
-                current, size, reqVO.getPhotoCategoryId());
-        Map<Long, PhotoCategoryDO> categoryMap = loadCategoryMap(photoPage.getRecords());
+        com.baomidou.mybatisplus.core.metadata.IPage<PhotoDO> photoPage = photoMapper.selectSpacePage(
+                current, size, spaceId, reqVO.getPhotoCategoryId());
+        Map<Long, PhotoCategoryDO> categoryMap = loadCategoryMap(spaceId, photoPage.getRecords());
         List<PhotoPageItemVO> records = photoPage.getRecords().stream()
                 .map(photo -> buildPhotoVO(photo, categoryMap.get(photo.getPhotoCategoryId())))
                 .collect(Collectors.toList());
@@ -53,17 +62,19 @@ public class PhotoServiceImpl implements PhotoService {
 
     @Override
     public Response<PhotoPageItemVO> findCoverPhoto() {
-        PhotoDO coverPhoto = photoMapper.selectCoverPhoto();
+        Long spaceId = requireCurrentSpaceId();
+        PhotoDO coverPhoto = photoMapper.selectCoverPhoto(spaceId);
         if (coverPhoto == null) {
             return Response.success(null);
         }
         return Response.success(buildPhotoVO(
-                coverPhoto, photoCategoryMapper.findCategoryById(coverPhoto.getPhotoCategoryId())));
+                coverPhoto, photoCategoryMapper.findCategoryById(spaceId, coverPhoto.getPhotoCategoryId())));
     }
 
     @Override
     public Response<List<PhotoCategoryVO>> listCategories() {
-        List<PhotoCategoryVO> categories = photoCategoryMapper.selectEnabledList()
+        Long spaceId = requireCurrentSpaceId();
+        List<PhotoCategoryVO> categories = photoCategoryMapper.selectEnabledBySpaceId(spaceId)
                 .stream()
                 .map(category -> PhotoCategoryVO.builder()
                         .id(category.getId())
@@ -72,6 +83,14 @@ public class PhotoServiceImpl implements PhotoService {
                         .build())
                 .collect(Collectors.toList());
         return Response.success(categories);
+    }
+
+    private Long requireCurrentSpaceId() {
+        List<CoupleMemberDO> memberships = coupleMemberMapper.selectActiveByUserId(StpUtil.getLoginIdAsLong());
+        if (memberships == null || memberships.isEmpty()) {
+            throw new BizException(ResponseCodeEnum.SPACE_NOT_EXIST);
+        }
+        return memberships.get(0).getSpaceId();
     }
 
     private long normalizeCurrent(Long current) {
@@ -85,7 +104,7 @@ public class PhotoServiceImpl implements PhotoService {
         return Math.min(size, MAX_PAGE_SIZE);
     }
 
-    private Map<Long, PhotoCategoryDO> loadCategoryMap(List<PhotoDO> photos) {
+    private Map<Long, PhotoCategoryDO> loadCategoryMap(Long spaceId, List<PhotoDO> photos) {
         List<Long> categoryIds = photos.stream()
                 .map(PhotoDO::getPhotoCategoryId)
                 .filter(Objects::nonNull)
@@ -94,7 +113,7 @@ public class PhotoServiceImpl implements PhotoService {
         if (categoryIds.isEmpty()) {
             return Collections.emptyMap();
         }
-        return photoCategoryMapper.findByIds(categoryIds).stream()
+        return photoCategoryMapper.findByIds(spaceId, categoryIds).stream()
                 .collect(Collectors.toMap(PhotoCategoryDO::getId, Function.identity()));
     }
 

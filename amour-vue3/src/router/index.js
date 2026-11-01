@@ -10,14 +10,18 @@ import AdminRoleManage from '@/pages/admin/AdminRoleManage.vue'
 import AdminPermissionManage from '@/pages/admin/AdminPermissionManage.vue'
 import AdminUserManage from '@/pages/admin/AdminUserManage.vue'
 import AnniversaryPage from '@/pages/frontend/AnniversaryPage.vue'
+import LovePlazaPage from '@/pages/frontend/LovePlazaPage.vue'
 import MessageBoardPage from '@/pages/frontend/MessageBoardPage.vue'
 import OurStoryPage from '@/pages/frontend/OurStoryPage.vue'
+import PublicSpaceDetailPage from '@/pages/frontend/PublicSpaceDetailPage.vue'
+import SpaceSetupPage from '@/pages/frontend/SpaceSetupPage.vue'
 import StoryDetail from '@/pages/frontend/StoryDetail.vue'
 import FrontendLogin from '@/pages/frontend/FrontendLogin.vue'
 import UserProfilePage from '@/pages/frontend/UserProfilePage.vue'
 import PhotoAlbumPage from '@/pages/frontend/PhotoAlbumPage.vue'
 import { isAdminAuthenticated } from '@/utils/adminAuth.js'
 import { clearFrontendSession, hasFrontendQueryPermission, isFrontendAuthenticated, setFrontendProfile } from '@/utils/auth.js'
+import { isSpaceReady, refreshSpaceStatus } from '@/composables/useFrontendSpace.js'
 import api from '@/axios'
 import { createRouter, createWebHistory } from 'vue-router'
 
@@ -28,29 +32,47 @@ const routes = [
     meta: { title: '恋语间 首页' },
   },
   {
+    path: '/plaza',
+    name: 'plaza',
+    component: LovePlazaPage,
+    meta: { title: '恋爱广场 · 恋语间' },
+  },
+  {
+    path: '/plaza/:spaceId',
+    name: 'public-space-detail',
+    component: PublicSpaceDetailPage,
+    meta: { title: '公开情侣空间 · 恋语间' },
+  },
+  {
+    path: '/space/setup',
+    name: 'space-setup',
+    component: SpaceSetupPage,
+    meta: { title: '创建或绑定情侣空间 · 恋语间', requiresFrontendAuth: true },
+  },
+  {
     path: '/story',
     component: OurStoryPage,
-    meta: { title: '我们的故事 · 恋语间' },
+    meta: { title: '我们的故事 · 恋语间', requiresFrontendAuth: true, requiresCoupleSpace: true },
   },
   {
     path: '/story/:id',
     component: StoryDetail,
-    meta: { title: '故事详情 · 恋语间' },
+    meta: { title: '故事详情 · 恋语间', requiresFrontendAuth: true, requiresCoupleSpace: true },
   },
   {
     path: '/message',
     component: MessageBoardPage,
-    meta: { title: '留言板 · 恋语间' },
+    meta: { title: '留言板 · 恋语间', requiresFrontendAuth: true, requiresCoupleSpace: true },
   },
   {
     path: '/photo',
     component: PhotoAlbumPage,
-    meta: { title: '相册 · 恋语间' },
+    meta: { title: '相册 · 恋语间', requiresFrontendAuth: true, requiresCoupleSpace: true },
   },
   {
     path: '/anniversary',
     component: AnniversaryPage,
-    meta: { title: '纪念日 · 恋语间' },
+    meta: { title: '纪念日 · 恋语间', requiresFrontendAuth: true, requiresCoupleSpace: true },
   },
   {
     path: '/login',
@@ -161,14 +183,33 @@ async function validateFrontendSession() {
   return frontendAuthCheck
 }
 
+async function ensureCoupleSpaceReady() {
+  if (isSpaceReady.value) return true
+  await refreshSpaceStatus()
+  return isSpaceReady.value
+}
+
 router.beforeEach(async (to) => {
   const hadFrontendSession = isFrontendAuthenticated()
   const frontendSessionValid = await validateFrontendSession()
   const frontendSessionExpired = hadFrontendSession && !frontendSessionValid
-  if (to.meta?.requiresFrontendAuth && (!frontendSessionValid || frontendSessionExpired)) {
-    return { path: '/login', query: { expired: '1', redirect: to.fullPath } }
+  if (to.meta?.requiresFrontendAuth && (!hadFrontendSession || !frontendSessionValid || frontendSessionExpired)) {
+    return {
+      path: '/login',
+      query: {
+        ...(frontendSessionExpired ? { expired: '1' } : {}),
+        redirect: to.fullPath,
+      },
+    }
   }
   if (!to.path.startsWith('/admin')) {
+    if (to.meta?.requiresCoupleSpace && !(await ensureCoupleSpaceReady())) {
+      return {
+        path: '/space/setup',
+        query: { redirect: to.fullPath },
+      }
+    }
+
     const moduleByPath = { '/story': 'story', '/message': 'message', '/photo': 'photo', '/anniversary': 'anniversary', '/profile': 'profile' }
     const module = Object.entries(moduleByPath).find(([path]) => to.path === path || to.path.startsWith(`${path}/`))?.[1]
     if (module && !hasFrontendQueryPermission(module)) return { path: '/' }

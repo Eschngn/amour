@@ -31,6 +31,9 @@ import java.util.stream.Collectors;
 @Slf4j
 public class AdminStoryServiceImpl implements AdminStoryService {
 
+    private static final int VISIBILITY_MEMBER = 0;
+    private static final int VISIBILITY_HIDDEN = 2;
+
     @Resource
     private StoryNodeMapper storyNodeMapper;
     @Resource
@@ -48,7 +51,7 @@ public class AdminStoryServiceImpl implements AdminStoryService {
     @Override
     public Response<PageResult<FindStoryPageListRspVO>> findStoryPageList(FindStoryPageListReqVO reqVO) {
         IPage<StoryNodeDO> nodePage = storyNodeMapper.selectAdminPage(
-                reqVO.getCurrent(), reqVO.getSize(),
+                reqVO.getCurrent(), reqVO.getSize(), null,
                 StrUtil.isNotBlank(reqVO.getTitle()) ? reqVO.getTitle() : null);
 
         // 4. 批量查询章节名称
@@ -62,7 +65,7 @@ public class AdminStoryServiceImpl implements AdminStoryService {
         if (chapterIds.isEmpty()) {
             chapterNameMap = Collections.emptyMap();
         } else {
-            chapterNameMap = storyChapterMapper.selectChaptersByIds(chapterIds).stream()
+            chapterNameMap = storyChapterMapper.selectBatchIds(chapterIds).stream()
                     .collect(Collectors.toMap(StoryChapterDO::getId, StoryChapterDO::getName));
         }
 
@@ -73,7 +76,7 @@ public class AdminStoryServiceImpl implements AdminStoryService {
                         .title(node.getTitle())
                         .summary(node.getSummary())
                         .coverImage(node.getCoverImage())
-                        .isVisible(node.getIsVisible())
+                        .isVisible(toVisible(node.getVisibility()))
                         .chapterId(node.getChapterId() != null ? String.valueOf(node.getChapterId()) : null)
                         .chapterName(chapterNameMap.get(node.getChapterId()))
                         .happenedTime(node.getHappenedTime() != null
@@ -102,17 +105,14 @@ public class AdminStoryServiceImpl implements AdminStoryService {
     public Response<FindStoryDetailRspVO> findStoryDetail(FindStoryDetailReqVO findStoryDetailReqVO) {
         Long storyNodeId = findStoryDetailReqVO.getId();
         // 1. 查询故事节点
-        StoryNodeDO node = storyNodeMapper.selectActiveById(storyNodeId);
-        if (node == null) {
-            throw new BizException(ResponseCodeEnum.STORY_NOT_EXIST);
-        }
+        StoryNodeDO node = requireStory(storyNodeId);
 
         // 2. 查询章节名称
-        StoryChapterDO chapter = storyChapterMapper.selectChapterById(node.getChapterId());
+        StoryChapterDO chapter = storyChapterMapper.selectChapterById(node.getSpaceId(), node.getChapterId());
         String chapterName = chapter != null ? chapter.getName() : null;
 
         // 3. 查询关联图片
-        List<StoryNodeImageDO> imageDOS = storyNodeImageMapper.selectByNodeId(storyNodeId);
+        List<StoryNodeImageDO> imageDOS = storyNodeImageMapper.selectByNodeId(node.getSpaceId(), storyNodeId);
 
         List<FindStoryDetailRspVO.ImageVO> images = imageDOS.stream()
                 .map(img -> FindStoryDetailRspVO.ImageVO.builder()
@@ -147,12 +147,13 @@ public class AdminStoryServiceImpl implements AdminStoryService {
     @Override
     public Response<Long> addStory(AddStoryReqVO reqVO) {
         // 校验章节是否存在
-        StoryChapterDO chapter = storyChapterMapper.selectChapterById(reqVO.getChapterId());
+        StoryChapterDO chapter = storyChapterMapper.selectById(reqVO.getChapterId());
         if (chapter == null) {
             throw new BizException(ResponseCodeEnum.CHAPTER_NOT_EXIST);
         }
 
         StoryNodeDO node = StoryNodeDO.builder()
+                .spaceId(chapter.getSpaceId())
                 .title(reqVO.getTitle())
                 .summary(reqVO.getSummary())
                 .content(reqVO.getContent())
@@ -162,7 +163,7 @@ public class AdminStoryServiceImpl implements AdminStoryService {
                 .tagLabel(reqVO.getTagLabel())
                 .chapterId(reqVO.getChapterId())
                 .isMilestone(reqVO.getIsMilestone())
-                .isVisible(true)
+                .visibility(VISIBILITY_MEMBER)
                 .createdBy(StpUtil.getLoginIdAsLong())
                 .createTime(LocalDateTime.now())
                 .updateTime(LocalDateTime.now())
@@ -175,19 +176,17 @@ public class AdminStoryServiceImpl implements AdminStoryService {
     @Override
     public Response<Void> updateStory(UpdateStoryReqVO reqVO) {
         // 校验故事是否存在
-        StoryNodeDO existNode = storyNodeMapper.selectActiveById(reqVO.getId());
-        if (existNode == null) {
-            throw new BizException(ResponseCodeEnum.STORY_NOT_EXIST);
-        }
+        StoryNodeDO existNode = requireStory(reqVO.getId());
 
         // 校验章节是否存在
-        StoryChapterDO chapter = storyChapterMapper.selectChapterById(reqVO.getChapterId());
+        StoryChapterDO chapter = storyChapterMapper.selectById(reqVO.getChapterId());
         if (chapter == null) {
             throw new BizException(ResponseCodeEnum.CHAPTER_NOT_EXIST);
         }
 
         StoryNodeDO node = StoryNodeDO.builder()
                 .id(reqVO.getId())
+                .spaceId(existNode.getSpaceId())
                 .title(reqVO.getTitle())
                 .summary(reqVO.getSummary())
                 .content(reqVO.getContent())
@@ -209,14 +208,12 @@ public class AdminStoryServiceImpl implements AdminStoryService {
     @Override
     public Response<Void> updatePublishStatus(UpdateStoryVisibleStatusReqVO reqVO) {
         // 校验故事是否存在
-        StoryNodeDO existNode = storyNodeMapper.selectActiveById(reqVO.getId());
-        if (existNode == null) {
-            throw new BizException(ResponseCodeEnum.STORY_NOT_EXIST);
-        }
+        StoryNodeDO existNode = requireStory(reqVO.getId());
 
         StoryNodeDO node = StoryNodeDO.builder()
                 .id(reqVO.getId())
-                .isVisible(reqVO.getIsVisible())
+                .spaceId(existNode.getSpaceId())
+                .visibility(toVisibility(reqVO.getIsVisible()))
                 .updateTime(LocalDateTime.now())
                 .build();
 
@@ -227,18 +224,32 @@ public class AdminStoryServiceImpl implements AdminStoryService {
     @Override
     public Response<Void> deleteStory(DeleteStoryReqVO reqVO) {
         // 校验故事是否存在（未删除的）
-        StoryNodeDO existNode = storyNodeMapper.selectActiveById(reqVO.getId());
-        if (existNode == null) {
-            throw new BizException(ResponseCodeEnum.STORY_NOT_EXIST);
-        }
+        StoryNodeDO existNode = requireStory(reqVO.getId());
 
         StoryNodeDO node = StoryNodeDO.builder()
                 .id(reqVO.getId())
+                .spaceId(existNode.getSpaceId())
                 .isDeleted(true)
                 .updateTime(LocalDateTime.now())
                 .build();
 
         storyNodeMapper.updateStoryNode(node);
         return Response.success();
+    }
+
+    private StoryNodeDO requireStory(Long id) {
+        StoryNodeDO node = storyNodeMapper.selectById(id);
+        if (node == null || Boolean.TRUE.equals(node.getIsDeleted())) {
+            throw new BizException(ResponseCodeEnum.STORY_NOT_EXIST);
+        }
+        return node;
+    }
+
+    private Integer toVisibility(Boolean isVisible) {
+        return Boolean.FALSE.equals(isVisible) ? VISIBILITY_HIDDEN : VISIBILITY_MEMBER;
+    }
+
+    private Boolean toVisible(Integer visibility) {
+        return visibility == null || visibility != VISIBILITY_HIDDEN;
     }
 }

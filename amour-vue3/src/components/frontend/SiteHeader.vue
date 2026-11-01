@@ -17,40 +17,63 @@
       </RouterLink>
 
       <nav
-        class="hidden items-center gap-8 text-sm font-medium text-rose-800/70 md:flex"
+        class="hidden items-center gap-0.5 text-sm font-medium text-rose-800/70 md:flex lg:gap-1"
         aria-label="主导航"
       >
         <RouterLink
-          v-if="hasFrontendQueryPermission('story')"
+          to="/plaza"
+          class="nav-link"
+          :class="{ 'nav-link-active': isPlazaSection }"
+        >
+          恋爱广场
+        </RouterLink>
+        <RouterLink
+          v-if="isSpaceReady"
+          to="/"
+          class="nav-link"
+          :class="{ 'nav-link-active': isHomeSection }"
+        >
+          我的情侣空间
+        </RouterLink>
+        <RouterLink
+          v-if="isSpaceReady && hasFrontendQueryPermission('story')"
           to="/story"
-          class="transition hover:text-rose-600"
-          active-class="font-semibold text-rose-600"
+          class="nav-link"
+          :class="{ 'nav-link-active': isSection('/story') }"
         >
           我们的故事
         </RouterLink>
         <RouterLink
-          v-if="hasFrontendQueryPermission('message')"
+          v-if="isSpaceReady && hasFrontendQueryPermission('message')"
           to="/message"
-          class="transition hover:text-rose-600"
-          active-class="font-semibold text-rose-600"
+          class="nav-link"
+          :class="{ 'nav-link-active': isSection('/message') }"
         >
           留言板
         </RouterLink>
         <RouterLink
-          v-if="hasFrontendQueryPermission('photo')"
+          v-if="isSpaceReady && hasFrontendQueryPermission('photo')"
           to="/photo"
-          class="transition hover:text-rose-600"
-          active-class="font-semibold text-rose-600"
+          class="nav-link"
+          :class="{ 'nav-link-active': isSection('/photo') }"
         >
           相册
         </RouterLink>
         <RouterLink
-          v-if="hasFrontendQueryPermission('anniversary')"
+          v-if="isSpaceReady && hasFrontendQueryPermission('anniversary')"
           to="/anniversary"
-          class="transition hover:text-rose-600"
-          active-class="font-semibold text-rose-600"
+          class="nav-link"
+          :class="{ 'nav-link-active': isSection('/anniversary') }"
         >
           纪念日
+        </RouterLink>
+        <RouterLink
+          v-if="showSetupEntry"
+          to="/space/setup"
+          class="nav-link"
+          :class="{ 'nav-link-active': isSection('/space/setup') }"
+        >
+          {{ setupLabel }}
         </RouterLink>
       </nav>
 
@@ -93,40 +116,63 @@
     </div>
 
     <nav
-      class="mobile-nav flex items-center gap-1 overflow-x-auto border-t border-rose-100/70 px-4 pb-2 pt-2 text-xs font-semibold text-rose-700/65 md:hidden"
+      class="mobile-nav flex items-center gap-1.5 overflow-x-auto border-t border-rose-100/70 px-4 pb-2.5 pt-2 text-xs font-semibold text-rose-700/65 md:hidden"
       aria-label="移动端主导航"
     >
       <RouterLink
-        v-if="hasFrontendQueryPermission('story')"
+        to="/plaza"
+        class="mobile-nav-link"
+        :class="{ 'mobile-nav-link-active': isPlazaSection }"
+      >
+        恋爱广场
+      </RouterLink>
+      <RouterLink
+        v-if="isSpaceReady"
+        to="/"
+        class="mobile-nav-link"
+        :class="{ 'mobile-nav-link-active': isHomeSection }"
+      >
+        我的情侣空间
+      </RouterLink>
+      <RouterLink
+        v-if="isSpaceReady && hasFrontendQueryPermission('story')"
         to="/story"
-        class="shrink-0 rounded-full px-3 py-1.5 transition hover:bg-rose-50 hover:text-rose-600"
-        active-class="bg-rose-100/80 text-rose-600"
+        class="mobile-nav-link"
+        :class="{ 'mobile-nav-link-active': isSection('/story') }"
       >
         我们的故事
       </RouterLink>
       <RouterLink
-        v-if="hasFrontendQueryPermission('photo')"
+        v-if="isSpaceReady && hasFrontendQueryPermission('photo')"
         to="/photo"
-        class="shrink-0 rounded-full px-3 py-1.5 transition hover:bg-rose-50 hover:text-rose-600"
-        active-class="bg-rose-100/80 text-rose-600"
+        class="mobile-nav-link"
+        :class="{ 'mobile-nav-link-active': isSection('/photo') }"
       >
         相册
       </RouterLink>
       <RouterLink
-        v-if="hasFrontendQueryPermission('anniversary')"
+        v-if="isSpaceReady && hasFrontendQueryPermission('anniversary')"
         to="/anniversary"
-        class="shrink-0 rounded-full px-3 py-1.5 transition hover:bg-rose-50 hover:text-rose-600"
-        active-class="bg-rose-100/80 text-rose-600"
+        class="mobile-nav-link"
+        :class="{ 'mobile-nav-link-active': isSection('/anniversary') }"
       >
         纪念日
       </RouterLink>
       <RouterLink
-        v-if="hasFrontendQueryPermission('message')"
+        v-if="isSpaceReady && hasFrontendQueryPermission('message')"
         to="/message"
-        class="shrink-0 rounded-full px-3 py-1.5 transition hover:bg-rose-50 hover:text-rose-600"
-        active-class="bg-rose-100/80 text-rose-600"
+        class="mobile-nav-link"
+        :class="{ 'mobile-nav-link-active': isSection('/message') }"
       >
         留言板
+      </RouterLink>
+      <RouterLink
+        v-if="showSetupEntry"
+        to="/space/setup"
+        class="mobile-nav-link"
+        :class="{ 'mobile-nav-link-active': isSection('/space/setup') }"
+      >
+        {{ setupLabel }}
       </RouterLink>
     </nav>
 
@@ -139,6 +185,22 @@
         class="fixed z-[9999] pt-2"
       >
         <div class="min-w-[120px] rounded-xl border border-rose-100 bg-white p-1.5 shadow-lg shadow-rose-100/40">
+          <RouterLink
+            v-if="isSpaceReady"
+            to="/"
+            class="block w-full rounded-lg px-3 py-2 text-left text-sm text-rose-700 transition hover:bg-rose-50"
+            @click="dropdownOpen = false"
+          >
+            我的情侣空间
+          </RouterLink>
+          <RouterLink
+            v-else-if="showSetupEntry"
+            to="/space/setup"
+            class="block w-full rounded-lg px-3 py-2 text-left text-sm text-rose-700 transition hover:bg-rose-50"
+            @click="dropdownOpen = false"
+          >
+            {{ setupLabel }}
+          </RouterLink>
           <RouterLink
             to="/profile"
             class="block w-full rounded-lg px-3 py-2 text-left text-sm text-rose-700 transition hover:bg-rose-50"
@@ -160,8 +222,8 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import api from '@/axios'
 import {
   clearFrontendSession,
@@ -171,8 +233,42 @@ import {
   frontendUsername,
   hasFrontendQueryPermission,
 } from '@/utils/auth'
+import { useFrontendSpace } from '@/composables/useFrontendSpace'
 
 const router = useRouter()
+const route = useRoute()
+
+/**
+ * RouterLink 自带的 active-class 只能匹配“当前路由记录及其父记录”，
+ * 而 /plaza/:spaceId、/story/:id 这类详情页是平级路由，不会点亮列表页入口。
+ * 因此导航高亮统一按路径前缀判断，详情页也能正确归属到所属栏目。
+ */
+function isSection(prefix) {
+  const path = route.path || '/'
+  return path === prefix || path.startsWith(`${prefix}/`)
+}
+
+const isPlazaSection = computed(() => isSection('/plaza'))
+// 首页同时承载“我的情侣空间”和广场兜底，只有停留在根路径时才高亮这一项。
+const isHomeSection = computed(() => route.path === '/')
+const {
+  isSpaceReady,
+  hasCoupleSpace,
+  spaceStatus,
+  spaceLoading,
+  spaceError,
+  clearSpaceStatus,
+} = useFrontendSpace()
+
+const showSetupEntry = computed(() => {
+  if (!frontendLoggedIn.value || isSpaceReady.value) return false
+  if (hasCoupleSpace.value) return true
+  // 状态尚未确认时不要展示“没有空间”入口，避免网络问题造成误判。
+  return !spaceLoading.value && !spaceStatus.value && !spaceError.value
+})
+const setupLabel = computed(() => (
+  hasCoupleSpace.value ? '空间状态' : '创建/绑定情侣空间'
+))
 
 const dropdownOpen = ref(false)
 const dropdownRef = ref(null)
@@ -231,18 +327,109 @@ async function onLogout() {
   } catch {
     // 即使服务端 token 已失效，也要清理本地会话
   } finally {
+    clearSpaceStatus()
     clearFrontendSession()
-    router.push('/')
+    router.push('/plaza')
   }
 }
 </script>
 
 <style scoped>
+/* 桌面端导航项：默认图标式文字，选中时加粗、加深并出现渐变下划线 */
+.nav-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+  color: rgb(136 19 55 / 0.62);
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: 0.15rem;
+  height: 2px;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #fb7185 0%, #f43f5e 50%, #db2777 100%);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.24s ease;
+}
+
+.nav-link:hover {
+  color: rgb(225 29 72);
+  background-color: rgb(255 241 242 / 0.75);
+}
+
+.nav-link:focus-visible {
+  outline: 2px solid #fb7185;
+  outline-offset: 2px;
+}
+
+.nav-link-active {
+  font-weight: 700;
+  color: rgb(190 18 60);
+  background-color: rgb(255 241 242 / 0.9);
+}
+
+.nav-link-active::after {
+  transform: scaleX(1);
+}
+
+/* 移动端导航项：用实心胶囊 + 下划线双重强调 */
+.mobile-nav-link {
+  position: relative;
+  flex-shrink: 0;
+  padding: 0.4rem 0.75rem 0.5rem;
+  border-radius: 9999px;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.mobile-nav-link:hover {
+  color: rgb(225 29 72);
+  background-color: rgb(255 241 242 / 0.8);
+}
+
+.mobile-nav-link:focus-visible {
+  outline: 2px solid #fb7185;
+  outline-offset: 2px;
+}
+
+.mobile-nav-link-active {
+  color: #be123c;
+  background-color: #ffe4e6;
+  font-weight: 700;
+}
+
+.mobile-nav-link-active::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0.1rem;
+  height: 2px;
+  width: 1.1rem;
+  transform: translateX(-50%);
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #fb7185, #db2777);
+}
+
 .mobile-nav {
   scrollbar-width: none;
 }
 
 .mobile-nav::-webkit-scrollbar {
   display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-link::after,
+  .nav-link,
+  .mobile-nav-link {
+    transition: none;
+  }
 }
 </style>

@@ -1,17 +1,13 @@
 package com.chengliuxiang.amour.common.service;
 
-import com.chengliuxiang.amour.common.constant.RedisKeyConstants;
 import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
 import com.chengliuxiang.amour.common.exception.BizException;
 import com.chengliuxiang.amour.common.model.login.LoginChallengeVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
-import javax.annotation.Resource;
 import javax.crypto.Cipher;
 import javax.crypto.spec.OAEPParameterSpec;
 import javax.crypto.spec.PSource;
@@ -24,10 +20,10 @@ import java.security.PublicKey;
 import java.security.spec.MGF1ParameterSpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
-import java.time.Duration;
 import java.util.Base64;
-import java.util.Collections;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 登录密码的应用层加密服务。
@@ -46,15 +42,9 @@ public class LoginCryptoService {
     private static final String CIPHER_TRANSFORMATION = "RSA/ECB/OAEPWithSHA-256AndMGF1Padding";
     private static final OAEPParameterSpec OAEP_SHA_256 = new OAEPParameterSpec(
             "SHA-256", "MGF1", MGF1ParameterSpec.SHA256, PSource.PSpecified.DEFAULT);
-    private static final DefaultRedisScript<String> CONSUME_CHALLENGE_SCRIPT =
-            new DefaultRedisScript<>(
-                    "local value = redis.call('GET', KEYS[1]); "
-                            + "if value then redis.call('DEL', KEYS[1]); end; "
-                            + "return value;",
-                    String.class);
 
-    @Resource
-    private StringRedisTemplate stringRedisTemplate;
+    /** 一次性挑战 ID -> 过期时间戳（毫秒），只保存在当前应用内存中。 */
+    private final Map<String, Long> loginChallenges = new ConcurrentHashMap<>();
 
     @Value("${amour.security.login-rsa.public-key:}")
     private String configuredPublicKey;
@@ -97,8 +87,8 @@ public class LoginCryptoService {
 
     public LoginChallengeVO createChallenge() {
         String challengeId = UUID.randomUUID().toString();
-        String redisKey = RedisKeyConstants.buildLoginChallengeKey(challengeId);
-        stringRedisTemplate.opsForValue().set(redisKey, "1", Duration.ofSeconds(CHALLENGE_TTL_SECONDS));
+        purgeExpiredChallenges();
+        loginChallenges.put(challengeId, System.currentTimeMillis() + CHALLENGE_TTL_SECONDS * 1000);
         return LoginChallengeVO.builder()
                 .challengeId(challengeId)
                 .publicKey(publicKeyBase64)
@@ -131,12 +121,15 @@ public class LoginCryptoService {
         if (!hasText(challengeId)) {
             throw new BizException(ResponseCodeEnum.LOGIN_CHALLENGE_INVALID);
         }
-        String redisKey = RedisKeyConstants.buildLoginChallengeKey(challengeId);
-        String value = stringRedisTemplate.execute(
-                CONSUME_CHALLENGE_SCRIPT, Collections.singletonList(redisKey));
-        if (value == null) {
+        Long expireAt = loginChallenges.remove(challengeId);
+        if (expireAt == null || expireAt <= System.currentTimeMillis()) {
             throw new BizException(ResponseCodeEnum.LOGIN_CHALLENGE_INVALID);
         }
+    }
+
+    private void purgeExpiredChallenges() {
+        long now = System.currentTimeMillis();
+        loginChallenges.entrySet().removeIf(entry -> entry.getValue() <= now);
     }
 
     private byte[] decodePem(String value) {
