@@ -237,7 +237,8 @@ router.beforeEach(async (to) => {
       }
     }
 
-    const moduleByPath = { '/story': 'story', '/message': 'message', '/photo': 'photo', '/anniversary': 'anniversary', '/profile': 'profile' }
+    // 个人设置只依赖登录态，不参与模块权限控制（后端也未下发 frontend:profile:query）。
+    const moduleByPath = { '/story': 'story', '/message': 'message', '/photo': 'photo', '/anniversary': 'anniversary' }
     const module = Object.entries(moduleByPath).find(([path]) => to.path === path || to.path.startsWith(`${path}/`))?.[1]
     if (module && !hasFrontendQueryPermission(module)) return { path: '/' }
     return true
