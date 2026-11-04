@@ -7,11 +7,13 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test:space-state": "node --test src/composables/useFrontendSpace.test.mjs"
+    "test:space-state": "node --test src/composables/useFrontendSpace.test.mjs",
+    "test:space-api": "node --test src/utils/spaceInvitation.test.mjs src/utils/safeRedirect.test.mjs"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",
     "@headlessui/vue": "^1.7.23",
+    "@vuepic/vue-datepicker": "^14.0.0",
     "axios": "^1.16.0",
     "element-plus": "^2.14.0",
     "flowbite": "^1.8.1",

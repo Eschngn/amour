@@ -1,6 +1,7 @@
 package com.chengliuxiang.amour.common.aspect;
 
 import com.chengliuxiang.amour.common.utils.JsonUtil;
+import com.chengliuxiang.amour.common.utils.LogSensitiveMasker;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -49,8 +50,11 @@ public class ApiOperationLogAspect {
 
             // 请求入参
             Object[] args = joinPoint.getArgs();
-            // 入参转 JSON 字符串
-            String argsJsonStr = Arrays.stream(args).map(toJsonStr()).collect(Collectors.joining(", "));
+            // 入参转 JSON 字符串，邀请令牌等凭证在写日志前统一脱敏
+            String argsJsonStr = Arrays.stream(args)
+                    .map(toJsonStr())
+                    .map(LogSensitiveMasker::mask)
+                    .collect(Collectors.joining(", "));
 
             // 功能描述信息
             String description = getApiOperationLogDescription(joinPoint);
@@ -67,7 +71,7 @@ public class ApiOperationLogAspect {
 
             // 打印出参等相关信息
             log.info("====== 请求结束: [{}], 耗时: {}ms, 出参: {} =================================== ",
-                    description, executionTime, JsonUtil.toJsonString(result));
+                    description, executionTime, LogSensitiveMasker.mask(JsonUtil.toJsonString(result)));
 
             return result;
         } finally {

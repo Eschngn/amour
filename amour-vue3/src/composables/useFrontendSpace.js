@@ -2,6 +2,7 @@ import { computed, ref, watch } from 'vue'
 import { fetchSpaceStatus } from '@/api/space'
 import { frontendLoggedIn } from '@/utils/auth'
 import {
+  SPACE_STATUS,
   deriveSpaceViewMode,
   hasSpaceIdentity,
   isReadySpace,
@@ -31,6 +32,37 @@ const hasCoupleSpace = computed(() => (
 /** spaceId 存在且 status=1，页面才可以进入正常的情侣空间内容。 */
 const isSpaceReady = computed(() => (
   hasCoupleSpace.value && isReadySpace(spaceStatus.value)
+))
+
+/**
+ * 空间处于“等待另一半加入”（status=0）。
+ *
+ * 这类空间必须能创建与撤销邀请，但不能当作 status=1 的正常空间使用：
+ * - 页面不应跳转到故事/相册等正常入口；
+ * - 邀请区只在该状态下展示。
+ */
+const isSpaceWaiting = computed(() => (
+  hasCoupleSpace.value && Number(spaceStatus.value?.status) === SPACE_STATUS.WAITING
+))
+
+/**
+ * 空间状态是否“暂时无法确认”。
+ *
+ * 网络/服务异常时 spaceStatus 可能仍是 null，但这不是“用户没有空间”。
+ * 路由守卫与导航必须据此避免把错误当成 plaza 状态。
+ */
+const isSpaceStatusUnknown = computed(() => (
+  frontendLoggedIn.value && Boolean(spaceError.value) && !hasSpaceIdentity(spaceStatus.value)
+))
+
+/**
+ * 当前用户是否可以在等待绑定状态下管理邀请。
+ *
+ * 后端 createInvitation 要求调用者是空间有效成员且空间 status=0，
+ * 前端用同一条件控制入口，避免展示必然失败的按钮。
+ */
+const canManageSpaceInvitations = computed(() => (
+  isSpaceWaiting.value && Number(spaceStatus.value?.memberCount ?? 0) < 2
 ))
 
 /**
@@ -217,6 +249,9 @@ export function useFrontendSpace() {
     spaceError,
     hasCoupleSpace,
     isSpaceReady,
+    isSpaceWaiting,
+    canManageSpaceInvitations,
+    isSpaceStatusUnknown,
     viewMode,
     refreshSpaceStatus,
     clearSpaceStatus,
@@ -229,6 +264,9 @@ export {
   spaceError,
   hasCoupleSpace,
   isSpaceReady,
+  isSpaceWaiting,
+  canManageSpaceInvitations,
+  isSpaceStatusUnknown,
   viewMode,
 }
 

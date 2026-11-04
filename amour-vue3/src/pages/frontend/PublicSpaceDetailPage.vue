@@ -1,7 +1,7 @@
 <template>
   <CouplePageScaffold>
     <main class="relative z-10">
-      <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-16">
+      <div class="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-16">
         <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
           <RouterLink
             to="/plaza"
@@ -12,23 +12,14 @@
             </svg>
             返回恋爱广场
           </RouterLink>
-          <span
-            v-if="isOwnPublicSpace"
-            class="inline-flex items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50/80 px-3 py-1.5 text-[11px] font-semibold text-amber-700"
-          >
-            <span class="h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden="true" />
-            这是你的公开空间，仅展示公开内容
-          </span>
         </div>
 
         <div v-if="loading" class="space-y-6" aria-label="正在加载公开情侣空间" aria-busy="true">
-          <div class="h-64 animate-pulse rounded-[2rem] border border-rose-100 bg-rose-100/60 sm:h-72" />
-          <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-            <div class="space-y-5">
-              <div class="h-48 animate-pulse rounded-[1.75rem] border border-rose-100 bg-white/65" />
-              <div class="h-64 animate-pulse rounded-[1.75rem] border border-rose-100 bg-white/65" />
-            </div>
-            <div class="h-72 animate-pulse rounded-[1.75rem] border border-rose-100 bg-white/65" />
+          <div class="h-14 animate-pulse rounded-2xl border border-rose-100 bg-white/55" />
+          <div class="h-52 animate-pulse rounded-[2rem] border border-rose-100 bg-white/65" />
+          <div class="space-y-5">
+            <div class="h-48 animate-pulse rounded-[1.75rem] border border-rose-100 bg-white/65" />
+            <div class="h-64 animate-pulse rounded-[1.75rem] border border-rose-100 bg-white/65" />
           </div>
         </div>
 
@@ -64,109 +55,96 @@
         </section>
 
         <template v-else-if="space">
+          <!-- 空间信息头部：不使用封面大图，保持信息密度与首屏可读性 -->
           <header class="overflow-hidden rounded-[2rem] border border-rose-100/80 bg-white/85 shadow-lg shadow-rose-100/40 backdrop-blur-sm">
-            <div class="relative h-56 overflow-hidden bg-gradient-to-br from-rose-400 via-rose-500 to-pink-500 sm:h-72">
-              <img
-                v-if="coverUrl && !coverFailed"
-                :src="coverUrl"
-                :alt="`${displayName}的公开空间封面`"
-                class="h-full w-full object-cover"
-                @error="coverFailed = true"
-              >
-              <div v-else class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white/75">
-                <span class="font-display text-6xl leading-none" aria-hidden="true">♥</span>
-                <span class="text-[10px] font-bold tracking-[0.28em]">LOVE IN PUBLIC</span>
-              </div>
-              <div class="absolute inset-0 bg-gradient-to-t from-rose-950/80 via-rose-950/20 to-transparent" aria-hidden="true" />
+            <div class="relative overflow-hidden bg-gradient-to-br from-rose-50 via-white to-pink-50/80 px-5 py-6 sm:px-8 sm:py-8">
+              <div class="pointer-events-none absolute -right-12 -top-16 h-40 w-40 rounded-full bg-rose-100/70 blur-3xl" aria-hidden="true" />
+              <div class="pointer-events-none absolute -bottom-20 left-1/4 h-32 w-32 rounded-full bg-fuchsia-100/60 blur-3xl" aria-hidden="true" />
 
-              <div class="absolute inset-x-0 bottom-0 p-5 text-white sm:p-8">
+              <div class="relative">
                 <div class="flex flex-wrap items-center gap-2">
-                  <span class="inline-flex items-center gap-1.5 rounded-full border border-white/50 bg-white/15 px-2.5 py-1 text-[10px] font-bold tracking-[0.14em] text-white backdrop-blur-sm">
-                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-300" aria-hidden="true" />
+                  <span class="inline-flex items-center gap-1.5 rounded-full border border-rose-200/80 bg-white/80 px-2.5 py-1 text-[10px] font-bold tracking-[0.14em] text-rose-600">
+                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden="true" />
                     公开空间
                   </span>
-                  <span v-if="isOwnPublicSpace" class="rounded-full border border-white/40 bg-white/15 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-sm">
+                  <span v-if="isOwnPublicSpace" class="rounded-full border border-amber-200/80 bg-amber-50/80 px-2.5 py-1 text-[10px] font-semibold text-amber-700">
                     你的公开主页
                   </span>
                 </div>
-                <h1 class="mt-3 break-words font-display text-3xl font-bold leading-tight tracking-tight sm:text-5xl">
+
+                <h1 class="mt-3 break-words font-display text-3xl font-bold leading-tight tracking-tight text-rose-950 sm:text-4xl">
                   {{ displayName }}
                 </h1>
+
+                <p class="mt-3 max-w-2xl whitespace-pre-line break-words text-sm leading-7 text-rose-800/65">
+                  {{ description }}
+                </p>
+
+                <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-rose-700/55">
+                  <span class="inline-flex items-center gap-1.5">
+                    <svg class="h-3.5 w-3.5 text-rose-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                      <rect x="3" y="5" width="18" height="16" rx="2" />
+                      <path d="M16 3v4M8 3v4M3 11h18" stroke-linecap="round" />
+                    </svg>
+                    {{ togetherText }}
+                  </span>
+                  <span v-if="startDateText" class="inline-flex items-center gap-1.5">
+                    <span class="h-1.5 w-1.5 rounded-full bg-rose-300" aria-hidden="true" />
+                    {{ startDateText }}
+                  </span>
+                </div>
               </div>
             </div>
 
-            <div class="p-5 sm:p-8">
-              <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
-                <div class="min-w-0">
-                  <p class="whitespace-pre-line break-words text-sm leading-7 text-rose-800/65 sm:text-base">
-                    {{ description }}
-                  </p>
-                  <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-rose-700/55">
-                    <span class="inline-flex items-center gap-1.5">
-                      <svg class="h-3.5 w-3.5 text-rose-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                        <rect x="3" y="5" width="18" height="16" rx="2" />
-                        <path d="M16 3v4M8 3v4M3 11h18" stroke-linecap="round" />
-                      </svg>
-                      {{ togetherText }}
+            <div class="border-t border-rose-100/80 p-5 sm:p-6">
+              <dl class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <div class="rounded-2xl border border-rose-100/80 bg-rose-50/45 px-3 py-2.5 text-center">
+                  <dt class="text-[10px] text-rose-700/45">空间成员</dt>
+                  <dd class="mt-0.5 font-display text-lg font-bold tabular-nums text-rose-800">{{ members.length }}</dd>
+                </div>
+                <div class="rounded-2xl border border-rose-100/80 bg-rose-50/45 px-3 py-2.5 text-center">
+                  <dt class="text-[10px] text-rose-700/45">公开故事</dt>
+                  <dd class="mt-0.5 font-display text-lg font-bold tabular-nums text-rose-800">{{ counts.story }}</dd>
+                </div>
+                <div class="rounded-2xl border border-rose-100/80 bg-rose-50/45 px-3 py-2.5 text-center">
+                  <dt class="text-[10px] text-rose-700/45">公开照片</dt>
+                  <dd class="mt-0.5 font-display text-lg font-bold tabular-nums text-rose-800">{{ counts.photo }}</dd>
+                </div>
+                <div class="rounded-2xl border border-rose-100/80 bg-rose-50/45 px-3 py-2.5 text-center">
+                  <dt class="text-[10px] text-rose-700/45">公开纪念日</dt>
+                  <dd class="mt-0.5 font-display text-lg font-bold tabular-nums text-rose-800">{{ counts.anniversary }}</dd>
+                </div>
+              </dl>
+
+              <div class="mt-5 flex flex-wrap items-center gap-3">
+                <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-rose-400">Public Members</p>
+                <div v-if="members.length" class="flex flex-wrap gap-2">
+                  <div
+                    v-for="(member, index) in members"
+                    :key="member.amourId || member.displayName || index"
+                    class="flex items-center gap-2 rounded-full border border-rose-100/80 bg-white/75 py-1 pl-1 pr-3"
+                  >
+                    <span class="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-rose-300 to-pink-400 text-[10px] font-bold text-white">
+                      {{ initials(member.displayName) }}
+                      <img
+                        v-if="memberAvatar(member, index)"
+                        :src="memberAvatar(member, index)"
+                        :alt="`${member.displayName || '成员'}的头像`"
+                        class="absolute inset-0 h-full w-full object-cover"
+                        @load="$event.currentTarget.style.display = ''"
+                        @error="$event.currentTarget.style.display = 'none'"
+                      >
                     </span>
-                    <span v-if="startDateText" class="inline-flex items-center gap-1.5">
-                      <span class="h-1.5 w-1.5 rounded-full bg-rose-300" aria-hidden="true" />
-                      {{ startDateText }}
-                    </span>
+                    <span class="max-w-[10rem] truncate text-xs font-semibold text-rose-800">{{ member.displayName || '恋人' }}</span>
+                    <span class="text-[10px] text-rose-700/40">{{ formatMemberRole(member.memberRole) }}</span>
                   </div>
                 </div>
-
-                <dl class="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:min-w-[22rem]">
-                  <div class="rounded-2xl border border-rose-100/80 bg-rose-50/45 px-3 py-2.5 text-center">
-                    <dt class="text-[10px] text-rose-700/45">空间成员</dt>
-                    <dd class="mt-0.5 font-display text-lg font-bold tabular-nums text-rose-800">{{ members.length }}</dd>
-                  </div>
-                  <div class="rounded-2xl border border-rose-100/80 bg-rose-50/45 px-3 py-2.5 text-center">
-                    <dt class="text-[10px] text-rose-700/45">公开故事</dt>
-                    <dd class="mt-0.5 font-display text-lg font-bold tabular-nums text-rose-800">{{ counts.story }}</dd>
-                  </div>
-                  <div class="rounded-2xl border border-rose-100/80 bg-rose-50/45 px-3 py-2.5 text-center">
-                    <dt class="text-[10px] text-rose-700/45">公开照片</dt>
-                    <dd class="mt-0.5 font-display text-lg font-bold tabular-nums text-rose-800">{{ counts.photo }}</dd>
-                  </div>
-                  <div class="rounded-2xl border border-rose-100/80 bg-rose-50/45 px-3 py-2.5 text-center">
-                    <dt class="text-[10px] text-rose-700/45">公开纪念日</dt>
-                    <dd class="mt-0.5 font-display text-lg font-bold tabular-nums text-rose-800">{{ counts.anniversary }}</dd>
-                  </div>
-                </dl>
-              </div>
-
-              <div class="mt-6 border-t border-rose-100/80 pt-5">
-                <div class="flex flex-wrap items-center gap-3">
-                  <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-rose-400">Public Members</p>
-                  <div v-if="members.length" class="flex flex-wrap gap-2">
-                    <div
-                      v-for="(member, index) in members"
-                      :key="member.amourId || member.displayName || index"
-                      class="flex items-center gap-2 rounded-full border border-rose-100/80 bg-white/75 py-1 pl-1 pr-3"
-                    >
-                      <span class="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-rose-300 to-pink-400 text-[10px] font-bold text-white">
-                        {{ initials(member.displayName) }}
-                        <img
-                          v-if="memberAvatar(member, index)"
-                          :src="memberAvatar(member, index)"
-                          :alt="`${member.displayName || '成员'}的头像`"
-                          class="absolute inset-0 h-full w-full object-cover"
-                          @load="$event.currentTarget.style.display = ''"
-                          @error="$event.currentTarget.style.display = 'none'"
-                        >
-                      </span>
-                      <span class="max-w-[10rem] truncate text-xs font-semibold text-rose-800">{{ member.displayName || '恋人' }}</span>
-                      <span class="text-[10px] text-rose-700/40">{{ formatMemberRole(member.memberRole) }}</span>
-                    </div>
-                  </div>
-                  <span v-else class="text-xs text-rose-700/45">成员信息暂未公开</span>
-                </div>
+                <span v-else class="text-xs text-rose-700/45">成员信息暂未公开</span>
               </div>
             </div>
           </header>
 
-          <div class="mt-8 grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-10">
+          <div class="mt-8 grid items-start gap-8">
             <div class="min-w-0 space-y-8">
               <section aria-labelledby="public-stories-heading" class="rounded-[1.75rem] border border-rose-100/80 bg-white/80 p-5 shadow-sm shadow-rose-100/30 sm:p-7">
                 <div class="flex flex-wrap items-end justify-between gap-3">
@@ -324,95 +302,6 @@
               </section>
             </div>
 
-            <aside class="space-y-6 lg:sticky lg:top-24">
-              <section class="overflow-hidden rounded-[1.75rem] border border-rose-100 bg-gradient-to-br from-rose-500 to-pink-500 p-5 text-white shadow-lg shadow-rose-200/40 sm:p-6">
-                <p class="text-[10px] font-bold uppercase tracking-[0.24em] text-white/70">Your Little Universe</p>
-                <h2 class="mt-2 font-display text-2xl font-bold leading-tight">也想拥有一座<br>只属于你们的小宇宙？</h2>
-
-                <div v-if="cta.kind === 'status-loading'" class="mt-5 rounded-2xl bg-white/10 p-4 text-xs leading-6 text-white/75" role="status">
-                  正在确认你的情侣空间…
-                </div>
-
-                <div v-else-if="cta.kind === 'status-error'" class="mt-5 rounded-2xl bg-white/10 p-4 text-xs leading-6 text-white/80" role="alert">
-                  <p>{{ spaceError || '情侣空间状态读取失败' }}</p>
-                  <button
-                    type="button"
-                    class="mt-2 rounded-full border border-white/35 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-white/15"
-                    @click="refreshSpaceStatus"
-                  >
-                    重新读取
-                  </button>
-                </div>
-
-                <template v-else-if="cta.kind === 'login'">
-                  <p class="mt-3 text-xs leading-6 text-white/80">登录后就可以创建或绑定自己的情侣空间，把故事、照片和纪念日一起收藏起来。</p>
-                  <RouterLink
-                    :to="loginTarget"
-                    class="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-4 py-3 text-xs font-semibold text-rose-600 shadow-sm transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-rose-500"
-                  >
-                    登录后创建自己的情侣空间
-                    <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                      <path d="M5 12h14m-5-5 5 5-5 5" stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
-                  </RouterLink>
-                </template>
-
-                <template v-else-if="cta.kind === 'my-space'">
-                  <p class="mt-3 text-xs leading-6 text-white/80">
-                    {{ isOwnPublicSpace ? '这是你自己的公开主页，只展示公开内容。' : '你已经有自己的情侣空间，这里只是 Ta 们的公开主页。' }}
-                    私人内容请回到你的空间查看。
-                  </p>
-                  <RouterLink
-                    to="/"
-                    class="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-4 py-3 text-xs font-semibold text-rose-600 shadow-sm transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-rose-500"
-                  >
-                    返回我的情侣空间
-                    <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                      <path d="M5 12h14m-5-5 5 5-5 5" stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
-                  </RouterLink>
-                </template>
-
-                <template v-else-if="cta.kind === 'my-space-unavailable'">
-                  <p class="mt-3 text-xs leading-6 text-white/80">
-                    你的情侣空间当前为「{{ ownSpaceStatusText }}」，暂时不能进入私人内容。你仍然可以继续浏览公开空间。
-                  </p>
-                  <RouterLink
-                    to="/"
-                    class="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-4 py-3 text-xs font-semibold text-rose-600 shadow-sm transition hover:bg-rose-50"
-                  >
-                    返回我的情侣空间
-                  </RouterLink>
-                </template>
-
-                <template v-else>
-                  <p class="mt-3 text-xs leading-6 text-white/80">你还没有自己的情侣空间。创建或绑定后，就能拥有自己的故事、相册和纪念日。</p>
-                  <RouterLink
-                    to="/space/setup"
-                    class="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-4 py-3 text-xs font-semibold text-rose-600 shadow-sm transition hover:bg-rose-50"
-                  >
-                    创建 / 绑定我的情侣空间
-                    <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                      <path d="M5 12h14m-5-5 5 5-5 5" stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
-                  </RouterLink>
-                </template>
-
-                <RouterLink to="/plaza" class="mt-3 inline-flex w-full items-center justify-center rounded-full border border-white/30 px-4 py-2.5 text-[11px] font-semibold text-white/85 transition hover:bg-white/10">
-                  继续逛恋爱广场
-                </RouterLink>
-              </section>
-
-              <section class="rounded-[1.75rem] border border-rose-100 bg-white/75 p-5 shadow-sm shadow-rose-100/30 sm:p-6">
-                <p class="text-[10px] font-bold uppercase tracking-[0.22em] text-rose-400">Only Public</p>
-                <h2 class="mt-1 font-display text-lg font-bold text-rose-950">这里只展示公开内容</h2>
-                <ul class="mt-3 space-y-2.5 text-xs leading-6 text-rose-800/55">
-                  <li class="flex gap-2"><span class="text-rose-300" aria-hidden="true">✦</span><span>公开故事、照片和纪念日来自空间主人的主动分享。</span></li>
-                  <li class="flex gap-2"><span class="text-rose-300" aria-hidden="true">✦</span><span>留言板、私密相册和未公开内容不会出现在这里。</span></li>
-                  <li class="flex gap-2"><span class="text-rose-300" aria-hidden="true">✦</span><span>当前页面不代表你已加入该空间，也不会展示你的私人空间数据。</span></li>
-                </ul>
-              </section>
-            </aside>
           </div>
         </template>
 
@@ -436,7 +325,6 @@ import CouplePageScaffold from '@/components/frontend/CouplePageScaffold.vue'
 import defaultBoyAvatar from '@/assets/boy.jpeg'
 import defaultGirlAvatar from '@/assets/girl.jpeg'
 import { fetchPublicSpaceDetail } from '@/api/gallery'
-import { frontendLoggedIn } from '@/utils/auth'
 import { useFrontendSpace } from '@/composables/useFrontendSpace'
 import {
   formatCount,
@@ -449,19 +337,11 @@ import {
 import { readSpaceErrorMessage } from '@/utils/spaceState'
 
 const route = useRoute()
-const {
-  spaceStatus,
-  spaceLoading,
-  spaceError,
-  hasCoupleSpace,
-  isSpaceReady,
-  refreshSpaceStatus,
-} = useFrontendSpace()
+const { spaceStatus, isSpaceReady } = useFrontendSpace()
 
 const space = ref(null)
 const loading = ref(true)
 const loadError = ref('')
-const coverFailed = ref(false)
 const failedImages = ref({})
 let detailRequestId = 0
 
@@ -471,7 +351,6 @@ const spaceId = computed(() => {
   return Number.isInteger(value) && value > 0 ? value : null
 })
 const displayName = computed(() => space.value?.spaceName || '未命名情侣空间')
-const coverUrl = computed(() => String(space.value?.coverImage || '').trim())
 const description = computed(() => (
   space.value?.description || 'Ta 们还没有写下简介，但公开的故事已经在慢慢发生。'
 ))
@@ -495,24 +374,6 @@ const isOwnPublicSpace = computed(() => (
   isSpaceReady.value
   && Number(spaceStatus.value?.spaceId) === Number(space.value?.spaceId)
 ))
-const ownSpaceStatusText = computed(() => spaceStatus.value?.statusText || '不可用')
-const loginTarget = computed(() => ({
-  path: '/login',
-  query: {
-    redirect: route.fullPath,
-    reason: 'plaza_create_space',
-  },
-}))
-
-const cta = computed(() => {
-  if (!frontendLoggedIn.value) return { kind: 'login' }
-  if (spaceLoading.value && !spaceStatus.value) return { kind: 'status-loading' }
-  if (spaceError.value && !spaceStatus.value) return { kind: 'status-error' }
-  if (isSpaceReady.value) return { kind: 'my-space' }
-  if (hasCoupleSpace.value) return { kind: 'my-space-unavailable' }
-  return { kind: 'create' }
-})
-
 function initials(name) {
   return String(name || '恋人').trim().slice(0, 2).toUpperCase()
 }
@@ -536,7 +397,6 @@ async function loadDetail() {
   const requestId = ++detailRequestId
 
   space.value = null
-  coverFailed.value = false
   failedImages.value = {}
   loadError.value = ''
 
@@ -585,8 +445,4 @@ watch(
   },
   { immediate: true },
 )
-
-watch(coverUrl, () => {
-  coverFailed.value = false
-})
 </script>

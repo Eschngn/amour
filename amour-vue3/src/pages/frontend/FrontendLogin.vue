@@ -85,6 +85,7 @@ import 'element-plus/es/components/message/style/css'
 import api from '@/axios'
 import { setFrontendProfile, setFrontendToken } from '@/utils/auth'
 import { createEncryptedLoginPayload } from '@/utils/loginCrypto'
+import { resolveSafeRedirect } from '@/utils/safeRedirect'
 
 const route = useRoute()
 const router = useRouter()
@@ -101,15 +102,14 @@ onMounted(() => {
   }
 })
 
+/**
+ * 登录成功后的回跳地址。
+ *
+ * 统一走 resolveSafeRedirect：拒绝外站（//evil.com）、后台入口与登录页自身，
+ * 但保留带查询串的站内地址（如 /space/setup?token=xxx），确保邀请不会丢。
+ */
 function getSafeRedirect() {
-  const redirect = route.query.redirect
-  if (typeof redirect !== 'string' || !redirect.startsWith('/') || redirect.startsWith('//')) {
-    return '/'
-  }
-  if (redirect.startsWith('/admin') || redirect.startsWith('/login')) {
-    return '/'
-  }
-  return redirect
+  return resolveSafeRedirect(route.query.redirect)
 }
 
 async function onSubmit() {

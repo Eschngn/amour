@@ -7,6 +7,7 @@ import {
   hasSpaceIdentity,
   isReadySpace,
   isSpaceAuthError,
+  isUnavailableSpace,
   readSpaceErrorMessage,
 } from '../utils/spaceState.js'
 
@@ -61,6 +62,30 @@ test('等待绑定、冻结、归档和异常状态保留为 unavailable', () =>
 
 test('字符串 status="1" 也按正常空间处理', () => {
   assert.equal(isReadySpace({ spaceId: 2001, status: '1' }), true)
+})
+
+test('绑定成功（status=1）的空间不算“暂时不可用”', () => {
+  // 回归用例：恋爱广场曾把 status=1 掉进状态兜底分支，误显示 Your Space · Unavailable。
+  assert.equal(isUnavailableSpace(readySpace), false)
+  assert.equal(isUnavailableSpace({ spaceId: 2001, status: '1' }), false)
+})
+
+test('没有空间记录时不产生“暂时不可用”判定', () => {
+  assert.equal(isUnavailableSpace(null), false)
+  assert.equal(isUnavailableSpace({}), false)
+  assert.equal(isUnavailableSpace({ status: 0 }), false)
+})
+
+test('等待绑定、冻结、归档、删除等状态都属于“暂时不可用”', () => {
+  for (const status of [
+    SPACE_STATUS.WAITING,
+    SPACE_STATUS.FROZEN,
+    SPACE_STATUS.ARCHIVED,
+    SPACE_STATUS.DELETING,
+    SPACE_STATUS.DELETED,
+  ]) {
+    assert.equal(isUnavailableSpace({ spaceId: 2001, status }), true)
+  }
 })
 
 test('只有 401 或 20002 被视为登录态失效', () => {

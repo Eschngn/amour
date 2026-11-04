@@ -51,6 +51,23 @@ export function deriveSpaceViewMode(loggedIn, spaceStatus) {
 }
 
 /**
+ * 空间当前是否真的“暂时不可用”，用于决定是否展示不可用提示。
+ *
+ * 只有拿到空间记录、且状态明确落在“不可用”语义里才返回 true：
+ * - status=0/2/3（等待绑定、冻结、归档）属于可展示状态提示的不可用；
+ * - status=1（已绑定正常）一定可用，任何提示都不该出现；
+ * - 未知/缺失 status 归为不可用，但仍由调用方按“无法确认”文案处理。
+ *
+ * 该函数存在的意义是防止“已绑定正常空间”掉进各页面的状态兜底分支。
+ */
+export function isUnavailableSpace(spaceStatus) {
+  if (!hasSpaceIdentity(spaceStatus)) return false
+  const status = Number(spaceStatus.status)
+  if (status === SPACE_STATUS.NORMAL) return false
+  return true
+}
+
+/**
  * 只有明确的登录态失效才算 auth error。
  * 网络断开、超时、5xx 不能清空登录态或空间状态，避免把暂时断网误判为退出登录。
  */

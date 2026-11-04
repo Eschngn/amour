@@ -257,14 +257,17 @@ const {
   spaceStatus,
   spaceLoading,
   spaceError,
+  isSpaceStatusUnknown,
   clearSpaceStatus,
 } = useFrontendSpace()
 
 const showSetupEntry = computed(() => {
   if (!frontendLoggedIn.value || isSpaceReady.value) return false
+  // status=0（等待绑定）也属于“已有空间”，必须保留入口去管理邀请。
   if (hasCoupleSpace.value) return true
   // 状态尚未确认时不要展示“没有空间”入口，避免网络问题造成误判。
-  return !spaceLoading.value && !spaceStatus.value && !spaceError.value
+  if (spaceLoading.value || spaceError.value || isSpaceStatusUnknown.value) return false
+  return !spaceStatus.value
 })
 const setupLabel = computed(() => (
   hasCoupleSpace.value ? '空间状态' : '创建/绑定情侣空间'

@@ -21,7 +21,7 @@ import UserProfilePage from '@/pages/frontend/UserProfilePage.vue'
 import PhotoAlbumPage from '@/pages/frontend/PhotoAlbumPage.vue'
 import { isAdminAuthenticated } from '@/utils/adminAuth.js'
 import { clearFrontendSession, hasFrontendQueryPermission, isFrontendAuthenticated, setFrontendProfile } from '@/utils/auth.js'
-import { isSpaceReady, refreshSpaceStatus } from '@/composables/useFrontendSpace.js'
+import { isSpaceReady, isSpaceStatusUnknown, refreshSpaceStatus } from '@/composables/useFrontendSpace.js'
 import api from '@/axios'
 import { createRouter, createWebHistory } from 'vue-router'
 
@@ -47,7 +47,8 @@ const routes = [
     path: '/space/setup',
     name: 'space-setup',
     component: SpaceSetupPage,
-    meta: { title: '创建或绑定情侣空间 · 恋语间', requiresFrontendAuth: true },
+    // 要求登录；只有带 ?token= 的邀请深链接允许未登录预览（见守卫中的 allowsFrontendGuest）。
+    meta: { title: '创建或绑定情侣空间 · 恋语间', requiresFrontendAuth: true, allowsFrontendGuest: true },
   },
   {
     path: '/story',
@@ -183,17 +184,43 @@ async function validateFrontendSession() {
   return frontendAuthCheck
 }
 
+/**
+ * 深链接里是否带有可预览的邀请 token。
+ *
+ * 只用它决定“是否允许游客停留预览”，不读取、不存储 token 本身；
+ * token 始终只存在于 URL 与页面内存中。
+ */
+function hasInvitationToken(query) {
+  const raw = query?.token
+  const token = Array.isArray(raw) ? raw[0] : raw
+  return typeof token === 'string' && token.trim().length > 0
+}
+
+/**
+ * 需要情侣空间的页面（故事/相册等）在进入前的检查。
+ *
+ * 返回 true 表示放行；false 表示确实没有可用空间，应引导去 setup。
+ * 网络失败时不能返回 false —— 那会把“暂时连不上”误判成“没有空间”，
+ * 这里改为抛出故障，交给调用方原样放行并保留 spaceError。
+ */
 async function ensureCoupleSpaceReady() {
   if (isSpaceReady.value) return true
   await refreshSpaceStatus()
-  return isSpaceReady.value
+  if (isSpaceReady.value) return true
+  // 状态无法确认（网络/服务异常）：保留错误，不要重定向到 setup。
+  if (isSpaceStatusUnknown.value) return true
+  return false
 }
 
 router.beforeEach(async (to) => {
   const hadFrontendSession = isFrontendAuthenticated()
   const frontendSessionValid = await validateFrontendSession()
   const frontendSessionExpired = hadFrontendSession && !frontendSessionValid
-  if (to.meta?.requiresFrontendAuth && (!hadFrontendSession || !frontendSessionValid || frontendSessionExpired)) {
+  // allowsFrontendGuest：带邀请 token 的深链接允许未登录预览，
+  // 其它情况（包括不带 token 的 /space/setup）仍然要求登录。
+  const guestInvitationPreview = Boolean(to.meta?.allowsFrontendGuest) && hasInvitationToken(to.query)
+  const requiresAuth = to.meta?.requiresFrontendAuth && !guestInvitationPreview
+  if (requiresAuth && (!hadFrontendSession || !frontendSessionValid || frontendSessionExpired)) {
     return {
       path: '/login',
       query: {

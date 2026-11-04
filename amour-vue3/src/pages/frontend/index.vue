@@ -45,10 +45,7 @@
     </main>
   </CouplePageScaffold>
 
-  <LovePlazaPage
-    v-else-if="isPlazaMode"
-    :show-no-space-prompt="showNoSpacePrompt"
-  />
+  <LovePlazaPage v-else-if="isPlazaMode" />
 
   <MyCoupleSpaceHome v-else :key="viewMode" />
 </template>
@@ -65,7 +62,6 @@ const {
   spaceStatus,
   spaceLoading,
   spaceError,
-  hasCoupleSpace,
   viewMode,
   refreshSpaceStatus,
 } = useFrontendSpace()
@@ -93,12 +89,4 @@ const showStatusError = computed(() => (
 ))
 
 const isPlazaMode = computed(() => viewMode.value === 'plaza')
-
-/** 登录但确实没有空间时，广场页顶部展示创建/绑定提示。 */
-const showNoSpacePrompt = computed(() => (
-  frontendLoggedIn.value
-  && !spaceLoading.value
-  && !spaceError.value
-  && !hasCoupleSpace.value
-))
 </script>
