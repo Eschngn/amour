@@ -10,6 +10,39 @@
           </p>
         </header>
 
+        <!-- 情侣空间设置入口：只对有空间身份的用户展示，没有空间时引导去创建/绑定。 -->
+        <section
+          class="mt-8 rounded-[1.75rem] border border-rose-100 bg-white/85 p-6 shadow-sm shadow-rose-100/40 sm:p-7"
+          aria-labelledby="profile-space-settings-heading"
+        >
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div class="min-w-0">
+              <p class="text-xs font-bold uppercase tracking-[0.22em] text-rose-400">Couple space</p>
+              <h2 id="profile-space-settings-heading" class="mt-1 font-display text-xl font-bold text-rose-950">情侣空间设置</h2>
+              <p class="mt-2 text-xs leading-6 text-rose-700/55">
+                {{ spaceSettingsHint }}
+              </p>
+            </div>
+            <RouterLink
+              v-if="hasSpaceIdentity(spaceStatus) && !isUnboundSpace(spaceStatus)"
+              to="/space/settings"
+              class="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-5 py-2.5 text-xs font-semibold text-white shadow-sm shadow-rose-200 transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
+            >
+              打开空间设置
+              <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M5 12h14m-5-5 5 5-5 5" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </RouterLink>
+            <RouterLink
+              v-else
+              to="/space/setup"
+              class="inline-flex shrink-0 items-center justify-center rounded-full border border-rose-200 bg-white px-5 py-2.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
+            >
+              创建或绑定情侣空间
+            </RouterLink>
+          </div>
+        </section>
+
         <div v-if="loading" class="mt-8 rounded-[1.75rem] border border-rose-100 bg-white/80 px-6 py-16 text-center text-sm text-rose-500">
           正在读取个人资料…
         </div>
@@ -95,9 +128,23 @@ import api from '@/axios'
 import CouplePageScaffold from '@/components/frontend/CouplePageScaffold.vue'
 import { clearFrontendSession, setFrontendAvatar, setFrontendProfile } from '@/utils/auth'
 import { encryptPassword } from '@/utils/loginCrypto'
+import { useFrontendSpace } from '@/composables/useFrontendSpace'
+import { hasSpaceIdentity, isUnboundSpace } from '@/utils/spaceState'
 
 const USERNAME_PATTERN = /^[A-Za-z0-9_]{4,20}$/
 const router = useRouter()
+const { spaceStatus, hasCoupleSpace } = useFrontendSpace()
+const spaceSettingsHint = computed(() => {
+  if (isUnboundSpace(spaceStatus.value)) {
+    return '情侣空间已解除绑定，你可以重新创建或加入情侣空间。'
+  }
+  if (hasSpaceIdentity(spaceStatus.value)) {
+    return '管理空间公开设置、冻结或处理解绑申请。空间状态与公开设置只在页面内存中展示，不会写入本地缓存。'
+  }
+  return hasCoupleSpace.value
+    ? '空间状态正在读取中，稍后即可进入空间设置。'
+    : '创建或绑定情侣空间后，可以在这里进入空间设置。'
+})
 const loading = ref(true)
 const profileSaving = ref(false)
 const avatarUploading = ref(false)

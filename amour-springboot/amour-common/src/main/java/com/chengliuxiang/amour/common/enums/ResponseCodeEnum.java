@@ -68,7 +68,18 @@ public enum ResponseCodeEnum implements BaseExceptionInterface {
     SPACE_FROZEN("20047", "该情侣空间已冻结"),
     SPACE_ARCHIVED("20048", "该情侣空间已归档"),
     SPACE_NOT_ACCESSIBLE("20049", "该情侣空间当前不可访问"),
-
+    SPACE_LEAVE_REQUIRES_RESTORE("20051", "冻结或归档的空间需先恢复才能解绑"),
+    SPACE_FROZEN_OR_ARCHIVED_NOT_PUBLIC("20052", "冻结或归档的空间不能公开"),
+    SPACE_NOT_TWO_MEMBERS("20053", "情侣空间尚未完成两人绑定，不能公开"),
+    SPACE_UNBIND_ALREADY_PENDING("20054", "已有待处理的解绑申请"),
+    SPACE_UNBIND_NOT_PENDING("20055", "没有待处理的解绑申请"),
+    SPACE_UNBIND_NOT_PARTNER("20056", "只有另一方成员可以处理解绑申请"),
+    SPACE_UNBIND_ALREADY_RESOLVED("20057", "解绑申请已处理"),
+    SPACE_UNBOUND("20058", "情侣空间已完成解绑"),
+    SPACE_UNBIND_NOT_REQUESTER("20059", "当前用户不是解绑申请发起人"),
+    SPACE_UNBIND_CANNOT_CANCEL("20060", "当前用户不能取消该解绑申请"),
+    SPACE_RESTORE_NOT_ALLOWED("20061", "只有双方已解绑的情侣空间才能人工恢复"),
+    SPACE_RESTORE_MEMBER_INVALID("20062", "情侣空间历史成员不完整或仍处于有效状态，无法人工恢复"),
 
     ;
 

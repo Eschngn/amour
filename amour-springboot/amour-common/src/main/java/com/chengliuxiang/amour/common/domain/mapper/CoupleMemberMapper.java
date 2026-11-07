@@ -24,6 +24,18 @@ public interface CoupleMemberMapper extends BaseMapper<CoupleMemberDO> {
                 .orderByAsc(CoupleMemberDO::getId));
     }
 
+    /**
+     * 批量查询多个空间的全部成员关系（含历史已退出成员），供后台列表组装。
+     */
+    default List<CoupleMemberDO> selectBySpaceIds(Collection<Long> spaceIds) {
+        if (spaceIds == null || spaceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return selectList(new LambdaQueryWrapper<CoupleMemberDO>()
+                .in(CoupleMemberDO::getSpaceId, spaceIds)
+                .orderByAsc(CoupleMemberDO::getId));
+    }
+
     default List<CoupleMemberDO> selectActiveBySpaceId(Long spaceId) {
         return selectList(new LambdaQueryWrapper<CoupleMemberDO>()
                 .eq(CoupleMemberDO::getSpaceId, spaceId)
@@ -60,6 +72,18 @@ public interface CoupleMemberMapper extends BaseMapper<CoupleMemberDO> {
     /**
      * 统计用户当前有效加入的空间数量。
      */
+    /**
+     * 查询用户在「未解绑空间」中的有效成员关系（status=5 的历史残留会被排除）。
+     * 解绑后双方都应被视为没有情侣空间，因此业务判断一律使用该方法而非 countActiveByUserId。
+     */
+    default List<CoupleMemberDO> selectActiveInLiveSpaces(Long userId) {
+        return selectList(new LambdaQueryWrapper<CoupleMemberDO>()
+                .eq(CoupleMemberDO::getUserId, userId)
+                .eq(CoupleMemberDO::getStatus, 1)
+                .apply("space_id IN (SELECT id FROM couple_space WHERE status <> 5)")
+                .orderByDesc(CoupleMemberDO::getId));
+    }
+
     default Long countActiveByUserId(Long userId) {
         return selectCount(new LambdaQueryWrapper<CoupleMemberDO>()
                 .eq(CoupleMemberDO::getUserId, userId)
@@ -87,16 +111,27 @@ public interface CoupleMemberMapper extends BaseMapper<CoupleMemberDO> {
                 .set(CoupleMemberDO::getUpdateTime, updateTime));
     }
 
-    default int updateMember(CoupleMemberDO member) {
-        return update(member, new LambdaUpdateWrapper<CoupleMemberDO>()
-                .eq(CoupleMemberDO::getId, member.getId())
-                .eq(CoupleMemberDO::getSpaceId, member.getSpaceId()));
-    }
-
-    default int leave(Long spaceId, Long id, Integer status, LocalDateTime leftAt, LocalDateTime updateTime) {
+    /**
+     * 管理员人工恢复：只把该空间内「已退出」的历史成员恢复为有效成员。
+     * 返回受影响行数，调用方必须校验恰好恢复两人，否则回滚事务。
+     */
+    default int restoreAllLeft(Long spaceId, LocalDateTime updateTime) {
         return update(null, new LambdaUpdateWrapper<CoupleMemberDO>()
                 .eq(CoupleMemberDO::getSpaceId, spaceId)
-                .eq(CoupleMemberDO::getId, id)
+                .eq(CoupleMemberDO::getStatus, 3)
+                .set(CoupleMemberDO::getStatus, 1)
+                .set(CoupleMemberDO::getLeftAt, null)
+                .set(CoupleMemberDO::getUpdateTime, updateTime));
+    }
+
+    /**
+     * 解绑确认：把空间内所有有效成员一次性标记为退出，并写入退出时间。
+     * 条件更新保证并发下不会被重复处理，返回受影响行数供调用方校验「两人都在」。
+     */
+    default int leaveAllActive(Long spaceId, Integer status, LocalDateTime leftAt, LocalDateTime updateTime) {
+        return update(null, new LambdaUpdateWrapper<CoupleMemberDO>()
+                .eq(CoupleMemberDO::getSpaceId, spaceId)
+                .eq(CoupleMemberDO::getStatus, 1)
                 .set(CoupleMemberDO::getStatus, status)
                 .set(CoupleMemberDO::getLeftAt, leftAt)
                 .set(CoupleMemberDO::getUpdateTime, updateTime));

@@ -1,6 +1,7 @@
 import { computed, ref, watch } from 'vue'
 import { fetchSpaceStatus } from '@/api/space'
 import { frontendLoggedIn } from '@/utils/auth'
+import { createSpaceRequestGate } from '@/utils/spaceRequestGate'
 import {
   SPACE_STATUS,
   deriveSpaceViewMode,
@@ -78,10 +79,10 @@ const viewMode = computed(() => (
   deriveSpaceViewMode(frontendLoggedIn.value, spaceStatus.value)
 ))
 
-// 用递增序号丢弃过期的异步响应：
-// 退出登录、跨窗口切换账号、手动 clear 后，旧请求不能再把空间状态写回来。
-let requestSequence = 0
-let inflightPromise = null
+// 用请求闸门丢弃过期的异步响应：
+// 退出登录、跨窗口切换账号、手动 clear、生命周期写操作后的强制刷新，
+// 都不能让旧请求把空间状态写回来。
+const requestGate = createSpaceRequestGate()
 let stopAuthWatcher = null
 
 function handleAuthFailure(message) {
@@ -98,8 +99,7 @@ function handleAuthFailure(message) {
  * 退出登录、账号切换或跨窗口 token 失效时由本模块自动调用。
  */
 export function clearSpaceStatus() {
-  requestSequence += 1
-  inflightPromise = null
+  requestGate.invalidate()
   spaceStatus.value = null
   spaceLoading.value = false
   spaceError.value = ''
@@ -109,32 +109,44 @@ export function clearSpaceStatus() {
  * 刷新当前登录用户的情侣空间状态。
  *
  * - 未登录：不发请求，直接返回 null。
- * - 重复调用：复用同一个 in-flight Promise，避免页面重复请求。
+ * - 重复调用：默认复用同一个 in-flight Promise，避免页面重复请求。
+ * - force: true：先让「本次写操作之前」发出的旧请求失效（递增序号），再重新请求。
+ *   生命周期写操作（解绑申请/取消/拒绝/确认、公开/隐藏、冻结/恢复）成功后必须用它，
+ *   否则可能把写操作之前的旧响应当成新结果。
  * - 网络错误：保留已有 spaceStatus，只写 spaceError，不改变 frontendLoggedIn。
  * - 明确的 401 / 20002：清理空间上下文，登录态交给 axios/auth 处理。
  *
+ * @param {{ force?: boolean }} [options]
  * @returns {Promise<object|null>}
  */
-export function refreshSpaceStatus() {
+export function refreshSpaceStatus(options = {}) {
   if (!frontendLoggedIn.value) {
     clearSpaceStatus()
     return Promise.resolve(null)
   }
 
-  if (inflightPromise) return inflightPromise
+  const force = options?.force === true
+  if (force) {
+    // 只让旧请求过期并丢弃旧的 in-flight Promise，不修改已有 spaceStatus：
+    // 新请求失败时页面仍能展示上一次确认过的空间。
+    requestGate.invalidate()
+  } else {
+    const existing = requestGate.currentInflight()
+    if (existing) return existing
+  }
 
-  const requestId = ++requestSequence
+  const requestId = requestGate.begin()
   spaceLoading.value = true
   spaceError.value = ''
 
-  inflightPromise = Promise.resolve()
+  const promise = Promise.resolve()
     .then(() => {
       // 如果请求还没发出就退出登录/切换账号，直接跳过网络调用，满足“未登录不请求”。
-      if (requestId !== requestSequence || !frontendLoggedIn.value) return null
+      if (!requestGate.isCurrent(requestId) || !frontendLoggedIn.value) return null
       return fetchSpaceStatus()
     })
     .then((response) => {
-      if (requestId !== requestSequence || !frontendLoggedIn.value) {
+      if (!requestGate.isCurrent(requestId) || !frontendLoggedIn.value) {
         return spaceStatus.value
       }
 
@@ -156,7 +168,7 @@ export function refreshSpaceStatus() {
       return spaceStatus.value
     })
     .catch((error) => {
-      if (requestId !== requestSequence) return spaceStatus.value
+      if (!requestGate.isCurrent(requestId)) return spaceStatus.value
 
       if (isSpaceAuthError(error)) {
         handleAuthFailure(error?.response?.data?.message)
@@ -168,13 +180,27 @@ export function refreshSpaceStatus() {
       return spaceStatus.value
     })
     .finally(() => {
-      if (requestId === requestSequence) {
+      if (requestGate.isCurrent(requestId)) {
         spaceLoading.value = false
-        inflightPromise = null
+        requestGate.release(requestId)
       }
     })
 
-  return inflightPromise
+  return requestGate.track(promise)
+}
+
+/**
+ * 生命周期写操作成功后的强制刷新入口。
+ *
+ * 与 refreshSpaceStatus() 的区别：不复用写操作之前发起的 in-flight Promise，
+ * 旧响应也会因为请求序号变化被丢弃，保证页面拿到的是写操作之后的真实状态。
+ * 页面不得用本地改写 spaceStatus 伪造结果。
+ *
+ * @param {{ force?: boolean }} [options] 兼容显式传参；该入口始终强制刷新
+ * @returns {Promise<object|null>}
+ */
+export function refreshSpaceStatusAfterLifecycleAction(options = {}) {
+  return refreshSpaceStatus({ ...options, force: true })
 }
 
 /**
@@ -254,6 +280,7 @@ export function useFrontendSpace() {
     isSpaceStatusUnknown,
     viewMode,
     refreshSpaceStatus,
+    refreshSpaceStatusAfterLifecycleAction,
     clearSpaceStatus,
   }
 }

@@ -87,6 +87,7 @@ import {
   Close,
   Collection,
   CollectionTag,
+  Connection,
   Lock,
   User,
   UserFilled,
@@ -128,5 +129,6 @@ const menu = [
   { to: '/admin/role', label: '角色管理', icon: UserFilled },
   { to: '/admin/permission', label: '权限管理', icon: Lock },
   { to: '/admin/user', label: '用户管理', icon: User },
+  { to: '/admin/space', label: '空间管理', icon: Connection },
 ]
 </script>

@@ -235,8 +235,12 @@ public class MessageServiceImpl implements MessageService {
     }
 
     private Long requireCurrentSpaceId() {
-        List<CoupleMemberDO> memberships = coupleMemberMapper.selectActiveByUserId(StpUtil.getLoginIdAsLong());
+        // 只取「未解绑空间」中的有效成员关系：status=5 的历史残留不再代表可访问的空间。
+        List<CoupleMemberDO> memberships = coupleMemberMapper.selectActiveInLiveSpaces(StpUtil.getLoginIdAsLong());
         if (memberships == null || memberships.isEmpty()) {
+            if (coupleMemberMapper.countActiveByUserId(StpUtil.getLoginIdAsLong()) > 0) {
+                throw new BizException(ResponseCodeEnum.SPACE_UNBOUND);
+            }
             throw new BizException(ResponseCodeEnum.SPACE_NOT_EXIST);
         }
         return memberships.get(0).getSpaceId();

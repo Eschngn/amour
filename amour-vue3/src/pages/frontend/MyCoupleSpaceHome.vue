@@ -260,15 +260,28 @@
             <p class="mx-auto mt-3 max-w-xl text-sm leading-7 text-rose-800/60">
               {{ statusView.description }}
             </p>
-            <p v-if="spaceStatus?.spaceName" class="mt-4 inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/80 bg-white/70 px-3 py-1.5 text-xs font-semibold text-rose-700">
+            <p v-if="spaceStatus?.spaceName && !isUnboundSpace(spaceStatus)" class="mt-4 inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/80 bg-white/70 px-3 py-1.5 text-xs font-semibold text-rose-700">
               <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-rose-400" aria-hidden="true" />
               <span class="truncate">当前空间 · {{ spaceStatus.spaceName }}</span>
             </p>
 
             <div class="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
               <RouterLink
-                to="/plaza"
+                v-if="statusView.showSetup"
+                to="/space/setup"
                 class="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white shadow-md shadow-rose-300/40 transition hover:-translate-y-0.5 hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
+              >
+                创建或绑定情侣空间
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M5 12h14m-5-5 5 5-5 5" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </RouterLink>
+              <RouterLink
+                to="/plaza"
+                class="inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
+                :class="statusView.showSetup
+                  ? 'border border-rose-200 bg-white/80 text-rose-700 hover:bg-rose-50'
+                  : 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-md shadow-rose-300/40 hover:-translate-y-0.5 hover:brightness-105'"
               >
                 返回恋爱广场
                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -290,11 +303,83 @@
         </p>
       </div>
     </main>
+
+    <!-- 另一半发起解绑后的首次进入提醒：支持去处理或仅对当前这条申请不再提示 -->
+    <Teleport to="body">
+      <Transition name="unbind-prompt">
+        <div
+          v-if="unbindPromptVisible"
+          class="fixed inset-0 z-[80] flex items-center justify-center bg-rose-950/35 px-4 py-6 backdrop-blur-sm"
+          @click.self="postponeUnbindPrompt"
+        >
+          <section
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="unbind-prompt-title"
+            aria-describedby="unbind-prompt-desc"
+            tabindex="-1"
+            class="relative w-full max-w-md overflow-hidden rounded-[1.75rem] border border-rose-100 bg-white p-6 shadow-2xl shadow-rose-950/25 outline-none sm:p-7"
+            @keydown.esc.prevent="postponeUnbindPrompt"
+          >
+            <div class="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-rose-100/70 blur-2xl" aria-hidden="true" />
+            <div class="relative">
+              <div class="flex items-start justify-between gap-4">
+                <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-100 text-xl text-rose-500" aria-hidden="true">♥</span>
+                <button
+                  type="button"
+                  class="rounded-full p-2 text-rose-400 transition hover:bg-rose-50 hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+                  aria-label="稍后处理"
+                  @click="postponeUnbindPrompt"
+                >
+                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M6 6l12 12M18 6 6 18" stroke-linecap="round" />
+                  </svg>
+                </button>
+              </div>
+
+              <p class="mt-4 text-[11px] font-bold uppercase tracking-[0.24em] text-rose-400">Unbind request</p>
+              <h2 id="unbind-prompt-title" class="mt-2 font-display text-2xl font-bold text-rose-950">TA 想解除情侣空间</h2>
+              <p id="unbind-prompt-desc" class="mt-3 text-sm leading-7 text-rose-800/60">
+                <strong class="font-semibold text-rose-900">{{ unbindRequesterName }}</strong>
+                发起了新的解绑申请<span v-if="unbindRequestedAtText">（{{ unbindRequestedAtText }}）</span>。
+                同意后双方都会退出空间；拒绝则空间保持不变。
+              </p>
+
+              <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+                <button
+                  type="button"
+                  class="rounded-full px-4 py-2.5 text-xs font-semibold text-rose-500 transition hover:text-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
+                  @click="ignoreUnbindPrompt"
+                >
+                  以后不再提示
+                </button>
+                <button
+                  type="button"
+                  class="rounded-full border border-rose-200 bg-white px-5 py-2.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
+                  @click="postponeUnbindPrompt"
+                >
+                  稍后处理
+                </button>
+                <button
+                  ref="unbindPromptPrimaryRef"
+                  type="button"
+                  class="rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-5 py-2.5 text-xs font-semibold text-white shadow-sm shadow-rose-200 transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
+                  @click="goToUnbindSettings"
+                >
+                  去处理
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </Transition>
+    </Teleport>
   </CouplePageScaffold>
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import 'element-plus/es/components/message/style/css'
 import CouplePageScaffold from '@/components/frontend/CouplePageScaffold.vue'
@@ -303,7 +388,11 @@ import defaultGirlAvatar from '@/assets/girl.jpeg'
 import api from '@/axios'
 import { hasFrontendQueryPermission } from '@/utils/auth'
 import { useFrontendSpace } from '@/composables/useFrontendSpace'
+import { formatSpaceDateTime } from '@/utils/spaceFormat'
+import { SPACE_STATUS, isUnbindPendingForPartner, isUnboundSpace } from '@/utils/spaceState'
+import { dismissUnbindPrompt, isUnbindPromptDismissed } from '@/utils/spaceUnbindPrompt'
 
+const router = useRouter()
 const { spaceStatus, isSpaceReady, refreshSpaceStatus } = useFrontendSpace()
 
 const spaceMembers = computed(() => (
@@ -316,6 +405,61 @@ const partnerMember = computed(() => (
   spaceMembers.value.find(member => Number(member.memberRole) === 2) || spaceMembers.value[1] || null
 ))
 const spaceName = computed(() => spaceStatus.value?.spaceName || '我们的故事')
+
+const unbindRequester = computed(() => (
+  spaceStatus.value?.unbindRequester && typeof spaceStatus.value.unbindRequester === 'object'
+    ? spaceStatus.value.unbindRequester
+    : null
+))
+const unbindRequesterName = computed(() => (
+  unbindRequester.value?.displayName || unbindRequester.value?.amourId || '另一半'
+))
+const unbindRequestedAtText = computed(() => (
+  spaceStatus.value?.unbindRequestedAt
+    ? formatSpaceDateTime(spaceStatus.value.unbindRequestedAt)
+    : ''
+))
+const unbindPendingForPartner = computed(() => isUnbindPendingForPartner(spaceStatus.value))
+
+/** 解绑提醒只在当前页面生命周期内弹一次；选择“以后不再提示”会按单条申请持久化。 */
+const unbindPromptVisible = ref(false)
+const unbindPromptSettled = ref(false)
+const unbindPromptPrimaryRef = ref(null)
+
+function maybeShowUnbindPrompt() {
+  if (unbindPromptSettled.value || unbindPromptVisible.value) return
+  if (!isSpaceReady.value || !unbindPendingForPartner.value) return
+  if (isUnbindPromptDismissed(spaceStatus.value)) {
+    unbindPromptSettled.value = true
+    return
+  }
+  unbindPromptVisible.value = true
+}
+
+watch([isSpaceReady, unbindPendingForPartner], maybeShowUnbindPrompt, { immediate: true })
+
+watch(unbindPromptVisible, async (visible) => {
+  if (!visible) return
+  await nextTick()
+  unbindPromptPrimaryRef.value?.focus?.()
+})
+
+function postponeUnbindPrompt() {
+  unbindPromptVisible.value = false
+  unbindPromptSettled.value = true
+}
+
+function ignoreUnbindPrompt() {
+  dismissUnbindPrompt(spaceStatus.value)
+  postponeUnbindPrompt()
+}
+
+function goToUnbindSettings() {
+  unbindPromptVisible.value = false
+  unbindPromptSettled.value = true
+  router.push({ name: 'space-settings', hash: '#space-unbind' })
+}
+
 const statusView = computed(() => {
   const status = Number(spaceStatus.value?.status)
   if (status === 0) {
@@ -341,6 +485,7 @@ const statusView = computed(() => {
     }
   }
   if (status === 3) {
+    // 旧 status=3 数据只做兼容提示；用户端已不提供新的归档动作。
     return {
       icon: '▣',
       eyebrow: 'Space Archived',
@@ -349,6 +494,18 @@ const statusView = computed(() => {
       iconClass: 'bg-slate-100 text-slate-500',
       panelClass: 'border-slate-200 bg-slate-50/80',
       eyebrowClass: 'text-slate-500',
+    }
+  }
+  if (status === SPACE_STATUS.DELETED) {
+    return {
+      icon: '♥',
+      eyebrow: 'Space Unbound',
+      title: '情侣空间已解除绑定',
+      description: '你们现在都可以重新创建或加入情侣空间。旧空间内容不会再作为当前空间加载。',
+      iconClass: 'bg-rose-100 text-rose-500',
+      panelClass: 'border-rose-200/80 bg-rose-50/70',
+      eyebrowClass: 'text-rose-500',
+      showSetup: true,
     }
   }
   return {
@@ -658,6 +815,16 @@ onMounted(async () => {
   width: 4rem;
 }
 
+.unbind-prompt-enter-active,
+.unbind-prompt-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.unbind-prompt-enter-from,
+.unbind-prompt-leave-to {
+  opacity: 0;
+}
+
 @keyframes slow-spin {
   to { transform: rotate(360deg); }
 }
@@ -691,6 +858,11 @@ onMounted(async () => {
   .avatar-badge,
   .floating-note {
     animation: none;
+  }
+
+  .unbind-prompt-enter-active,
+  .unbind-prompt-leave-active {
+    transition: none;
   }
 }
 </style>

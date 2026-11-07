@@ -68,6 +68,14 @@
           纪念日
         </RouterLink>
         <RouterLink
+          v-if="showSettingsEntry"
+          to="/space/settings"
+          class="nav-link"
+          :class="{ 'nav-link-active': isSection('/space/settings') }"
+        >
+          空间设置
+        </RouterLink>
+        <RouterLink
           v-if="showSetupEntry"
           to="/space/setup"
           class="nav-link"
@@ -167,6 +175,14 @@
         留言板
       </RouterLink>
       <RouterLink
+        v-if="showSettingsEntry"
+        to="/space/settings"
+        class="mobile-nav-link"
+        :class="{ 'mobile-nav-link-active': isSection('/space/settings') }"
+      >
+        空间设置
+      </RouterLink>
+      <RouterLink
         v-if="showSetupEntry"
         to="/space/setup"
         class="mobile-nav-link"
@@ -202,6 +218,14 @@
             {{ setupLabel }}
           </RouterLink>
           <RouterLink
+            v-if="showSettingsEntry"
+            to="/space/settings"
+            class="block w-full rounded-lg px-3 py-2 text-left text-sm text-rose-700 transition hover:bg-rose-50"
+            @click="dropdownOpen = false"
+          >
+            空间设置
+          </RouterLink>
+          <RouterLink
             to="/profile"
             class="block w-full rounded-lg px-3 py-2 text-left text-sm text-rose-700 transition hover:bg-rose-50"
             @click="dropdownOpen = false"
@@ -234,6 +258,7 @@ import {
   hasFrontendQueryPermission,
 } from '@/utils/auth'
 import { useFrontendSpace } from '@/composables/useFrontendSpace'
+import { SPACE_STATUS, isUnboundSpace } from '@/utils/spaceState'
 
 const router = useRouter()
 const route = useRoute()
@@ -261,16 +286,23 @@ const {
   clearSpaceStatus,
 } = useFrontendSpace()
 
+const showSettingsEntry = computed(() => (
+  hasCoupleSpace.value && !isUnboundSpace(spaceStatus.value)
+))
+
 const showSetupEntry = computed(() => {
   if (!frontendLoggedIn.value || isSpaceReady.value) return false
-  // status=0（等待绑定）也属于“已有空间”，必须保留入口去管理邀请。
-  if (hasCoupleSpace.value) return true
+  // status=5（已解除绑定）视为没有有效空间，允许重新创建或加入。
+  if (isUnboundSpace(spaceStatus.value)) return true
+  // status=0（等待绑定）属于“已有空间”，必须保留入口去管理邀请；
+  // status=2/3 的恢复与设置统一走「空间设置」，避免出现两套重复入口。
+  if (hasCoupleSpace.value) return Number(spaceStatus.value?.status) === SPACE_STATUS.WAITING
   // 状态尚未确认时不要展示“没有空间”入口，避免网络问题造成误判。
   if (spaceLoading.value || spaceError.value || isSpaceStatusUnknown.value) return false
   return !spaceStatus.value
 })
 const setupLabel = computed(() => (
-  hasCoupleSpace.value ? '空间状态' : '创建/绑定情侣空间'
+  hasCoupleSpace.value && !isUnboundSpace(spaceStatus.value) ? '空间状态' : '创建/绑定情侣空间'
 ))
 
 const dropdownOpen = ref(false)

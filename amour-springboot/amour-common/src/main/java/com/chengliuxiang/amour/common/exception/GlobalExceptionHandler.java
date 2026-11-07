@@ -8,6 +8,7 @@ import cn.dev33.satoken.exception.SaTokenException;
 import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
 import com.chengliuxiang.amour.common.utils.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -80,6 +81,18 @@ public class GlobalExceptionHandler {
         log.warn("{} request error, errorCode: {}, errorMessage: {}", request.getRequestURI(), errorCode, errorMessage);
 
         return Response.fail(errorCode, errorMessage);
+    }
+
+    /**
+     * 捕获请求体无法解析（非法 JSON、字段类型错误、缺少请求体）异常。
+     * 统一按参数错误返回，避免字段类型错误落到 10000。
+     */
+    @ExceptionHandler({ HttpMessageNotReadableException.class })
+    @ResponseBody
+    public Response<Object> handleHttpMessageNotReadableException(HttpServletRequest request,
+                                                                  HttpMessageNotReadableException e) {
+        log.warn("{} request body not readable: {}", request.getRequestURI(), e.getMessage());
+        return Response.fail(ResponseCodeEnum.PARAM_NOT_VALID);
     }
 
     /**

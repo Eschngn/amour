@@ -45,7 +45,7 @@ CREATE TABLE `couple_space` (
     `description` TEXT NOT NULL DEFAULT '',
     -- 情侣空间封面图片URL
     `cover_image` TEXT NOT NULL DEFAULT '',
-    -- 空间状态：0-等待绑定 1-正常 2-冻结 3-已归档 4-删除等待期 5-已删除
+    -- 空间状态：0-等待绑定 1-正常 2-冻结 3-历史归档 4-删除等待期 5-已解绑（逻辑删除）
     `status` INTEGER NOT NULL DEFAULT 0,
     -- 空间可见性：0-私密 1-公开到恋爱广场
     `visibility` INTEGER NOT NULL DEFAULT 0,
@@ -57,6 +57,8 @@ CREATE TABLE `couple_space` (
     `archived_at` TEXT DEFAULT NULL,
     -- 永久删除等待期结束时间
     `delete_after` TEXT DEFAULT NULL,
+    -- 完成解绑（逻辑删除）时间，status=5 时写入
+    `deleted_at` TEXT DEFAULT NULL,
     -- 空间创建者用户ID
     `created_by` INTEGER NOT NULL,
     -- 创建时间
@@ -131,6 +133,29 @@ CREATE TABLE `couple_space_restore_confirm` (
     UNIQUE (`space_id`, `user_id`)
 );
 CREATE INDEX `idx_couple_space_restore_confirm_space` ON `couple_space_restore_confirm` (`space_id`);
+
+CREATE TABLE `couple_space_unbind_request` (
+    -- 解绑申请主键ID
+    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+    -- 情侣空间ID
+    `space_id` INTEGER NOT NULL,
+    -- 解绑发起人用户ID，必须是空间当前有效成员
+    `requester_user_id` INTEGER NOT NULL,
+    -- 申请状态：0-待同意 1-已同意 2-已拒绝 3-已取消
+    `status` INTEGER NOT NULL DEFAULT 0,
+    -- 申请创建时间
+    `create_time` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- 最后更新时间，由应用在更新时维护
+    `update_time` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- 申请被处理（同意/拒绝/取消）的时间
+    `resolved_at` TEXT DEFAULT NULL,
+    -- 处理申请的成员用户ID；取消时为发起人本人
+    `resolved_by_user_id` INTEGER DEFAULT NULL
+);
+CREATE INDEX `idx_couple_space_unbind_space_status` ON `couple_space_unbind_request` (`space_id`, `status`);
+CREATE INDEX `idx_couple_space_unbind_requester_status` ON `couple_space_unbind_request` (`requester_user_id`, `status`);
+-- 同一空间最多只能有一条待处理（status=0）解绑申请；历史申请保留可追溯。
+CREATE UNIQUE INDEX `uk_couple_space_unbind_pending` ON `couple_space_unbind_request` (`space_id`) WHERE `status` = 0;
 
 CREATE TABLE `platform_config` (
     -- 平台配置主键ID

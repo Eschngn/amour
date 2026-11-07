@@ -12,6 +12,9 @@ import com.chengliuxiang.amour.web.model.vo.space.InvitationTokenReqVO;
 import com.chengliuxiang.amour.web.model.vo.space.InvitationVO;
 import com.chengliuxiang.amour.web.model.vo.space.RestoreConfirmVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceStatusVO;
+import com.chengliuxiang.amour.web.model.vo.space.SpaceVisibilityReqVO;
+import com.chengliuxiang.amour.web.model.vo.space.SpaceVisibilityVO;
+import com.chengliuxiang.amour.web.model.vo.space.UnbindStatusVO;
 import com.chengliuxiang.amour.web.service.SpaceService;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -83,15 +86,45 @@ public class SpaceController {
         return spaceService.freezeSpace();
     }
 
-    @ApiOperationLog(description = "归档情侣空间")
-    @PostMapping("/archive")
-    public Response<Void> archiveSpace() {
-        return spaceService.archiveSpace();
-    }
-
     @ApiOperationLog(description = "确认恢复情侣空间")
     @PostMapping("/restore/confirm")
     public Response<RestoreConfirmVO> confirmRestore() {
         return spaceService.confirmRestore();
+    }
+
+    @ApiOperationLog(description = "发起解绑申请（旧 /space/leave 兼容入口）")
+    @PostMapping("/leave")
+    public Response<UnbindStatusVO> leaveSpace() {
+        return spaceService.leaveSpace();
+    }
+
+    @ApiOperationLog(description = "发起情侣空间解绑申请")
+    @PostMapping("/unbind/request")
+    public Response<UnbindStatusVO> requestUnbind() {
+        return spaceService.requestUnbind();
+    }
+
+    @ApiOperationLog(description = "取消情侣空间解绑申请")
+    @PostMapping("/unbind/cancel")
+    public Response<UnbindStatusVO> cancelUnbind() {
+        return spaceService.cancelUnbind();
+    }
+
+    @ApiOperationLog(description = "拒绝情侣空间解绑申请")
+    @PostMapping("/unbind/reject")
+    public Response<UnbindStatusVO> rejectUnbind() {
+        return spaceService.rejectUnbind();
+    }
+
+    @ApiOperationLog(description = "确认情侣空间解绑申请")
+    @PostMapping("/unbind/confirm")
+    public Response<UnbindStatusVO> confirmUnbind() {
+        return spaceService.confirmUnbind();
+    }
+
+    @ApiOperationLog(description = "设置情侣空间公开状态")
+    @PostMapping("/visibility")
+    public Response<SpaceVisibilityVO> updateVisibility(@Valid @RequestBody SpaceVisibilityReqVO reqVO) {
+        return spaceService.updateVisibility(reqVO);
     }
 }

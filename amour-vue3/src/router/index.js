@@ -8,18 +8,20 @@ import AdminPhotoManage from '@/pages/admin/AdminPhotoManage.vue'
 import AdminStoryManage from '@/pages/admin/AdminStoryManage.vue'
 import AdminRoleManage from '@/pages/admin/AdminRoleManage.vue'
 import AdminPermissionManage from '@/pages/admin/AdminPermissionManage.vue'
+import AdminSpaceManage from '@/pages/admin/AdminSpaceManage.vue'
 import AdminUserManage from '@/pages/admin/AdminUserManage.vue'
 import AnniversaryPage from '@/pages/frontend/AnniversaryPage.vue'
 import LovePlazaPage from '@/pages/frontend/LovePlazaPage.vue'
 import MessageBoardPage from '@/pages/frontend/MessageBoardPage.vue'
 import OurStoryPage from '@/pages/frontend/OurStoryPage.vue'
 import PublicSpaceDetailPage from '@/pages/frontend/PublicSpaceDetailPage.vue'
+import SpaceSettingsPage from '@/pages/frontend/SpaceSettingsPage.vue'
 import SpaceSetupPage from '@/pages/frontend/SpaceSetupPage.vue'
 import StoryDetail from '@/pages/frontend/StoryDetail.vue'
 import FrontendLogin from '@/pages/frontend/FrontendLogin.vue'
 import UserProfilePage from '@/pages/frontend/UserProfilePage.vue'
 import PhotoAlbumPage from '@/pages/frontend/PhotoAlbumPage.vue'
-import { isAdminAuthenticated } from '@/utils/adminAuth.js'
+import { ADMIN_PERMISSIONS, isAdminAuthenticated } from '@/utils/adminAuth.js'
 import { clearFrontendSession, hasFrontendQueryPermission, isFrontendAuthenticated, setFrontendProfile } from '@/utils/auth.js'
 import { isSpaceReady, isSpaceStatusUnknown, refreshSpaceStatus } from '@/composables/useFrontendSpace.js'
 import api from '@/axios'
@@ -49,6 +51,14 @@ const routes = [
     component: SpaceSetupPage,
     // 要求登录；只有带 ?token= 的邀请深链接允许未登录预览（见守卫中的 allowsFrontendGuest）。
     meta: { title: '创建或绑定情侣空间 · 恋语间', requiresFrontendAuth: true, allowsFrontendGuest: true },
+  },
+  {
+    path: '/space/settings',
+    name: 'space-settings',
+    component: SpaceSettingsPage,
+    // 只要求登录：等待绑定、冻结或旧归档数据的用户也需要进入这里查看状态；
+    // status=5 由页面视为已解除绑定，引导去创建/绑定而不是展示旧空间。
+    meta: { title: '情侣空间设置 · 恋语间', requiresFrontendAuth: true },
   },
   {
     path: '/story',
@@ -144,6 +154,17 @@ const routes = [
         name: 'admin-user',
         component: AdminUserManage,
         meta: { title: '用户管理 · 后台', pageTitle: '用户管理' },
+      },
+      {
+        path: 'space',
+        name: 'admin-space',
+        component: AdminSpaceManage,
+        meta: {
+          title: '空间管理 · 后台',
+          pageTitle: '空间管理',
+          adminPermission: ADMIN_PERMISSIONS.SPACE_QUERY,
+          adminRestorePermission: ADMIN_PERMISSIONS.SPACE_RESTORE,
+        },
       },
     ],
   },

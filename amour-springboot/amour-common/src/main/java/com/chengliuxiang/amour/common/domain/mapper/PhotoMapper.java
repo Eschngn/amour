@@ -52,6 +52,13 @@ public interface PhotoMapper extends BaseMapper<PhotoDO> {
                 .orderByDesc(PhotoDO::getId));
     }
 
+    /** 统计空间内全部未删除的照片数量，供后台内容概览使用。 */
+    default Long countActiveBySpaceId(Long spaceId) {
+        return selectCount(new LambdaQueryWrapper<PhotoDO>()
+                .eq(PhotoDO::getSpaceId, spaceId)
+                .eq(PhotoDO::getIsDeleted, false));
+    }
+
     /**
      * 统计空间内公开到恋爱广场且未删除的照片数量。
      */

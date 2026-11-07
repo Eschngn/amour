@@ -58,7 +58,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { ArrowRight, Calendar, ChatDotRound, Collection, CollectionTag, Expand, Fold, Lock, Menu, Picture, User, UserFilled } from '@element-plus/icons-vue'
+import { ArrowRight, Calendar, ChatDotRound, Collection, CollectionTag, Connection, Expand, Fold, Lock, Menu, Picture, User, UserFilled } from '@element-plus/icons-vue'
 
 defineProps({
   sidebarCollapsed: { type: Boolean, default: false },
@@ -77,6 +77,7 @@ const pageIcons = {
   '/admin/role': UserFilled,
   '/admin/permission': Lock,
   '/admin/user': User,
+  '/admin/space': Connection,
 }
 
 const pageIconTones = {
@@ -88,6 +89,7 @@ const pageIconTones = {
   '/admin/role': 'bg-emerald-50 text-emerald-500 ring-1 ring-emerald-100',
   '/admin/permission': 'bg-rose-50 text-rose-500 ring-1 ring-rose-100',
   '/admin/user': 'bg-sky-50 text-sky-500 ring-1 ring-sky-100',
+  '/admin/space': 'bg-emerald-50 text-emerald-500 ring-1 ring-emerald-100',
 }
 
 const pageTitle = computed(() => {
@@ -107,6 +109,7 @@ const descriptions = {
   '/admin/role': '管理角色与后台访问权限',
   '/admin/permission': '维护权限目录与操作授权标识',
   '/admin/user': '管理后台账号、角色与登录状态',
+  '/admin/space': '查看双方已解绑空间并进行人工恢复',
 }
 
 const pageDescription = computed(() => descriptions[route.path] || '欢迎回到 恋语间 管理控制台')

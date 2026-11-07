@@ -50,7 +50,7 @@ public class GalleryServiceImpl implements GalleryService {
     private static final long DEFAULT_PAGE_SIZE = 10L;
     private static final long MAX_PAGE_SIZE = 50L;
 
-    private static final int SPACE_STATUS_NORMAL = 1;
+    private static final int SPACE_STATUS_WAITING = 0;
     private static final int SPACE_STATUS_FROZEN = 2;
     private static final int SPACE_STATUS_ARCHIVED = 3;
     private static final int SPACE_VISIBILITY_PUBLIC = 1;
@@ -207,7 +207,7 @@ public class GalleryServiceImpl implements GalleryService {
     }
 
     private CoupleSpaceDO requirePublicSpace(Long spaceId) {
-        // 正常路径直接使用 Mapper 的公开查询方法；仅失败时再读取原始状态给出精确错误。
+        // 正常路径直接使用 Mapper 的公开查询方法（status=1 且 visibility=1）。
         CoupleSpaceDO publicSpace = coupleSpaceMapper.selectPublicById(spaceId);
         if (publicSpace != null) {
             return publicSpace;
@@ -216,19 +216,17 @@ public class GalleryServiceImpl implements GalleryService {
         if (space == null) {
             throw new BizException(ResponseCodeEnum.SPACE_NOT_EXIST);
         }
+        // 隐藏、冻结、归档都属于「未公开」：对外统一返回 20046。
         if (!Integer.valueOf(SPACE_VISIBILITY_PUBLIC).equals(space.getVisibility())) {
             throw new BizException(ResponseCodeEnum.SPACE_NOT_PUBLIC);
         }
-        if (!Integer.valueOf(SPACE_STATUS_NORMAL).equals(space.getStatus())) {
-            if (Integer.valueOf(SPACE_STATUS_FROZEN).equals(space.getStatus())) {
-                throw new BizException(ResponseCodeEnum.SPACE_FROZEN);
-            }
-            if (Integer.valueOf(SPACE_STATUS_ARCHIVED).equals(space.getStatus())) {
-                throw new BizException(ResponseCodeEnum.SPACE_ARCHIVED);
-            }
-            throw new BizException(ResponseCodeEnum.SPACE_NOT_ACCESSIBLE);
+        if (Integer.valueOf(SPACE_STATUS_WAITING).equals(space.getStatus())
+                || Integer.valueOf(SPACE_STATUS_FROZEN).equals(space.getStatus())
+                || Integer.valueOf(SPACE_STATUS_ARCHIVED).equals(space.getStatus())) {
+            throw new BizException(ResponseCodeEnum.SPACE_NOT_PUBLIC);
         }
-        // status=1、visibility=1 却未被公开查询命中，按当前不可访问处理。
+        // 已解绑(status=5)/删除等待期等非公开状态，或公开查询与原始记录不一致时，按当前不可访问处理。
+        // 广场列表只查 status=1，因此这些状态永远不会出现在公开列表中。
         throw new BizException(ResponseCodeEnum.SPACE_NOT_ACCESSIBLE);
     }
 

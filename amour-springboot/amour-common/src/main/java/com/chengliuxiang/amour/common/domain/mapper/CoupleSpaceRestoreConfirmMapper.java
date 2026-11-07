@@ -32,4 +32,13 @@ public interface CoupleSpaceRestoreConfirmMapper extends BaseMapper<CoupleSpaceR
         return delete(new LambdaQueryWrapper<CoupleSpaceRestoreConfirmDO>()
                 .eq(CoupleSpaceRestoreConfirmDO::getSpaceId, spaceId));
     }
+
+    /**
+     * 只清理指定成员的恢复确认，保留空间内其他成员的确认记录。
+     */
+    default int deleteBySpaceIdAndUserId(Long spaceId, Long userId) {
+        return delete(new LambdaQueryWrapper<CoupleSpaceRestoreConfirmDO>()
+                .eq(CoupleSpaceRestoreConfirmDO::getSpaceId, spaceId)
+                .eq(CoupleSpaceRestoreConfirmDO::getUserId, userId));
+    }
 }

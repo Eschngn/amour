@@ -68,6 +68,13 @@ public interface AnniversaryMapper extends BaseMapper<AnniversaryDO> {
                 .orderByAsc(AnniversaryDO::getId));
     }
 
+    /** 统计空间内全部未删除的纪念日数量，供后台内容概览使用。 */
+    default Long countActiveBySpaceId(Long spaceId) {
+        return selectCount(new LambdaQueryWrapper<AnniversaryDO>()
+                .eq(AnniversaryDO::getSpaceId, spaceId)
+                .eq(AnniversaryDO::getIsDeleted, false));
+    }
+
     /**
      * 统计空间内公开到恋爱广场且未删除的纪念日数量。
      */

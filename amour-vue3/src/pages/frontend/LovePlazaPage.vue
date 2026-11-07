@@ -93,20 +93,36 @@
               </div>
             </div>
             <div class="flex shrink-0 flex-col gap-2 sm:flex-row">
-              <RouterLink
-                to="/"
-                class="inline-flex items-center justify-center gap-2 rounded-full bg-rose-500 px-5 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
-              >
-                查看空间状态
-              </RouterLink>
-              <button
-                v-if="unavailablePrompt.canRetry"
-                type="button"
-                class="inline-flex items-center justify-center rounded-full border border-rose-200 bg-white px-5 py-2.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
-                @click="refreshSpaceStatus"
-              >
-                重新读取空间
-              </button>
+              <template v-if="unavailablePrompt.canCreate">
+                <RouterLink
+                  :to="{ path: '/space/setup', query: { action: 'create' } }"
+                  class="inline-flex items-center justify-center gap-2 rounded-full bg-rose-500 px-5 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
+                >
+                  创建情侣空间
+                </RouterLink>
+                <RouterLink
+                  :to="{ path: '/space/setup', query: { action: 'bind' } }"
+                  class="inline-flex items-center justify-center rounded-full border border-rose-200 bg-white px-5 py-2.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
+                >
+                  绑定情侣空间
+                </RouterLink>
+              </template>
+              <template v-else>
+                <RouterLink
+                  to="/"
+                  class="inline-flex items-center justify-center gap-2 rounded-full bg-rose-500 px-5 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
+                >
+                  查看空间状态
+                </RouterLink>
+                <button
+                  v-if="unavailablePrompt.canRetry"
+                  type="button"
+                  class="inline-flex items-center justify-center rounded-full border border-rose-200 bg-white px-5 py-2.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
+                  @click="refreshSpaceStatus"
+                >
+                  重新读取空间
+                </button>
+              </template>
             </div>
           </div>
         </section>
@@ -350,6 +366,7 @@ const unavailablePrompt = computed(() => {
     }
   }
   if (status === SPACE_STATUS.ARCHIVED) {
+    // 旧 status=3 数据只做兼容提示；用户端不再提供归档入口。
     return {
       icon: '▣',
       iconClass: 'bg-slate-100 text-slate-500',
@@ -357,6 +374,17 @@ const unavailablePrompt = computed(() => {
       title: `${spaceName} 已归档`,
       description: '这个空间已经归档，私人内容不会继续加载。你仍然可以浏览恋爱广场里别人公开的空间。',
       canRetry: false,
+    }
+  }
+  if (status === SPACE_STATUS.DELETED) {
+    return {
+      icon: '♥',
+      iconClass: 'bg-rose-100 text-rose-500',
+      badge: 'Unbound',
+      title: '情侣空间已解除绑定',
+      description: '你们现在都可以重新创建或加入情侣空间。旧空间内容不会再作为当前空间展示。',
+      canRetry: false,
+      canCreate: true,
     }
   }
   return {

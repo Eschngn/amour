@@ -34,37 +34,105 @@ public interface CoupleSpaceMapper extends BaseMapper<CoupleSpaceDO> {
     }
 
     /**
-     * 冻结空间：只允许从等待绑定或正常状态进入冻结。
+     * 冻结空间：只允许从等待绑定或正常状态进入冻结，并强制空间级可见性为私密。
      */
     default int freeze(Long spaceId, LocalDateTime updateTime) {
         return update(null, new LambdaUpdateWrapper<CoupleSpaceDO>()
                 .eq(CoupleSpaceDO::getId, spaceId)
                 .in(CoupleSpaceDO::getStatus, 0, 1)
                 .set(CoupleSpaceDO::getStatus, 2)
+                .set(CoupleSpaceDO::getVisibility, 0)
                 .set(CoupleSpaceDO::getUpdateTime, updateTime));
     }
 
     /**
-     * 归档空间：允许从等待绑定、正常或冻结状态进入归档。
+     * 归档空间：允许从等待绑定、正常或冻结状态进入归档，并强制空间级可见性为私密。
+     *
+     * <p>新版本用户端已不提供归档入口（归档改由解绑申请取代），
+     * 该方法保留给历史 status=3 数据的兼容维护，不应从用户接口直接调用。</p>
      */
     default int archive(Long spaceId, LocalDateTime archivedAt) {
         return update(null, new LambdaUpdateWrapper<CoupleSpaceDO>()
                 .eq(CoupleSpaceDO::getId, spaceId)
                 .in(CoupleSpaceDO::getStatus, 0, 1, 2)
                 .set(CoupleSpaceDO::getStatus, 3)
+                .set(CoupleSpaceDO::getVisibility, 0)
                 .set(CoupleSpaceDO::getArchivedAt, archivedAt)
                 .set(CoupleSpaceDO::getUpdateTime, archivedAt));
     }
 
     /**
-     * 双方确认后恢复空间：冻结或归档状态恢复为正常。
+     * 设置空间级公开/隐藏。公开只允许 status=1，隐藏额外允许冻结/归档但绝不改写状态。
+     * publicAt 只由 {@link #publishWithFirstPublicAt} 在首次公开时写入。
+     */
+    default int updateVisibility(Long spaceId, int visibility, LocalDateTime now) {
+        LambdaUpdateWrapper<CoupleSpaceDO> wrapper = new LambdaUpdateWrapper<CoupleSpaceDO>()
+                .eq(CoupleSpaceDO::getId, spaceId)
+                .set(CoupleSpaceDO::getVisibility, visibility)
+                .set(CoupleSpaceDO::getUpdateTime, now);
+        if (visibility == 0) {
+            wrapper.in(CoupleSpaceDO::getStatus, 0, 1, 2, 3);
+        } else {
+            wrapper.eq(CoupleSpaceDO::getStatus, 1)
+                    .apply("(SELECT COUNT(*) FROM couple_member WHERE space_id = {0} AND status = 1) = 2", spaceId);
+        }
+        return update(null, wrapper);
+    }
+
+    /**
+     * 首次公开：仅当空间正常、已有两名有效成员且从未公开过（publicAt 为空）时写入公开时间。
+     * 返回 0 表示已经公开过或状态/成员条件不满足，由调用方决定是否走重复公开路径。
+     */
+    default int publishWithFirstPublicAt(Long spaceId, LocalDateTime now) {
+        return update(null, new LambdaUpdateWrapper<CoupleSpaceDO>()
+                .eq(CoupleSpaceDO::getId, spaceId)
+                .eq(CoupleSpaceDO::getStatus, 1)
+                .isNull(CoupleSpaceDO::getPublicAt)
+                .apply("(SELECT COUNT(*) FROM couple_member WHERE space_id = {0} AND status = 1) = 2", spaceId)
+                .set(CoupleSpaceDO::getVisibility, 1)
+                .set(CoupleSpaceDO::getPublicAt, now)
+                .set(CoupleSpaceDO::getUpdateTime, now));
+    }
+
+    /**
+     * 双方确认后恢复空间：冻结或归档状态恢复为正常，清空归档时间，并保持私密（不自动重新公开）。
      */
     default int restore(Long spaceId, LocalDateTime updateTime) {
         return update(null, new LambdaUpdateWrapper<CoupleSpaceDO>()
                 .eq(CoupleSpaceDO::getId, spaceId)
                 .in(CoupleSpaceDO::getStatus, 2, 3)
                 .set(CoupleSpaceDO::getStatus, 1)
+                .set(CoupleSpaceDO::getVisibility, 0)
                 .set(CoupleSpaceDO::getArchivedAt, null)
+                .set(CoupleSpaceDO::getUpdateTime, updateTime));
+    }
+
+    /**
+     * 双方确认解绑：空间进入已删除状态，强制私密并写入 deletedAt。
+     * 只允许从等待绑定/正常/冻结/归档进入，已删除空间重复确认返回 0。
+     */
+    default int markUnbound(Long spaceId, LocalDateTime deletedAt) {
+        return update(null, new LambdaUpdateWrapper<CoupleSpaceDO>()
+                .eq(CoupleSpaceDO::getId, spaceId)
+                .in(CoupleSpaceDO::getStatus, 0, 1, 2, 3)
+                .set(CoupleSpaceDO::getStatus, 5)
+                .set(CoupleSpaceDO::getVisibility, 0)
+                .set(CoupleSpaceDO::getDeletedAt, deletedAt)
+                .set(CoupleSpaceDO::getUpdateTime, deletedAt));
+    }
+
+    /**
+     * 管理员人工恢复：只允许从 status=5（双方已解绑）恢复到正常且私密的空间。
+     * 清空归档/解绑时间，保留 publicAt、spaceCode、创建者与全部内容。
+     */
+    default int restoreUnbound(Long spaceId, LocalDateTime updateTime) {
+        return update(null, new LambdaUpdateWrapper<CoupleSpaceDO>()
+                .eq(CoupleSpaceDO::getId, spaceId)
+                .eq(CoupleSpaceDO::getStatus, 5)
+                .set(CoupleSpaceDO::getStatus, 1)
+                .set(CoupleSpaceDO::getVisibility, 0)
+                .set(CoupleSpaceDO::getArchivedAt, null)
+                .set(CoupleSpaceDO::getDeletedAt, null)
                 .set(CoupleSpaceDO::getUpdateTime, updateTime));
     }
 

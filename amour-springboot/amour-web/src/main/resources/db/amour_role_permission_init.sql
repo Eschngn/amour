@@ -171,6 +171,8 @@ FROM (
       SELECT 'admin', '权限管理', '/admin/permission', 'Lock', 70, 'admin:permission:menu'
        UNION ALL
        SELECT 'admin', '用户管理', '/admin/user', 'User', 80, 'admin:user:menu'
+       UNION ALL
+       SELECT 'admin', '空间管理', '/admin/space', 'Connection', 90, 'admin:space:menu'
 ) s
 JOIN `permission` parent
   ON parent.permission_key = s.parent_key
@@ -216,6 +218,8 @@ FROM (
       UNION ALL SELECT 'admin:user:menu', '新增用户', 20, 'admin:user:create'
       UNION ALL SELECT 'admin:user:menu', '修改用户', 30, 'admin:user:update'
       UNION ALL SELECT 'admin:user:menu', '停用用户', 40, 'admin:user:delete'
+      UNION ALL SELECT 'admin:space:menu', '查询已解绑空间', 10, 'admin:space:query'
+      UNION ALL SELECT 'admin:space:menu', '人工恢复空间', 20, 'admin:space:restore'
 ) s
 JOIN `permission` parent
   ON parent.permission_key = s.parent_key
@@ -263,7 +267,8 @@ WHERE `permission_key` IN (
     'admin:dict:menu', 'admin:dict:query', 'admin:dict:create', 'admin:dict:update', 'admin:dict:delete',
      'admin:role:menu', 'admin:role:query', 'admin:role:create', 'admin:role:update', 'admin:role:delete',
      'admin:permission:menu', 'admin:permission:query', 'admin:permission:create', 'admin:permission:update', 'admin:permission:delete',
-      'admin:user:menu', 'admin:user:query', 'admin:user:create', 'admin:user:update', 'admin:user:delete'
+      'admin:user:menu', 'admin:user:query', 'admin:user:create', 'admin:user:update', 'admin:user:delete',
+      'admin:space:menu', 'admin:space:query', 'admin:space:restore'
 );
 
 -- common：前台查询 + “我的”全部权限；不授予留言发布/回复权限，也不授予后台权限。
@@ -314,7 +319,7 @@ WHERE r.role_key = 'message_user'
         AND rel.is_deleted = b'0'
   );
 
--- admin：后台目录、五个管理菜单及全部 CRUD 权限。
+-- admin：后台目录、全部管理菜单（含空间管理）及全部操作权限。
 INSERT INTO `role_permission_rel` (`role_id`, `permission_id`, `is_deleted`)
 SELECT DISTINCT r.id, p.id, b'0'
 FROM `role` r

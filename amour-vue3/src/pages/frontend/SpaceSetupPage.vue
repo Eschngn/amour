@@ -170,15 +170,19 @@
               <p class="text-[10px] font-bold uppercase tracking-[0.22em]" :class="statusView.eyebrowClass">{{ statusView.eyebrow }}</p>
               <h2 class="mt-1 break-words font-display text-2xl font-bold text-rose-950">{{ statusView.title }}</h2>
               <p class="mt-2 text-sm leading-6 text-rose-800/60">{{ statusView.description }}</p>
-              <p v-if="spaceStatus?.spaceName" class="mt-3 inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/80 bg-white/70 px-3 py-1.5 text-xs font-semibold text-rose-700">
+              <p v-if="spaceStatus?.spaceName && !isUnboundSpace(spaceStatus)" class="mt-3 inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/80 bg-white/70 px-3 py-1.5 text-xs font-semibold text-rose-700">
                 <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-rose-400" aria-hidden="true" />
                 <span class="truncate">当前空间 · {{ spaceStatus.spaceName }}</span>
               </p>
               <div class="mt-5 flex flex-wrap gap-2">
+                <!-- 冻结/归档的恢复流程、公开设置与退出解绑都在空间设置页集中处理。 -->
+                <RouterLink to="/space/settings" class="rounded-full bg-rose-500 px-4 py-2 text-xs font-semibold text-white transition hover:bg-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2">
+                  前往空间设置
+                </RouterLink>
                 <button type="button" class="rounded-full border border-rose-200 bg-white px-4 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60" :disabled="spaceLoading" @click="retryStatus">
                   {{ spaceLoading ? '刷新中…' : '刷新空间状态' }}
                 </button>
-                <RouterLink to="/plaza" class="rounded-full bg-rose-500 px-4 py-2 text-xs font-semibold text-white transition hover:bg-rose-600">
+                <RouterLink to="/plaza" class="rounded-full border border-rose-200 bg-white px-4 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50">
                   返回恋爱广场
                 </RouterLink>
               </div>
@@ -392,7 +396,8 @@
           不能写成 v-else：上面的等待绑定区块是独立的 v-if，
           v-else 会挂到它身上，导致 status=1 的用户也能看到创建表单。
         -->
-        <template v-else-if="!hasCoupleSpace">
+        <!-- status=5（已解除绑定）视为没有有效空间，可以重新创建或绑定。 -->
+        <template v-else-if="!hasCoupleSpace || isUnboundSpace(spaceStatus)">
           <div class="mt-8 grid items-start gap-6 lg:grid-cols-2">
             <section
               id="space-create"
@@ -691,7 +696,7 @@ import {
   validateInviteeAmourId,
 } from '@/utils/spaceInvitation'
 import { resolveSafeRedirect } from '@/utils/safeRedirect'
-import { readSpaceErrorMessage } from '@/utils/spaceState'
+import { isUnboundSpace, readSpaceErrorMessage } from '@/utils/spaceState'
 
 const route = useRoute()
 const router = useRouter()
@@ -807,6 +812,7 @@ const statusView = computed(() => {
     }
   }
   if (status === 3) {
+    // 旧 status=3 归档数据只做兼容提示；用户端不再提供归档动作。
     return {
       icon: '▣',
       eyebrow: 'Space Archived',
@@ -815,6 +821,17 @@ const statusView = computed(() => {
       iconClass: 'bg-slate-100 text-slate-500',
       panelClass: 'border-slate-200 bg-slate-50/80',
       eyebrowClass: 'text-slate-500',
+    }
+  }
+  if (status === 5) {
+    return {
+      icon: '♥',
+      eyebrow: 'Space Unbound',
+      title: '情侣空间已解除绑定',
+      description: '你们现在都可以重新创建或加入情侣空间。可以在下方直接创建新的空间，或粘贴邀请链接加入。',
+      iconClass: 'bg-rose-100 text-rose-500',
+      panelClass: 'border-rose-200/80 bg-rose-50/70',
+      eyebrowClass: 'text-rose-500',
     }
   }
   return {
@@ -907,7 +924,7 @@ function scrollToAction() {
 
 async function loadReceivedInvitations() {
   if (invitationsLoading.value) return
-  if (hasCoupleSpace.value || spaceError.value) return
+  if ((hasCoupleSpace.value && !isUnboundSpace(spaceStatus.value)) || spaceError.value) return
 
   invitationsLoading.value = true
   invitationsError.value = ''
@@ -944,7 +961,7 @@ async function retryStatus() {
     await loadPendingInvitations()
     return
   }
-  if (!hasCoupleSpace.value && !spaceError.value) {
+  if ((!hasCoupleSpace.value || isUnboundSpace(spaceStatus.value)) && !spaceError.value) {
     await loadReceivedInvitations()
   }
 }
@@ -1338,7 +1355,7 @@ onMounted(async () => {
   // status=0：创建者需要在这里管理待绑定邀请。
   if (isSpaceWaiting.value) {
     await loadPendingInvitations()
-  } else if (!hasCoupleSpace.value && !spaceError.value) {
+  } else if ((!hasCoupleSpace.value || isUnboundSpace(spaceStatus.value)) && !spaceError.value) {
     await loadReceivedInvitations()
     if (tokenFromQuery) await loadInvitationPreview()
   }

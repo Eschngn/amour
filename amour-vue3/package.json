@@ -7,8 +7,10 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test:space-state": "node --test src/composables/useFrontendSpace.test.mjs",
-    "test:space-api": "node --test src/utils/spaceInvitation.test.mjs src/utils/safeRedirect.test.mjs"
+    "test:space-state": "node --test src/composables/useFrontendSpace.test.mjs src/utils/spaceRequestGate.test.mjs src/utils/spaceUnbind.test.mjs",
+    "test:space-api": "node --test src/utils/spaceInvitation.test.mjs src/utils/safeRedirect.test.mjs",
+    "test:space-settings": "node --test src/utils/spaceLifecycle.test.mjs src/utils/spaceRequestGate.test.mjs",
+    "test": "node --test src/composables/useFrontendSpace.test.mjs src/utils/spaceInvitation.test.mjs src/utils/safeRedirect.test.mjs src/utils/spaceLifecycle.test.mjs src/utils/spaceRequestGate.test.mjs src/utils/spaceUnbind.test.mjs"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",

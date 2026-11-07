@@ -70,6 +70,13 @@ public interface StoryNodeMapper extends BaseMapper<StoryNodeDO> {
                 .orderByAsc(StoryNodeDO::getSortOrder));
     }
 
+    /** 统计空间内全部未删除的故事数量，供后台内容概览使用。 */
+    default Long countActiveBySpaceId(Long spaceId) {
+        return selectCount(new LambdaQueryWrapper<StoryNodeDO>()
+                .eq(StoryNodeDO::getSpaceId, spaceId)
+                .eq(StoryNodeDO::getIsDeleted, false));
+    }
+
     /**
      * 统计空间内公开到恋爱广场且未删除的故事数量。
      */

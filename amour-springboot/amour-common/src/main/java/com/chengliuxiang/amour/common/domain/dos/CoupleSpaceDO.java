@@ -29,7 +29,7 @@ public class CoupleSpaceDO {
     private String coverImage;
 
     /**
-     * 空间状态：0-等待绑定 1-正常 2-冻结 3-已归档 4-删除等待期 5-已删除
+     * 空间状态：0-等待绑定 1-正常 2-冻结 3-历史归档 4-删除等待期 5-已解绑（逻辑删除）
      */
     private Integer status;
 
@@ -45,6 +45,11 @@ public class CoupleSpaceDO {
     private LocalDateTime archivedAt;
 
     private LocalDateTime deleteAfter;
+
+    /**
+     * 完成解绑（逻辑删除）时间，status=5 时写入；历史归档(status=3)不写该字段。
+     */
+    private LocalDateTime deletedAt;
 
     private Long createdBy;
 
