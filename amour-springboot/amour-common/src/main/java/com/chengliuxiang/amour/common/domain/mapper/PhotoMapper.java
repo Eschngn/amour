@@ -92,6 +92,19 @@ public interface PhotoMapper extends BaseMapper<PhotoDO> {
                 .last("LIMIT 1"));
     }
 
+    /**
+     * 用户端相册管理分页：包含隐藏照片，但只返回当前空间的数据。
+     */
+    default IPage<PhotoDO> selectManagePage(long current, long size, Long spaceId, Long categoryId) {
+        return selectPage(new Page<>(current, size), new LambdaQueryWrapper<PhotoDO>()
+                .eq(PhotoDO::getSpaceId, spaceId)
+                .eq(PhotoDO::getIsDeleted, false)
+                .eq(categoryId != null, PhotoDO::getPhotoCategoryId, categoryId)
+                .orderByAsc(PhotoDO::getSortOrder)
+                .orderByDesc(PhotoDO::getTakenTime)
+                .orderByDesc(PhotoDO::getId));
+    }
+
     default IPage<PhotoDO> findAdminPage(long current, long size, Long spaceId, String title,
                                          Long categoryId, Integer visibility) {
         return selectPage(new Page<>(current, size), new LambdaQueryWrapper<PhotoDO>()

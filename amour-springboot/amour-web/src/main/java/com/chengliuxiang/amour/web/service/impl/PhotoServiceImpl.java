@@ -1,20 +1,16 @@
 package com.chengliuxiang.amour.web.service.impl;
 
-import cn.dev33.satoken.stp.StpUtil;
-import com.chengliuxiang.amour.common.domain.dos.CoupleMemberDO;
 import com.chengliuxiang.amour.common.domain.dos.PhotoCategoryDO;
 import com.chengliuxiang.amour.common.domain.dos.PhotoDO;
-import com.chengliuxiang.amour.common.domain.mapper.CoupleMemberMapper;
 import com.chengliuxiang.amour.common.domain.mapper.PhotoCategoryMapper;
 import com.chengliuxiang.amour.common.domain.mapper.PhotoMapper;
-import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
-import com.chengliuxiang.amour.common.exception.BizException;
 import com.chengliuxiang.amour.common.model.PageResult;
 import com.chengliuxiang.amour.common.utils.Response;
 import com.chengliuxiang.amour.web.model.vo.photo.PhotoCategoryVO;
 import com.chengliuxiang.amour.web.model.vo.photo.PhotoPageItemVO;
 import com.chengliuxiang.amour.web.model.vo.photo.PhotoPageQueryReqVO;
 import com.chengliuxiang.amour.web.service.PhotoService;
+import com.chengliuxiang.amour.web.service.SpaceContentAccessService;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -37,7 +33,7 @@ public class PhotoServiceImpl implements PhotoService {
     private PhotoCategoryMapper photoCategoryMapper;
 
     @Resource
-    private CoupleMemberMapper coupleMemberMapper;
+    private SpaceContentAccessService spaceContentAccessService;
 
     @Override
     public Response<PageResult<PhotoPageItemVO>> pagePhotos(PhotoPageQueryReqVO reqVO) {
@@ -86,15 +82,8 @@ public class PhotoServiceImpl implements PhotoService {
     }
 
     private Long requireCurrentSpaceId() {
-        // 只取「未解绑空间」中的有效成员关系：status=5 的历史残留不再代表可访问的空间。
-        List<CoupleMemberDO> memberships = coupleMemberMapper.selectActiveInLiveSpaces(StpUtil.getLoginIdAsLong());
-        if (memberships == null || memberships.isEmpty()) {
-            if (coupleMemberMapper.countActiveByUserId(StpUtil.getLoginIdAsLong()) > 0) {
-                throw new BizException(ResponseCodeEnum.SPACE_UNBOUND);
-            }
-            throw new BizException(ResponseCodeEnum.SPACE_NOT_EXIST);
-        }
-        return memberships.get(0).getSpaceId();
+        // 统一由授权服务校验登录态、有效成员关系与空间状态。
+        return spaceContentAccessService.requireReadableSpaceId();
     }
 
     private long normalizeCurrent(Long current) {

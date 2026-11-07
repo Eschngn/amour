@@ -22,8 +22,21 @@ public class AliyunOSSUtil {
     @Resource
     private OSS ossClient;
 
-    @SneakyThrows
+    /**
+     * 上传文件到配置的默认目录。
+     */
     public String uploadFile(MultipartFile file) {
+        return uploadFile(file, null);
+    }
+
+    /**
+     * 上传文件到指定子目录（例如空间内容使用 space/{spaceId}）。
+     *
+     * <p>子目录由服务端内部生成，不接受客户端原始路径；文件扩展名必须存在，
+     * 避免合法文件名缺失后缀时出现路径/名称异常。</p>
+     */
+    @SneakyThrows
+    public String uploadFile(MultipartFile file, String subFolder) {
         log.info("## 上传文件至阿里云 OSS ...");
         // 判断文件是否为空
         if (file == null || file.getSize() == 0) {
@@ -33,13 +46,21 @@ public class AliyunOSSUtil {
 
         // 文件的原始名称
         String originalFileName = file.getOriginalFilename();
+        int dotIndex = originalFileName == null ? -1 : originalFileName.lastIndexOf('.');
+        if (dotIndex < 0 || dotIndex == originalFileName.length() - 1) {
+            throw new RuntimeException("文件名不合法");
+        }
         // 生成存储对象的名称（将 UUID 字符串中的 - 替换成空字符串）
         String key = UUID.randomUUID().toString().replace("-", "");
         // 获取文件的后缀，如 .jpg
-        String suffix = originalFileName.substring(originalFileName.lastIndexOf("."));
+        String suffix = originalFileName.substring(dotIndex);
 
+        String folder = aliyunOSSProperties.getFolderName();
+        if (subFolder != null && subFolder.trim().length() > 0) {
+            folder = folder + "/" + subFolder.trim().replace("\\", "").replace("..", "");
+        }
         // 拼接上文件后缀，即为要存储的文件名
-        String objectName = String.format("%s/%s%s", aliyunOSSProperties.getFolderName(), key, suffix);
+        String objectName = String.format("%s/%s%s", folder, key, suffix);
 
         log.info("==> 开始上传文件至阿里云 OSS, ObjectName: {}", objectName);
 

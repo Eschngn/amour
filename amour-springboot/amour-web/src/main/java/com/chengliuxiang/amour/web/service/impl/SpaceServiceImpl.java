@@ -33,6 +33,7 @@ import com.chengliuxiang.amour.web.model.vo.space.SpaceUnbindRequesterVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceVisibilityReqVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceVisibilityVO;
 import com.chengliuxiang.amour.web.model.vo.space.UnbindStatusVO;
+import com.chengliuxiang.amour.web.model.vo.space.UpdateSpaceReqVO;
 import com.chengliuxiang.amour.web.service.SpaceService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -201,6 +202,41 @@ public class SpaceServiceImpl implements SpaceService {
     }
 
     @Override
+    public Response<SpaceStatusVO> updateSpace(UpdateSpaceReqVO reqVO) {
+        Long userId = currentUserId();
+        return withSpaceLock(userId, spaceId ->
+                transactionTemplate.execute(status -> doUpdateSpace(userId, spaceId, reqVO)));
+    }
+
+    /**
+     * 编辑空间基础信息：仅等待另一半加入（status=0 且只有一名有效成员）时允许。
+     *
+     * <p>更新条件同时带上 status=0，避免与「接受邀请」并发时把已正常绑定的空间改掉。</p>
+     */
+    private Response<SpaceStatusVO> doUpdateSpace(Long userId, Long spaceId, UpdateSpaceReqVO reqVO) {
+        requireActiveMembershipInSpace(userId, spaceId);
+        CoupleSpaceDO space = requireSpace(spaceId);
+        if (isDeletedSpace(space)) {
+            throw new BizException(ResponseCodeEnum.SPACE_UNBOUND);
+        }
+        Long activeCount = coupleMemberMapper.countActiveBySpaceId(spaceId);
+        if (space.getStatus() == null || space.getStatus() != SPACE_STATUS_WAITING
+                || activeCount == null || activeCount >= MEMBER_LIMIT) {
+            throw new BizException(ResponseCodeEnum.SPACE_UPDATE_NOT_ALLOWED);
+        }
+
+        String spaceName = StrUtil.blankToDefault(StrUtil.trim(reqVO.getSpaceName()), DEFAULT_SPACE_NAME);
+        String description = StrUtil.blankToDefault(StrUtil.trim(reqVO.getDescription()), "");
+        LocalDateTime now = LocalDateTime.now();
+        int updated = coupleSpaceMapper.updateBasicInfo(
+                spaceId, spaceName, description, reqVO.getLoveStartTime(), now);
+        if (updated == 0) {
+            throw new BizException(ResponseCodeEnum.SPACE_UPDATE_NOT_ALLOWED);
+        }
+        return Response.success(buildSpaceStatus(requireSpace(spaceId), userId));
+    }
+
+    @Override
     public Response<CreateInvitationRspVO> createInvitation(CreateInvitationReqVO reqVO) {
         Long userId = currentUserId();
         // 与解绑确认共用空间锁：确认解绑会撤销全部待处理邀请，
@@ -243,13 +279,10 @@ public class SpaceServiceImpl implements SpaceService {
                 throw new BizException(ResponseCodeEnum.USER_ALREADY_IN_SPACE);
             }
             inviteeUserId = invitee.getId();
-
-            // 同一受邀账号只保留最新一条待接受邀请，避免旧链接继续生效。
-            CoupleInvitationDO previous = coupleInvitationMapper.selectPendingBySpaceAndInvitee(space.getId(), inviteeUserId);
-            if (previous != null) {
-                coupleInvitationMapper.revoke(previous.getId(), space.getId(), now);
-            }
         }
+
+        // 同一空间只保留最新一条待接受邀请：生成新链接后，旧链接立即失效。
+        coupleInvitationMapper.revokePendingBySpaceId(space.getId(), now);
 
         String token = generateInvitationToken();
         LocalDateTime expiresAt = now.plusDays(INVITATION_EXPIRE_DAYS);
@@ -258,6 +291,7 @@ public class SpaceServiceImpl implements SpaceService {
                 .inviterUserId(userId)
                 .inviteeUserId(inviteeUserId)
                 .tokenHash(hashToken(token))
+                .tokenValue(token)
                 .status(INVITATION_STATUS_PENDING)
                 .expiresAt(expiresAt)
                 .createTime(now)
@@ -279,7 +313,7 @@ public class SpaceServiceImpl implements SpaceService {
         CoupleMemberDO membership = requireActiveMembership(userId);
         List<CoupleInvitationDO> invitations = coupleInvitationMapper
                 .selectPendingBySpaceId(membership.getSpaceId(), LocalDateTime.now());
-        return Response.success(buildInvitationVOs(invitations));
+        return Response.success(buildInvitationVOs(invitations, true));
     }
 
     @Override
@@ -287,7 +321,7 @@ public class SpaceServiceImpl implements SpaceService {
         Long userId = currentUserId();
         List<CoupleInvitationDO> invitations = coupleInvitationMapper
                 .selectPendingByInvitee(userId, LocalDateTime.now());
-        return Response.success(buildInvitationVOs(invitations));
+        return Response.success(buildInvitationVOs(invitations, false));
     }
 
     @Override
@@ -539,7 +573,11 @@ public class SpaceServiceImpl implements SpaceService {
                 || (space.getStatus() != SPACE_STATUS_WAITING && space.getStatus() != SPACE_STATUS_NORMAL)) {
             throw new BizException(ResponseCodeEnum.SPACE_STATUS_NOT_ALLOWED);
         }
-        // 单人空间也允许发起申请：另一半加入后即可确认；确认入口自身会校验「另一名有效成员」。
+        // 必须先有另一名有效成员：单人等待绑定阶段不提供解绑入口。
+        Long activeCount = coupleMemberMapper.countActiveBySpaceId(spaceId);
+        if (activeCount == null || activeCount < MEMBER_LIMIT) {
+            throw new BizException(ResponseCodeEnum.SPACE_UNBIND_REQUIRES_PARTNER);
+        }
         LocalDateTime now = LocalDateTime.now();
 
         CoupleSpaceUnbindRequestDO pending = unbindRequestMapper.selectPendingBySpaceId(spaceId);
@@ -1139,7 +1177,7 @@ public class SpaceServiceImpl implements SpaceService {
                 .build();
     }
 
-    private List<InvitationVO> buildInvitationVOs(List<CoupleInvitationDO> invitations) {
+    private List<InvitationVO> buildInvitationVOs(List<CoupleInvitationDO> invitations, boolean includeToken) {
         if (CollUtil.isEmpty(invitations)) {
             return Collections.emptyList();
         }
@@ -1172,6 +1210,7 @@ public class SpaceServiceImpl implements SpaceService {
                             .inviterName(inviter == null ? "恋人" : StrUtil.blankToDefault(inviter.getDisplayName(), "恋人"))
                             .inviteeAmourId(invitee == null ? null : StrUtil.blankToDefault(invitee.getAmourId(), ""))
                             .inviteeName(invitee == null ? null : StrUtil.blankToDefault(invitee.getDisplayName(), "恋人"))
+                            .token(includeToken ? invitation.getTokenValue() : null)
                             .status(status)
                             .statusText(invitationStatusText(status))
                             .expiresAt(invitation.getExpiresAt())

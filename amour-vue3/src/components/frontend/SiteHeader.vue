@@ -68,20 +68,20 @@
           纪念日
         </RouterLink>
         <RouterLink
-          v-if="showSettingsEntry"
-          to="/space/settings"
+          v-if="canOpenStudio"
+          to="/space/studio"
           class="nav-link"
-          :class="{ 'nav-link-active': isSection('/space/settings') }"
+          :class="{ 'nav-link-active': isSection('/space/studio') }"
         >
-          空间设置
+          空间编辑
         </RouterLink>
         <RouterLink
-          v-if="showSetupEntry"
+          v-if="showSpaceEntry"
           to="/space/setup"
           class="nav-link"
           :class="{ 'nav-link-active': isSection('/space/setup') }"
         >
-          {{ setupLabel }}
+          {{ spaceEntryLabel }}
         </RouterLink>
       </nav>
 
@@ -175,20 +175,20 @@
         留言板
       </RouterLink>
       <RouterLink
-        v-if="showSettingsEntry"
-        to="/space/settings"
+        v-if="canOpenStudio"
+        to="/space/studio"
         class="mobile-nav-link"
-        :class="{ 'mobile-nav-link-active': isSection('/space/settings') }"
+        :class="{ 'mobile-nav-link-active': isSection('/space/studio') }"
       >
-        空间设置
+        空间编辑
       </RouterLink>
       <RouterLink
-        v-if="showSetupEntry"
+        v-if="showSpaceEntry"
         to="/space/setup"
         class="mobile-nav-link"
         :class="{ 'mobile-nav-link-active': isSection('/space/setup') }"
       >
-        {{ setupLabel }}
+        {{ spaceEntryLabel }}
       </RouterLink>
     </nav>
 
@@ -210,20 +210,20 @@
             我的情侣空间
           </RouterLink>
           <RouterLink
-            v-else-if="showSetupEntry"
+            v-if="canOpenStudio"
+            to="/space/studio"
+            class="block w-full rounded-lg px-3 py-2 text-left text-sm text-rose-700 transition hover:bg-rose-50"
+            @click="dropdownOpen = false"
+          >
+            空间编辑
+          </RouterLink>
+          <RouterLink
+            v-if="showSpaceEntry"
             to="/space/setup"
             class="block w-full rounded-lg px-3 py-2 text-left text-sm text-rose-700 transition hover:bg-rose-50"
             @click="dropdownOpen = false"
           >
-            {{ setupLabel }}
-          </RouterLink>
-          <RouterLink
-            v-if="showSettingsEntry"
-            to="/space/settings"
-            class="block w-full rounded-lg px-3 py-2 text-left text-sm text-rose-700 transition hover:bg-rose-50"
-            @click="dropdownOpen = false"
-          >
-            空间设置
+            {{ spaceEntryLabel }}
           </RouterLink>
           <RouterLink
             to="/profile"
@@ -258,7 +258,7 @@ import {
   hasFrontendQueryPermission,
 } from '@/utils/auth'
 import { useFrontendSpace } from '@/composables/useFrontendSpace'
-import { SPACE_STATUS, isUnboundSpace } from '@/utils/spaceState'
+import { canEditSpaceContent, isUnboundSpace } from '@/utils/spaceState'
 
 const router = useRouter()
 const route = useRoute()
@@ -286,23 +286,24 @@ const {
   clearSpaceStatus,
 } = useFrontendSpace()
 
-const showSettingsEntry = computed(() => (
-  hasCoupleSpace.value && !isUnboundSpace(spaceStatus.value)
-))
-
-const showSetupEntry = computed(() => {
-  if (!frontendLoggedIn.value || isSpaceReady.value) return false
-  // status=5（已解除绑定）视为没有有效空间，允许重新创建或加入。
-  if (isUnboundSpace(spaceStatus.value)) return true
-  // status=0（等待绑定）属于“已有空间”，必须保留入口去管理邀请；
-  // status=2/3 的恢复与设置统一走「空间设置」，避免出现两套重复入口。
-  if (hasCoupleSpace.value) return Number(spaceStatus.value?.status) === SPACE_STATUS.WAITING
-  // 状态尚未确认时不要展示“没有空间”入口，避免网络问题造成误判。
+/**
+ * 空间状态与空间设置已合并到 /space/setup：
+ * - 有未解绑空间时显示“空间设置”；
+ * - 没有有效空间或已完成解绑时显示“创建/绑定情侣空间”。
+ */
+const showSpaceEntry = computed(() => {
+  if (!frontendLoggedIn.value) return false
   if (spaceLoading.value || spaceError.value || isSpaceStatusUnknown.value) return false
-  return !spaceStatus.value
+  return hasCoupleSpace.value || !spaceStatus.value
 })
-const setupLabel = computed(() => (
-  hasCoupleSpace.value && !isUnboundSpace(spaceStatus.value) ? '空间状态' : '创建/绑定情侣空间'
+const spaceEntryLabel = computed(() => (
+  hasCoupleSpace.value && !isUnboundSpace(spaceStatus.value)
+    ? '空间设置'
+    : '创建/绑定情侣空间'
+))
+// 等待绑定与正常状态的有效成员可以进入空间内容编辑。
+const canOpenStudio = computed(() => (
+  frontendLoggedIn.value && canEditSpaceContent(spaceStatus.value)
 ))
 
 const dropdownOpen = ref(false)

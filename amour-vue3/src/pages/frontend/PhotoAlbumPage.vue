@@ -287,18 +287,25 @@ async function fetchCover() {
   }
 }
 
-async function queryConfigValue(configKey) {
-  const { data } = await api.post('/site-config/query', { configKey })
-  return data?.success && typeof data.data === 'string' ? data.data.trim() : ''
-}
-
+/**
+ * 相册封面上的双方名字读取当前空间的首页配置。
+ *
+ * 不再使用 /site-config/query（platform_config）：平台全局配置不能代表
+ * 某一个情侣空间，也容易把其他空间的展示名带进来。
+ */
 async function loadCoupleNames() {
-  const [boyResult, girlResult] = await Promise.allSettled([
-    queryConfigValue('boy_name'),
-    queryConfigValue('girl_name'),
-  ])
-  if (boyResult.status === 'fulfilled' && boyResult.value) boyName.value = boyResult.value
-  if (girlResult.status === 'fulfilled' && girlResult.value) girlName.value = girlResult.value
+  try {
+    const { data } = await api.post('/space/home/query')
+    if (!data?.success || !data.data) return
+    if (typeof data.data.boyName === 'string' && data.data.boyName.trim()) {
+      boyName.value = data.data.boyName.trim()
+    }
+    if (typeof data.data.girlName === 'string' && data.data.girlName.trim()) {
+      girlName.value = data.data.girlName.trim()
+    }
+  } catch (error) {
+    console.warn('相册封面名字加载失败，使用默认值', error)
+  }
 }
 
 async function loadCategories() {

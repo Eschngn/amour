@@ -80,6 +80,15 @@ public enum ResponseCodeEnum implements BaseExceptionInterface {
     SPACE_UNBIND_CANNOT_CANCEL("20060", "当前用户不能取消该解绑申请"),
     SPACE_RESTORE_NOT_ALLOWED("20061", "只有双方已解绑的情侣空间才能人工恢复"),
     SPACE_RESTORE_MEMBER_INVALID("20062", "情侣空间历史成员不完整或仍处于有效状态，无法人工恢复"),
+    SPACE_UNBIND_REQUIRES_PARTNER("20063", "另一半加入后才能申请解绑"),
+    SPACE_UPDATE_NOT_ALLOWED("20064", "只有等待另一半加入时才能编辑空间信息"),
+    SPACE_CONTENT_EDIT_NOT_ALLOWED("20065", "当前空间状态或成员身份不允许编辑内容"),
+    SPACE_HOME_CONFIG_KEY_NOT_ALLOWED("20066", "不支持的空间首页配置项"),
+    SPACE_CONTENT_NOT_IN_SPACE("20067", "内容不属于当前情侣空间"),
+    SPACE_CHAPTER_NOT_EMPTY("20068", "章节下仍有故事，无法删除"),
+    SPACE_CONTENT_PUBLISH_NOT_ALLOWED("20069", "空间完成两人绑定后才能公开内容"),
+    SPACE_IMAGE_INVALID("20070", "图片仅支持 JPG、PNG、WebP 或 GIF，且不能超过 5MB"),
+    CHAPTER_NAME_DUPLICATE("20071", "章节名称已存在"),
 
     ;
 

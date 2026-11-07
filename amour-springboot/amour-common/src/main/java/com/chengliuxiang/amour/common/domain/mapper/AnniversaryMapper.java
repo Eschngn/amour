@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.chengliuxiang.amour.common.domain.dos.AnniversaryDO;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface AnniversaryMapper extends BaseMapper<AnniversaryDO> {
@@ -53,6 +54,31 @@ public interface AnniversaryMapper extends BaseMapper<AnniversaryDO> {
                 .orderByAsc(AnniversaryDO::getSortOrder)
                 .orderByAsc(AnniversaryDO::getAnniversaryDate)
                 .orderByAsc(AnniversaryDO::getId));
+    }
+
+    /**
+     * 用户端管理列表：包含隐藏内容。
+     */
+    default List<AnniversaryDO> selectManageList(Long spaceId) {
+        return selectList(new LambdaQueryWrapper<AnniversaryDO>()
+                .eq(AnniversaryDO::getSpaceId, spaceId)
+                .eq(AnniversaryDO::getIsDeleted, false)
+                .orderByAsc(AnniversaryDO::getSortOrder)
+                .orderByAsc(AnniversaryDO::getAnniversaryDate)
+                .orderByAsc(AnniversaryDO::getId));
+    }
+
+    /**
+     * 用户端软删除纪念日：条件同时包含 space_id，禁止跨空间删除。
+     */
+    default int softDelete(Long spaceId, Long id, Long userId, LocalDateTime updateTime) {
+        return update(null, new LambdaUpdateWrapper<AnniversaryDO>()
+                .eq(AnniversaryDO::getSpaceId, spaceId)
+                .eq(AnniversaryDO::getId, id)
+                .eq(AnniversaryDO::getIsDeleted, false)
+                .set(AnniversaryDO::getIsDeleted, true)
+                .set(AnniversaryDO::getUpdatedBy, userId)
+                .set(AnniversaryDO::getUpdateTime, updateTime));
     }
 
     /**

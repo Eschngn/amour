@@ -76,11 +76,12 @@ function partnerSpace(overrides = {}) {
 
 // ============================== 无空间 / 无效成员 ==============================
 
-test('没有空间记录或不是有效成员时不能申请解绑', () => {
+test('没有空间记录、不是有效成员或另一半还没加入时不能申请解绑', () => {
   assert.equal(canRequestUnbind(null), false)
   assert.equal(canRequestUnbind({}), false)
   assert.equal(canRequestUnbind(space({ currentUserRole: null })), false)
   assert.equal(canRequestUnbind(space({ memberCount: 0 })), false)
+  assert.equal(canRequestUnbind(space({ memberCount: 1 })), false)
   assert.equal(hasPendingUnbind(null), false)
   assert.equal(isUnbindRequester(null), false)
 })

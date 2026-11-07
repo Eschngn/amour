@@ -3,11 +3,9 @@ package com.chengliuxiang.amour.web.service.impl;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
-import com.chengliuxiang.amour.common.domain.dos.CoupleMemberDO;
 import com.chengliuxiang.amour.common.domain.dos.MessageDO;
 import com.chengliuxiang.amour.common.domain.dos.MessageReplyDO;
 import com.chengliuxiang.amour.common.domain.dos.UserDO;
-import com.chengliuxiang.amour.common.domain.mapper.CoupleMemberMapper;
 import com.chengliuxiang.amour.common.domain.mapper.MessageMapper;
 import com.chengliuxiang.amour.common.domain.mapper.MessageReplyMapper;
 import com.chengliuxiang.amour.common.domain.mapper.UserMapper;
@@ -23,6 +21,7 @@ import com.chengliuxiang.amour.web.model.vo.message.MessageReplyReqVO;
 import com.chengliuxiang.amour.web.model.vo.message.MessageReplyVO;
 import com.chengliuxiang.amour.web.model.vo.message.MessageDeleteReqVO;
 import com.chengliuxiang.amour.web.service.MessageService;
+import com.chengliuxiang.amour.web.service.SpaceContentAccessService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,11 +42,11 @@ public class MessageServiceImpl implements MessageService {
     @Resource
     private UserMapper userMapper;
     @Resource
-    private CoupleMemberMapper coupleMemberMapper;
+    private SpaceContentAccessService spaceContentAccessService;
 
     @Override
     public Response<PageResult<MessagePageItemVO>> pageMessages(MessagePageQueryReqVO reqVO) {
-        Long spaceId = requireCurrentSpaceId();
+        Long spaceId = spaceContentAccessService.requireReadableSpaceId();
         com.baomidou.mybatisplus.core.metadata.IPage<MessageDO> messagePage = messageMapper.selectSpacePage(
                 reqVO.getCurrent(), reqVO.getSize(), spaceId);
 
@@ -131,7 +130,7 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public Response<Void> publishMessage(MessagePublishReqVO reqVO) {
-        Long spaceId = requireCurrentSpaceId();
+        Long spaceId = spaceContentAccessService.requireEditableSpaceId();
         LocalDateTime now = LocalDateTime.now();
         MessageDO message = MessageDO.builder()
                 .spaceId(spaceId)
@@ -147,7 +146,7 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public Response<Void> replyMessage(MessageReplyReqVO reqVO) {
-        Long spaceId = requireCurrentSpaceId();
+        Long spaceId = spaceContentAccessService.requireEditableSpaceId();
         Long messageId = parseId(reqVO.getMessageId(), ResponseCodeEnum.MESSAGE_NOT_EXIST);
         MessageDO message = messageMapper.findById(spaceId, messageId);
         if (message == null || Boolean.TRUE.equals(message.getIsDeleted())) {
@@ -185,7 +184,7 @@ public class MessageServiceImpl implements MessageService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Response<Void> deleteMessage(MessageDeleteReqVO reqVO) {
-        Long spaceId = requireCurrentSpaceId();
+        Long spaceId = spaceContentAccessService.requireEditableSpaceId();
         Long messageId = parseId(reqVO.getMessageId(), ResponseCodeEnum.MESSAGE_NOT_EXIST);
         MessageDO message = messageMapper.findById(spaceId, messageId);
         if (message == null || Boolean.TRUE.equals(message.getIsDeleted())) {
@@ -209,7 +208,7 @@ public class MessageServiceImpl implements MessageService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Response<Void> deleteReply(MessageReplyDeleteReqVO reqVO) {
-        Long spaceId = requireCurrentSpaceId();
+        Long spaceId = spaceContentAccessService.requireEditableSpaceId();
         Long replyId = parseId(reqVO.getReplyId(), ResponseCodeEnum.MESSAGE_REPLY_NOT_EXIST);
         MessageReplyDO reply = messageReplyMapper.findById(spaceId, replyId);
         if (reply == null || Boolean.TRUE.equals(reply.getIsDeleted())) {
@@ -232,18 +231,6 @@ public class MessageServiceImpl implements MessageService {
             throw new BizException(ResponseCodeEnum.MESSAGE_REPLY_NOT_EXIST);
         }
         return Response.success();
-    }
-
-    private Long requireCurrentSpaceId() {
-        // 只取「未解绑空间」中的有效成员关系：status=5 的历史残留不再代表可访问的空间。
-        List<CoupleMemberDO> memberships = coupleMemberMapper.selectActiveInLiveSpaces(StpUtil.getLoginIdAsLong());
-        if (memberships == null || memberships.isEmpty()) {
-            if (coupleMemberMapper.countActiveByUserId(StpUtil.getLoginIdAsLong()) > 0) {
-                throw new BizException(ResponseCodeEnum.SPACE_UNBOUND);
-            }
-            throw new BizException(ResponseCodeEnum.SPACE_NOT_EXIST);
-        }
-        return memberships.get(0).getSpaceId();
     }
 
     private Long parseId(String rawId, ResponseCodeEnum errorCode) {

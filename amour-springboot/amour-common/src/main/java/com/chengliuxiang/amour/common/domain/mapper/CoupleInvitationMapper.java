@@ -55,15 +55,6 @@ public interface CoupleInvitationMapper extends BaseMapper<CoupleInvitationDO> {
                 .orderByDesc(CoupleInvitationDO::getId));
     }
 
-    default CoupleInvitationDO selectPendingBySpaceAndInvitee(Long spaceId, Long inviteeUserId) {
-        return selectOne(new LambdaQueryWrapper<CoupleInvitationDO>()
-                .eq(CoupleInvitationDO::getSpaceId, spaceId)
-                .eq(CoupleInvitationDO::getInviteeUserId, inviteeUserId)
-                .eq(CoupleInvitationDO::getStatus, 0)
-                .orderByDesc(CoupleInvitationDO::getId)
-                .last("LIMIT 1"));
-    }
-
     default List<CoupleInvitationDO> selectExpiredPending(LocalDateTime now) {
         return selectList(new LambdaQueryWrapper<CoupleInvitationDO>()
                 .eq(CoupleInvitationDO::getStatus, 0)

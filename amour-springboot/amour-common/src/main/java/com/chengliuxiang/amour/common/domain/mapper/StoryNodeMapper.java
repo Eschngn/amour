@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.chengliuxiang.amour.common.domain.dos.StoryNodeDO;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
@@ -31,10 +32,37 @@ public interface StoryNodeMapper extends BaseMapper<StoryNodeDO> {
         return insert(node);
     }
 
+    /**
+     * 用户端管理列表：包含隐藏内容，按章节与排序值展示。
+     */
+    default List<StoryNodeDO> selectManageList(Long spaceId) {
+        return selectList(new LambdaQueryWrapper<StoryNodeDO>()
+                .eq(StoryNodeDO::getSpaceId, spaceId)
+                .eq(StoryNodeDO::getIsDeleted, false)
+                .orderByAsc(StoryNodeDO::getChapterId)
+                .orderByAsc(StoryNodeDO::getSortOrder)
+                .orderByAsc(StoryNodeDO::getHappenedTime)
+                .orderByAsc(StoryNodeDO::getId));
+    }
+
+    /**
+     * 用户端软删除故事：条件同时包含 space_id，禁止跨空间删除。
+     */
+    default int softDelete(Long spaceId, Long id, Long userId, LocalDateTime updateTime) {
+        return update(null, new LambdaUpdateWrapper<StoryNodeDO>()
+                .eq(StoryNodeDO::getSpaceId, spaceId)
+                .eq(StoryNodeDO::getId, id)
+                .eq(StoryNodeDO::getIsDeleted, false)
+                .set(StoryNodeDO::getIsDeleted, true)
+                .set(StoryNodeDO::getUpdatedBy, userId)
+                .set(StoryNodeDO::getUpdateTime, updateTime));
+    }
+
     default int updateStoryNode(StoryNodeDO node) {
         return update(node, new LambdaUpdateWrapper<StoryNodeDO>()
                 .eq(StoryNodeDO::getId, node.getId())
-                .eq(StoryNodeDO::getSpaceId, node.getSpaceId()));
+                .eq(StoryNodeDO::getSpaceId, node.getSpaceId())
+                .eq(StoryNodeDO::getIsDeleted, false));
     }
 
     default List<StoryNodeDO> selectMilestones(Long spaceId) {

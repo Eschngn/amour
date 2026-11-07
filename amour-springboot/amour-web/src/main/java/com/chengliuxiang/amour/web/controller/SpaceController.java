@@ -15,6 +15,7 @@ import com.chengliuxiang.amour.web.model.vo.space.SpaceStatusVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceVisibilityReqVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceVisibilityVO;
 import com.chengliuxiang.amour.web.model.vo.space.UnbindStatusVO;
+import com.chengliuxiang.amour.web.model.vo.space.UpdateSpaceReqVO;
 import com.chengliuxiang.amour.web.service.SpaceService;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -42,6 +43,12 @@ public class SpaceController {
     @PostMapping("/status")
     public Response<SpaceStatusVO> getCurrentSpace() {
         return spaceService.getCurrentSpace();
+    }
+
+    @ApiOperationLog(description = "编辑情侣空间基础信息")
+    @PostMapping("/update")
+    public Response<SpaceStatusVO> updateSpace(@Valid @RequestBody UpdateSpaceReqVO reqVO) {
+        return spaceService.updateSpace(reqVO);
     }
 
     @ApiOperationLog(description = "创建空间邀请")

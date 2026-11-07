@@ -1,6 +1,10 @@
 /**
  * 情侣空间邀请相关的纯函数。
  *
+ * 用户侧只暴露「邀请链接」这一种分享格式；令牌是链接内部的安全凭证，
+ * 后端只保存令牌哈希。解析函数仍兼容纯令牌，用于历史分享和其它客户端，
+ * 页面文案不再单独展示“令牌”概念。
+ *
  * 这里不引入 Vue、Axios 或任何浏览器全局对象，方便用 `node --test` 直接覆盖。
  * 页面与 API 层共用同一份规则，避免“页面能解析、接口不能”的不一致。
  */
@@ -12,8 +16,9 @@ export const INVITATION_PATH = '/space/setup'
 export const INVITEE_AMOUR_ID_MAX_LENGTH = 20
 
 /**
- * 把用户粘贴的内容解析成邀请令牌。
+ * 把用户粘贴的邀请链接解析成令牌。
  *
+ * 页面只要求用户粘贴邀请链接；额外支持纯令牌是为了兼容历史分享和其它客户端。
  * 支持：
  * - 完整链接，令牌在 ?token= 上；
  * - 完整链接，令牌在 /invitation/<token> 或 /space/invitation/<token> 路径上；
@@ -140,7 +145,7 @@ export function validateInviteeAmourId(value) {
  * 邀请是否仍可撤销：只有“待接受”且未过期的邀请才允许撤销。
  *
  * 后端状态：0-待接受 1-已接受 2-已撤销 3-已过期 4-已拒绝。
- * 列表接口不会返回令牌，因此界面上只能操作状态与有效期，不能复原可复制的 token。
+ * 空间成员查看的待发邀请会返回明文令牌，可在有效期内再次构造并复制链接。
  *
  * @param {{ status?: number|string, expiresAt?: string }} invitation
  * @param {number} [now] 当前时间戳，便于测试注入
@@ -182,8 +187,8 @@ export function parseInvitationTime(value) {
 /**
  * 把邀请列表整理成界面可直接渲染的形状。
  *
- * 列表接口不返回明文令牌，所以 `canCopy` 恒为 false —— 提示调用方不要伪造可复制的链接，
- * 只展示状态、创建时间与有效期，并允许撤销仍可撤销的邀请。
+ * 空间成员查看待发邀请时后端会返回明文令牌，页面可据此再次构造并复制邀请链接；
+ * 旧数据没有令牌时 `canCopy` 为 false，只能重新生成邀请。
  *
  * @param {Array} invitations 后端 InvitationVO[]
  * @param {number} [now] 当前时间戳，便于测试注入
@@ -192,12 +197,14 @@ export function parseInvitationTime(value) {
 export function normalizeInvitationList(invitations, now = Date.now()) {
   if (!Array.isArray(invitations)) return []
   return invitations.map((invitation) => {
+    const token = typeof invitation?.token === 'string' ? invitation.token.trim() : ''
     const revocable = isInvitationRevocable(invitation, now)
     return {
       ...invitation,
+      token,
       revocable,
-      canCopy: false,
-      isTargeted: invitation?.inviteeAmourId != null && invitation.inviteeAmourId !== '',
+      canCopy: Boolean(token),
+      isTargeted: invitation?.inviteeAmourId != null && invitation?.inviteeAmourId !== '',
     }
   })
 }

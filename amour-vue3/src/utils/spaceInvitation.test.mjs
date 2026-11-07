@@ -240,9 +240,9 @@ test('无法解析的时间返回 null 而不是 Invalid Date', () => {
 
 // ============================== normalizeInvitationList ==============================
 
-test('列表规整：标记可撤销与是否定向，且不伪造可复制令牌', () => {
+test('列表规整：标记可撤销、是否定向和可复制链接', () => {
   const result = normalizeInvitationList([
-    { invitationId: 1, status: 0, expiresAt: '2026-11-10 10:00:00', inviteeAmourId: 'LY100002' },
+    { invitationId: 1, status: 0, expiresAt: '2026-11-10 10:00:00', inviteeAmourId: 'LY100002', token: 'tok-1' },
     { invitationId: 2, status: 0, expiresAt: '2026-11-10 10:00:00', inviteeAmourId: null },
     { invitationId: 3, status: 1, expiresAt: '2026-11-10 10:00:00' },
   ], NOW)
@@ -250,12 +250,12 @@ test('列表规整：标记可撤销与是否定向，且不伪造可复制令�
   assert.equal(result.length, 3)
   assert.equal(result[0].revocable, true)
   assert.equal(result[0].isTargeted, true)
+  assert.equal(result[0].canCopy, true)
+  assert.equal(result[0].token, 'tok-1')
   assert.equal(result[1].isTargeted, false)
+  assert.equal(result[1].canCopy, false, '旧数据没有令牌时不能标记为可复制')
   assert.equal(result[2].revocable, false)
-  for (const item of result) {
-    assert.equal(item.canCopy, false, '列表接口不返回令牌，不能标记为可复制')
-    assert.equal('token' in item, false)
-  }
+  assert.equal(result[2].canCopy, false)
 })
 
 test('列表规整对非数组输入返回空数组', () => {

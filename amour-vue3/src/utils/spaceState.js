@@ -156,6 +156,21 @@ export function hasActiveSpaceMembership(spaceStatus) {
 }
 
 /**
+ * 当前用户是否可以进入空间内容编辑（/space/studio）。
+ *
+ * - 必须是空间有效成员；
+ * - 等待绑定（status=0）与正常（status=1）允许进入；
+ * - 冻结、归档、删除等待期、已解绑一律不可编辑。
+ *
+ * 前端只负责入口与页面展示，真正的成员、状态与内容归属校验仍由后端强制执行。
+ */
+export function canEditSpaceContent(spaceStatus) {
+  if (!hasActiveSpaceMembership(spaceStatus)) return false
+  const status = Number(spaceStatus.status)
+  return status === SPACE_STATUS.WAITING || status === SPACE_STATUS.NORMAL
+}
+
+/**
  * 是否具备公开资格：仅 status=1（正常）且有两名有效成员。
  * 与后端 POST /space/visibility 的准入条件保持一致。
  */
@@ -240,17 +255,26 @@ export function isUnbindRequestConflict(responseBody) {
 export function isUnbindPendingForPartner(spaceStatus) {
   return hasPendingUnbind(spaceStatus)
     && spaceStatus.unbindRequestedByMe !== true
-    && hasActiveSpaceMembership(spaceStatus)
+    && canShowUnbindSection(spaceStatus)
 }
 
 /**
- * 是否允许发起解绑申请：有空间身份、当前用户是有效成员、空间未冻结/归档，
- * 且当前没有待处理的解绑申请。
+ * 是否展示解绑入口：必须有另一名有效成员。
+ *
+ * 刚创建、另一半还没加入的单人空间不支持解绑，避免用户在没有成员关系可解除时发起申请。
+ */
+export function canShowUnbindSection(spaceStatus) {
+  return hasActiveSpaceMembership(spaceStatus) && activeSpaceMemberCount(spaceStatus) >= 2
+}
+
+/**
+ * 是否允许发起解绑申请：有空间身份、当前用户是有效成员、已有另一名有效成员、
+ * 空间未冻结/归档，且当前没有待处理的解绑申请。
  *
  * 新契约下不存在「单方立即退出」：页面只能发起申请，必须由另一半确认才会真正解绑。
  */
 export function canRequestUnbind(spaceStatus) {
-  if (!hasActiveSpaceMembership(spaceStatus)) return false
+  if (!canShowUnbindSection(spaceStatus)) return false
   if (hasPendingUnbind(spaceStatus)) return false
   const status = Number(spaceStatus.status)
   return status === SPACE_STATUS.WAITING || status === SPACE_STATUS.NORMAL
@@ -305,6 +329,7 @@ export function canHandleUnbindAsPartner(spaceStatus) {
 export function unbindRequestBlockReason(spaceStatus) {
   if (!hasSpaceIdentity(spaceStatus)) return '还没有可以解绑的情侣空间'
   if (!hasActiveSpaceMembership(spaceStatus)) return '你不是该情侣空间的有效成员'
+  if (!canShowUnbindSection(spaceStatus)) return '另一半加入后才能申请解绑'
   if (hasPendingUnbind(spaceStatus)) {
     return spaceStatus?.unbindRequestedByMe
       ? '解绑申请已提交，等待另一半确认'

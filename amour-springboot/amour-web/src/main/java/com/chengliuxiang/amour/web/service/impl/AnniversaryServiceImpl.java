@@ -1,15 +1,11 @@
 package com.chengliuxiang.amour.web.service.impl;
 
-import cn.dev33.satoken.stp.StpUtil;
 import com.chengliuxiang.amour.common.domain.dos.AnniversaryDO;
-import com.chengliuxiang.amour.common.domain.dos.CoupleMemberDO;
 import com.chengliuxiang.amour.common.domain.mapper.AnniversaryMapper;
-import com.chengliuxiang.amour.common.domain.mapper.CoupleMemberMapper;
-import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
-import com.chengliuxiang.amour.common.exception.BizException;
 import com.chengliuxiang.amour.common.utils.Response;
 import com.chengliuxiang.amour.web.model.vo.anniversary.AnniversaryVO;
 import com.chengliuxiang.amour.web.service.AnniversaryService;
+import com.chengliuxiang.amour.web.service.SpaceContentAccessService;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -23,28 +19,16 @@ public class AnniversaryServiceImpl implements AnniversaryService {
     private AnniversaryMapper anniversaryMapper;
 
     @Resource
-    private CoupleMemberMapper coupleMemberMapper;
+    private SpaceContentAccessService spaceContentAccessService;
 
     @Override
     public Response<List<AnniversaryVO>> listAnniversaries() {
-        Long spaceId = requireCurrentSpaceId();
+        Long spaceId = spaceContentAccessService.requireReadableSpaceId();
         List<AnniversaryVO> records = anniversaryMapper.selectSpaceList(spaceId)
                 .stream()
                 .map(this::toVO)
                 .collect(Collectors.toList());
         return Response.success(records);
-    }
-
-    private Long requireCurrentSpaceId() {
-        // 只取「未解绑空间」中的有效成员关系：status=5 的历史残留不再代表可访问的空间。
-        List<CoupleMemberDO> memberships = coupleMemberMapper.selectActiveInLiveSpaces(StpUtil.getLoginIdAsLong());
-        if (memberships == null || memberships.isEmpty()) {
-            if (coupleMemberMapper.countActiveByUserId(StpUtil.getLoginIdAsLong()) > 0) {
-                throw new BizException(ResponseCodeEnum.SPACE_UNBOUND);
-            }
-            throw new BizException(ResponseCodeEnum.SPACE_NOT_EXIST);
-        }
-        return memberships.get(0).getSpaceId();
     }
 
     private AnniversaryVO toVO(AnniversaryDO anniversary) {
@@ -58,6 +42,7 @@ public class AnniversaryServiceImpl implements AnniversaryService {
                 .colorCode(anniversary.getColorCode())
                 .location(anniversary.getLocation())
                 .sortOrder(anniversary.getSortOrder())
+                .visibility(anniversary.getVisibility())
                 .build();
     }
 }

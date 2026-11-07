@@ -15,15 +15,16 @@ import LovePlazaPage from '@/pages/frontend/LovePlazaPage.vue'
 import MessageBoardPage from '@/pages/frontend/MessageBoardPage.vue'
 import OurStoryPage from '@/pages/frontend/OurStoryPage.vue'
 import PublicSpaceDetailPage from '@/pages/frontend/PublicSpaceDetailPage.vue'
-import SpaceSettingsPage from '@/pages/frontend/SpaceSettingsPage.vue'
 import SpaceSetupPage from '@/pages/frontend/SpaceSetupPage.vue'
+import SpaceStudioPage from '@/pages/frontend/SpaceStudioPage.vue'
 import StoryDetail from '@/pages/frontend/StoryDetail.vue'
 import FrontendLogin from '@/pages/frontend/FrontendLogin.vue'
 import UserProfilePage from '@/pages/frontend/UserProfilePage.vue'
 import PhotoAlbumPage from '@/pages/frontend/PhotoAlbumPage.vue'
 import { ADMIN_PERMISSIONS, isAdminAuthenticated } from '@/utils/adminAuth.js'
 import { clearFrontendSession, hasFrontendQueryPermission, isFrontendAuthenticated, setFrontendProfile } from '@/utils/auth.js'
-import { isSpaceReady, isSpaceStatusUnknown, refreshSpaceStatus } from '@/composables/useFrontendSpace.js'
+import { isSpaceReady, isSpaceStatusUnknown, refreshSpaceStatus, spaceStatus } from '@/composables/useFrontendSpace.js'
+import { canEditSpaceContent } from '@/utils/spaceState.js'
 import api from '@/axios'
 import { createRouter, createWebHistory } from 'vue-router'
 
@@ -50,15 +51,28 @@ const routes = [
     name: 'space-setup',
     component: SpaceSetupPage,
     // 要求登录；只有带 ?token= 的邀请深链接允许未登录预览（见守卫中的 allowsFrontendGuest）。
-    meta: { title: '创建或绑定情侣空间 · 恋语间', requiresFrontendAuth: true, allowsFrontendGuest: true },
+    // 该页面同时承载创建/绑定、空间状态、邀请管理、空间设置与解绑。
+    meta: { title: '情侣空间 · 恋语间', requiresFrontendAuth: true, allowsFrontendGuest: true },
   },
   {
+    // 等待绑定与正常状态下都可以进入的空间内容编辑页。
+    path: '/space/studio',
+    name: 'space-studio',
+    component: SpaceStudioPage,
+    meta: {
+      title: '布置情侣空间 · 恋语间',
+      requiresFrontendAuth: true,
+      requiresSpaceStudio: true,
+    },
+  },
+  {
+    // 旧入口兼容：空间状态与空间设置已合并到 /space/setup，保留查询参数与锚点。
     path: '/space/settings',
-    name: 'space-settings',
-    component: SpaceSettingsPage,
-    // 只要求登录：等待绑定、冻结或旧归档数据的用户也需要进入这里查看状态；
-    // status=5 由页面视为已解除绑定，引导去创建/绑定而不是展示旧空间。
-    meta: { title: '情侣空间设置 · 恋语间', requiresFrontendAuth: true },
+    redirect: to => ({
+      path: '/space/setup',
+      query: to.query,
+      hash: to.hash,
+    }),
   },
   {
     path: '/story',
@@ -255,6 +269,19 @@ router.beforeEach(async (to) => {
       return {
         path: '/space/setup',
         query: { redirect: to.fullPath },
+      }
+    }
+
+    // 空间内容编辑页：等待绑定（status=0）与正常（status=1）都允许进入，
+    // 但必须是有效成员；状态无法确认时放行，由页面展示重试提示。
+    if (to.meta?.requiresSpaceStudio) {
+      await refreshSpaceStatus()
+      if (isSpaceStatusUnknown.value) return true
+      if (!canEditSpaceContent(spaceStatus.value)) {
+        return {
+          path: '/space/setup',
+          query: { redirect: to.fullPath },
+        }
       }
     }
 

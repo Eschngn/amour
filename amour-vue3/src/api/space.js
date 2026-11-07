@@ -39,6 +39,20 @@ export function createCoupleSpace(payload) {
 }
 
 /**
+ * 编辑情侣空间基础信息。
+ *
+ * 请求体：{ spaceName?: string, description?: string, loveStartTime?: string|null }
+ * 仅等待另一半加入（status=0 且只有一名有效成员）时允许；
+ * 成功后响应 data 为最新 SpaceStatusVO。
+ *
+ * @param {{ spaceName?: string, description?: string, loveStartTime?: string|null }} payload
+ * @returns {Promise<import('axios').AxiosResponse>}
+ */
+export function updateCoupleSpace(payload) {
+  return api.post('/space/update', payload)
+}
+
+/**
  * 创建空间邀请。
  *
  * 请求体：{ inviteeAmourId?: string }
@@ -46,8 +60,8 @@ export function createCoupleSpace(payload) {
  * - 省略或空白：创建链接邀请，持有令牌的账号均可接受。
  *
  * 响应 data：{ invitationId, token, expiresAt, inviteeAmourId }
- * token 是明文邀请令牌，仅此一次返回；请立即用 buildInvitationLink 生成链接交给用户，
- * 不要缓存到 localStorage，也不要打印到 console。
+ * token 是明文邀请令牌，仅此一次返回；页面应只用它构造邀请链接并展示链接，
+ * 不再向用户单独展示令牌。不要缓存到 localStorage，也不要打印到 console。
  *
  * @param {{ inviteeAmourId?: string }|string} [payload] 请求体，或直接传恋语 ID
  * @returns {Promise<import('axios').AxiosResponse>}
@@ -64,7 +78,7 @@ export function createSpaceInvitation(payload = {}) {
  * 请求体：无
  * 响应 data：InvitationVO[]，字段含 invitationId、spaceId、spaceCode、spaceName、
  * inviterAmourId、inviterName、inviteeAmourId、inviteeName、status、statusText、
- * expiresAt、acceptedAt、createTime。列表不会返回令牌。
+ * expiresAt、acceptedAt、createTime；待接受邀请还会返回 token，用于再次复制邀请链接。
  */
 export function fetchSpaceInvitations() {
   return api.post('/space/invitation/list')
@@ -74,7 +88,7 @@ export function fetchSpaceInvitations() {
  * 查看当前登录用户收到的待接受邀请。
  *
  * 请求体：无
- * 响应 data：InvitationVO[]，结构同 fetchSpaceInvitations。
+ * 响应 data：InvitationVO[]，结构同 fetchSpaceInvitations，但不返回明文 token。
  */
 export function fetchReceivedSpaceInvitations() {
   return api.post('/space/invitation/received')

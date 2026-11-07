@@ -1,17 +1,13 @@
 package com.chengliuxiang.amour.web.service.impl;
 
-import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.collection.CollUtil;
-import com.chengliuxiang.amour.common.domain.dos.CoupleMemberDO;
 import com.chengliuxiang.amour.common.domain.dos.StoryChapterDO;
 import com.chengliuxiang.amour.common.domain.dos.StoryNodeDO;
-import com.chengliuxiang.amour.common.domain.mapper.CoupleMemberMapper;
 import com.chengliuxiang.amour.common.domain.mapper.StoryChapterMapper;
 import com.chengliuxiang.amour.common.domain.mapper.StoryNodeMapper;
-import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
-import com.chengliuxiang.amour.common.exception.BizException;
 import com.chengliuxiang.amour.common.utils.Response;
 import com.chengliuxiang.amour.web.model.vo.story.*;
+import com.chengliuxiang.amour.web.service.SpaceContentAccessService;
 import com.chengliuxiang.amour.web.service.StoryService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,7 +26,7 @@ public class StoryServiceImpl implements StoryService {
     @Resource
     private StoryChapterMapper storyChapterMapper;
     @Resource
-    private CoupleMemberMapper coupleMemberMapper;
+    private SpaceContentAccessService spaceContentAccessService;
 
     /**
      * 查询所有里程碑节点，按发生时间升序排列
@@ -213,15 +209,8 @@ public class StoryServiceImpl implements StoryService {
     }
 
     private Long requireCurrentSpaceId() {
-        // 只取「未解绑空间」中的有效成员关系：status=5 的历史残留不再代表可访问的空间。
-        List<CoupleMemberDO> memberships = coupleMemberMapper.selectActiveInLiveSpaces(StpUtil.getLoginIdAsLong());
-        if (memberships == null || memberships.isEmpty()) {
-            if (coupleMemberMapper.countActiveByUserId(StpUtil.getLoginIdAsLong()) > 0) {
-                throw new BizException(ResponseCodeEnum.SPACE_UNBOUND);
-            }
-            throw new BizException(ResponseCodeEnum.SPACE_NOT_EXIST);
-        }
-        return memberships.get(0).getSpaceId();
+        // 统一由授权服务校验登录态、有效成员关系与空间状态。
+        return spaceContentAccessService.requireReadableSpaceId();
     }
 
     private StoryChapterVO buildChapterVO(StoryChapterDO storyChapterDO,

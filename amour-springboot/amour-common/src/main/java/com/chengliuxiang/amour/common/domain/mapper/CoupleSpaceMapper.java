@@ -22,6 +22,37 @@ public interface CoupleSpaceMapper extends BaseMapper<CoupleSpaceDO> {
     }
 
     /**
+     * 编辑等待绑定空间的基础信息：只在 status=0 时生效，避免另一半加入后仍被修改。
+     */
+    default int updateBasicInfo(Long spaceId, String spaceName, String description,
+                                LocalDateTime loveStartTime, LocalDateTime updateTime) {
+        return update(null, new LambdaUpdateWrapper<CoupleSpaceDO>()
+                .eq(CoupleSpaceDO::getId, spaceId)
+                .eq(CoupleSpaceDO::getStatus, 0)
+                .set(CoupleSpaceDO::getSpaceName, spaceName)
+                .set(CoupleSpaceDO::getDescription, description)
+                .set(CoupleSpaceDO::getLoveStartTime, loveStartTime)
+                .set(CoupleSpaceDO::getUpdateTime, updateTime));
+    }
+
+    /**
+     * 空间首页编辑：等待绑定或正常状态均可保存空间名、简介与恋爱开始时间。
+     *
+     * <p>只更新 couple_space 这一份事实来源，不再把 love_start_time 写入 couple_space_config，
+     * 避免 SpaceStatusVO 与空间配置出现两份互相覆盖的数据。</p>
+     */
+    default int updateHomeInfo(Long spaceId, String spaceName, String description,
+                               LocalDateTime loveStartTime, LocalDateTime updateTime) {
+        return update(null, new LambdaUpdateWrapper<CoupleSpaceDO>()
+                .eq(CoupleSpaceDO::getId, spaceId)
+                .in(CoupleSpaceDO::getStatus, 0, 1)
+                .set(CoupleSpaceDO::getSpaceName, spaceName)
+                .set(CoupleSpaceDO::getDescription, description)
+                .set(CoupleSpaceDO::getLoveStartTime, loveStartTime)
+                .set(CoupleSpaceDO::getUpdateTime, updateTime));
+    }
+
+    /**
      * 等待绑定的空间在第二位成员加入时原子切换为正常状态。
      * 返回 0 表示空间已被其他成员绑定或状态已变化。
      */

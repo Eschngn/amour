@@ -267,11 +267,24 @@
 
             <div class="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
               <RouterLink
-                v-if="statusView.showSetup"
-                to="/space/setup"
+                v-if="statusView.showStudio"
+                to="/space/studio"
                 class="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white shadow-md shadow-rose-300/40 transition hover:-translate-y-0.5 hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
               >
-                创建或绑定情侣空间
+                提前布置空间
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M5 12h14m-5-5 5 5-5 5" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </RouterLink>
+              <RouterLink
+                v-if="statusView.showSetup"
+                to="/space/setup"
+                class="inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
+                :class="statusView.showStudio
+                  ? 'border border-rose-200 bg-white/80 text-rose-700 hover:bg-rose-50'
+                  : 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-md shadow-rose-300/40 hover:-translate-y-0.5 hover:brightness-105'"
+              >
+                {{ statusView.setupLabel || '创建或绑定情侣空间' }}
                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                   <path d="M5 12h14m-5-5 5 5-5 5" stroke-linecap="round" stroke-linejoin="round" />
                 </svg>
@@ -457,7 +470,7 @@ function ignoreUnbindPrompt() {
 function goToUnbindSettings() {
   unbindPromptVisible.value = false
   unbindPromptSettled.value = true
-  router.push({ name: 'space-settings', hash: '#space-unbind' })
+  router.push({ name: 'space-setup', hash: '#space-unbind' })
 }
 
 const statusView = computed(() => {
@@ -467,10 +480,13 @@ const statusView = computed(() => {
       icon: '◷',
       eyebrow: 'Waiting For Partner',
       title: '空间已创建，等待另一半加入',
-      description: '空间已经为你们准备好了，只等另一半接受邀请。对方加入后，就可以一起使用故事、相册和纪念日。',
+      description: '你可以先布置空间首页、写下故事和留言、整理相册与纪念日；另一半接受邀请后，会直接看到这些内容。',
       iconClass: 'bg-amber-100 text-amber-500',
       panelClass: 'border-amber-200/80 bg-amber-50/70',
       eyebrowClass: 'text-amber-500',
+      showStudio: true,
+      showSetup: true,
+      setupLabel: '邀请另一半',
     }
   }
   if (status === 2) {
@@ -506,6 +522,7 @@ const statusView = computed(() => {
       panelClass: 'border-rose-200/80 bg-rose-50/70',
       eyebrowClass: 'text-rose-500',
       showSetup: true,
+      setupLabel: '创建或绑定情侣空间',
     }
   }
   return {
@@ -541,16 +558,6 @@ const homeConfig = reactive({
   heroPhoto1: '',
   heroPhoto2: '',
 })
-
-const HOME_CONFIG_ITEMS = [
-  { configKey: 'boy_name', field: 'boyName' },
-  { configKey: 'girl_name', field: 'girlName' },
-  { configKey: 'love_start_time', field: 'loveStartTime' },
-  { configKey: 'boy_avatar', field: 'boyAvatar' },
-  { configKey: 'girl_avatar', field: 'girlAvatar' },
-  { configKey: 'home.hero_photo_1', field: 'heroPhoto1' },
-  { configKey: 'home.hero_photo_2', field: 'heroPhoto2' },
-]
 
 const albumPreview1 = computed(() => homeConfig.heroPhoto1)
 const albumPreview2 = computed(() => homeConfig.heroPhoto2)
@@ -617,68 +624,46 @@ const storyMilestones = ref([])
 const storyLoading = ref(true)
 const storyError = ref('')
 
-async function queryConfigValue(configKey) {
-  const { data } = await api.post('/site-config/query', { configKey })
-  const value = data?.data
-  if (!data?.success || typeof value !== 'string' || !value.trim()) {
-    throw new Error(data?.message || `配置项 ${configKey} 未返回有效值`)
-  }
-  return value.trim()
-}
-
+/**
+ * 首页数据全部读取当前空间的 space-level 配置。
+ *
+ * 不再使用 /site-config/query（platform_config）：那是平台全局配置，
+ * 不能代表某一对情侣的空间首页，也会导致不同空间互相串数据。
+ */
 async function loadHomeConfig() {
-  const results = await Promise.allSettled(
-    HOME_CONFIG_ITEMS.map(async (item) => ({
-      ...item,
-      value: await queryConfigValue(item.configKey),
-    })),
-  )
-
-  const failedKeys = []
-  const loadedConfig = {}
-  results.forEach((result, index) => {
-    if (result.status === 'fulfilled') {
-      loadedConfig[result.value.field] = result.value.value
-    } else {
-      failedKeys.push(HOME_CONFIG_ITEMS[index].configKey)
+  let homeData = null
+  try {
+    const { data } = await api.post('/space/home/query')
+    if (!data?.success) {
+      throw new Error(data?.message || '空间首页加载失败')
     }
-  })
+    homeData = data.data
+  } catch (error) {
+    console.warn('空间首页配置加载失败，使用默认值', error)
+  }
 
-  Object.entries(loadedConfig).forEach(([field, value]) => {
-    if (field !== 'heroPhoto1' && field !== 'heroPhoto2') {
-      homeConfig[field] = value
-    }
-  })
-
-  // 私密首页的身份信息优先使用当前空间自己的成员和恋爱开始时间，
-  // 站点的全局配置只作为缺失时的兜底，避免把默认配置误当成自己的内容。
-  if (creatorMember.value?.displayName?.trim()) {
-    homeConfig.boyName = creatorMember.value.displayName.trim()
-  }
-  if (partnerMember.value?.displayName?.trim()) {
-    homeConfig.girlName = partnerMember.value.displayName.trim()
-  }
-  if (creatorMember.value?.avatar?.trim()) {
-    homeConfig.boyAvatar = creatorMember.value.avatar.trim()
-  }
-  if (partnerMember.value?.avatar?.trim()) {
-    homeConfig.girlAvatar = partnerMember.value.avatar.trim()
-  }
-  if (spaceStatus.value?.loveStartTime) {
-    homeConfig.loveStartTime = spaceStatus.value.loveStartTime
+  if (homeData) {
+    if (homeData.boyName?.trim()) homeConfig.boyName = homeData.boyName.trim()
+    if (homeData.girlName?.trim()) homeConfig.girlName = homeData.girlName.trim()
+    if (homeData.loveStartTime) homeConfig.loveStartTime = homeData.loveStartTime
+    if (homeData.boyAvatar?.trim()) homeConfig.boyAvatar = homeData.boyAvatar.trim()
+    if (homeData.girlAvatar?.trim()) homeConfig.girlAvatar = homeData.girlAvatar.trim()
+  } else {
+    // 接口失败时退回到成员资料，仍然不读取平台全局配置。
+    if (creatorMember.value?.displayName?.trim()) homeConfig.boyName = creatorMember.value.displayName.trim()
+    if (partnerMember.value?.displayName?.trim()) homeConfig.girlName = partnerMember.value.displayName.trim()
+    if (creatorMember.value?.avatar?.trim()) homeConfig.boyAvatar = creatorMember.value.avatar.trim()
+    if (partnerMember.value?.avatar?.trim()) homeConfig.girlAvatar = partnerMember.value.avatar.trim()
+    if (spaceStatus.value?.loveStartTime) homeConfig.loveStartTime = spaceStatus.value.loveStartTime
   }
 
   const [heroPhoto1, heroPhoto2] = await Promise.all([
-    resolveDisplayableImage(loadedConfig.heroPhoto1, DEFAULT_HERO_PHOTO_1),
-    resolveDisplayableImage(loadedConfig.heroPhoto2, DEFAULT_HERO_PHOTO_2),
+    resolveDisplayableImage(homeData?.heroPhoto1, DEFAULT_HERO_PHOTO_1),
+    resolveDisplayableImage(homeData?.heroPhoto2, DEFAULT_HERO_PHOTO_2),
   ])
   homeConfig.heroPhoto1 = heroPhoto1
   homeConfig.heroPhoto2 = heroPhoto2
   heroPhotosReady.value = true
-
-  if (failedKeys.length) {
-    console.warn(`以下首页配置读取失败，已使用默认值：${failedKeys.join(', ')}`)
-  }
 }
 
 function preloadImage(url) {

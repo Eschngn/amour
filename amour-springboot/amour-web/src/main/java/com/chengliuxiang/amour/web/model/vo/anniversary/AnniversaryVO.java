@@ -30,4 +30,9 @@ public class AnniversaryVO {
     private String location;
 
     private Integer sortOrder;
+
+    /**
+     * 可见性：0-仅空间成员 1-公开到恋爱广场 2-隐藏（管理视图使用）。
+     */
+    private Integer visibility;
 }

@@ -14,6 +14,7 @@ import com.chengliuxiang.amour.web.model.vo.space.SpaceStatusVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceVisibilityReqVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceVisibilityVO;
 import com.chengliuxiang.amour.web.model.vo.space.UnbindStatusVO;
+import com.chengliuxiang.amour.web.model.vo.space.UpdateSpaceReqVO;
 
 import java.util.List;
 
@@ -28,6 +29,11 @@ public interface SpaceService {
      * 查看当前登录用户所在空间的状态，未加入空间时返回空数据。
      */
     Response<SpaceStatusVO> getCurrentSpace();
+
+    /**
+     * 编辑空间基础信息：仅等待另一半加入时允许。
+     */
+    Response<SpaceStatusVO> updateSpace(UpdateSpaceReqVO reqVO);
 
     /**
      * 创建邀请，可指定受邀用户或创建链接邀请。

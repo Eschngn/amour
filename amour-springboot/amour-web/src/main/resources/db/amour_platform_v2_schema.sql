@@ -102,8 +102,10 @@ CREATE TABLE `couple_invitation` (
     `inviter_user_id` INTEGER NOT NULL,
     -- 指定受邀用户ID，为空表示持有邀请链接的账号可申请
     `invitee_user_id` INTEGER DEFAULT NULL,
-    -- 邀请令牌SHA-256摘要，不保存明文令牌
+    -- 邀请令牌SHA-256摘要，用于校验
     `token_hash` TEXT NOT NULL UNIQUE,
+    -- 明文邀请令牌，用于空间成员在有效期内再次查看和复制邀请链接；旧数据可为空
+    `token_value` TEXT DEFAULT NULL,
     -- 邀请状态：0-待接受 1-已接受 2-已撤销 3-已过期 4-已拒绝
     `status` INTEGER NOT NULL DEFAULT 0,
     -- 邀请过期时间

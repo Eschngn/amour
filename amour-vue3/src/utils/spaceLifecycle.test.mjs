@@ -6,9 +6,11 @@ import {
   SPACE_VIEW_MODE,
   canArchiveSpace,
   canCancelUnbind,
+  canEditSpaceContent,
   canHandleUnbindAsPartner,
   canPublishSpace,
   canRequestUnbind,
+  canShowUnbindSection,
   deriveExpectedViewModeAfterLifecycleAction,
   hasActiveSpaceMembership,
   isRestorableSpace,
@@ -40,6 +42,37 @@ function space(overrides = {}) {
     ...overrides,
   }
 }
+
+// ============================== canEditSpaceContent ==============================
+
+test('等待绑定与正常状态的有效成员可以进入空间内容编辑', () => {
+  // 等待绑定：单人空间，当前用户是发起人。
+  assert.equal(canEditSpaceContent(space({ status: SPACE_STATUS.WAITING, memberCount: 1, currentUserRole: 1 })), true)
+  // 正常绑定：任一有效成员都可以继续管理内容。
+  assert.equal(canEditSpaceContent(space()), true)
+  assert.equal(canEditSpaceContent(space({ currentUserRole: 2 })), true)
+  // 字符串 status 与数字等价。
+  assert.equal(canEditSpaceContent(space({ status: '0', memberCount: '1' })), true)
+})
+
+test('冻结、归档、删除等待期与已解绑空间不能进入内容编辑', () => {
+  for (const status of [
+    SPACE_STATUS.FROZEN,
+    SPACE_STATUS.ARCHIVED,
+    SPACE_STATUS.DELETING,
+    SPACE_STATUS.DELETED,
+  ]) {
+    assert.equal(canEditSpaceContent(space({ status })), false, `status=${status} 不应允许编辑`)
+  }
+})
+
+test('非成员或没有有效成员身份不能进入内容编辑', () => {
+  assert.equal(canEditSpaceContent(null), false)
+  assert.equal(canEditSpaceContent({}), false)
+  assert.equal(canEditSpaceContent(space({ currentUserRole: null })), false)
+  assert.equal(canEditSpaceContent(space({ currentUserRole: 3 })), false)
+  assert.equal(canEditSpaceContent(space({ memberCount: 0 })), false)
+})
 
 // ============================== canPublishSpace ==============================
 
@@ -124,9 +157,18 @@ test('用户端不再提供任何归档入口', () => {
 
 // ============================== 解绑申请 ==============================
 
-test('有效成员可以对等待绑定或正常的空间发起解绑申请', () => {
-  assert.equal(canRequestUnbind(space({ status: SPACE_STATUS.WAITING, memberCount: 1 })), true)
-  assert.equal(canRequestUnbind(space({ status: SPACE_STATUS.NORMAL })), true)
+test('只有两名有效成员的正常空间才能发起解绑申请', () => {
+  // 刚创建、另一半还没加入：不展示解绑入口，也不能申请。
+  assert.equal(canShowUnbindSection(space({ status: SPACE_STATUS.WAITING, memberCount: 1 })), false)
+  assert.equal(canRequestUnbind(space({ status: SPACE_STATUS.WAITING, memberCount: 1 })), false)
+  assert.match(
+    unbindRequestBlockReason(space({ status: SPACE_STATUS.WAITING, memberCount: 1 })),
+    /另一半加入后/,
+  )
+
+  assert.equal(canShowUnbindSection(space({ status: SPACE_STATUS.NORMAL, memberCount: 2 })), true)
+  assert.equal(canRequestUnbind(space({ status: SPACE_STATUS.NORMAL, memberCount: 2 })), true)
+  assert.equal(canRequestUnbind(space({ status: SPACE_STATUS.NORMAL, memberCount: 1 })), false)
 })
 
 test('冻结、归档空间必须先恢复才能发起解绑', () => {
