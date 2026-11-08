@@ -73,18 +73,19 @@
                 type="button"
                 class="group flex min-w-[min(15rem,calc(100vw-3rem))] items-center gap-3 rounded-2xl border p-3.5 text-left transition duration-300 lg:w-full lg:min-w-0"
                 :class="activeChapter === i
-                  ? 'border-rose-200 bg-white shadow-md shadow-rose-100/60'
+                  ? 'bg-white shadow-md shadow-rose-100/60'
                   : 'border-transparent bg-white/45 hover:border-rose-100 hover:bg-white/70'"
+                :style="activeChapter === i ? { borderColor: chapterBorderColor(chapter) } : undefined"
                 @click="activeChapter = i"
               >
-                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold transition" :class="activeChapter === i ? 'bg-gradient-to-br from-rose-400 to-pink-500 text-white shadow-sm shadow-rose-200' : 'bg-rose-100 text-rose-500 group-hover:bg-rose-200'">
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold shadow-sm transition" :style="chapterBadgeStyle(chapter, activeChapter === i)">
                   {{ String(i + 1).padStart(2, '0') }}
                 </span>
                 <span class="min-w-0 flex-1">
-                  <span class="block truncate text-[10px] font-semibold uppercase tracking-wider text-rose-400">{{ chapter.period }}</span>
+                  <span class="block truncate text-[10px] font-semibold uppercase tracking-wider" :style="{ color: chapterAccentText(chapter) }">{{ chapter.period }}</span>
                   <span class="mt-0.5 block truncate font-display text-sm font-semibold text-rose-900">{{ chapter.title }}</span>
                 </span>
-                <span v-if="chapter._storyCount !== undefined" class="shrink-0 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-500">{{ chapter._storyCount }}</span>
+                <span v-if="chapter._storyCount !== undefined" class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold" :style="chapterSoftStyle(chapter)">{{ chapter._storyCount }}</span>
               </button>
             </nav>
           </aside>
@@ -92,11 +93,11 @@
           <div class="min-w-0">
             <header class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div class="min-w-0">
-                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-rose-400">{{ currentChapter?.period ?? '' }}</p>
+                <p class="text-xs font-semibold uppercase tracking-[0.2em]" :style="{ color: chapterAccentText(currentChapter) }">{{ currentChapter?.period ?? '' }}</p>
                 <h2 class="mt-1 break-words font-display text-2xl font-bold text-rose-950 sm:text-3xl">{{ currentChapter?.title ?? '' }}</h2>
               </div>
-              <span class="inline-flex w-fit items-center gap-2 rounded-full border border-rose-100 bg-white/70 px-3 py-1.5 text-xs text-rose-700/55">
-                <span class="h-1.5 w-1.5 rounded-full bg-rose-400" aria-hidden="true" />
+              <span class="inline-flex w-fit items-center gap-2 rounded-full border bg-white/70 px-3 py-1.5 text-xs text-rose-700/55" :style="currentChapter ? chapterSoftStyle(currentChapter) : undefined">
+                <span class="h-1.5 w-1.5 rounded-full" :style="{ backgroundColor: currentChapter ? chapterAccent(currentChapter) : '#f43f5e' }" aria-hidden="true" />
                 {{ currentStories.length }} 个故事
               </span>
             </header>
@@ -112,22 +113,22 @@
 
             <Transition name="story-fade" mode="out-in">
               <div v-if="currentStories.length && !storiesLoading && !storiesError" :key="activeChapter" class="relative">
-                <div class="absolute bottom-4 left-[1.15rem] top-4 hidden w-px bg-gradient-to-b from-rose-300 via-rose-200 to-transparent sm:block" aria-hidden="true" />
+                <div class="absolute bottom-4 left-[1.15rem] top-4 hidden w-px sm:block" :style="timelineStyle" aria-hidden="true" />
                 <ol class="space-y-5">
                   <li v-for="story in currentStories" :key="story.id" class="relative sm:pl-12">
-                    <span class="absolute left-3 top-7 z-10 hidden h-3.5 w-3.5 rounded-full border-[3px] border-white bg-rose-400 shadow-sm ring-1 ring-rose-200 sm:block" aria-hidden="true" />
+                    <span class="absolute left-3 top-7 z-10 hidden h-3.5 w-3.5 rounded-full border-[3px] border-white shadow-sm sm:block" :style="storyDotStyle(story)" aria-hidden="true" />
                     <router-link :to="'/story/' + story.id" class="group block min-w-0 overflow-hidden rounded-2xl border border-rose-100/90 bg-white/85 p-3 shadow-sm shadow-rose-100/30 transition duration-300 hover:-translate-y-0.5 hover:border-rose-200 hover:shadow-lg sm:rounded-3xl sm:p-0">
                       <div class="grid sm:grid-cols-[minmax(0,1fr)_12rem]" :class="story.coverImage ? '' : 'sm:grid-cols-1'">
                         <div class="min-w-0 p-4 sm:p-6">
                           <div class="flex flex-wrap items-center gap-2 text-[11px] text-rose-600/50">
-                            <span class="font-semibold uppercase tracking-[0.12em] text-rose-400 sm:tracking-[0.16em]">{{ story.storyNumber }}</span>
+                            <span class="font-semibold uppercase tracking-[0.12em] sm:tracking-[0.16em]" :style="{ color: storyAccentText(story) }">{{ story.storyNumber }}</span>
                             <span class="text-rose-200">/</span>
                             <time>{{ story.date }}</time>
                             <span v-if="story.location" class="inline-flex min-w-0 items-center gap-1"><svg class="h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg><span class="truncate">{{ story.location }}</span></span>
                           </div>
                           <div class="mt-3 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
                             <h3 class="min-w-0 break-words font-display text-lg font-bold text-rose-950 transition group-hover:text-rose-600 sm:text-xl">{{ story.title }}</h3>
-                            <span v-if="story.tag" class="w-fit max-w-full shrink-0 truncate rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-semibold text-rose-500 ring-1 ring-rose-100">{{ story.tag }}</span>
+                            <span v-if="story.tag" class="w-fit max-w-full shrink-0 truncate rounded-full border px-2.5 py-1 text-[10px] font-semibold" :style="storyTagStyle(story)">{{ story.tag }}</span>
                           </div>
                           <p class="mt-3 line-clamp-3 text-sm leading-7 text-rose-800/65">{{ story.content || '这一段故事，等你慢慢打开。' }}</p>
                           <span class="mt-5 inline-flex items-center gap-1.5 text-xs font-semibold text-rose-500">阅读全文<svg class="h-3.5 w-3.5 transition group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
@@ -165,6 +166,14 @@
 <script setup>
 import { computed, ref, onMounted, watch } from 'vue'
 import CouplePageScaffold from '@/components/frontend/CouplePageScaffold.vue'
+import {
+  DEFAULT_THEME_COLOR,
+  accentTextColor,
+  contrastTextColor,
+  normalizeHexColor,
+  softenHexColor,
+  themeBorderColor,
+} from '@/utils/themeColor'
 import api from '@/axios'
 
 const chapters = ref([])
@@ -196,6 +205,7 @@ async function fetchStoryOverview() {
     chapters.value = (data.chapters || []).map(ch => ({
       id: ch.id,
       title: ch.name,
+      colorCode: ch.colorCode,
       period: formatPeriod(ch.startDate, ch.endDate),
       _storyCount: Number(ch.nodeCount) || 0,
     }))
@@ -220,6 +230,7 @@ async function fetchStoriesByChapterId(chapterId) {
           location: node.location,
           title: node.title,
           tag: node.tagLabel,
+          tagColor: node.tagColor,
           content: node.summary,
           coverImage: node.coverImage,
           storyNumber: `Story #${String(globalIdx).padStart(2, '0')}`,
@@ -289,6 +300,68 @@ const startYear = computed(() => {
 })
 
 const currentChapter = computed(() => chapters.value[activeChapter.value])
+
+function chapterAccent(chapter) {
+  return normalizeHexColor(chapter?.colorCode, DEFAULT_THEME_COLOR)
+}
+
+function chapterAccentText(chapter) {
+  return accentTextColor(chapterAccent(chapter))
+}
+
+function chapterBorderColor(chapter) {
+  return themeBorderColor(chapterAccent(chapter))
+}
+
+function chapterBadgeStyle(chapter, active) {
+  const accent = chapterAccent(chapter)
+  if (active) {
+    return { backgroundColor: accent, color: contrastTextColor(accent) }
+  }
+  return { backgroundColor: softenHexColor(accent), color: accentTextColor(accent) }
+}
+
+function chapterSoftStyle(chapter) {
+  const accent = chapterAccent(chapter)
+  return {
+    backgroundColor: softenHexColor(accent),
+    borderColor: themeBorderColor(accent),
+    color: accentTextColor(accent),
+  }
+}
+
+/** 标签色优先，其次沿用当前章节主题色，保证时间线节点不会退回默认玫瑰色。 */
+function storyAccent(story) {
+  return normalizeHexColor(story?.tagColor, chapterAccent(currentChapter.value))
+}
+
+function storyAccentText(story) {
+  return accentTextColor(storyAccent(story))
+}
+
+function storyTagStyle(story) {
+  const accent = storyAccent(story)
+  return {
+    backgroundColor: softenHexColor(accent),
+    borderColor: themeBorderColor(accent),
+    color: accentTextColor(accent),
+  }
+}
+
+function storyDotStyle(story) {
+  const accent = storyAccent(story)
+  return {
+    backgroundColor: accent,
+    boxShadow: `0 0 0 1px ${themeBorderColor(accent)}`,
+  }
+}
+
+const timelineStyle = computed(() => {
+  const accent = chapterAccent(currentChapter.value)
+  return {
+    background: `linear-gradient(180deg, ${accent} 0%, ${softenHexColor(accent)} 55%, transparent 100%)`,
+  }
+})
 
 onMounted(init)
 </script>

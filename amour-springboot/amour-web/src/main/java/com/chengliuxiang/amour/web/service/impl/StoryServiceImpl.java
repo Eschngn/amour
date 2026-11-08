@@ -153,11 +153,13 @@ public class StoryServiceImpl implements StoryService {
                 ? orderedStories.get(currentIndex + 1)
                 : null;
 
-        // 3. 查询章节名称
+        // 3. 查询章节名称与主题色
         String chapterName = null;
+        String chapterColor = null;
         if (current.getChapterId() != null) {
             StoryChapterDO chapter = storyChapterMapper.selectChapterById(spaceId, current.getChapterId());
             chapterName = chapter != null ? chapter.getName() : null;
+            chapterColor = chapter != null ? chapter.getColorCode() : null;
         }
 
         // 4. 组装返回
@@ -173,6 +175,7 @@ public class StoryServiceImpl implements StoryService {
                 .tagLabel(current.getTagLabel())
                 .tagColor(current.getTagColor())
                 .chapterName(chapterName)
+                .chapterColor(chapterColor)
                 .preStory(preNode != null ? StoryNeighborVO.builder()
                         .id(preNode.getId()).title(preNode.getTitle()).build() : null)
                 .nextStory(nextNode != null ? StoryNeighborVO.builder()

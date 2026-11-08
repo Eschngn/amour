@@ -39,7 +39,7 @@
                 <p class="text-xs font-bold tracking-[0.18em] text-rose-500">下一份期待</p>
                 <p class="mt-2 text-sm text-rose-800/55">{{ formatFullDate(nextOccurrence(nextAnniversary)) }}</p>
               </div>
-              <span class="text-xs font-semibold text-[var(--accent)]">{{ repeatLabel(nextAnniversary) }}</span>
+              <span class="text-xs font-semibold text-[var(--accent-text)]">{{ repeatLabel(nextAnniversary) }}</span>
             </div>
 
             <div class="mt-8 grid grid-cols-[1fr_auto] items-end gap-5">
@@ -48,7 +48,7 @@
                 <p class="mt-2 line-clamp-2 text-sm leading-6 text-rose-800/55">{{ nextAnniversary.description }}</p>
               </div>
               <div class="text-right">
-                <p class="font-display text-6xl font-bold leading-none tabular-nums text-[var(--accent)]">{{ daysUntil(nextAnniversary) }}</p>
+                <p class="font-display text-6xl font-bold leading-none tabular-nums text-[var(--accent-text)]">{{ daysUntil(nextAnniversary) }}</p>
                 <p class="mt-1 text-xs font-semibold text-rose-700/50">天后</p>
               </div>
             </div>
@@ -121,7 +121,7 @@
               :style="themeStyle(item)"
             >
               <div class="date-tile" aria-hidden="true">
-                <span class="text-[10px] font-bold tracking-wider text-[var(--accent)]">{{ monthLabel(item) }}</span>
+                <span class="text-[10px] font-bold tracking-wider text-[var(--accent-text)]">{{ monthLabel(item) }}</span>
                 <strong class="font-display text-3xl font-bold leading-none text-rose-950">{{ dayLabel(item) }}</strong>
                 <span class="text-[10px] text-rose-700/45">{{ weekdayLabel(item) }}</span>
               </div>
@@ -147,7 +147,7 @@
                     <Location class="h-3.5 w-3.5 text-[var(--accent)]" />
                     <span class="truncate">{{ item.location }}</span>
                   </span>
-                  <span class="ml-auto font-semibold text-[var(--accent)]">{{ repeatLabel(item) }}</span>
+                  <span class="ml-auto font-semibold text-[var(--accent-text)]">{{ repeatLabel(item) }}</span>
                 </div>
               </div>
             </article>
@@ -208,6 +208,13 @@ import {
 import boyAvatar from '@/assets/boy.jpeg'
 import girlAvatar from '@/assets/girl.jpeg'
 import CouplePageScaffold from '@/components/frontend/CouplePageScaffold.vue'
+import {
+  DEFAULT_THEME_COLOR,
+  accentTextColor,
+  normalizeHexColor,
+  softenHexColor,
+  themeBorderColor,
+} from '@/utils/themeColor'
 import api from '@/axios'
 
 const DAY_MS = 86_400_000
@@ -321,7 +328,7 @@ const themePresets = {
 function normalizeAnniversary(item) {
   const category = item.category || 'other'
   const preset = themePresets[category] || themePresets.other
-  const serverColor = isHexColor(item.colorCode) ? item.colorCode : preset.accent
+  const serverColor = normalizeHexColor(item.colorCode, preset.accent)
   return {
     id: item.id,
     title: item.title,
@@ -486,24 +493,13 @@ function nextAnniversaryLabel(item) {
 }
 
 function themeStyle(item) {
-  const accent = isHexColor(item.accent) ? item.accent : '#d94f70'
+  const accent = normalizeHexColor(item.accent, DEFAULT_THEME_COLOR)
   return {
     '--accent': accent,
-    '--soft': softenColor(accent),
+    '--soft': softenHexColor(accent),
+    '--accent-text': accentTextColor(accent),
+    '--accent-border': themeBorderColor(accent),
   }
-}
-
-function isHexColor(value) {
-  return typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value)
-}
-
-function softenColor(hex) {
-  const value = hex.slice(1)
-  const red = parseInt(value.slice(0, 2), 16)
-  const green = parseInt(value.slice(2, 4), 16)
-  const blue = parseInt(value.slice(4, 6), 16)
-  const mix = (channel) => Math.round(channel * 0.12 + 255 * 0.88)
-  return `rgb(${mix(red)}, ${mix(green)}, ${mix(blue)})`
 }
 
 </script>
@@ -518,6 +514,7 @@ function softenColor(hex) {
 
 .next-day-panel {
   border-radius: 8px;
+  border-color: color-mix(in srgb, var(--accent) 32%, white);
 }
 
 .year-button,
@@ -598,6 +595,7 @@ function softenColor(hex) {
   min-height: 168px;
   padding: 18px;
   border: 1px solid rgba(254, 205, 211, 0.76);
+  border-left: 3px solid var(--accent);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.86);
   box-shadow: 0 8px 28px rgba(136, 19, 55, 0.055);
@@ -606,6 +604,7 @@ function softenColor(hex) {
 
 .anniversary-card:hover {
   border-color: color-mix(in srgb, var(--accent) 42%, white);
+  border-left-color: var(--accent);
   box-shadow: 0 14px 34px rgba(87, 47, 55, 0.09);
   transform: translateY(-2px);
 }
@@ -621,6 +620,7 @@ function softenColor(hex) {
   gap: 6px;
   border-radius: 6px;
   background: var(--soft);
+  box-shadow: inset 0 0 0 1px var(--accent-border);
 }
 
 .category-tag {
@@ -630,7 +630,7 @@ function softenColor(hex) {
   padding: 0 8px;
   border-radius: 999px;
   background: var(--soft);
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: 10px;
   font-weight: 700;
 }

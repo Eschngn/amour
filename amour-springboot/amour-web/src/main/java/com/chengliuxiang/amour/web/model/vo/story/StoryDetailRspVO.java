@@ -35,6 +35,8 @@ public class StoryDetailRspVO {
 
     private String chapterName;
 
+    private String chapterColor;
+
     private StoryNeighborVO preStory;
 
     private StoryNeighborVO nextStory;

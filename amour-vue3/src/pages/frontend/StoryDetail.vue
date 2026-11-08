@@ -27,7 +27,7 @@
       <div v-else class="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
         <!-- Hero：封面 + 标题 + Meta -->
         <section class="relative overflow-hidden rounded-[2rem] border border-rose-100/80 bg-white/75 shadow-sm shadow-rose-100/50 backdrop-blur-sm">
-          <div class="pointer-events-none absolute -left-12 -top-20 h-56 w-56 rounded-full bg-rose-100/70 blur-3xl" aria-hidden="true" />
+          <div class="pointer-events-none absolute -left-12 -top-20 h-56 w-56 rounded-full blur-3xl" :style="accentGlowStyle" aria-hidden="true" />
           <div class="relative grid lg:grid-cols-[minmax(0,1fr)_24rem]" :class="story.coverImage ? '' : 'lg:grid-cols-1'">
             <div class="flex flex-col justify-center p-5 sm:p-8 lg:p-10">
               <router-link to="/story" class="mb-7 inline-flex w-fit items-center gap-1.5 rounded-full border border-rose-100 bg-white/80 px-3 py-1.5 text-xs font-semibold text-rose-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700">
@@ -36,8 +36,8 @@
               </router-link>
 
               <div class="flex flex-wrap items-center gap-2 text-xs">
-                <span v-if="story.tagLabel" class="rounded-full bg-rose-100/80 px-3 py-1 font-semibold text-rose-600">{{ story.tagLabel }}</span>
-                <span class="font-semibold uppercase tracking-[0.18em] text-rose-400">{{ story.chapterName }}</span>
+                <span v-if="story.tagLabel" class="rounded-full border px-3 py-1 font-semibold" :style="tagPillStyle">{{ story.tagLabel }}</span>
+                <span class="font-semibold uppercase tracking-[0.18em]" :style="{ color: chapterAccentText }">{{ story.chapterName }}</span>
               </div>
               <h1 class="mt-4 max-w-3xl font-display text-4xl font-extrabold tracking-tight text-rose-950 sm:text-5xl lg:text-6xl">{{ story.title }}</h1>
               <p v-if="story.summary" class="mt-4 max-w-2xl text-sm leading-7 text-rose-800/60 sm:text-base">{{ story.summary }}</p>
@@ -131,6 +131,13 @@ import { MdPreview } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
 import CouplePageScaffold from '@/components/frontend/CouplePageScaffold.vue'
 import StoryToc from '@/components/frontend/StoryToc.vue'
+import {
+  DEFAULT_THEME_COLOR,
+  accentTextColor,
+  normalizeHexColor,
+  softenHexColor,
+  themeBorderColor,
+} from '@/utils/themeColor'
 import api from '@/axios'
 
 const route = useRoute()
@@ -141,6 +148,18 @@ const markdownPreviewIcons = {
 
 const story = ref(null)
 const loading = ref(true)
+
+const tagAccent = computed(() => normalizeHexColor(story.value?.tagColor, DEFAULT_THEME_COLOR))
+const chapterAccent = computed(() => normalizeHexColor(story.value?.chapterColor, tagAccent.value))
+const chapterAccentText = computed(() => accentTextColor(chapterAccent.value))
+const tagPillStyle = computed(() => ({
+  backgroundColor: softenHexColor(tagAccent.value),
+  borderColor: themeBorderColor(tagAccent.value),
+  color: accentTextColor(tagAccent.value),
+}))
+const accentGlowStyle = computed(() => ({
+  backgroundColor: softenHexColor(chapterAccent.value, DEFAULT_THEME_COLOR, 0.4),
+}))
 
 const hasToc = computed(() => {
   if (!story.value?.content) return false

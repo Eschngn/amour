@@ -185,7 +185,7 @@
                             </svg>
                             <span class="truncate">{{ story.location }}</span>
                           </span>
-                          <span v-if="story.tagLabel" class="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-semibold text-rose-500 ring-1 ring-rose-100">{{ story.tagLabel }}</span>
+                          <span v-if="story.tagLabel" class="rounded-full border px-2 py-0.5 text-[10px] font-semibold" :style="storyTagStyle(story)">{{ story.tagLabel }}</span>
                         </div>
                         <h3 class="mt-2 break-words font-display text-lg font-bold text-rose-950">{{ story.title || '未命名故事' }}</h3>
                         <p v-if="story.summary" class="mt-2 line-clamp-2 break-words text-sm leading-6 text-rose-800/65">{{ story.summary }}</p>
@@ -274,12 +274,13 @@
                   <article
                     v-for="anniversary in anniversaries"
                     :key="anniversary.anniversaryId"
-                    class="rounded-2xl border border-rose-100/80 bg-rose-50/30 p-4"
+                    class="rounded-2xl border border-rose-100/80 bg-rose-50/30 p-4 transition duration-300 hover:shadow-sm"
+                    :style="anniversaryCardStyle(anniversary)"
                   >
                     <div class="flex items-start gap-3">
                       <span
-                        class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-[11px] font-bold text-white shadow-sm"
-                        :style="{ backgroundColor: anniversary.colorCode || '#fb7185' }"
+                        class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-[11px] font-bold shadow-sm"
+                        :style="anniversaryTileStyle(anniversary)"
                         aria-hidden="true"
                       >
                         {{ monthDay(anniversary.anniversaryDate) }}
@@ -291,7 +292,7 @@
                         <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-rose-700/45">
                           <span>{{ formatSpaceDate(anniversary.anniversaryDate) }}</span>
                           <span v-if="anniversary.location" class="inline-flex min-w-0 items-center gap-1">
-                            <span class="h-1 w-1 rounded-full bg-rose-300" aria-hidden="true" />
+                            <span class="h-1 w-1 rounded-full" :style="anniversaryDotStyle(anniversary)" aria-hidden="true" />
                             <span class="truncate">{{ anniversary.location }}</span>
                           </span>
                         </div>
@@ -334,6 +335,14 @@ import {
   formatTogetherText,
   parseSpaceDateTime,
 } from '@/utils/spaceFormat'
+import {
+  DEFAULT_THEME_COLOR,
+  accentTextColor,
+  contrastTextColor,
+  normalizeHexColor,
+  softenHexColor,
+  themeBorderColor,
+} from '@/utils/themeColor'
 import { readSpaceErrorMessage } from '@/utils/spaceState'
 
 const route = useRoute()
@@ -360,6 +369,40 @@ const photos = computed(() => (Array.isArray(space.value?.photos) ? space.value.
 const anniversaries = computed(() => (
   Array.isArray(space.value?.anniversaries) ? space.value.anniversaries : []
 ))
+
+function storyAccent(story) {
+  return normalizeHexColor(story?.tagColor, DEFAULT_THEME_COLOR)
+}
+
+function storyTagStyle(story) {
+  const accent = storyAccent(story)
+  return {
+    backgroundColor: softenHexColor(accent),
+    borderColor: themeBorderColor(accent),
+    color: accentTextColor(accent),
+  }
+}
+
+function anniversaryAccent(item) {
+  return normalizeHexColor(item?.colorCode, DEFAULT_THEME_COLOR)
+}
+
+function anniversaryTileStyle(item) {
+  const accent = anniversaryAccent(item)
+  return {
+    backgroundColor: accent,
+    color: contrastTextColor(accent),
+  }
+}
+
+function anniversaryCardStyle(item) {
+  return { borderColor: themeBorderColor(anniversaryAccent(item), DEFAULT_THEME_COLOR, 0.3) }
+}
+
+function anniversaryDotStyle(item) {
+  return { backgroundColor: anniversaryAccent(item) }
+}
+
 const counts = computed(() => ({
   story: formatCount(space.value?.publicStoryCount ?? stories.value.length),
   photo: formatCount(space.value?.publicPhotoCount ?? photos.value.length),

@@ -69,6 +69,18 @@ export const VISIBILITY_OPTIONS = Object.freeze([
   { value: 2, label: '隐藏' },
 ])
 
+/** 可见性下拉选项：未完成绑定的一方不能选择公开，同时保留禁用说明。 */
+export function buildVisibilityOptions(canPublish) {
+  return VISIBILITY_OPTIONS.map(option => {
+    const disabled = option.value === 1 && !canPublish
+    return {
+      value: option.value,
+      label: disabled ? `${option.label}（完成绑定后可用）` : option.label,
+      disabled,
+    }
+  })
+}
+
 export const ANNIVERSARY_CATEGORIES = Object.freeze([
   { value: 'love', label: '恋爱' },
   { value: 'birthday', label: '生日' },
