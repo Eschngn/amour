@@ -1,181 +1,294 @@
 <template>
-  <div class="space-y-5">
-    <div v-if="loading" class="space-y-3" aria-label="正在加载相册" aria-busy="true">
-      <div v-for="n in 3" :key="n" class="h-32 animate-pulse rounded-2xl border border-rose-100 bg-white/60" />
+  <div>
+    <div v-if="loading" class="studio-panel px-5 py-6" aria-label="正在加载相册" aria-busy="true">
+      <div class="h-5 w-24 animate-pulse rounded bg-stone-100" />
+      <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div v-for="n in 3" :key="n" class="h-44 animate-pulse rounded-lg bg-stone-50" />
+      </div>
     </div>
 
-    <div v-else-if="loadError" class="rounded-2xl border border-rose-100 bg-rose-50/50 px-5 py-10 text-center" role="alert">
+    <div v-else-if="loadError" class="studio-panel px-5 py-10 text-center" role="alert">
       <p class="text-sm text-rose-600">{{ loadError }}</p>
-      <button type="button" class="mt-4 rounded-full border border-rose-200 bg-white px-4 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50" @click="load">
-        重新加载
-      </button>
+      <button type="button" class="btn-secondary mt-4" @click="load">重新加载</button>
     </div>
 
-    <template v-else>
-      <!-- 分类 -->
-      <section class="rounded-2xl border border-rose-100 bg-white/80 p-5 shadow-sm sm:p-6">
-        <h3 class="font-display text-lg font-bold text-rose-950">相册分类</h3>
-        <p class="mt-1 text-xs leading-6 text-rose-700/50">分类下仍有照片时不能删除；停用后前台不再展示该分类入口。</p>
-
-        <form class="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1.4fr)_7rem_auto_auto]" @submit.prevent="saveCategory">
-          <div>
-            <label for="studio-category-name" class="sr-only">分类名称</label>
-            <input id="studio-category-name" v-model="categoryForm.name" maxlength="50" class="w-full rounded-xl border border-rose-200 bg-white px-3.5 py-2.5 text-sm text-rose-950 outline-none placeholder:text-rose-300 focus:border-rose-400 focus:ring-4 focus:ring-rose-100" placeholder="分类名称，例如「日常」">
+    <div v-else class="space-y-5">
+      <!-- 相册工具条与分类管理：分类按需展开，不再常驻大表单 -->
+      <section class="studio-panel" aria-labelledby="studio-photo-heading">
+        <header class="studio-panel-header">
+          <div class="min-w-0">
+            <h2 id="studio-photo-heading" class="section-title">相册</h2>
+            <p class="section-description">共 {{ total }} 张照片 · {{ categories.length }} 个分类。分类下仍有照片时不能删除。</p>
           </div>
-          <div>
-            <label for="studio-category-sort" class="sr-only">排序</label>
-            <input id="studio-category-sort" v-model.number="categoryForm.sortOrder" type="number" min="0" class="w-full rounded-xl border border-rose-200 bg-white px-3.5 py-2.5 text-sm text-rose-950 outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-100" placeholder="排序">
-          </div>
-          <label class="flex items-center gap-2 rounded-xl border border-rose-100 bg-rose-50/40 px-3 py-2.5 text-xs font-semibold text-rose-800">
-            <input v-model="categoryForm.isEnabled" type="checkbox" class="h-4 w-4 rounded border-rose-300 text-rose-500 focus:ring-rose-400">
-            启用
-          </label>
-          <div class="flex items-center gap-2">
-            <button type="submit" class="rounded-xl bg-rose-500 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-rose-600 disabled:opacity-60" :disabled="categorySaving">
-              {{ categorySaving ? '保存中…' : (categoryForm.id ? '保存分类' : '新增分类') }}
-            </button>
-            <button v-if="categoryForm.id" type="button" class="rounded-xl border border-rose-200 bg-white px-3 py-2.5 text-xs font-semibold text-rose-500 transition hover:bg-rose-50" @click="resetCategoryForm">
-              取消
-            </button>
-          </div>
-        </form>
-        <p v-if="categoryError" class="mt-3 rounded-xl border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs leading-5 text-rose-600" role="alert">{{ categoryError }}</p>
-
-        <div v-if="!categories.length" class="mt-4 rounded-2xl border border-dashed border-rose-200 bg-white/55 px-4 py-8 text-center">
-          <p class="text-sm font-semibold text-rose-800/70">还没有相册分类</p>
-          <p class="mt-1 text-xs text-rose-700/45">先新增一个分类，再上传照片。</p>
-        </div>
-        <ul v-else class="mt-4 flex flex-wrap gap-2">
-          <li v-for="category in categories" :key="category.id" class="flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs" :class="categoryForm.id === category.id ? 'border-rose-300 bg-rose-50/70' : 'border-rose-100 bg-rose-50/30'">
-            <span class="font-semibold text-rose-900">{{ category.categoryName }}</span>
-            <span class="text-[10px] text-rose-700/40">{{ category.isEnabled === false ? '已停用' : '启用中' }}</span>
-            <button type="button" class="text-[11px] font-semibold text-rose-500 hover:text-rose-700" @click="editCategory(category)">编辑</button>
-            <button type="button" class="text-[11px] font-semibold text-rose-400 hover:text-rose-600" @click="removeCategory(category)">删除</button>
-          </li>
-        </ul>
-      </section>
-
-      <!-- 照片列表 -->
-      <section class="rounded-2xl border border-rose-100 bg-white/80 p-5 shadow-sm sm:p-6">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h3 class="font-display text-lg font-bold text-rose-950">照片</h3>
-            <p class="mt-1 text-xs text-rose-700/50">共 {{ total }} 张 · 第 {{ current }} / {{ totalPages }} 页 · 新建照片默认仅空间成员可见</p>
-          </div>
-          <ThemeSelect
-            v-model="filterCategoryId"
-            input-id="studio-photo-filter"
-            size="sm"
-            placeholder="全部分类"
-            :options="categoryFilterOptions"
-          />
-        </div>
-
-        <div v-if="!photos.length" class="mt-4 rounded-2xl border border-dashed border-rose-200 bg-white/55 px-4 py-8 text-center">
-          <p class="text-sm font-semibold text-rose-800/70">还没有照片</p>
-          <p class="mt-1 text-xs text-rose-700/45">在下方表单添加第一张照片。</p>
-        </div>
-        <ul v-else class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <li v-for="photo in photos" :key="photo.id" class="overflow-hidden rounded-2xl border border-rose-100 bg-white/80">
-            <img v-if="photo.url" :src="photo.url" :alt="photo.title || '相册照片'" class="h-36 w-full object-cover" @error="$event.currentTarget.style.display = 'none'">
-            <div v-else class="flex h-36 w-full items-center justify-center bg-rose-50 text-2xl text-rose-300" aria-hidden="true">♥</div>
-            <div class="p-3">
-              <p class="flex items-center gap-1.5 text-sm font-semibold text-rose-900">
-                <span class="truncate">{{ photo.title || '未命名照片' }}</span>
-                <span v-if="photo.isCover" class="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">封面</span>
-                <span class="shrink-0 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-500">{{ visibilityLabel(photo.visibility) }}</span>
-              </p>
-              <p class="mt-1 text-[11px] text-rose-700/45">{{ photo.categoryName || '未分类' }}<span v-if="photo.takenTime"> · {{ String(photo.takenTime).slice(0, 10) }}</span></p>
-              <div class="mt-2 flex gap-2">
-                <button type="button" class="rounded-full px-2.5 py-1 text-[11px] font-semibold text-rose-500 transition hover:bg-rose-50" @click="editPhoto(photo)">编辑</button>
-                <button type="button" class="rounded-full px-2.5 py-1 text-[11px] font-semibold text-rose-400 transition hover:bg-rose-50 hover:text-rose-600" @click="removePhoto(photo)">删除</button>
-              </div>
-            </div>
-          </li>
-        </ul>
-
-        <div v-if="totalPages > 1" class="mt-4 flex items-center justify-center gap-2">
-          <button type="button" class="rounded-full border border-rose-200 bg-white px-3 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-50" :disabled="current <= 1 || pageLoading" @click="goToPage(current - 1)">上一页</button>
-          <span class="text-xs text-rose-700/50">{{ current }} / {{ totalPages }}</span>
-          <button type="button" class="rounded-full border border-rose-200 bg-white px-3 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-50" :disabled="current >= totalPages || pageLoading" @click="goToPage(current + 1)">下一页</button>
-        </div>
-      </section>
-
-      <!-- 照片表单 -->
-      <section id="photo-form" class="scroll-mt-24 rounded-2xl border border-rose-100 bg-white/80 p-5 shadow-sm sm:p-6">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <h3 class="font-display text-lg font-bold text-rose-950">{{ photoForm.id ? '编辑照片' : '新增照片' }}</h3>
-          <button v-if="photoForm.id" type="button" class="rounded-full border border-rose-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-rose-500 transition hover:bg-rose-50" @click="resetPhotoForm">取消编辑</button>
-        </div>
-
-        <form class="mt-4 space-y-4" @submit.prevent="savePhoto">
-          <div class="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label for="studio-photo-category" class="block text-sm font-semibold text-rose-900">所属分类</label>
-              <ThemeSelect
-                v-model="photoForm.categoryId"
-                input-id="studio-photo-category"
-                class="mt-2"
-                placeholder="请选择分类"
-                :options="categoryOptions"
-              />
-            </div>
-            <div>
-              <label for="studio-photo-taken" class="block text-sm font-semibold text-rose-900">拍摄时间</label>
-              <ThemeDatePicker
-                v-model="photoForm.takenTime"
-                input-id="studio-photo-taken"
-                class="mt-2"
-                mode="datetime"
-                placeholder="选择拍摄时间"
-              />
-            </div>
-            <div class="sm:col-span-2">
-              <label for="studio-photo-title" class="block text-sm font-semibold text-rose-900">标题</label>
-              <input id="studio-photo-title" v-model="photoForm.title" maxlength="100" class="mt-2 w-full rounded-xl border border-rose-200 bg-white px-3.5 py-3 text-sm text-rose-950 outline-none placeholder:text-rose-300 focus:border-rose-400 focus:ring-4 focus:ring-rose-100" placeholder="给这张照片起个名字">
-            </div>
-            <div class="sm:col-span-2">
-              <label for="studio-photo-desc" class="block text-sm font-semibold text-rose-900">描述</label>
-              <textarea id="studio-photo-desc" v-model="photoForm.description" rows="2" maxlength="500" class="mt-2 w-full resize-y rounded-xl border border-rose-200 bg-white px-3.5 py-3 text-sm leading-6 text-rose-950 outline-none placeholder:text-rose-300 focus:border-rose-400 focus:ring-4 focus:ring-rose-100" placeholder="这张照片背后的故事（选填）" />
-            </div>
-            <div>
-              <label for="studio-photo-location" class="block text-sm font-semibold text-rose-900">地点</label>
-              <input id="studio-photo-location" v-model="photoForm.location" maxlength="100" class="mt-2 w-full rounded-xl border border-rose-200 bg-white px-3.5 py-3 text-sm text-rose-950 outline-none placeholder:text-rose-300 focus:border-rose-400 focus:ring-4 focus:ring-rose-100" placeholder="拍摄地点（选填）">
-            </div>
-            <div>
-              <label for="studio-photo-sort" class="block text-sm font-semibold text-rose-900">排序</label>
-              <input id="studio-photo-sort" v-model.number="photoForm.sortOrder" type="number" min="0" class="mt-2 w-full rounded-xl border border-rose-200 bg-white px-3.5 py-3 text-sm text-rose-950 outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-100">
-            </div>
-            <div>
-              <label for="studio-photo-visibility" class="block text-sm font-semibold text-rose-900">可见性</label>
-              <ThemeSelect
-                v-model="photoForm.visibility"
-                input-id="studio-photo-visibility"
-                class="mt-2"
-                :options="visibilityOptions"
-              />
-            </div>
-            <label class="flex items-center gap-2 self-end rounded-xl border border-rose-100 bg-rose-50/40 px-3.5 py-3 text-xs font-semibold text-rose-800">
-              <input v-model="photoForm.isCover" type="checkbox" class="h-4 w-4 rounded border-rose-300 text-rose-500 focus:ring-rose-400">
-              设为相册封面
-            </label>
-            <div class="sm:col-span-2">
-              <SpaceImageField v-model="photoForm.url" input-id="studio-photo-url" label="照片" hint="支持 JPG、PNG、WebP、GIF，最大 5MB。" :disabled="photoSaving" @uploading="uploading = $event" />
-            </div>
-          </div>
-
-          <p v-if="photoError" class="rounded-xl border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs leading-5 text-rose-600" role="alert">{{ photoError }}</p>
-
           <div class="flex flex-wrap items-center gap-2">
-            <button type="submit" class="rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-5 py-2.5 text-xs font-semibold text-white shadow-sm shadow-rose-200 transition hover:brightness-105 disabled:opacity-60" :disabled="photoSaving || uploading || !categories.length">
-              {{ photoSaving ? '保存中…' : (uploading ? '图片上传中…' : (photoForm.id ? '保存照片' : '新增照片')) }}
+            <button type="button" class="btn-ghost" @click="load">刷新</button>
+            <button type="button" class="btn-secondary" @click="openCategoryCreate">新增分类</button>
+            <button type="button" class="btn-primary" :disabled="!categories.length" @click="startNewPhoto">
+              新增照片
             </button>
-            <button type="button" class="rounded-full border border-rose-200 bg-white px-4 py-2.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-50" :disabled="photoSaving" @click="resetPhotoForm">清空表单</button>
-            <span v-if="dirty" class="text-[11px] font-medium text-amber-600">有未保存的修改</span>
           </div>
-        </form>
+        </header>
+
+        <div class="px-5 py-4">
+          <div v-if="!categories.length" class="studio-empty">
+            <p class="text-sm font-semibold text-stone-800">还没有相册分类</p>
+            <p class="mt-1 text-xs text-stone-500">先新增一个分类，再上传照片。</p>
+          </div>
+          <ul v-else class="flex flex-wrap gap-2" aria-label="相册分类">
+            <li
+              v-for="category in categories"
+              :key="category.id"
+              class="flex items-center gap-1 rounded-lg border py-1 pl-2.5 pr-1 text-xs"
+              :class="categoryEditorOpen && categoryForm.id === category.id
+                ? 'border-rose-300 bg-rose-50 text-rose-800'
+                : 'border-stone-200 bg-stone-50/70 text-stone-700'"
+            >
+              <span class="max-w-40 truncate font-semibold" :title="category.categoryName">{{ category.categoryName }}</span>
+              <span class="text-[10px] text-stone-400">{{ category.isEnabled === false ? '停用' : '启用' }}</span>
+              <button
+                type="button"
+                class="rounded p-1 text-stone-400 transition hover:bg-white hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300"
+                :aria-label="`编辑分类 ${category.categoryName}`"
+                title="编辑分类"
+                @click="editCategory(category)"
+              >
+                <EditPen class="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                class="rounded p-1 text-stone-400 transition hover:bg-white hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300"
+                :aria-label="`删除分类 ${category.categoryName}`"
+                title="删除分类"
+                @click="removeCategory(category)"
+              >
+                <Delete class="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        <div v-if="categoryEditorOpen" class="border-t border-stone-100 bg-stone-50/50 px-5 py-5">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h3 class="font-display text-base font-bold text-stone-900">
+              {{ categoryForm.id ? '编辑分类' : '新增分类' }}
+            </h3>
+            <button type="button" class="btn-ghost" @click="closeCategoryEditor">关闭</button>
+          </div>
+
+          <form class="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_7rem_auto_auto]" @submit.prevent="saveCategory">
+            <div>
+              <label for="studio-category-name" class="field-label">分类名称</label>
+              <input
+                id="studio-category-name"
+                v-model="categoryForm.name"
+                maxlength="50"
+                class="field-input"
+                placeholder="例如「日常」"
+              >
+            </div>
+            <div>
+              <label for="studio-category-sort" class="field-label">排序</label>
+              <input
+                id="studio-category-sort"
+                v-model.number="categoryForm.sortOrder"
+                type="number"
+                min="0"
+                class="field-input"
+              >
+            </div>
+            <label class="flex items-center gap-2 self-end rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-xs font-semibold text-stone-700">
+              <input v-model="categoryForm.isEnabled" type="checkbox" class="h-4 w-4 rounded border-stone-300 text-rose-600 focus:ring-rose-400">
+              启用
+            </label>
+            <div class="flex items-center gap-2 self-end">
+              <button type="submit" class="btn-primary" :disabled="categorySaving">
+                {{ categorySaving ? '保存中…' : (categoryForm.id ? '保存分类' : '新增分类') }}
+              </button>
+              <button v-if="categoryForm.id" type="button" class="btn-secondary" @click="closeCategoryEditor">取消</button>
+            </div>
+          </form>
+          <p v-if="categoryError" class="mt-3 rounded-lg border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs leading-5 text-rose-700" role="alert">{{ categoryError }}</p>
+        </div>
       </section>
-    </template>
+
+      <div class="grid gap-5 xl:grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)] xl:items-start">
+        <!-- 照片浏览区 -->
+        <section class="studio-panel min-w-0" aria-labelledby="studio-photo-list-heading">
+          <header class="studio-panel-header">
+            <div class="min-w-0">
+              <h3 id="studio-photo-list-heading" class="section-title">照片</h3>
+              <p class="section-description">第 {{ current }} / {{ totalPages }} 页 · 新建照片默认仅空间成员可见</p>
+            </div>
+            <ThemeSelect
+              v-model="filterCategoryId"
+              input-id="studio-photo-filter"
+              size="sm"
+              placeholder="全部分类"
+              :options="categoryFilterOptions"
+            />
+          </header>
+
+          <div v-if="!photos.length" class="studio-panel-body">
+            <div class="studio-empty">
+              <p class="text-sm font-semibold text-stone-800">还没有照片</p>
+              <p class="mt-1 text-xs text-stone-500">点击「新增照片」添加第一张。</p>
+            </div>
+          </div>
+
+          <ul v-else class="grid gap-3 p-4 sm:grid-cols-2" aria-label="照片列表">
+            <li
+              v-for="photo in photos"
+              :key="photo.id"
+              class="overflow-hidden rounded-xl border bg-white transition"
+              :class="photoForm.id === photo.id ? 'border-rose-300 ring-1 ring-rose-100' : 'border-stone-200 hover:border-stone-300'"
+            >
+              <button
+                type="button"
+                class="block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-rose-300"
+                :aria-label="`编辑照片 ${photo.title || '未命名照片'}`"
+                :aria-current="photoForm.id === photo.id ? 'true' : undefined"
+                @click="editPhoto(photo)"
+              >
+                <img v-if="photo.url" :src="photo.url" :alt="photo.title || '相册照片'" class="h-32 w-full object-cover" @error="$event.currentTarget.style.display = 'none'">
+                <div v-else class="flex h-32 w-full items-center justify-center bg-stone-100 text-2xl text-stone-300" aria-hidden="true">♥</div>
+                <div class="p-3">
+                  <p class="flex items-center gap-1.5 text-sm font-semibold text-stone-900">
+                    <span class="truncate">{{ photo.title || '未命名照片' }}</span>
+                    <span v-if="photo.isCover" class="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">封面</span>
+                  </p>
+                  <p class="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-stone-500">
+                    <span class="truncate">{{ photo.categoryName || '未分类' }}</span>
+                    <span v-if="photo.takenTime" aria-hidden="true">·</span>
+                    <span v-if="photo.takenTime">{{ String(photo.takenTime).slice(0, 10) }}</span>
+                    <span class="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold text-stone-500">{{ visibilityLabel(photo.visibility) }}</span>
+                  </p>
+                </div>
+              </button>
+              <div class="flex items-center justify-end gap-1 border-t border-stone-100 px-2 py-1.5">
+                <button type="button" class="btn-ghost !px-2 !py-1 !text-[11px]" @click="editPhoto(photo)">编辑</button>
+                <button
+                  type="button"
+                  class="btn-ghost !px-2 !py-1 !text-[11px] !text-stone-400 hover:!text-rose-600"
+                  :aria-label="`删除照片 ${photo.title || '未命名照片'}`"
+                  @click="removePhoto(photo)"
+                >
+                  删除
+                </button>
+              </div>
+            </li>
+          </ul>
+
+          <footer v-if="totalPages > 1" class="flex items-center justify-between gap-3 border-t border-stone-100 px-5 py-3">
+            <span class="text-xs text-stone-500">{{ current }} / {{ totalPages }}</span>
+            <div class="flex gap-2">
+              <button type="button" class="btn-secondary !py-1.5" :disabled="current <= 1 || pageLoading" @click="goToPage(current - 1)">上一页</button>
+              <button type="button" class="btn-secondary !py-1.5" :disabled="current >= totalPages || pageLoading" @click="goToPage(current + 1)">下一页</button>
+            </div>
+          </footer>
+        </section>
+
+        <!-- 照片编辑区 -->
+        <section id="photo-form" class="studio-panel scroll-mt-24" aria-labelledby="studio-photo-editor-heading">
+          <header class="studio-panel-header">
+            <div class="min-w-0">
+              <h3 id="studio-photo-editor-heading" class="section-title">
+                {{ photoForm.id ? '编辑照片' : '新增照片' }}
+              </h3>
+              <p class="section-description">从左侧选择一张照片进行编辑，或在这里新建。</p>
+            </div>
+            <button v-if="photoForm.id" type="button" class="btn-ghost" @click="resetPhotoForm">取消编辑</button>
+          </header>
+
+          <form @submit.prevent="savePhoto">
+            <div class="space-y-4 px-5 py-5">
+              <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label for="studio-photo-category" class="field-label">所属分类</label>
+                  <ThemeSelect
+                    v-model="photoForm.categoryId"
+                    input-id="studio-photo-category"
+                    class="mt-2"
+                    placeholder="请选择分类"
+                    :options="categoryOptions"
+                  />
+                </div>
+                <div>
+                  <label for="studio-photo-taken" class="field-label">拍摄时间</label>
+                  <ThemeDatePicker
+                    v-model="photoForm.takenTime"
+                    input-id="studio-photo-taken"
+                    class="mt-2"
+                    mode="datetime"
+                    placeholder="选择拍摄时间"
+                  />
+                </div>
+                <div class="sm:col-span-2">
+                  <label for="studio-photo-title" class="field-label">标题</label>
+                  <input id="studio-photo-title" v-model="photoForm.title" maxlength="100" class="field-input" placeholder="给这张照片起个名字">
+                </div>
+                <div class="sm:col-span-2">
+                  <label for="studio-photo-desc" class="field-label">描述</label>
+                  <textarea
+                    id="studio-photo-desc"
+                    v-model="photoForm.description"
+                    rows="2"
+                    maxlength="500"
+                    class="field-input resize-y leading-6"
+                    placeholder="这张照片背后的故事（选填）"
+                  />
+                </div>
+                <div>
+                  <label for="studio-photo-location" class="field-label">地点</label>
+                  <input id="studio-photo-location" v-model="photoForm.location" maxlength="100" class="field-input" placeholder="拍摄地点（选填）">
+                </div>
+                <div>
+                  <label for="studio-photo-sort" class="field-label">排序</label>
+                  <input id="studio-photo-sort" v-model.number="photoForm.sortOrder" type="number" min="0" class="field-input">
+                </div>
+              </div>
+
+              <div class="rounded-xl border border-stone-200 bg-stone-50/70 p-4">
+                <p class="text-xs font-bold text-stone-500">展示设置</p>
+                <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label for="studio-photo-visibility" class="field-label">可见性</label>
+                    <ThemeSelect
+                      v-model="photoForm.visibility"
+                      input-id="studio-photo-visibility"
+                      class="mt-2"
+                      :options="visibilityOptions"
+                    />
+                  </div>
+                  <label class="flex items-center gap-2 self-end rounded-lg border border-stone-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-stone-700">
+                    <input v-model="photoForm.isCover" type="checkbox" class="h-4 w-4 rounded border-stone-300 text-rose-600 focus:ring-rose-400">
+                    设为相册封面
+                  </label>
+                </div>
+              </div>
+
+              <SpaceImageField
+                v-model="photoForm.url"
+                input-id="studio-photo-url"
+                label="照片"
+                hint="支持 JPG、PNG、WebP、GIF，最大 5MB。"
+                :disabled="photoSaving"
+                @uploading="uploading = $event"
+              />
+
+              <p v-if="photoError" class="rounded-lg border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs leading-5 text-rose-700" role="alert">{{ photoError }}</p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2 border-t border-stone-100 bg-stone-50/40 px-5 py-4">
+              <button type="submit" class="btn-primary" :disabled="photoSaving || uploading || !categories.length">
+                {{ photoSaving ? '保存中…' : (uploading ? '图片上传中…' : (photoForm.id ? '保存照片' : '新增照片')) }}
+              </button>
+              <button type="button" class="btn-secondary" :disabled="photoSaving" @click="resetPhotoForm">清空表单</button>
+              <span v-if="dirty" class="text-[11px] font-medium text-amber-700" role="status">有未保存的修改</span>
+            </div>
+          </form>
+        </section>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -184,6 +297,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import 'element-plus/es/components/message/style/css'
 import 'element-plus/es/components/message-box/style/css'
+import { Delete, EditPen } from '@element-plus/icons-vue'
 import SpaceImageField from '@/components/frontend/space-studio/SpaceImageField.vue'
 import ThemeDatePicker from '@/components/frontend/space-studio/ThemeDatePicker.vue'
 import ThemeSelect from '@/components/frontend/space-studio/ThemeSelect.vue'
@@ -228,6 +342,7 @@ const visibilityOptions = computed(() => buildVisibilityOptions(props.canPublish
 const categoryForm = reactive({ id: null, name: '', sortOrder: 10, isEnabled: true })
 const categorySaving = ref(false)
 const categoryError = ref('')
+const categoryEditorOpen = ref(false)
 
 const photoForm = reactive(emptyPhotoForm())
 const photoSaving = ref(false)
@@ -277,12 +392,23 @@ function resetCategoryForm() {
   captureBaseline()
 }
 
+function openCategoryCreate() {
+  resetCategoryForm()
+  categoryEditorOpen.value = true
+}
+
+function closeCategoryEditor() {
+  categoryEditorOpen.value = false
+  resetCategoryForm()
+}
+
 function editCategory(category) {
   categoryForm.id = category.id
   categoryForm.name = category.categoryName || ''
   categoryForm.sortOrder = Number(category.sortOrder) || 0
   categoryForm.isEnabled = category.isEnabled !== false
   categoryError.value = ''
+  categoryEditorOpen.value = true
 }
 
 function resetPhotoForm() {
@@ -290,6 +416,11 @@ function resetPhotoForm() {
   photoForm.categoryId = categories.value[0]?.id ?? ''
   photoError.value = ''
   captureBaseline()
+}
+
+function startNewPhoto() {
+  resetPhotoForm()
+  document.getElementById('photo-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 function editPhoto(photo) {
@@ -314,6 +445,7 @@ async function load() {
     const categoryData = ensureSuccess(await fetchPhotoManageCategories(), '相册分类加载失败')
     categories.value = Array.isArray(categoryData) ? categoryData : []
     await loadPhotos()
+    categoryEditorOpen.value = false
     resetCategoryForm()
     resetPhotoForm()
   } catch (error) {

@@ -48,9 +48,6 @@
                 <h2 id="no-space-prompt-heading" class="mt-1 break-words font-display text-xl font-bold text-rose-950 sm:text-2xl">
                   还没有恋爱空间，快去创建或绑定一个吧
                 </h2>
-                <p class="mt-2 max-w-2xl text-xs leading-6 text-rose-800/65 sm:text-sm">
-                  创建属于你们自己的小宇宙，或接受另一半的邀请。完成之后，这里就会成为你们共同记录故事、照片和纪念日的地方。
-                </p>
               </div>
             </div>
             <div class="flex shrink-0 flex-col gap-2 sm:flex-row">
@@ -128,14 +125,15 @@
         </section>
 
         <section aria-labelledby="plaza-heading">
-          <header class="mb-6 border-b border-rose-100/80 pb-5 sm:mb-7 sm:pb-6">
-            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
+          <header class="mb-5 border-b border-rose-100/80 pb-4 sm:mb-6 sm:pb-5">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
               <div class="min-w-0">
                 <h1 id="plaza-heading" class="font-display text-3xl font-extrabold leading-none tracking-tight text-rose-950 sm:text-4xl">
                   恋爱<span class="accent-text">广场</span>
                 </h1>
-                <p class="mt-3 max-w-2xl text-xs leading-6 text-rose-800/60 sm:text-sm sm:leading-7">
-                  这里展示的是<span class="font-semibold text-rose-700">整个恋爱空间</span>；空间主人可以自行选择公开哪些故事、照片和纪念日。
+                <p class="mt-2 max-w-2xl text-xs leading-5 text-rose-800/55 sm:text-sm sm:leading-6">
+                  只看得到大家公开的故事、照片和纪念日；留言和私密内容不会出现。
+                  <span class="text-rose-700/40">浏览也不会加入对方的空间。</span>
                 </p>
               </div>
 
@@ -156,14 +154,6 @@
                 </RouterLink>
               </div>
             </div>
-
-            <p class="mt-4 flex items-start gap-2 rounded-xl bg-rose-50/70 px-3.5 py-3 text-[11px] leading-5 text-rose-700/65 sm:mt-5 sm:px-4">
-              <span class="mt-0.5 shrink-0 text-rose-400" aria-hidden="true">✦</span>
-              <span>
-                这里出现的只有故事、照片和纪念日；留言板与私密内容不会公开。
-                <span class="font-medium text-rose-700/85">浏览别人的空间也不会让你加入对方的空间。</span>
-              </span>
-            </p>
           </header>
 
           <div v-if="loading" class="grid gap-5 sm:grid-cols-2 xl:grid-cols-3" aria-label="正在加载恋爱广场" aria-busy="true">
@@ -207,7 +197,7 @@
             <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-rose-50 text-3xl text-rose-300" aria-hidden="true">♡</div>
             <h2 class="mt-5 font-display text-xl font-semibold text-rose-900">广场还在等待第一束公开的光</h2>
             <p class="mx-auto mt-2 max-w-md text-sm leading-6 text-rose-700/55">
-              还没有情侣空间把自己的空间公开出来。等有人愿意分享时，这里会慢慢热闹起来。
+              还没有人公开自己的情侣空间。等有人分享时，这里会慢慢热闹起来。
             </p>
             <div class="mt-5 flex flex-wrap justify-center gap-2">
               <button
@@ -351,7 +341,7 @@ const unavailablePrompt = computed(() => {
       iconClass: 'bg-amber-100 text-amber-500',
       badge: 'Waiting For Partner',
       title: `${spaceName} 还在等待另一半加入`,
-      description: '空间已经准备好了，等对方接受邀请后，就可以一起使用故事、相册和纪念日。',
+      description: '对方接受邀请后，就可以一起使用故事、相册和纪念日。',
       canRetry: false,
     }
   }
@@ -361,7 +351,7 @@ const unavailablePrompt = computed(() => {
       iconClass: 'bg-sky-100 text-sky-500',
       badge: 'Frozen',
       title: `${spaceName} 已冻结`,
-      description: '空间内容暂时不可用。你可以进入空间查看状态，或稍后重新读取。',
+      description: '空间内容暂时不可用。',
       canRetry: true,
     }
   }
@@ -372,7 +362,7 @@ const unavailablePrompt = computed(() => {
       iconClass: 'bg-slate-100 text-slate-500',
       badge: 'Archived',
       title: `${spaceName} 已归档`,
-      description: '这个空间已经归档，私人内容不会继续加载。你仍然可以浏览恋爱广场里别人公开的空间。',
+      description: '私人内容不再加载，你仍然可以浏览广场里公开的空间。',
       canRetry: false,
     }
   }
@@ -382,7 +372,7 @@ const unavailablePrompt = computed(() => {
       iconClass: 'bg-rose-100 text-rose-500',
       badge: 'Unbound',
       title: '情侣空间已解除绑定',
-      description: '你们现在都可以重新创建或加入情侣空间。旧空间内容不会再作为当前空间展示。',
+      description: '你们现在都可以重新创建或加入情侣空间。',
       canRetry: false,
       canCreate: true,
     }

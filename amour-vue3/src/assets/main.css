@@ -159,3 +159,101 @@ body .el-message-box__btns .el-button--primary:focus {
 body .el-message-box__btns .el-button--primary:active {
   filter: brightness(0.95);
 }
+
+/* ------------------------------------------------------------------
+   前台共享布局基础
+   页面主体统一使用中性暖色表面与细分隔线，玫瑰色只作为品牌强调。
+   ------------------------------------------------------------------ */
+@layer components {
+  .page-container {
+    @apply relative z-10 mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12;
+  }
+
+  .page-container-wide {
+    @apply relative z-10 mx-auto w-full max-w-7xl px-3 py-8 sm:px-6 sm:py-10 lg:px-8;
+  }
+
+  .panel {
+    @apply overflow-hidden rounded-2xl border border-stone-200/80 bg-white;
+  }
+
+  .panel-header {
+    @apply flex flex-wrap items-start justify-between gap-4 border-b border-stone-100 px-5 py-4 sm:px-6;
+  }
+
+  .panel-body {
+    @apply px-5 py-5 sm:px-6;
+  }
+
+  .section-kicker {
+    @apply text-[11px] font-bold uppercase tracking-[0.2em] text-rose-500;
+  }
+
+  .section-title {
+    @apply font-display text-lg font-bold text-stone-900;
+  }
+
+  .section-description {
+    @apply mt-1 text-xs leading-6 text-stone-500;
+  }
+
+  .field-label {
+    @apply block text-sm font-semibold text-stone-800;
+  }
+
+  .field-input {
+    @apply mt-2 w-full rounded-lg border border-stone-200 bg-white px-3.5 py-2.5 text-sm text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-rose-400 focus:ring-2 focus:ring-rose-100 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500;
+  }
+
+  .field-hint {
+    @apply mt-1.5 text-[11px] leading-5 text-stone-500;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-rose-600 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-55;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-stone-200 bg-white px-4 py-2.5 text-xs font-semibold text-stone-700 transition hover:border-stone-300 hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-55;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-stone-600 transition hover:bg-stone-100 hover:text-stone-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-55;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-rose-200 bg-white px-4 py-2.5 text-xs font-semibold text-rose-700 transition hover:border-rose-300 hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-55;
+  }
+
+  .status-pill {
+    @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold;
+  }
+
+  .settings-row {
+    @apply flex flex-col gap-4 py-5 sm:flex-row sm:items-start sm:justify-between sm:gap-10;
+  }
+
+  .studio-panel {
+    @apply overflow-hidden rounded-2xl border border-stone-200/80 bg-white;
+  }
+
+  .studio-panel-header {
+    @apply flex flex-wrap items-start justify-between gap-3 border-b border-stone-100 px-5 py-4;
+  }
+
+  .studio-panel-body {
+    @apply px-5 py-5;
+  }
+
+  .studio-empty {
+    @apply rounded-xl border border-dashed border-stone-200 bg-stone-50/60 px-4 py-8 text-center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+}

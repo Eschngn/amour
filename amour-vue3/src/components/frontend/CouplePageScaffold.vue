@@ -1,23 +1,17 @@
 <template>
-  <div class="relative min-h-screen bg-gradient-to-b from-rose-50 via-pink-50/80 to-white font-sans text-rose-950 antialiased">
-    <div
-      class="pointer-events-none fixed inset-0 overflow-x-clip"
-      aria-hidden="true"
+  <div class="flex min-h-screen flex-col bg-[#fcfaf7] font-sans text-stone-900 antialiased">
+    <a
+      href="#main-content"
+      class="sr-only z-[100] rounded-lg bg-white px-4 py-2 text-sm font-semibold text-rose-700 shadow focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:outline-none focus:ring-2 focus:ring-rose-400"
     >
-      <div
-        class="hero-glow absolute -left-32 top-0 h-[520px] w-[520px] rounded-full bg-rose-200/50 blur-[100px]"
-      />
-      <div
-        class="absolute -right-20 top-1/3 h-[420px] w-[420px] rounded-full bg-pink-200/45 blur-[90px]"
-      />
-      <div
-        class="absolute bottom-0 left-1/2 h-[380px] w-[90%] max-w-4xl -translate-x-1/2 rounded-full bg-fuchsia-100/40 blur-[80px]"
-      />
-    </div>
+      跳到主要内容
+    </a>
 
     <SiteHeader />
 
-    <slot />
+    <div id="main-content" tabindex="-1" class="flex-1 outline-none">
+      <slot />
+    </div>
 
     <SiteFooter />
   </div>
@@ -27,27 +21,3 @@
 import SiteFooter from '@/components/frontend/SiteFooter.vue'
 import SiteHeader from '@/components/frontend/SiteHeader.vue'
 </script>
-
-<style scoped>
-@keyframes pulse-soft {
-  0%,
-  100% {
-    opacity: 0.65;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.95;
-    transform: scale(1.04);
-  }
-}
-
-.hero-glow {
-  animation: pulse-soft 8s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hero-glow {
-    animation: none;
-  }
-}
-</style>

@@ -311,9 +311,6 @@
             </div>
           </div>
         </section>
-        <p class="mt-4 text-center text-xs leading-6 text-rose-500/60">
-          在空间恢复可用前，不会加载故事、相册或纪念日等私密内容。
-        </p>
       </div>
     </main>
 
@@ -351,7 +348,7 @@
               </div>
 
               <p class="mt-4 text-[11px] font-bold uppercase tracking-[0.24em] text-rose-400">Unbind request</p>
-              <h2 id="unbind-prompt-title" class="mt-2 font-display text-2xl font-bold text-rose-950">TA 想解除情侣空间</h2>
+              <h2 id="unbind-prompt-title" class="mt-2 font-display text-2xl font-bold text-rose-950">另一半想解除情侣空间</h2>
               <p id="unbind-prompt-desc" class="mt-3 text-sm leading-7 text-rose-800/60">
                 <strong class="font-semibold text-rose-900">{{ unbindRequesterName }}</strong>
                 发起了新的解绑申请<span v-if="unbindRequestedAtText">（{{ unbindRequestedAtText }}）</span>。
@@ -480,7 +477,7 @@ const statusView = computed(() => {
       icon: '◷',
       eyebrow: 'Waiting For Partner',
       title: '空间已创建，等待另一半加入',
-      description: '你可以先布置空间首页、写下故事和留言、整理相册与纪念日；另一半接受邀请后，会直接看到这些内容。',
+      description: '你可以先布置空间内容；另一半接受邀请后就能一起使用。',
       iconClass: 'bg-amber-100 text-amber-500',
       panelClass: 'border-amber-200/80 bg-amber-50/70',
       eyebrowClass: 'text-amber-500',
@@ -494,7 +491,7 @@ const statusView = computed(() => {
       icon: '❄',
       eyebrow: 'Space Frozen',
       title: '情侣空间已冻结',
-      description: '空间内容暂时不可用。你可以返回恋爱广场，或稍后刷新空间状态。',
+      description: '空间内容暂时不可用，可以稍后刷新状态。',
       iconClass: 'bg-sky-100 text-sky-500',
       panelClass: 'border-sky-200/80 bg-sky-50/70',
       eyebrowClass: 'text-sky-500',
@@ -506,7 +503,7 @@ const statusView = computed(() => {
       icon: '▣',
       eyebrow: 'Space Archived',
       title: '情侣空间已归档',
-      description: '这段空间已经被归档，私人内容不会继续加载。你仍然可以浏览恋爱广场里别人公开的空间。',
+      description: '私密内容不再加载，你仍可以浏览恋爱广场里公开的空间。',
       iconClass: 'bg-slate-100 text-slate-500',
       panelClass: 'border-slate-200 bg-slate-50/80',
       eyebrowClass: 'text-slate-500',
@@ -517,7 +514,7 @@ const statusView = computed(() => {
       icon: '♥',
       eyebrow: 'Space Unbound',
       title: '情侣空间已解除绑定',
-      description: '你们现在都可以重新创建或加入情侣空间。旧空间内容不会再作为当前空间加载。',
+      description: '你们现在都可以重新创建或加入情侣空间。',
       iconClass: 'bg-rose-100 text-rose-500',
       panelClass: 'border-rose-200/80 bg-rose-50/70',
       eyebrowClass: 'text-rose-500',
@@ -529,7 +526,7 @@ const statusView = computed(() => {
     icon: '!',
     eyebrow: 'Space Unavailable',
     title: '情侣空间暂时不可用',
-    description: '当前空间状态暂时无法进入。你可以返回恋爱广场，或刷新状态后再试。',
+    description: '可以刷新状态后再试，或先浏览恋爱广场。',
     iconClass: 'bg-rose-100 text-rose-500',
     panelClass: 'border-rose-200/80 bg-rose-50/70',
     eyebrowClass: 'text-rose-500',

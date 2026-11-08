@@ -1,141 +1,116 @@
 <template>
   <CouplePageScaffold>
-    <main class="relative z-10">
-      <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-16">
-        <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <RouterLink
-            to="/plaza"
-            class="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-white/75 px-3.5 py-2 text-xs font-semibold text-rose-600 transition hover:border-rose-300 hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
-          >
-            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path d="M19 12H5m5 5-5-5 5-5" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-            返回恋爱广场
-          </RouterLink>
-          <RouterLink to="/" class="text-xs font-semibold text-rose-500 transition hover:text-rose-700">
-            {{ homeLinkLabel }}
-          </RouterLink>
-        </div>
+    <main class="page-container">
+      <nav class="mb-5 flex flex-wrap items-center gap-2 text-xs text-stone-500" aria-label="当前位置">
+        <RouterLink
+          to="/plaza"
+          class="inline-flex items-center gap-1.5 font-semibold text-stone-600 transition hover:text-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2"
+        >
+          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M19 12H5m5 5-5-5 5-5" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          恋爱广场
+        </RouterLink>
+        <span class="text-stone-300" aria-hidden="true">/</span>
+        <span class="font-semibold text-stone-800" aria-current="page">情侣空间</span>
+        <RouterLink to="/" class="ml-auto font-semibold text-stone-600 transition hover:text-rose-700">
+          {{ homeLinkLabel }}
+        </RouterLink>
+      </nav>
 
-        <header class="relative overflow-hidden rounded-[2rem] border border-rose-100/80 bg-white/75 px-5 py-8 shadow-sm shadow-rose-100/50 backdrop-blur-sm sm:px-8 sm:py-10">
-          <div class="pointer-events-none absolute -right-14 -top-20 h-56 w-56 rounded-full bg-rose-100/80 blur-3xl" aria-hidden="true" />
-          <div class="pointer-events-none absolute -bottom-20 left-1/3 h-44 w-44 rounded-full bg-fuchsia-100/60 blur-3xl" aria-hidden="true" />
-          <div class="relative max-w-3xl">
-            <p class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.28em] text-rose-500">
-              <span class="h-1.5 w-1.5 rounded-full bg-rose-400" aria-hidden="true" />
-              Couple Space
-            </p>
-            <h1 class="mt-3 font-display text-3xl font-extrabold tracking-tight text-rose-950 sm:text-5xl">
-              {{ pageHeading }}
-            </h1>
-            <p class="mt-3 text-sm leading-7 text-rose-800/65 sm:text-base">
-              {{ pageDescription }}
-            </p>
-          </div>
-        </header>
+      <FrontendPageHeader
+        eyebrow="情侣空间"
+        :title="pageHeading"
+        :description="pageDescription"
+        heading-id="space-setup-heading"
+      />
 
         <!-- 未登录：保留邀请 token 并允许预览，登录后回跳仍带着它 -->
-        <section v-if="!frontendLoggedIn" class="mt-8 rounded-[1.75rem] border border-rose-100 bg-white/80 p-5 shadow-sm sm:p-7">
-          <div class="rounded-2xl border border-rose-100 bg-rose-50/40 px-5 py-8 text-center">
-            <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-rose-50 text-2xl text-rose-300" aria-hidden="true">♥</span>
-            <h2 class="mt-4 font-display text-xl font-bold text-rose-950">登录后才能创建或绑定情侣空间</h2>
-            <p class="mt-2 text-sm text-rose-700/55">
-              <template v-if="guestInvitationToken">你的邀请链接已保留，登录后会自动回到这个邀请。</template>
-              <template v-else>登录后可以创建新的空间，也可以接受另一半的邀请。</template>
-            </p>
-            <RouterLink
-              :to="loginWithRedirect"
-              class="mt-5 inline-flex rounded-full bg-rose-500 px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-rose-600"
-            >
-              去登录
-            </RouterLink>
-          </div>
-
-          <div class="mt-6">
-            <label for="setup-guest-token" class="block text-sm font-semibold text-rose-900">已有邀请链接</label>
-            <textarea
-              id="setup-guest-token"
-              v-model="inviteToken"
-              rows="2"
-              maxlength="500"
-              class="mt-2 w-full resize-y rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm leading-6 text-rose-950 outline-none transition placeholder:text-rose-300 focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
-              placeholder="粘贴另一半发来的邀请链接"
-            />
-            <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
-              <p class="text-[11px] text-rose-700/45">未登录也可以先预览邀请内容</p>
-              <button
-                type="button"
-                class="rounded-full bg-rose-500 px-4 py-2 text-xs font-semibold text-white transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
-                :disabled="previewing"
-                @click="loadInvitationPreview"
-              >
-                {{ previewing ? '预览中…' : '预览邀请' }}
-              </button>
-            </div>
-            <p v-if="previewError" class="mt-2 rounded-xl border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs leading-5 text-rose-600" role="alert">
-              {{ previewError }}
-            </p>
-
-            <div v-if="preview" class="mt-4 rounded-2xl border border-rose-100 bg-rose-50/35 p-4">
-              <div class="flex flex-wrap items-start justify-between gap-2">
-                <div class="min-w-0">
-                  <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-rose-400">Invitation Preview</p>
-                  <h3 class="mt-1 break-words font-display text-xl font-bold text-rose-950">{{ preview.spaceName || '情侣空间' }}</h3>
-                  <p class="mt-1 text-xs text-rose-700/55">
-                    来自 {{ preview.inviterName || '恋人' }}
-                    <span v-if="preview.inviterAmourId"> · ID {{ preview.inviterAmourId }}</span>
-                  </p>
-                </div>
-                <span class="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold" :class="previewStatusClass">
-                  {{ preview.statusText || '未知状态' }}
-                </span>
-              </div>
-              <p v-if="preview.description" class="mt-3 whitespace-pre-line break-words text-xs leading-6 text-rose-800/60">{{ preview.description }}</p>
-              <dl class="mt-3 grid grid-cols-2 gap-2 text-xs">
-                <div class="rounded-xl bg-white/70 px-3 py-2">
-                  <dt class="text-[10px] text-rose-700/45">空间成员</dt>
-                  <dd class="mt-0.5 font-semibold text-rose-900">{{ preview.memberCount || 0 }} / {{ preview.memberLimit || 2 }}</dd>
-                </div>
-                <div class="rounded-xl bg-white/70 px-3 py-2">
-                  <dt class="text-[10px] text-rose-700/45">有效期</dt>
-                  <dd class="mt-0.5 text-[11px] font-semibold leading-5 text-rose-900">{{ formatInvitationExpiry(preview.expiresAt) }}</dd>
-                </div>
-              </dl>
-              <p class="mt-3 rounded-xl border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-xs leading-5 text-amber-800" role="status">
-                登录后即可接受该邀请。
+        <section v-if="!frontendLoggedIn" class="panel mt-6">
+          <div class="grid lg:grid-cols-2">
+            <div class="border-b border-stone-100 px-5 py-8 sm:px-6 lg:border-b-0 lg:border-r">
+              <h2 class="font-display text-xl font-bold text-stone-900">登录后才能创建或绑定情侣空间</h2>
+              <p class="mt-2 text-sm leading-6 text-stone-500">
+                <template v-if="guestInvitationToken">你的邀请链接已保留，登录后会自动回到这个邀请。</template>
+                <template v-else>登录后可以创建新的空间，也可以接受另一半的邀请。</template>
               </p>
-              <RouterLink
-                :to="loginWithRedirect"
-                class="mt-4 inline-flex items-center justify-center rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-5 py-2.5 text-xs font-semibold text-white shadow-sm shadow-rose-200 transition hover:brightness-105"
-              >
-                登录后接受邀请
+              <RouterLink :to="loginWithRedirect" class="btn-primary mt-5">
+                去登录
               </RouterLink>
+            </div>
+
+            <div class="px-5 py-8 sm:px-6">
+              <label for="setup-guest-token" class="field-label">已有邀请链接</label>
+              <textarea
+                id="setup-guest-token"
+                v-model="inviteToken"
+                rows="2"
+                maxlength="500"
+                class="field-input resize-y leading-6"
+                placeholder="粘贴另一半发来的邀请链接"
+              />
+              <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
+                <p class="field-hint !mt-0">未登录也可以先预览邀请内容</p>
+                <button type="button" class="btn-primary" :disabled="previewing" @click="loadInvitationPreview">
+                  {{ previewing ? '预览中…' : '预览邀请' }}
+                </button>
+              </div>
+              <p v-if="previewError" class="mt-3 rounded-lg border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs leading-5 text-rose-700" role="alert">
+                {{ previewError }}
+              </p>
+
+              <div v-if="preview" class="mt-4 rounded-xl border border-stone-200 bg-stone-50/60 p-4">
+                <div class="flex flex-wrap items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-stone-400">邀请预览</p>
+                    <h3 class="mt-1 break-words font-display text-lg font-bold text-stone-900">{{ preview.spaceName || '情侣空间' }}</h3>
+                    <p class="mt-1 text-xs text-stone-500">
+                      来自 {{ preview.inviterName || '恋人' }}
+                      <span v-if="preview.inviterAmourId"> · ID {{ preview.inviterAmourId }}</span>
+                    </p>
+                  </div>
+                  <span class="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold" :class="previewStatusClass">
+                    {{ preview.statusText || '未知状态' }}
+                  </span>
+                </div>
+                <p v-if="preview.description" class="mt-3 whitespace-pre-line break-words text-xs leading-6 text-stone-600">{{ preview.description }}</p>
+                <dl class="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-stone-200 bg-stone-200 text-xs">
+                  <div class="bg-white px-3 py-2">
+                    <dt class="text-[10px] text-stone-400">空间成员</dt>
+                    <dd class="mt-0.5 font-semibold text-stone-900">{{ preview.memberCount || 0 }} / {{ preview.memberLimit || 2 }}</dd>
+                  </div>
+                  <div class="bg-white px-3 py-2">
+                    <dt class="text-[10px] text-stone-400">有效期</dt>
+                    <dd class="mt-0.5 text-[11px] font-semibold leading-5 text-stone-900">{{ formatInvitationExpiry(preview.expiresAt) }}</dd>
+                  </div>
+                </dl>
+                <p class="mt-3 rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-xs leading-5 text-amber-800" role="status">
+                  登录后即可接受该邀请。
+                </p>
+                <RouterLink :to="loginWithRedirect" class="btn-primary mt-3">
+                  登录后接受邀请
+                </RouterLink>
+              </div>
             </div>
           </div>
         </section>
 
-        <div v-else-if="statusLoading" class="mt-8 grid gap-6 lg:grid-cols-2" aria-label="正在读取情侣空间状态" aria-busy="true">
-          <div class="h-80 animate-pulse rounded-[1.75rem] border border-rose-100 bg-white/60" />
-          <div class="h-80 animate-pulse rounded-[1.75rem] border border-rose-100 bg-white/60" />
+        <div v-else-if="statusLoading" class="panel mt-6 px-5 py-6" aria-label="正在读取情侣空间状态" aria-busy="true">
+          <div class="h-5 w-28 animate-pulse rounded bg-stone-100" />
+          <div class="mt-4 h-8 w-2/3 max-w-md animate-pulse rounded bg-stone-100" />
+          <div class="mt-8 grid gap-4 sm:grid-cols-2">
+            <div class="h-44 animate-pulse rounded-xl bg-stone-50" />
+            <div class="h-44 animate-pulse rounded-xl bg-stone-50" />
+          </div>
         </div>
 
-        <section v-else-if="statusError" class="mt-8 rounded-[1.75rem] border border-rose-100 bg-white/80 px-6 py-14 text-center shadow-sm" role="alert">
-          <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-rose-50 text-rose-400">
-            <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-              <path d="M12 8v4M12 16h.01" stroke-linecap="round" />
-              <path d="M10.3 3.8 2.9 17a2 2 0 0 0 1.7 3h14.8a2 2 0 0 0 1.7-3l-7.4-13.2a2 2 0 0 0-3.4 0Z" />
-            </svg>
-          </div>
-          <h2 class="mt-4 font-display text-xl font-bold text-rose-950">暂时无法确认你的空间状态</h2>
-          <p class="mx-auto mt-2 max-w-md text-sm leading-6 text-rose-700/55">{{ spaceError }}</p>
-          <p class="mt-2 text-xs text-rose-500/60">这不代表你没有情侣空间，可能只是网络或服务暂时不可用。</p>
+        <section v-else-if="statusError" class="panel mt-6 px-6 py-12 text-center" role="alert">
+          <h2 class="font-display text-xl font-bold text-stone-900">暂时无法确认你的空间状态</h2>
+          <p class="mx-auto mt-2 max-w-md text-sm leading-6 text-stone-600">{{ spaceError }}</p>
+          <p class="mt-2 text-xs text-stone-400">这不代表你没有情侣空间，可能只是网络或服务暂时不可用。</p>
           <div class="mt-5 flex flex-wrap justify-center gap-2">
-            <button type="button" class="rounded-full bg-rose-500 px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-rose-600" @click="retryStatus">
-              重新读取状态
-            </button>
-            <RouterLink to="/plaza" class="rounded-full border border-rose-200 bg-white px-5 py-2.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50">
-              返回恋爱广场
-            </RouterLink>
+            <button type="button" class="btn-primary" @click="retryStatus">重新读取状态</button>
+            <RouterLink to="/plaza" class="btn-secondary">返回恋爱广场</RouterLink>
           </div>
         </section>
 
@@ -143,7 +118,7 @@
           已登录且已拿到空间状态：统一渲染空间概览与设置面板。
           status=0 时邀请区通过 after-overview 插槽放在概览下方。
         -->
-        <SpaceSettingsPanel v-else-if="showSpacePanel" class="mt-8">
+        <SpaceSettingsPanel v-else-if="showSpacePanel" class="mt-6">
           <template #after-overview>
             <!--
               status=0 的创建者必须能在这里发出邀请。
@@ -152,224 +127,196 @@
             <section
               v-if="isSpaceWaiting"
               id="space-invite-partner"
-              class="scroll-mt-24 rounded-[1.75rem] border border-rose-100 bg-white/85 p-5 shadow-lg shadow-rose-100/35 sm:p-7"
+              class="panel scroll-mt-24"
               aria-labelledby="space-invite-heading"
             >
-          <div class="flex flex-wrap items-end justify-between gap-3">
-            <div class="min-w-0">
-              <p class="text-[10px] font-bold uppercase tracking-[0.22em] text-rose-400">Invite Your Partner</p>
-              <h2 id="space-invite-heading" class="mt-1 font-display text-2xl font-bold text-rose-950">邀请另一半加入</h2>
-              <p class="mt-2 text-xs leading-6 text-rose-700/55">
-                生成一条邀请链接发给 Ta。链接有效期 7 天，对方接受后空间会自动变成正常状态。
-              </p>
-            </div>
-            <button
-              type="button"
-              class="rounded-full border border-rose-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
-              :disabled="pendingInvitationsLoading"
-              @click="refreshPendingInvitations"
-            >
-              {{ pendingInvitationsLoading ? '刷新中…' : '刷新待发邀请' }}
-            </button>
-          </div>
-
-          <!-- 创建成功后的下一步：可以先去布置空间，也可以立即邀请另一半 -->
-          <div class="mt-5 grid gap-3 sm:grid-cols-2">
-            <RouterLink
-              to="/space/studio"
-              class="group rounded-2xl border border-rose-200 bg-gradient-to-br from-rose-50 to-pink-50 p-4 transition hover:-translate-y-0.5 hover:border-rose-300 hover:shadow-md hover:shadow-rose-100"
-            >
-              <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-rose-400">Decorate first</p>
-              <p class="mt-1 font-display text-base font-bold text-rose-950">提前布置空间</p>
-              <p class="mt-1 text-[11px] leading-5 text-rose-700/55">先编辑首页、故事、留言、相册和纪念日，对方加入后即可看到。</p>
-              <span class="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-rose-500">
-                进入空间编辑
-                <span class="transition group-hover:translate-x-0.5" aria-hidden="true">→</span>
-              </span>
-            </RouterLink>
-            <button
-              type="button"
-              class="group rounded-2xl border border-rose-100 bg-white/80 p-4 text-left transition hover:-translate-y-0.5 hover:border-rose-200 hover:shadow-md hover:shadow-rose-100"
-              @click="focusInviteForm"
-            >
-              <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-rose-300">Invite partner</p>
-              <p class="mt-1 font-display text-base font-bold text-rose-950">邀请另一半</p>
-              <p class="mt-1 text-[11px] leading-5 text-rose-700/55">生成一条 7 天有效的邀请链接，或指定对方的恋语 ID。</p>
-              <span class="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-rose-500">
-                去生成邀请
-                <span class="transition group-hover:translate-x-0.5" aria-hidden="true">→</span>
-              </span>
-            </button>
-          </div>
-
-          <!-- 空间已满（memberCount=2 但状态还没来得及刷新）时不再提供创建入口 -->
-          <div v-if="!canManageSpaceInvitations" class="mt-5 rounded-2xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 text-xs leading-5 text-amber-800" role="status">
-            当前空间已有两名成员，不能再创建新的邀请。如果状态没有及时更新，请点击上方「刷新空间状态」。
-          </div>
-
-          <form v-else class="mt-5 space-y-3" @submit.prevent="createInviteLink">
-            <div>
-              <label for="setup-invitee-amour-id" class="block text-sm font-semibold text-rose-900">
-                指定恋语 ID <span class="text-xs font-normal text-rose-700/45">（选填）</span>
-              </label>
-              <input
-                id="setup-invitee-amour-id"
-                v-model="inviteForm.inviteeAmourId"
-                :maxlength="INVITEE_AMOUR_ID_MAX_LENGTH"
-                class="mt-2 w-full rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm text-rose-950 outline-none transition placeholder:text-rose-300 focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
-                placeholder="例如 LY100002，留空则生成通用链接邀请"
-                autocomplete="off"
-                @input="inviteFormError = ''"
-              >
-              <p class="mt-1.5 text-[11px] text-rose-700/45">
-                填写后只有该账号能接受；留空则任何持有链接的账号都能接受。最多 {{ INVITEE_AMOUR_ID_MAX_LENGTH }} 个字符。
-              </p>
-            </div>
-
-            <p v-if="inviteFormError" class="rounded-xl border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs leading-5 text-rose-600" role="alert">
-              {{ inviteFormError }}
-            </p>
-
-            <div class="flex flex-wrap items-center gap-2">
-              <button
-                type="submit"
-                class="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-5 py-2.5 text-xs font-semibold text-white shadow-sm shadow-rose-200 transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
-                :disabled="creatingInvitation"
-              >
-                <span v-if="creatingInvitation" class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" />
-                {{ creatingInvitation ? '正在生成…' : (inviteForm.inviteeAmourId.trim() ? '生成定向邀请' : '生成邀请链接') }}
-              </button>
-              <span class="text-[11px] text-rose-700/40">生成新链接后，之前的邀请链接会立即失效</span>
-            </div>
-          </form>
-
-          <!-- 当次创建结果：生成后也会出现在待接受邀请中，可随时再次复制 -->
-          <div v-if="createdInvitation" class="mt-5 rounded-2xl border border-emerald-200/80 bg-emerald-50/50 p-4">
-            <div class="flex flex-wrap items-start justify-between gap-2">
-              <div class="min-w-0">
-                <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-600">Invitation Ready</p>
-                <h3 class="mt-1 font-display text-lg font-bold text-rose-950">
-                  {{ createdInvitation.inviteeAmourId ? '定向邀请已生成' : '邀请链接已生成' }}
-                </h3>
-                <p class="mt-1 text-[11px] leading-5 text-rose-700/55">
-                  <span v-if="createdInvitation.inviteeAmourId">指定账号 · {{ createdInvitation.inviteeAmourId }} · </span>
-                  生成时间 {{ formatSpaceDateTime(createdInvitation.createdAt) }}
-                </p>
-                <p class="text-[11px] leading-5 text-rose-700/55">有效期至 {{ formatInvitationExpiry(createdInvitation.expiresAt) }}</p>
-              </div>
-              <button
-                type="button"
-                class="shrink-0 rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-50"
-                @click="dismissCreatedInvitation"
-              >
-                收起
-              </button>
-            </div>
-
-            <div class="mt-3">
-              <label :for="'created-invite-link'" class="block text-[11px] font-semibold text-rose-800/70">邀请链接</label>
-              <div class="mt-1.5 flex flex-col gap-2 sm:flex-row">
-                <input
-                  id="created-invite-link"
-                  :value="createdInvitation.link"
-                  readonly
-                  class="w-full flex-1 rounded-xl border border-rose-200 bg-white px-3 py-2.5 font-mono text-[11px] text-rose-900 outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
-                  @focus="$event.target.select()"
-                >
+              <header class="panel-header">
+                <div class="min-w-0">
+                  <p class="section-kicker">邀请另一半</p>
+                  <h2 id="space-invite-heading" class="mt-1 section-title">邀请另一半加入</h2>
+                  <p class="mt-1 max-w-2xl text-xs leading-6 text-stone-500">
+                    生成一条邀请链接发给 Ta。链接有效期 7 天，对方接受后空间会自动变成正常状态。
+                  </p>
+                </div>
                 <button
                   type="button"
-                  class="shrink-0 rounded-xl bg-rose-500 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
-                  :disabled="copyingLinkKey === 'created'"
-                  @click="copyInvitationLink(createdInvitation.link, 'created')"
+                  class="btn-secondary !py-1.5"
+                  :disabled="pendingInvitationsLoading"
+                  @click="refreshPendingInvitations"
                 >
-                  {{ copyingLinkKey === 'created' ? '复制中…' : '复制链接' }}
+                  {{ pendingInvitationsLoading ? '刷新中…' : '刷新待发邀请' }}
                 </button>
-              </div>
+              </header>
 
-              <p v-if="copyError" class="mt-3 rounded-xl border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-[11px] leading-5 text-amber-800" role="alert">
-                {{ copyError }} 可以直接选中上面的输入框内容手动复制。
-              </p>
-              <p v-else-if="copyHint" class="mt-3 rounded-xl border border-emerald-200/80 bg-emerald-50/70 px-3 py-2 text-[11px] leading-5 text-emerald-700" role="status">
-                {{ copyHint }}
-              </p>
-            </div>
-          </div>
-
-          <!-- 已发出的待接受邀请：有效期内可随时再次复制链接并撤销 -->
-          <div class="mt-5">
-            <div class="flex flex-wrap items-center justify-between gap-2">
-              <h3 class="font-display text-lg font-bold text-rose-950">待接受的邀请</h3>
-              <span class="text-[11px] text-rose-700/45">共 {{ pendingInvitations.length }} 条</span>
-            </div>
-
-            <p v-if="pendingInvitationsError" class="mt-3 rounded-xl border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs leading-5 text-rose-600" role="alert">
-              {{ pendingInvitationsError }}
-            </p>
-
-            <div v-if="pendingInvitationsLoading" class="mt-3 space-y-2" aria-label="正在加载待发邀请" aria-busy="true">
-              <div v-for="n in 2" :key="n" class="h-16 animate-pulse rounded-2xl border border-rose-100 bg-rose-50/60" />
-            </div>
-            <div v-else-if="!pendingInvitations.length" class="mt-3 rounded-2xl border border-dashed border-rose-200 bg-white/55 px-4 py-8 text-center">
-              <p class="text-sm font-semibold text-rose-800/70">还没有待接受的邀请</p>
-              <p class="mt-1 text-xs text-rose-700/45">生成邀请链接后，可在这里随时复制链接并查看状态与有效期。</p>
-            </div>
-            <div v-else class="mt-3 space-y-2">
-              <article
-                v-for="invitation in pendingInvitations"
-                :key="invitation.invitationId"
-                class="rounded-2xl border border-rose-100 bg-rose-50/30 p-4"
-              >
-                <div class="flex flex-wrap items-start justify-between gap-3">
-                  <div class="min-w-0">
-                    <p class="flex flex-wrap items-center gap-1.5 text-xs text-rose-700/55">
-                      <span class="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-semibold text-rose-600">
-                        {{ invitation.isTargeted ? '定向邀请' : '链接邀请' }}
-                      </span>
-                      <span v-if="invitation.isTargeted" class="font-semibold text-rose-900">ID {{ invitation.inviteeAmourId }}</span>
-                      <span v-else>任何持有链接的账号均可接受</span>
-                    </p>
-                    <p class="mt-1 break-words text-[11px] leading-5 text-rose-700/45">
-                      {{ invitation.statusText || '待接受' }} · {{ formatInvitationExpiry(invitation.expiresAt) }}
-                    </p>
-                    <p class="mt-0.5 text-[11px] text-rose-700/35">
-                      创建于 {{ formatSpaceDateTime(invitation.createTime) }}
-                    </p>
-                    <p class="mt-1 text-[11px] text-rose-700/40">
-                      链接在有效期内可随时复制；重新生成邀请后旧链接会立即失效。
-                    </p>
+              <div class="grid gap-6 px-5 py-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)] lg:gap-8">
+                <div class="min-w-0">
+                  <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+                    <p class="text-xs font-semibold text-stone-600">生成邀请</p>
+                    <RouterLink to="/space/studio" class="btn-ghost !px-2 !py-1 !text-[11px]">
+                      先布置空间
+                      <span aria-hidden="true">→</span>
+                    </RouterLink>
                   </div>
-                  <button
-                    type="button"
-                    class="shrink-0 rounded-full border border-rose-200 bg-white px-4 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
-                    :disabled="revokingInvitationId === invitation.invitationId"
-                    @click="revokeInvitation(invitation)"
-                  >
-                    {{ revokingInvitationId === invitation.invitationId ? '正在撤销…' : '撤销邀请' }}
-                  </button>
+
+                  <!-- 空间已满（memberCount=2 但状态还没来得及刷新）时不再提供创建入口 -->
+                  <div v-if="!canManageSpaceInvitations" class="rounded-lg border border-amber-200/80 bg-amber-50/80 px-4 py-3 text-xs leading-5 text-amber-800" role="status">
+                    当前空间已有两名成员，不能再创建新的邀请。如果状态没有及时更新，请点击上方「刷新空间状态」。
+                  </div>
+
+                  <form v-else class="space-y-3" @submit.prevent="createInviteLink">
+                    <div>
+                      <label for="setup-invitee-amour-id" class="field-label">
+                        指定恋语 ID <span class="text-xs font-normal text-stone-400">（选填）</span>
+                      </label>
+                      <input
+                        id="setup-invitee-amour-id"
+                        v-model="inviteForm.inviteeAmourId"
+                        :maxlength="INVITEE_AMOUR_ID_MAX_LENGTH"
+                        class="field-input"
+                        placeholder="例如 LY100002，留空则生成通用链接邀请"
+                        autocomplete="off"
+                        @input="inviteFormError = ''"
+                      >
+                      <p class="field-hint">
+                        填写后只有该账号能接受；留空则拿到链接的人都能接受。
+                      </p>
+                    </div>
+
+                    <p v-if="inviteFormError" class="rounded-lg border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs leading-5 text-rose-700" role="alert">
+                      {{ inviteFormError }}
+                    </p>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                      <button type="submit" class="btn-primary" :disabled="creatingInvitation">
+                        <span v-if="creatingInvitation" class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" />
+                        {{ creatingInvitation ? '正在生成…' : (inviteForm.inviteeAmourId.trim() ? '生成定向邀请' : '生成邀请链接') }}
+                      </button>
+                      <span class="text-[11px] text-stone-400">生成新链接后，之前的邀请链接会立即失效</span>
+                    </div>
+                  </form>
+
+                  <!-- 当次创建结果：生成后也会出现在待接受邀请中，可随时再次复制 -->
+                  <div v-if="createdInvitation" class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
+                    <div class="flex flex-wrap items-start justify-between gap-2">
+                      <div class="min-w-0">
+                        <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-600">邀请已生成</p>
+                        <h3 class="mt-1 font-display text-base font-bold text-stone-900">
+                          {{ createdInvitation.inviteeAmourId ? '定向邀请已生成' : '邀请链接已生成' }}
+                        </h3>
+                        <p class="mt-1 text-[11px] leading-5 text-stone-500">
+                          <span v-if="createdInvitation.inviteeAmourId">指定账号 · {{ createdInvitation.inviteeAmourId }} · </span>
+                          生成时间 {{ formatSpaceDateTime(createdInvitation.createdAt) }}
+                        </p>
+                        <p class="text-[11px] leading-5 text-stone-500">有效期至 {{ formatInvitationExpiry(createdInvitation.expiresAt) }}</p>
+                      </div>
+                      <button
+                        type="button"
+                        class="shrink-0 rounded px-2 py-1 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+                        @click="dismissCreatedInvitation"
+                      >
+                        收起
+                      </button>
+                    </div>
+
+                    <div class="mt-3">
+                      <label for="created-invite-link" class="text-[11px] font-semibold text-stone-600">邀请链接</label>
+                      <div class="mt-1.5 flex flex-col gap-2 sm:flex-row">
+                        <input
+                          id="created-invite-link"
+                          :value="createdInvitation.link"
+                          readonly
+                          class="field-input !mt-0 w-full flex-1 font-mono text-[11px]"
+                          @focus="$event.target.select()"
+                        >
+                        <button
+                          type="button"
+                          class="btn-primary shrink-0"
+                          :disabled="copyingLinkKey === 'created'"
+                          @click="copyInvitationLink(createdInvitation.link, 'created')"
+                        >
+                          {{ copyingLinkKey === 'created' ? '复制中…' : '复制链接' }}
+                        </button>
+                      </div>
+
+                      <p v-if="copyError" class="mt-3 rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-[11px] leading-5 text-amber-800" role="alert">
+                        {{ copyError }} 可以直接选中上面的输入框内容手动复制。
+                      </p>
+                      <p v-else-if="copyHint" class="mt-3 rounded-lg border border-emerald-200/80 bg-emerald-50/70 px-3 py-2 text-[11px] leading-5 text-emerald-700" role="status">
+                        {{ copyHint }}
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
-                <div v-if="invitation.canCopy" class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <input
-                    :value="invitation.link"
-                    readonly
-                    class="w-full flex-1 rounded-xl border border-rose-200 bg-white px-3 py-2 font-mono text-[11px] text-rose-900 outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
-                    @focus="$event.target.select()"
-                  >
-                  <button
-                    type="button"
-                    class="shrink-0 rounded-xl bg-rose-500 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
-                    :disabled="copyingLinkKey === invitation.invitationId"
-                    @click="copyInvitationLink(invitation.link, invitation.invitationId)"
-                  >
-                    {{ copyingLinkKey === invitation.invitationId ? '复制中…' : '复制链接' }}
-                  </button>
+                <!-- 已发出的待接受邀请：浏览、复制与撤销 -->
+                <div class="min-w-0 border-t border-stone-100 pt-5 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
+                  <div class="flex flex-wrap items-center justify-between gap-2">
+                    <h3 class="text-sm font-semibold text-stone-900">待接受的邀请</h3>
+                    <span class="text-[11px] text-stone-400">共 {{ pendingInvitations.length }} 条</span>
+                  </div>
+
+                  <p v-if="pendingInvitationsError" class="mt-3 rounded-lg border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs leading-5 text-rose-700" role="alert">
+                    {{ pendingInvitationsError }}
+                  </p>
+
+                  <div v-if="pendingInvitationsLoading" class="mt-3 space-y-2" aria-label="正在加载待发邀请" aria-busy="true">
+                    <div v-for="n in 2" :key="n" class="h-20 animate-pulse rounded-lg bg-stone-100" />
+                  </div>
+                  <div v-else-if="!pendingInvitations.length" class="studio-empty mt-3">
+                    <p class="text-sm font-semibold text-stone-800">还没有待接受的邀请</p>
+                    <p class="mt-1 text-xs text-stone-500">生成邀请链接后，可在这里随时复制并查看有效期。</p>
+                  </div>
+                  <div v-else class="mt-2 divide-y divide-stone-100">
+                    <article v-for="invitation in pendingInvitations" :key="invitation.invitationId" class="py-3">
+                      <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div class="min-w-0">
+                          <p class="flex flex-wrap items-center gap-1.5 text-xs text-stone-500">
+                            <span class="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold text-stone-600">
+                              {{ invitation.isTargeted ? '定向邀请' : '链接邀请' }}
+                            </span>
+                            <span v-if="invitation.isTargeted" class="font-semibold text-stone-800">ID {{ invitation.inviteeAmourId }}</span>
+                            <span v-else>任何持有链接的账号均可接受</span>
+                          </p>
+                          <p class="mt-1 break-words text-[11px] leading-5 text-stone-500">
+                            {{ invitation.statusText || '待接受' }} · {{ formatInvitationExpiry(invitation.expiresAt) }}
+                          </p>
+                          <p class="mt-0.5 text-[11px] text-stone-400">
+                            创建于 {{ formatSpaceDateTime(invitation.createTime) }}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          class="btn-ghost shrink-0 !px-2 !py-1 !text-[11px]"
+                          :disabled="revokingInvitationId === invitation.invitationId"
+                          @click="revokeInvitation(invitation)"
+                        >
+                          {{ revokingInvitationId === invitation.invitationId ? '正在撤销…' : '撤销邀请' }}
+                        </button>
+                      </div>
+
+                      <div v-if="invitation.canCopy" class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <input
+                          :value="invitation.link"
+                          readonly
+                          class="field-input !mt-0 w-full flex-1 font-mono text-[11px]"
+                          @focus="$event.target.select()"
+                        >
+                        <button
+                          type="button"
+                          class="btn-secondary shrink-0 !py-2"
+                          :disabled="copyingLinkKey === invitation.invitationId"
+                          @click="copyInvitationLink(invitation.link, invitation.invitationId)"
+                        >
+                          {{ copyingLinkKey === invitation.invitationId ? '复制中…' : '复制链接' }}
+                        </button>
+                      </div>
+                      <p v-else class="mt-2 text-[11px] leading-5 text-amber-700/80">
+                        该邀请生成于旧版本，无法再次查看链接，请重新生成。
+                      </p>
+                    </article>
+                  </div>
                 </div>
-                <p v-else class="mt-2 text-[11px] leading-5 text-amber-700/70">
-                  该邀请生成于旧版本，无法再次查看链接，请重新生成。
-                </p>
-              </article>
-            </div>
-          </div>
+              </div>
             </section>
             <p
               v-if="incomingInvitationToken && !isSpaceWaiting"
@@ -383,178 +330,172 @@
 
         <!-- 没有有效空间或 status=5 已完成解绑时，展示创建/绑定入口。 -->
         <template v-else>
-          <div class="mt-8 grid items-start gap-6 lg:grid-cols-2">
+          <div class="mt-6 grid items-start gap-6 lg:grid-cols-2">
             <section
               id="space-create"
-              class="scroll-mt-24 rounded-[1.75rem] border bg-white/85 p-5 shadow-lg shadow-rose-100/35 sm:p-7"
-              :class="action === 'create' ? 'border-rose-300 ring-2 ring-rose-200/70' : 'border-rose-100'"
+              class="panel scroll-mt-24"
+              :class="action === 'create' ? 'border-rose-300 ring-2 ring-rose-100' : ''"
               aria-labelledby="space-create-heading"
             >
-              <div class="flex items-start justify-between gap-3">
-                <div>
-                  <p class="text-[10px] font-bold uppercase tracking-[0.22em] text-rose-400">Create A Space</p>
-                  <h2 id="space-create-heading" class="mt-1 font-display text-2xl font-bold text-rose-950">创建情侣空间</h2>
-                </div>
-                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-lg text-rose-400" aria-hidden="true">✦</span>
-              </div>
-              <p class="mt-2 text-xs leading-6 text-rose-700/50">创建后你将成为空间发起人，空间会先进入等待另一半加入的状态。</p>
-
-              <form class="mt-5 space-y-4" @submit.prevent="createSpace">
-                <div>
-                  <label for="setup-space-name" class="block text-sm font-semibold text-rose-900">空间名称</label>
-                  <input
-                    id="setup-space-name"
-                    v-model="createForm.spaceName"
-                    maxlength="30"
-                    class="mt-2 w-full rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm text-rose-950 outline-none transition placeholder:text-rose-300 focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
-                    placeholder="我们的故事"
-                  >
-                  <p class="mt-1.5 text-[11px] text-rose-700/45">不填写时默认为「我们的故事」，最多 30 个字符</p>
-                </div>
-                <div>
-                  <label for="setup-love-start" class="block text-sm font-semibold text-rose-900">恋爱开始时间</label>
-                  <div class="love-start-picker mt-2">
-                    <VueDatePicker
-                      v-model="createForm.loveStartTime"
-                      :locale="datePickerLocale"
-                      :formats="datePickerFormats"
-                      :time-config="datePickerTimeConfig"
-                      :action-row="datePickerActionRow"
-                      :input-attrs="{ id: 'setup-love-start', clearable: true }"
-                      :max-date="now"
-                      :dark="false"
-                      :teleport="false"
-                      placeholder="选择你们在一起的那一天"
-                      model-type="format"
-                    >
-                      <template #input-icon>
-                        <span class="love-start-picker__icon" aria-hidden="true">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
-                            <rect x="3.5" y="5" width="17" height="15.5" rx="3.2" />
-                            <path d="M8 3.2v3.4M16 3.2v3.4M3.5 10h17" stroke-linecap="round" />
-                            <path d="M12 17.2c-2.4-1.5-3.6-2.6-3.6-4a1.9 1.9 0 0 1 3.6-.9 1.9 1.9 0 0 1 3.6.9c0 1.4-1.2 2.5-3.6 4Z" fill="currentColor" stroke="none" />
-                          </svg>
-                        </span>
-                      </template>
-                    </VueDatePicker>
+              <div class="px-5 py-5 sm:px-6">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <p class="section-kicker">01 · 创建</p>
+                    <h2 id="space-create-heading" class="mt-1 font-display text-xl font-bold text-stone-900">创建情侣空间</h2>
+                    <p class="mt-1 text-xs leading-6 text-stone-500">创建后，空间会先等待另一半加入。</p>
                   </div>
-                  <p class="mt-1.5 text-[11px] text-rose-700/45">选填，用于计算你们相伴的天数</p>
+                  <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-rose-50 text-base text-rose-500" aria-hidden="true">✦</span>
                 </div>
-                <div>
-                  <label for="setup-description" class="block text-sm font-semibold text-rose-900">空间简介</label>
-                  <textarea
-                    id="setup-description"
-                    v-model="createForm.description"
-                    rows="3"
-                    maxlength="500"
-                    class="mt-2 w-full resize-y rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm leading-7 text-rose-950 outline-none transition placeholder:text-rose-300 focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
-                    placeholder="写下这个空间想收藏的东西……"
-                  />
-                  <p class="mt-1.5 text-right text-[11px] text-rose-700/45">{{ createForm.description.length }} / 500</p>
-                </div>
-                <p v-if="createError" class="rounded-xl border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs leading-5 text-rose-600" role="alert">
-                  {{ createError }}
-                </p>
-                <button
-                  type="submit"
-                  class="inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 py-3 text-sm font-semibold text-white shadow-md shadow-rose-300/40 transition hover:-translate-y-0.5 hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
-                  :disabled="creating"
-                >
-                  <span v-if="creating" class="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" />
-                  {{ creating ? '正在创建…' : '创建情侣空间' }}
-                </button>
-              </form>
+
+                <form class="mt-5 space-y-4" @submit.prevent="createSpace">
+                  <div>
+                    <label for="setup-space-name" class="field-label">空间名称</label>
+                    <input
+                      id="setup-space-name"
+                      v-model="createForm.spaceName"
+                      maxlength="30"
+                      class="field-input"
+                      placeholder="我们的故事"
+                    >
+                    <p class="field-hint">不填写时默认为「我们的故事」，最多 30 个字符</p>
+                  </div>
+                  <div>
+                    <label for="setup-love-start" class="field-label">恋爱开始时间</label>
+                    <div class="love-start-picker mt-2">
+                      <VueDatePicker
+                        v-model="createForm.loveStartTime"
+                        :locale="datePickerLocale"
+                        :formats="datePickerFormats"
+                        :time-config="datePickerTimeConfig"
+                        :action-row="datePickerActionRow"
+                        :input-attrs="{ id: 'setup-love-start', clearable: true }"
+                        :max-date="now"
+                        :dark="false"
+                        :teleport="false"
+                        placeholder="选择你们在一起的那一天"
+                        model-type="format"
+                      >
+                        <template #input-icon>
+                          <span class="love-start-picker__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                              <rect x="3.5" y="5" width="17" height="15.5" rx="3.2" />
+                              <path d="M8 3.2v3.4M16 3.2v3.4M3.5 10h17" stroke-linecap="round" />
+                              <path d="M12 17.2c-2.4-1.5-3.6-2.6-3.6-4a1.9 1.9 0 0 1 3.6-.9 1.9 1.9 0 0 1 3.6.9c0 1.4-1.2 2.5-3.6 4Z" fill="currentColor" stroke="none" />
+                            </svg>
+                          </span>
+                        </template>
+                      </VueDatePicker>
+                    </div>
+                    <p class="field-hint">选填，用于计算你们相伴的天数</p>
+                  </div>
+                  <div>
+                    <label for="setup-description" class="field-label">空间简介</label>
+                    <textarea
+                      id="setup-description"
+                      v-model="createForm.description"
+                      rows="3"
+                      maxlength="500"
+                      class="field-input resize-y leading-7"
+                      placeholder="写下这个空间想收藏的东西……"
+                    />
+                    <p class="field-hint text-right">{{ createForm.description.length }} / 500</p>
+                  </div>
+                  <p v-if="createError" class="rounded-lg border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs leading-5 text-rose-700" role="alert">
+                    {{ createError }}
+                  </p>
+                  <button type="submit" class="btn-primary w-full !py-3 !text-sm" :disabled="creating">
+                    <span v-if="creating" class="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" />
+                    {{ creating ? '正在创建…' : '创建情侣空间' }}
+                  </button>
+                </form>
+              </div>
             </section>
 
             <section
               id="space-bind"
-              class="scroll-mt-24 rounded-[1.75rem] border bg-white/85 p-5 shadow-lg shadow-rose-100/35 sm:p-7"
-              :class="action === 'bind' ? 'border-rose-300 ring-2 ring-rose-200/70' : 'border-rose-100'"
+              class="panel scroll-mt-24"
+              :class="action === 'bind' ? 'border-rose-300 ring-2 ring-rose-100' : ''"
               aria-labelledby="space-bind-heading"
             >
-              <div class="flex items-start justify-between gap-3">
-                <div>
-                  <p class="text-[10px] font-bold uppercase tracking-[0.22em] text-rose-400">Join A Space</p>
-                  <h2 id="space-bind-heading" class="mt-1 font-display text-2xl font-bold text-rose-950">绑定情侣空间</h2>
-                </div>
-                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-lg text-amber-400" aria-hidden="true">♡</span>
-              </div>
-              <p class="mt-2 text-xs leading-6 text-rose-700/50">粘贴另一半发来的邀请链接，先预览邀请，再确认加入。</p>
-
-              <div class="mt-5">
-                <label for="setup-invite-token" class="block text-sm font-semibold text-rose-900">邀请链接</label>
-                <textarea
-                  id="setup-invite-token"
-                  v-model="inviteToken"
-                  rows="3"
-                  maxlength="500"
-                  class="mt-2 w-full resize-y rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm leading-6 text-rose-950 outline-none transition placeholder:text-rose-300 focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
-                  placeholder="粘贴另一半发来的邀请链接"
-                />
-                <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
-                  <p class="text-[11px] text-rose-700/45">粘贴完整邀请链接即可预览并加入</p>
-                  <button
-                    type="button"
-                    class="rounded-full bg-rose-500 px-4 py-2 text-xs font-semibold text-white transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
-                    :disabled="previewing"
-                    @click="loadInvitationPreview"
-                  >
-                    {{ previewing ? '预览中…' : '预览邀请' }}
-                  </button>
-                </div>
-                <p v-if="previewError" class="mt-2 rounded-xl border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs leading-5 text-rose-600" role="alert">
-                  {{ previewError }}
-                </p>
-
-                <div v-if="preview" class="mt-4 rounded-2xl border border-rose-100 bg-rose-50/35 p-4">
-                  <div class="flex flex-wrap items-start justify-between gap-2">
-                    <div class="min-w-0">
-                      <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-rose-400">Invitation Preview</p>
-                      <h3 class="mt-1 break-words font-display text-xl font-bold text-rose-950">{{ preview.spaceName || '情侣空间' }}</h3>
-                      <p class="mt-1 text-xs text-rose-700/55">
-                        来自 {{ preview.inviterName || '恋人' }}
-                        <span v-if="preview.inviterAmourId"> · ID {{ preview.inviterAmourId }}</span>
-                      </p>
-                    </div>
-                    <span class="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold" :class="previewStatusClass">
-                      {{ preview.statusText || '未知状态' }}
-                    </span>
+              <div class="px-5 py-5 sm:px-6">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <p class="section-kicker">02 · 加入</p>
+                    <h2 id="space-bind-heading" class="mt-1 font-display text-xl font-bold text-stone-900">绑定情侣空间</h2>
+                    <p class="mt-1 text-xs leading-6 text-stone-500">粘贴邀请链接后，先预览，再确认加入。</p>
                   </div>
-                  <p v-if="preview.description" class="mt-3 whitespace-pre-line break-words text-xs leading-6 text-rose-800/60">{{ preview.description }}</p>
-                  <dl class="mt-3 grid grid-cols-2 gap-2 text-xs">
-                    <div class="rounded-xl bg-white/70 px-3 py-2">
-                      <dt class="text-[10px] text-rose-700/45">空间成员</dt>
-                      <dd class="mt-0.5 font-semibold text-rose-900">{{ preview.memberCount || 0 }} / {{ preview.memberLimit || 2 }}</dd>
+                  <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-base text-amber-500" aria-hidden="true">♡</span>
+                </div>
+
+                <div class="mt-5">
+                  <label for="setup-invite-token" class="field-label">邀请链接</label>
+                  <textarea
+                    id="setup-invite-token"
+                    v-model="inviteToken"
+                    rows="3"
+                    maxlength="500"
+                    class="field-input resize-y leading-6"
+                    placeholder="粘贴另一半发来的邀请链接"
+                  />
+                  <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
+                    <p class="field-hint !mt-0">粘贴完整邀请链接即可预览</p>
+                    <button type="button" class="btn-primary" :disabled="previewing" @click="loadInvitationPreview">
+                      {{ previewing ? '预览中…' : '预览邀请' }}
+                    </button>
+                  </div>
+                  <p v-if="previewError" class="mt-3 rounded-lg border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs leading-5 text-rose-700" role="alert">
+                    {{ previewError }}
+                  </p>
+
+                  <div v-if="preview" class="mt-4 rounded-xl border border-stone-200 bg-stone-50/60 p-4">
+                    <div class="flex flex-wrap items-start justify-between gap-2">
+                      <div class="min-w-0">
+                        <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-stone-400">邀请预览</p>
+                        <h3 class="mt-1 break-words font-display text-lg font-bold text-stone-900">{{ preview.spaceName || '情侣空间' }}</h3>
+                        <p class="mt-1 text-xs text-stone-500">
+                          来自 {{ preview.inviterName || '恋人' }}
+                          <span v-if="preview.inviterAmourId"> · ID {{ preview.inviterAmourId }}</span>
+                        </p>
+                      </div>
+                      <span class="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold" :class="previewStatusClass">
+                        {{ preview.statusText || '未知状态' }}
+                      </span>
                     </div>
-                    <div class="rounded-xl bg-white/70 px-3 py-2">
-                      <dt class="text-[10px] text-rose-700/45">有效期</dt>
-                      <dd class="mt-0.5 text-[11px] font-semibold leading-5 text-rose-900">{{ formatInvitationExpiry(preview.expiresAt) }}</dd>
+                    <p v-if="preview.description" class="mt-3 whitespace-pre-line break-words text-xs leading-6 text-stone-600">{{ preview.description }}</p>
+                    <dl class="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-stone-200 bg-stone-200 text-xs">
+                    <div class="bg-white px-3 py-2">
+                      <dt class="text-[10px] text-stone-400">空间成员</dt>
+                      <dd class="mt-0.5 font-semibold text-stone-900">{{ preview.memberCount || 0 }} / {{ preview.memberLimit || 2 }}</dd>
                     </div>
-                    <div class="rounded-xl bg-white/70 px-3 py-2">
-                      <dt class="text-[10px] text-rose-700/45">邀请类型</dt>
-                      <dd class="mt-0.5 font-semibold text-rose-900">{{ preview.inviteeRestricted ? '指定账号' : '链接邀请' }}</dd>
+                    <div class="bg-white px-3 py-2">
+                      <dt class="text-[10px] text-stone-400">有效期</dt>
+                      <dd class="mt-0.5 text-[11px] font-semibold leading-5 text-stone-900">{{ formatInvitationExpiry(preview.expiresAt) }}</dd>
                     </div>
-                    <div class="rounded-xl bg-white/70 px-3 py-2">
-                      <dt class="text-[10px] text-rose-700/45">可加入</dt>
-                      <dd class="mt-0.5 font-semibold" :class="preview.joinable ? 'text-emerald-600' : 'text-rose-500'">
+                    <div class="bg-white px-3 py-2">
+                      <dt class="text-[10px] text-stone-400">邀请类型</dt>
+                      <dd class="mt-0.5 font-semibold text-stone-900">{{ preview.inviteeRestricted ? '指定账号' : '链接邀请' }}</dd>
+                    </div>
+                    <div class="bg-white px-3 py-2">
+                      <dt class="text-[10px] text-stone-400">可加入</dt>
+                      <dd class="mt-0.5 font-semibold" :class="preview.joinable ? 'text-emerald-700' : 'text-rose-600'">
                         {{ preview.joinable ? '是' : '否' }}
                       </dd>
                     </div>
                   </dl>
-                  <p v-if="preview.inviteeRestricted && preview.inviteeMatched === false" class="mt-3 rounded-xl border border-rose-200/80 bg-rose-50/80 px-3 py-2 text-xs leading-5 text-rose-700" role="status">
+                  <p v-if="preview.inviteeRestricted && preview.inviteeMatched === false" class="mt-3 rounded-lg border border-rose-200/80 bg-rose-50/80 px-3 py-2 text-xs leading-5 text-rose-700" role="status">
                     这是一条定向邀请，指定的不是当前登录账号。
                   </p>
-                  <p v-if="previewBlockMessage" class="mt-3 rounded-xl border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-xs leading-5 text-amber-800" role="status">
+                  <p v-if="previewBlockMessage" class="mt-3 rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-xs leading-5 text-amber-800" role="status">
                     {{ previewBlockMessage }}
                   </p>
-                  <p v-if="acceptError" class="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs leading-5 text-rose-600" role="alert">
+                  <p v-if="acceptError" class="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs leading-5 text-rose-700" role="alert">
                     {{ acceptError }}
                   </p>
                   <div class="mt-4 flex flex-wrap gap-2">
                     <button
                       v-if="previewAction === 'accept'"
                       type="button"
-                      class="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-5 py-2.5 text-xs font-semibold text-white shadow-sm shadow-rose-200 transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
+                      class="btn-primary"
                       :disabled="acceptingToken"
                       @click="acceptPreviewInvitation"
                     >
@@ -564,76 +505,76 @@
                     <RouterLink
                       v-else-if="previewAction === 'login'"
                       :to="loginWithRedirect"
-                      class="rounded-full bg-rose-500 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-rose-600"
+                      class="btn-primary"
                     >
                       登录后接受邀请
                     </RouterLink>
                     <RouterLink
                       v-if="previewAction === 'space'"
                       to="/"
-                      class="rounded-full border border-rose-200 bg-white px-4 py-2.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50"
+                      class="btn-secondary"
                     >
                       返回我的情侣空间
                     </RouterLink>
                     <RouterLink
                       v-else-if="previewAction === 'plaza'"
                       to="/plaza"
-                      class="rounded-full border border-rose-200 bg-white px-4 py-2.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50"
+                      class="btn-secondary"
                     >
                       返回恋爱广场
                     </RouterLink>
                   </div>
                 </div>
               </div>
+            </div>
             </section>
           </div>
 
-          <section class="mt-6 rounded-[1.75rem] border border-rose-100 bg-white/80 p-5 shadow-sm shadow-rose-100/30 sm:p-7" aria-labelledby="received-invitations-heading">
-            <div class="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <p class="text-[10px] font-bold uppercase tracking-[0.22em] text-rose-400">Received Invitations</p>
-                <h2 id="received-invitations-heading" class="mt-1 font-display text-2xl font-bold text-rose-950">收到的邀请</h2>
+          <section class="panel mt-6" aria-labelledby="received-invitations-heading">
+            <header class="panel-header">
+              <div class="min-w-0">
+                <h2 id="received-invitations-heading" class="section-title">收到的邀请</h2>
               </div>
-              <button type="button" class="rounded-full border border-rose-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-50" :disabled="invitationsLoading" @click="refreshReceivedInvitations">
+              <button type="button" class="btn-secondary !py-1.5" :disabled="invitationsLoading" @click="refreshReceivedInvitations">
                 {{ invitationsLoading ? '刷新中…' : '刷新列表' }}
               </button>
-            </div>
+            </header>
 
-            <p v-if="invitationActionError" class="mt-4 rounded-xl border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs leading-5 text-rose-600" role="alert">
+            <div class="px-5 py-5 sm:px-6">
+            <p v-if="invitationActionError" class="mb-4 rounded-lg border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs leading-5 text-rose-700" role="alert">
               {{ invitationActionError }}
             </p>
 
-            <div v-if="invitationsLoading" class="mt-5 grid gap-3 sm:grid-cols-2" aria-label="正在加载收到的邀请" aria-busy="true">
-              <div v-for="n in 2" :key="n" class="h-28 animate-pulse rounded-2xl border border-rose-100 bg-rose-50/60" />
+            <div v-if="invitationsLoading" class="grid gap-3 sm:grid-cols-2" aria-label="正在加载收到的邀请" aria-busy="true">
+              <div v-for="n in 2" :key="n" class="h-24 animate-pulse rounded-lg bg-stone-100" />
             </div>
-            <div v-else-if="invitationsError" class="mt-5 rounded-2xl border border-rose-100 bg-rose-50/50 px-4 py-8 text-center">
-              <p class="text-xs leading-5 text-rose-500">{{ invitationsError }}</p>
-              <button type="button" class="mt-3 rounded-full border border-rose-200 bg-white px-4 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50" @click="refreshReceivedInvitations">
+            <div v-else-if="invitationsError" class="studio-empty">
+              <p class="text-xs leading-5 text-stone-600">{{ invitationsError }}</p>
+              <button type="button" class="btn-secondary mt-3" @click="refreshReceivedInvitations">
                 重新加载
               </button>
             </div>
-            <div v-else-if="!invitations.length" class="mt-5 rounded-2xl border border-dashed border-rose-200 bg-white/55 px-4 py-10 text-center">
-              <span class="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-rose-50 text-xl text-rose-300" aria-hidden="true">♡</span>
-              <p class="mt-3 text-sm font-semibold text-rose-800/70">暂时没有收到邀请</p>
-              <p class="mt-1 text-xs text-rose-700/45">当另一半向你发出邀请后，会出现在这里。</p>
+            <div v-else-if="!invitations.length" class="studio-empty">
+              <p class="text-sm font-semibold text-stone-800">暂时没有收到邀请</p>
+              <p class="mt-1 text-xs text-stone-500">当另一半向你发出邀请后，会出现在这里。</p>
             </div>
-            <div v-else class="mt-5 space-y-3">
-              <article v-for="invitation in invitations" :key="invitation.invitationId" class="rounded-2xl border border-rose-100 bg-rose-50/30 p-4">
+            <div v-else class="divide-y divide-stone-100">
+              <article v-for="invitation in invitations" :key="invitation.invitationId" class="py-4">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                   <div class="min-w-0">
-                    <p class="text-xs text-rose-700/55">
-                      <span class="font-semibold text-rose-900">{{ invitation.inviterName || 'Ta' }}</span>
+                    <p class="text-xs text-stone-500">
+                      <span class="font-semibold text-stone-800">{{ invitation.inviterName || 'Ta' }}</span>
                       邀请你加入
                     </p>
-                    <h3 class="mt-1 break-words font-display text-lg font-bold text-rose-950">{{ invitation.spaceName || '情侣空间' }}</h3>
-                    <p class="mt-1 text-[11px] text-rose-700/45">
+                    <h3 class="mt-1 break-words font-display text-base font-bold text-stone-900">{{ invitation.spaceName || '情侣空间' }}</h3>
+                    <p class="mt-1 text-[11px] text-stone-400">
                       {{ formatInvitationExpiry(invitation.expiresAt) }}
                       <span v-if="invitation.inviterAmourId"> · ID {{ invitation.inviterAmourId }}</span>
                     </p>
                   </div>
                   <button
                     type="button"
-                    class="shrink-0 rounded-full bg-rose-500 px-4 py-2 text-xs font-semibold text-white transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
+                    class="btn-primary shrink-0"
                     :disabled="acceptingInvitationId === invitation.invitationId"
                     @click="acceptReceivedInvitation(invitation)"
                   >
@@ -642,9 +583,9 @@
                 </div>
               </article>
             </div>
+            </div>
           </section>
         </template>
-      </div>
     </main>
   </CouplePageScaffold>
 </template>
@@ -658,6 +599,7 @@ import { VueDatePicker } from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
 import { zhCN } from 'date-fns/locale'
 import CouplePageScaffold from '@/components/frontend/CouplePageScaffold.vue'
+import FrontendPageHeader from '@/components/frontend/FrontendPageHeader.vue'
 import SpaceSettingsPanel from '@/components/frontend/SpaceSettingsPanel.vue'
 import { frontendLoggedIn } from '@/utils/auth'
 import {
@@ -701,14 +643,17 @@ const {
 const showSpacePanel = computed(() => (
   hasCoupleSpace.value && !isUnboundSpace(spaceStatus.value)
 ))
-const pageHeading = computed(() => (
-  showSpacePanel.value ? '我的情侣空间' : '创建或绑定你们的情侣空间'
-))
-const pageDescription = computed(() => (
-  showSpacePanel.value
-    ? '查看空间状态、管理另一半邀请，并调整公开、恢复与解绑设置。'
-    : '如果你们刚刚开始，可以创建一个只属于两个人的小宇宙；如果另一半已经发出邀请，也可以凭邀请链接加入。'
-))
+const pageHeading = computed(() => {
+  if (showSpacePanel.value) return '空间设置'
+  if (statusError.value) return '情侣空间'
+  return '创建或绑定你们的情侣空间'
+})
+const pageDescription = computed(() => {
+  if (statusError.value) {
+    return '空间状态暂时无法读取，请重新读取或返回恋爱广场。'
+  }
+  return ''
+})
 const homeLinkLabel = computed(() => (
   isSpaceReady.value ? '返回我的情侣空间' : '回到首页'
 ))
@@ -962,13 +907,6 @@ async function loadPendingInvitations() {
 function refreshPendingInvitations() {
   if (pendingInvitationsLoading.value) return
   loadPendingInvitations()
-}
-
-/** 「邀请另一半」下一步入口：滚动并聚焦到邀请表单。 */
-function focusInviteForm() {
-  const input = document.getElementById('setup-invitee-amour-id')
-  input?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  window.setTimeout(() => input?.focus?.(), 260)
 }
 
 async function createInviteLink() {

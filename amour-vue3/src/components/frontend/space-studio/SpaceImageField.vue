@@ -1,6 +1,6 @@
 <template>
   <div>
-    <label v-if="label" :for="inputId" class="block text-sm font-semibold text-rose-900">{{ label }}</label>
+    <label v-if="label" :for="inputId" class="field-label">{{ label }}</label>
     <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-start">
       <div class="min-w-0 flex-1">
         <input
@@ -9,7 +9,7 @@
           type="url"
           inputmode="url"
           maxlength="500"
-          class="w-full rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm text-rose-950 outline-none transition placeholder:text-rose-300 focus:border-rose-400 focus:ring-4 focus:ring-rose-100 disabled:cursor-not-allowed disabled:bg-rose-50/50"
+          class="field-input !mt-0 w-full font-mono text-xs"
           :placeholder="placeholder"
           :disabled="disabled"
           @input="$emit('update:modelValue', $event.target.value)"
@@ -26,7 +26,7 @@
         >
         <button
           type="button"
-          class="rounded-xl border border-rose-200 bg-white px-4 py-3 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+          class="btn-secondary"
           :disabled="disabled || uploading"
           @click="fileInputRef?.click()"
         >
@@ -35,7 +35,7 @@
         <button
           v-if="modelValue"
           type="button"
-          class="rounded-xl border border-rose-100 bg-rose-50/60 px-3 py-3 text-xs font-semibold text-rose-500 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+          class="btn-ghost"
           :disabled="disabled || uploading"
           @click="$emit('update:modelValue', '')"
         >
@@ -43,8 +43,8 @@
         </button>
       </div>
     </div>
-    <p v-if="hint" class="mt-1.5 text-[11px] leading-5 text-rose-700/45">{{ hint }}</p>
-    <p v-if="error" class="mt-2 rounded-xl border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs leading-5 text-rose-600" role="alert">
+    <p v-if="hint" class="field-hint">{{ hint }}</p>
+    <p v-if="error" class="mt-2 rounded-lg border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs leading-5 text-rose-700" role="alert">
       {{ error }}
     </p>
     <p v-else-if="justUploaded" class="mt-2 text-[11px] leading-5 text-emerald-600" role="status">
@@ -54,7 +54,7 @@
       v-if="previewUrl"
       :src="previewUrl"
       alt=""
-      class="mt-2 h-20 w-20 rounded-xl border border-rose-100 object-cover"
+      class="mt-2 h-16 w-16 rounded-lg border border-stone-200 object-cover"
       @error="$event.currentTarget.style.display = 'none'"
     >
   </div>

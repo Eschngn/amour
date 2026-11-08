@@ -1,151 +1,161 @@
 <template>
-  <div class="space-y-5">
-    <div v-if="loading" class="space-y-3" aria-label="正在加载空间首页" aria-busy="true">
-      <div v-for="n in 3" :key="n" class="h-28 animate-pulse rounded-2xl border border-rose-100 bg-white/60" />
+  <div>
+    <div v-if="loading" class="studio-panel px-5 py-6" aria-label="正在加载空间首页" aria-busy="true">
+      <div class="h-5 w-32 animate-pulse rounded bg-stone-100" />
+      <div class="mt-6 grid gap-4 sm:grid-cols-2">
+        <div v-for="n in 4" :key="n" class="h-16 animate-pulse rounded-lg bg-stone-50" />
+      </div>
     </div>
 
-    <div v-else-if="loadError" class="rounded-2xl border border-rose-100 bg-rose-50/50 px-5 py-10 text-center" role="alert">
+    <div v-else-if="loadError" class="studio-panel px-5 py-10 text-center" role="alert">
       <p class="text-sm text-rose-600">{{ loadError }}</p>
-      <button type="button" class="mt-4 rounded-full border border-rose-200 bg-white px-4 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50" @click="load">
-        重新加载
-      </button>
+      <button type="button" class="btn-secondary mt-4" @click="load">重新加载</button>
     </div>
 
-    <form v-else class="space-y-5" @submit.prevent="save">
-      <section class="rounded-2xl border border-rose-100 bg-white/80 p-5 shadow-sm sm:p-6">
-        <h3 class="font-display text-lg font-bold text-rose-950">空间基础信息</h3>
-        <p class="mt-1 text-xs leading-6 text-rose-700/50">
-          空间名、简介和恋爱开始时间会保存在空间本身，并同步展示在首页与空间设置中。
-        </p>
-        <div class="mt-4 grid gap-4 sm:grid-cols-2">
-          <div class="sm:col-span-2">
-            <label for="studio-home-name" class="block text-sm font-semibold text-rose-900">空间名称</label>
-            <input
-              id="studio-home-name"
-              v-model="form.spaceName"
-              maxlength="30"
-              autocomplete="off"
-              class="mt-2 w-full rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm text-rose-950 outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
-              placeholder="例如：我们的故事"
-            >
-            <p class="mt-1 text-right text-[11px] text-rose-700/40">{{ form.spaceName.length }} / 30</p>
-          </div>
-          <div class="sm:col-span-2">
-            <label for="studio-home-desc" class="block text-sm font-semibold text-rose-900">空间简介</label>
-            <textarea
-              id="studio-home-desc"
-              v-model="form.description"
-              rows="3"
-              maxlength="500"
-              class="mt-2 w-full resize-y rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm leading-6 text-rose-950 outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
-              placeholder="写一句只属于你们的介绍（选填）"
-            />
-            <p class="mt-1 text-right text-[11px] text-rose-700/40">{{ form.description.length }} / 500</p>
-          </div>
-          <div>
-            <label for="studio-home-love-start" class="block text-sm font-semibold text-rose-900">恋爱开始时间</label>
-            <input
-              id="studio-home-love-start"
-              v-model="form.loveStartTime"
-              type="datetime-local"
-              step="60"
-              class="mt-2 w-full rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm text-rose-950 outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
-            >
-            <p class="mt-1.5 text-[11px] text-rose-700/45">用于首页的相伴天数，留空表示暂不设置。</p>
-          </div>
+    <form v-else class="studio-panel" @submit.prevent="save">
+      <header class="studio-panel-header">
+        <div class="min-w-0">
+          <h2 class="section-title">首页设置</h2>
+          <p class="section-description">空间名称、成员展示与首页照片会同步展示在空间首页。</p>
         </div>
-      </section>
-
-      <section class="rounded-2xl border border-rose-100 bg-white/80 p-5 shadow-sm sm:p-6">
-        <h3 class="font-display text-lg font-bold text-rose-950">首页双方资料</h3>
-        <p class="mt-1 text-xs leading-6 text-rose-700/50">
-          留空时自动使用各自的个人资料；只有在这里明确填写，才会覆盖首页展示。
-        </p>
-        <div class="mt-4 grid gap-4 sm:grid-cols-2">
-          <div>
-            <label for="studio-home-boy-name" class="block text-sm font-semibold text-rose-900">发起人展示名</label>
-            <input
-              id="studio-home-boy-name"
-              v-model="form.boyName"
-              maxlength="30"
-              class="mt-2 w-full rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm text-rose-950 outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
-              placeholder="留空使用发起人个人昵称"
-            >
-          </div>
-          <div>
-            <label for="studio-home-girl-name" class="block text-sm font-semibold text-rose-900">另一半展示名</label>
-            <input
-              id="studio-home-girl-name"
-              v-model="form.girlName"
-              maxlength="30"
-              class="mt-2 w-full rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm text-rose-950 outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
-              placeholder="留空使用另一半个人昵称"
-            >
-          </div>
-          <SpaceImageField
-            v-model="form.boyAvatar"
-            input-id="studio-home-boy-avatar"
-            label="发起人头像"
-            hint="留空使用个人资料头像。"
-            :disabled="saving"
-            @uploading="uploading = $event"
-          />
-          <SpaceImageField
-            v-model="form.girlAvatar"
-            input-id="studio-home-girl-avatar"
-            label="另一半头像"
-            hint="留空使用个人资料头像。"
-            :disabled="saving"
-            @uploading="uploading = $event"
-          />
+        <div class="flex flex-wrap items-center gap-2">
+          <span v-if="dirty" class="text-[11px] font-medium text-amber-700" role="status">有未保存的修改</span>
+          <button type="button" class="btn-secondary" :disabled="saving || !dirty" @click="reset">
+            重置
+          </button>
+          <button type="submit" class="btn-primary" :disabled="saving || uploading">
+            <span v-if="saving" class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" />
+            {{ saving ? '保存中…' : '保存首页' }}
+          </button>
         </div>
-      </section>
+      </header>
 
-      <section class="rounded-2xl border border-rose-100 bg-white/80 p-5 shadow-sm sm:p-6">
-        <h3 class="font-display text-lg font-bold text-rose-950">首页主视觉照片</h3>
-        <p class="mt-1 text-xs leading-6 text-rose-700/50">两张照片会出现在首页的相片卡片里，留空时使用站点示例图。</p>
-        <div class="mt-4 grid gap-4 sm:grid-cols-2">
-          <SpaceImageField
-            v-model="form.heroPhoto1"
-            input-id="studio-home-hero-1"
-            label="首页照片一"
-            :disabled="saving"
-            @uploading="uploading = $event"
-          />
-          <SpaceImageField
-            v-model="form.heroPhoto2"
-            input-id="studio-home-hero-2"
-            label="首页照片二"
-            :disabled="saving"
-            @uploading="uploading = $event"
-          />
+      <div class="grid lg:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
+        <section class="border-b border-stone-100 px-5 py-6 lg:border-b-0 lg:border-r" aria-labelledby="studio-home-basic">
+          <h3 id="studio-home-basic" class="font-display text-base font-bold text-stone-900">空间基础信息</h3>
+          <p class="mt-1 text-xs leading-5 text-stone-500">这些信息也会出现在空间设置与恋爱广场入口。</p>
+
+          <div class="mt-5 grid gap-4 sm:grid-cols-2">
+            <div>
+              <label for="studio-home-name" class="field-label">空间名称</label>
+              <input
+                id="studio-home-name"
+                v-model="form.spaceName"
+                maxlength="30"
+                autocomplete="off"
+                class="field-input"
+                placeholder="例如：我们的故事"
+              >
+              <p class="field-hint text-right">{{ form.spaceName.length }} / 30</p>
+            </div>
+            <div>
+              <label for="studio-home-love-start" class="field-label">恋爱开始时间</label>
+              <ThemeDatePicker
+                v-model="form.loveStartTime"
+                input-id="studio-home-love-start"
+                placeholder="选择恋爱开始时间"
+              />
+              <p class="field-hint">用于计算首页的相伴天数，留空表示暂不设置。</p>
+            </div>
+            <div class="sm:col-span-2">
+              <label for="studio-home-desc" class="field-label">空间简介</label>
+              <textarea
+                id="studio-home-desc"
+                v-model="form.description"
+                rows="3"
+                maxlength="500"
+                class="field-input resize-y leading-6"
+                placeholder="写一句只属于你们的介绍（选填）"
+              />
+              <p class="field-hint text-right">{{ form.description.length }} / 500</p>
+            </div>
+          </div>
+
+          <div class="mt-6 border-t border-stone-100 pt-6" aria-labelledby="studio-home-visual">
+            <h3 id="studio-home-visual" class="font-display text-base font-bold text-stone-900">首页主视觉照片</h3>
+            <p class="mt-1 text-xs leading-5 text-stone-500">两张照片会出现在首页相片卡片里，留空时使用站点示例图。</p>
+            <div class="mt-5 grid gap-4">
+              <SpaceImageField
+                v-model="form.heroPhoto1"
+                input-id="studio-home-hero-1"
+                label="首页照片一"
+                :disabled="saving"
+                @uploading="uploading = $event"
+              />
+              <SpaceImageField
+                v-model="form.heroPhoto2"
+                input-id="studio-home-hero-2"
+                label="首页照片二"
+                :disabled="saving"
+                @uploading="uploading = $event"
+              />
+            </div>
+          </div>
+        </section>
+
+        <div>
+          <section class="px-5 py-6" aria-labelledby="studio-home-members">
+            <h3 id="studio-home-members" class="font-display text-base font-bold text-stone-900">首页双方展示</h3>
+            <p class="mt-1 text-xs leading-5 text-stone-500">留空时使用各自的个人资料，填写后覆盖首页展示。</p>
+
+            <div class="mt-5 space-y-4">
+              <div class="rounded-xl bg-stone-50/70 p-4">
+                <p class="text-xs font-bold text-stone-500">发起人</p>
+                <div class="mt-3">
+                  <label for="studio-home-boy-name" class="field-label">展示名</label>
+                  <input
+                    id="studio-home-boy-name"
+                    v-model="form.boyName"
+                    maxlength="30"
+                    class="field-input"
+                    placeholder="留空使用发起人个人昵称"
+                  >
+                </div>
+                <div class="mt-3">
+                  <SpaceImageField
+                    v-model="form.boyAvatar"
+                    input-id="studio-home-boy-avatar"
+                    label="头像"
+                    hint="留空使用个人资料头像。"
+                    :disabled="saving"
+                    @uploading="uploading = $event"
+                  />
+                </div>
+              </div>
+
+              <div class="rounded-xl bg-stone-50/70 p-4">
+                <p class="text-xs font-bold text-stone-500">另一半</p>
+                <div class="mt-3">
+                  <label for="studio-home-girl-name" class="field-label">展示名</label>
+                  <input
+                    id="studio-home-girl-name"
+                    v-model="form.girlName"
+                    maxlength="30"
+                    class="field-input"
+                    placeholder="留空使用另一半个人昵称"
+                  >
+                </div>
+                <div class="mt-3">
+                  <SpaceImageField
+                    v-model="form.girlAvatar"
+                    input-id="studio-home-girl-avatar"
+                    label="头像"
+                    hint="留空使用个人资料头像。"
+                    :disabled="saving"
+                    @uploading="uploading = $event"
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
-      </section>
+      </div>
 
-      <p v-if="saveError" class="rounded-xl border border-rose-200 bg-rose-50/80 px-3.5 py-2.5 text-xs leading-5 text-rose-600" role="alert">
+      <div v-if="saveError" class="border-t border-rose-200 bg-rose-50/70 px-5 py-3 text-xs leading-5 text-rose-700" role="alert">
         {{ saveError }}
-      </p>
-      <p v-else-if="saveHint" class="rounded-xl border border-emerald-200 bg-emerald-50/70 px-3.5 py-2.5 text-xs leading-5 text-emerald-700" role="status">
+      </div>
+      <div v-else-if="saveHint" class="border-t border-emerald-200 bg-emerald-50/60 px-5 py-3 text-xs leading-5 text-emerald-700" role="status">
         {{ saveHint }}
-      </p>
-
-      <div class="flex flex-wrap items-center gap-2">
-        <button
-          type="submit"
-          class="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-5 py-2.5 text-xs font-semibold text-white shadow-sm shadow-rose-200 transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
-          :disabled="saving || uploading"
-        >
-          {{ saving ? '保存中…' : '保存首页' }}
-        </button>
-        <button
-          type="button"
-          class="rounded-full border border-rose-200 bg-white px-4 py-2.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
-          :disabled="saving || !dirty"
-          @click="reset"
-        >
-          重置
-        </button>
-        <span v-if="dirty" class="text-[11px] font-medium text-amber-600">有未保存的修改</span>
       </div>
     </form>
   </div>
@@ -156,6 +166,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import 'element-plus/es/components/message/style/css'
 import SpaceImageField from '@/components/frontend/space-studio/SpaceImageField.vue'
+import ThemeDatePicker from '@/components/frontend/space-studio/ThemeDatePicker.vue'
 import { querySpaceHome, saveSpaceHome } from '@/api/spaceContent'
 import { useFrontendSpace } from '@/composables/useFrontendSpace'
 import {

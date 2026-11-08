@@ -117,7 +117,7 @@
               </dl>
 
               <div class="mt-5 flex flex-wrap items-center gap-3">
-                <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-rose-400">Public Members</p>
+                <p class="text-[11px] font-semibold text-rose-700/50">成员</p>
                 <div v-if="members.length" class="flex flex-wrap gap-2">
                   <div
                     v-for="(member, index) in members"
@@ -149,8 +149,7 @@
               <section aria-labelledby="public-stories-heading" class="rounded-[1.75rem] border border-rose-100/80 bg-white/80 p-5 shadow-sm shadow-rose-100/30 sm:p-7">
                 <div class="flex flex-wrap items-end justify-between gap-3">
                   <div>
-                    <p class="text-[10px] font-bold uppercase tracking-[0.22em] text-rose-400">Public Stories</p>
-                    <h2 id="public-stories-heading" class="mt-1 font-display text-2xl font-bold text-rose-950">公开故事</h2>
+                    <h2 id="public-stories-heading" class="font-display text-2xl font-bold text-rose-950">公开故事</h2>
                   </div>
                   <span class="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-500">{{ counts.story }} 篇</span>
                 </div>
@@ -217,8 +216,7 @@
               <section aria-labelledby="public-photos-heading" class="rounded-[1.75rem] border border-rose-100/80 bg-white/80 p-5 shadow-sm shadow-rose-100/30 sm:p-7">
                 <div class="flex flex-wrap items-end justify-between gap-3">
                   <div>
-                    <p class="text-[10px] font-bold uppercase tracking-[0.22em] text-rose-400">Public Photos</p>
-                    <h2 id="public-photos-heading" class="mt-1 font-display text-2xl font-bold text-rose-950">公开照片</h2>
+                    <h2 id="public-photos-heading" class="font-display text-2xl font-bold text-rose-950">公开照片</h2>
                   </div>
                   <span class="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-500">{{ counts.photo }} 张</span>
                 </div>
@@ -259,8 +257,7 @@
               <section aria-labelledby="public-anniversaries-heading" class="rounded-[1.75rem] border border-rose-100/80 bg-white/80 p-5 shadow-sm shadow-rose-100/30 sm:p-7">
                 <div class="flex flex-wrap items-end justify-between gap-3">
                   <div>
-                    <p class="text-[10px] font-bold uppercase tracking-[0.22em] text-rose-400">Public Anniversaries</p>
-                    <h2 id="public-anniversaries-heading" class="mt-1 font-display text-2xl font-bold text-rose-950">公开纪念日</h2>
+                    <h2 id="public-anniversaries-heading" class="font-display text-2xl font-bold text-rose-950">公开纪念日</h2>
                   </div>
                   <span class="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-500">{{ counts.anniversary }} 个</span>
                 </div>

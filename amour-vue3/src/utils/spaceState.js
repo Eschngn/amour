@@ -328,7 +328,7 @@ export function canHandleUnbindAsPartner(spaceStatus) {
 /** 发起解绑被阻止的可展示原因；可以发起时返回空字符串。 */
 export function unbindRequestBlockReason(spaceStatus) {
   if (!hasSpaceIdentity(spaceStatus)) return '还没有可以解绑的情侣空间'
-  if (!hasActiveSpaceMembership(spaceStatus)) return '你不是该情侣空间的有效成员'
+  if (!hasActiveSpaceMembership(spaceStatus)) return '你不是这个空间的成员'
   if (!canShowUnbindSection(spaceStatus)) return '另一半加入后才能申请解绑'
   if (hasPendingUnbind(spaceStatus)) {
     return spaceStatus?.unbindRequestedByMe

@@ -1,37 +1,26 @@
 <template>
   <CouplePageScaffold>
     <main class="relative z-10">
-      <div class="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
-        <header
-          class="relative overflow-hidden rounded-[2rem] border border-rose-100/80 bg-white/70 px-5 py-8 shadow-sm shadow-rose-100/50 backdrop-blur-sm sm:px-8 sm:py-10">
-          <div class="pointer-events-none absolute -right-10 -top-16 h-44 w-44 rounded-full bg-rose-100/70 blur-2xl"
-            aria-hidden="true" />
-          <div class="relative flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.28em] text-rose-500">
-                <span class="h-1.5 w-1.5 rounded-full bg-rose-400" aria-hidden="true" />
-                留言板
-              </p>
-              <h1 class="mt-3 font-display text-3xl font-bold tracking-tight text-rose-950 sm:text-5xl">
-                给 Ta 留一句话
-              </h1>
-              <p class="mt-3 max-w-xl text-sm leading-7 text-rose-800/65 sm:text-base">
-                树洞、晚安、碎碎念都可以。把想说的话留在这里，只有我们两个人看得见。
-              </p>
-            </div>
-            <div class="flex shrink-0 items-center gap-3 text-xs text-rose-700/60">
-              <span class="font-medium"><span class="text-base text-rose-600">{{ total }}</span> 条留言</span>
-            </div>
-          </div>
-        </header>
+      <div class="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+        <FrontendPageHeader
+          eyebrow="留言板"
+          title="给 Ta 留一句话"
+          description="树洞、晚安、碎碎念，都可以留在这里。"
+          heading-id="message-page-heading"
+        >
+          <template #meta>
+            <span><span class="font-semibold text-rose-700">{{ total }}</span> 条留言</span>
+            <span class="text-stone-400" aria-hidden="true">·</span>
+            <span>只有空间成员可见</span>
+          </template>
+        </FrontendPageHeader>
 
-        <div class="mt-8 grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_19rem] lg:gap-10">
+        <div class="mt-6 grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-10">
           <section aria-labelledby="message-list-heading">
             <div class="mb-4 flex items-center justify-between gap-4">
               <div>
                 <h2 id="message-list-heading" class="font-display text-xl font-bold text-rose-950 sm:text-2xl">你们的留言
                 </h2>
-                <p class="mt-1 text-xs text-rose-700/50">每一句话，都是被认真保存的心意</p>
               </div>
               <span v-if="total" class="rounded-full bg-rose-100/80 px-3 py-1 text-xs font-semibold text-rose-600">第 {{
                 current }} / {{ totalPages }} 页</span>
@@ -240,10 +229,7 @@
               class="rounded-[1.75rem] border border-rose-100 bg-white/90 p-5 shadow-lg shadow-rose-100/50 backdrop-blur-sm sm:p-6"
               @submit.prevent="onPublish">
               <div class="flex items-start justify-between gap-3">
-                <div>
-                  <p class="text-xs font-bold uppercase tracking-[0.22em] text-rose-400">写下此刻</p>
-                  <h2 class="mt-1 font-display text-xl font-bold text-rose-950">给 Ta 的悄悄话</h2>
-                </div>
+                <h2 class="font-display text-xl font-bold text-rose-950">给 Ta 的悄悄话</h2>
                 <span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-50 text-xl text-rose-400"
                   aria-hidden="true">✎</span>
               </div>
@@ -264,7 +250,7 @@
                 </svg>
                 {{ publishing ? '发布中…' : '发布留言' }}
               </button>
-              <p class="mt-4 flex items-center justify-center gap-1.5 text-center text-[11px] text-rose-700/45"><svg
+              <p v-if="!frontendLoggedIn" class="mt-4 flex items-center justify-center gap-1.5 text-center text-[11px] text-rose-700/45"><svg
                   class="h-3.5 w-3.5 text-rose-300" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                   stroke-width="1.8" aria-hidden="true">
                   <path d="M12 3 4.5 6v5.6c0 4.3 3.1 7.7 7.5 9.4 4.4-1.7 7.5-5.1 7.5-9.4V6L12 3Z" />
@@ -286,7 +272,8 @@ import 'element-plus/es/components/message/style/css'
 import 'element-plus/es/components/message-box/style/css'
 import api from '@/axios'
 import CouplePageScaffold from '@/components/frontend/CouplePageScaffold.vue'
-import { isFrontendAuthenticated } from '@/utils/auth'
+import FrontendPageHeader from '@/components/frontend/FrontendPageHeader.vue'
+import { frontendLoggedIn, isFrontendAuthenticated } from '@/utils/auth'
 
 const SIZE = 10
 const route = useRoute()

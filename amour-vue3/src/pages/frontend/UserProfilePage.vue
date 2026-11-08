@@ -1,114 +1,110 @@
 <template>
   <CouplePageScaffold>
     <main class="relative z-10">
-      <div class="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-16 lg:px-8">
-        <header class="rounded-[2rem] border border-rose-100/80 bg-white/75 px-6 py-8 shadow-sm shadow-rose-100/50 backdrop-blur sm:px-9">
-          <p class="text-xs font-bold uppercase tracking-[0.26em] text-rose-400">Personal space</p>
-          <h1 class="mt-2 font-display text-3xl font-bold text-rose-950 sm:text-4xl">个人设置</h1>
-          <p class="mt-3 max-w-2xl text-sm leading-7 text-rose-800/60">
-            在这里管理你的昵称、用户名和头像，保存后会同步到个人空间。
-          </p>
-        </header>
+      <div class="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+        <FrontendPageHeader
+          eyebrow="个人设置"
+          title="个人设置"
+          description="在这里管理你的昵称、用户名和头像，保存后会同步到个人空间。"
+          heading-id="profile-page-heading"
+        />
 
         <!-- 情侣空间设置入口：只对有空间身份的用户展示，没有空间时引导去创建/绑定。 -->
         <section
-          class="mt-8 rounded-[1.75rem] border border-rose-100 bg-white/85 p-6 shadow-sm shadow-rose-100/40 sm:p-7"
+          class="mt-6 flex flex-col gap-4 rounded-xl border border-stone-200/80 bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6"
           aria-labelledby="profile-space-settings-heading"
         >
-          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div class="min-w-0">
-              <p class="text-xs font-bold uppercase tracking-[0.22em] text-rose-400">Couple space</p>
-              <h2 id="profile-space-settings-heading" class="mt-1 font-display text-xl font-bold text-rose-950">情侣空间设置</h2>
-              <p class="mt-2 text-xs leading-6 text-rose-700/55">
-                {{ spaceSettingsHint }}
-              </p>
-            </div>
-            <RouterLink
-              v-if="hasSpaceIdentity(spaceStatus) && !isUnboundSpace(spaceStatus)"
-              to="/space/setup"
-              class="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-5 py-2.5 text-xs font-semibold text-white shadow-sm shadow-rose-200 transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
-            >
-              打开空间设置
-              <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path d="M5 12h14m-5-5 5 5-5 5" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </RouterLink>
-            <RouterLink
-              v-else
-              to="/space/setup"
-              class="inline-flex shrink-0 items-center justify-center rounded-full border border-rose-200 bg-white px-5 py-2.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
-            >
-              创建或绑定情侣空间
-            </RouterLink>
+          <div class="min-w-0">
+            <h2 id="profile-space-settings-heading" class="text-sm font-semibold text-stone-900">情侣空间设置</h2>
+            <p class="mt-1 text-xs leading-6 text-stone-500">
+              {{ spaceSettingsHint }}
+            </p>
           </div>
+          <RouterLink
+            v-if="hasSpaceIdentity(spaceStatus) && !isUnboundSpace(spaceStatus)"
+            to="/space/setup"
+            class="btn-primary shrink-0"
+          >
+            打开空间设置
+            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M5 12h14m-5-5 5 5-5 5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </RouterLink>
+          <RouterLink
+            v-else
+            to="/space/setup"
+            class="btn-secondary shrink-0"
+          >
+            创建或绑定情侣空间
+          </RouterLink>
         </section>
 
-        <div v-if="loading" class="mt-8 rounded-[1.75rem] border border-rose-100 bg-white/80 px-6 py-16 text-center text-sm text-rose-500">
+        <div v-if="loading" class="panel mt-6 px-6 py-14 text-center text-sm text-stone-500">
           正在读取个人资料…
         </div>
 
-        <div v-else class="mt-8 grid items-start gap-8 lg:grid-cols-2">
-          <section class="rounded-[1.75rem] border border-rose-100 bg-white/90 p-6 shadow-lg shadow-rose-100/40 sm:p-8">
+        <div v-else class="mt-6 grid items-start gap-6 lg:grid-cols-2">
+          <section class="panel p-5 sm:p-6">
             <div>
-              <p class="text-xs font-bold uppercase tracking-[0.22em] text-rose-400">Profile</p>
-              <h2 class="mt-1 font-display text-2xl font-bold text-rose-950">资料与头像</h2>
+              <p class="section-kicker">Profile</p>
+              <h2 class="mt-1 section-title">资料与头像</h2>
             </div>
 
-            <div class="mt-7 flex items-center gap-5 rounded-2xl bg-rose-50/70 p-4">
-              <div class="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-[1.4rem] bg-gradient-to-br from-rose-400 to-pink-500 text-xl font-bold text-white shadow-md shadow-rose-200">
+            <div class="mt-5 flex items-center gap-4 rounded-xl bg-stone-50 p-4">
+              <div class="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-rose-600 text-lg font-bold text-white">
                 {{ initials(form.displayName) }}
                 <img v-if="form.avatar" :src="form.avatar" alt="当前头像" class="absolute inset-0 h-full w-full object-cover" @load="$event.currentTarget.style.display = ''" @error="$event.currentTarget.style.display = 'none'">
               </div>
               <div class="min-w-0">
-                <p class="truncate font-semibold text-rose-950">{{ form.displayName || '你的昵称' }}</p>
-                <p class="mt-1 text-xs leading-5 text-rose-700/50">支持 JPG、PNG、WebP、GIF，最大 5MB</p>
-                <button type="button" class="mt-3 rounded-full border border-rose-200 bg-white px-4 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-100 disabled:opacity-50" :disabled="avatarUploading" @click="avatarInput?.click()">
+                <p class="truncate font-semibold text-stone-900">{{ form.displayName || '你的昵称' }}</p>
+                <p class="mt-1 text-xs leading-5 text-stone-500">支持 JPG、PNG、WebP、GIF，最大 5MB</p>
+                <button type="button" class="btn-secondary mt-3" :disabled="avatarUploading" @click="avatarInput?.click()">
                   {{ avatarUploading ? '上传中…' : '更换头像' }}
                 </button>
                 <input ref="avatarInput" class="hidden" type="file" accept="image/jpeg,image/png,image/webp,image/gif" @change="onAvatarSelected">
               </div>
             </div>
 
-            <form class="mt-7 space-y-5" @submit.prevent="saveProfile">
+            <form class="mt-5 space-y-4" @submit.prevent="saveProfile">
               <div>
-                <label for="profile-display-name" class="block text-sm font-semibold text-rose-900">昵称</label>
-                <input id="profile-display-name" v-model="form.displayName" maxlength="20" class="mt-2 w-full rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm text-rose-950 outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100" placeholder="请输入昵称">
-                <p class="mt-1.5 text-xs text-rose-700/45">昵称会显示在留言和回复中。</p>
+                <label for="profile-display-name" class="field-label">昵称</label>
+                <input id="profile-display-name" v-model="form.displayName" maxlength="20" class="field-input" placeholder="请输入昵称">
+                <p class="field-hint">昵称会显示在留言和回复中。</p>
               </div>
               <div>
-                <label for="profile-username" class="block text-sm font-semibold text-rose-900">用户名</label>
-                <p class="mt-1.5 text-xs leading-5 text-rose-700/45">用户名可用于网页端登录，30 天可修改一次</p>
-                <p v-if="usernameChangeLocked" class="mt-1 text-xs leading-5 text-rose-700/45">下次可编辑日期：{{ usernameChangeAvailableAtText }}</p>
-                <p v-else class="mt-1 text-xs leading-5 text-rose-700/45">4-20 位，仅英文大小写、数字和下划线</p>
-                <input id="profile-username" v-model="form.username" minlength="4" maxlength="20" pattern="[A-Za-z0-9_]{4,20}" autocomplete="username" class="mt-2 w-full rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm text-rose-950 outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100 disabled:cursor-not-allowed disabled:bg-rose-50" placeholder="请输入 4-20 位用户名" :disabled="profileSaving || usernameChangeLocked">
+                <label for="profile-username" class="field-label">用户名</label>
+                <p class="field-hint">用户名可用于网页端登录，30 天可修改一次</p>
+                <p v-if="usernameChangeLocked" class="mt-1 text-xs leading-5 text-stone-500">下次可编辑日期：{{ usernameChangeAvailableAtText }}</p>
+                <p v-else class="mt-1 text-xs leading-5 text-stone-500">4-20 位，仅英文大小写、数字和下划线</p>
+                <input id="profile-username" v-model="form.username" minlength="4" maxlength="20" pattern="[A-Za-z0-9_]{4,20}" autocomplete="username" class="field-input" placeholder="请输入 4-20 位用户名" :disabled="profileSaving || usernameChangeLocked">
               </div>
-              <button type="submit" class="w-full rounded-full bg-gradient-to-r from-rose-500 to-pink-500 py-3 text-sm font-semibold text-white shadow-md shadow-rose-200 transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60" :disabled="profileSaving">
+              <button type="submit" class="btn-primary w-full !py-3 !text-sm" :disabled="profileSaving">
                 {{ profileSaving ? '保存中…' : '保存资料' }}
               </button>
             </form>
           </section>
 
-          <section class="rounded-[1.75rem] border border-rose-100 bg-white/90 p-6 shadow-lg shadow-rose-100/40 sm:p-8">
+          <section class="panel p-5 sm:p-6">
             <div>
-              <p class="text-xs font-bold uppercase tracking-[0.22em] text-rose-400">Security</p>
-              <h2 class="mt-1 font-display text-2xl font-bold text-rose-950">修改密码</h2>
-              <p class="mt-2 text-xs leading-5 text-rose-700/50">修改密码后需要重新登录。</p>
+              <p class="section-kicker">Security</p>
+              <h2 class="mt-1 section-title">修改密码</h2>
+              <p class="mt-1 text-xs leading-5 text-stone-500">修改密码后需要重新登录。</p>
             </div>
 
-            <form class="mt-7 space-y-5" @submit.prevent="changePassword">
+            <form class="mt-5 space-y-4" @submit.prevent="changePassword">
               <div>
-                <label for="current-password" class="block text-sm font-semibold text-rose-900">当前密码</label>
-                <input id="current-password" v-model="passwordForm.current" type="password" autocomplete="current-password" class="mt-2 w-full rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm text-rose-950 outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100" placeholder="请输入当前密码">
+                <label for="current-password" class="field-label">当前密码</label>
+                <input id="current-password" v-model="passwordForm.current" type="password" autocomplete="current-password" class="field-input" placeholder="请输入当前密码">
               </div>
               <div>
-                <label for="new-password" class="block text-sm font-semibold text-rose-900">新密码</label>
-                <input id="new-password" v-model="passwordForm.next" type="password" minlength="6" maxlength="64" autocomplete="new-password" class="mt-2 w-full rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm text-rose-950 outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100" placeholder="6-64 个字符">
+                <label for="new-password" class="field-label">新密码</label>
+                <input id="new-password" v-model="passwordForm.next" type="password" minlength="6" maxlength="64" autocomplete="new-password" class="field-input" placeholder="6-64 个字符">
               </div>
               <div>
-                <label for="confirm-password" class="block text-sm font-semibold text-rose-900">确认新密码</label>
-                <input id="confirm-password" v-model="passwordForm.confirm" type="password" minlength="6" maxlength="64" autocomplete="new-password" class="mt-2 w-full rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm text-rose-950 outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100" placeholder="请再次输入新密码">
+                <label for="confirm-password" class="field-label">确认新密码</label>
+                <input id="confirm-password" v-model="passwordForm.confirm" type="password" minlength="6" maxlength="64" autocomplete="new-password" class="field-input" placeholder="请再次输入新密码">
               </div>
-              <button type="submit" class="w-full rounded-full border border-rose-300 bg-rose-50 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60" :disabled="passwordSaving">
+              <button type="submit" class="btn-secondary w-full !py-3 !text-sm" :disabled="passwordSaving">
                 {{ passwordSaving ? '修改中…' : '确认修改密码' }}
               </button>
             </form>
@@ -126,6 +122,7 @@ import { ElMessage } from 'element-plus'
 import 'element-plus/es/components/message/style/css'
 import api from '@/axios'
 import CouplePageScaffold from '@/components/frontend/CouplePageScaffold.vue'
+import FrontendPageHeader from '@/components/frontend/FrontendPageHeader.vue'
 import { clearFrontendSession, setFrontendAvatar, setFrontendProfile } from '@/utils/auth'
 import { encryptPassword } from '@/utils/loginCrypto'
 import { useFrontendSpace } from '@/composables/useFrontendSpace'
@@ -139,7 +136,7 @@ const spaceSettingsHint = computed(() => {
     return '情侣空间已解除绑定，你可以重新创建或加入情侣空间。'
   }
   if (hasSpaceIdentity(spaceStatus.value)) {
-    return '管理空间公开设置、冻结或处理解绑申请。空间状态与公开设置只在页面内存中展示，不会写入本地缓存。'
+    return '查看空间状态、公开设置与解绑申请。'
   }
   return hasCoupleSpace.value
     ? '空间状态正在读取中，稍后即可进入空间设置。'

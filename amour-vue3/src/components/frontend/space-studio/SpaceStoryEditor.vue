@@ -1,157 +1,182 @@
 <template>
-  <div class="space-y-5">
-    <div v-if="loading" class="space-y-3" aria-label="正在加载故事" aria-busy="true">
-      <div v-for="n in 3" :key="n" class="h-32 animate-pulse rounded-2xl border border-rose-100 bg-white/60" />
+  <div>
+    <div v-if="loading" class="studio-panel px-5 py-6" aria-label="正在加载故事" aria-busy="true">
+      <div class="h-5 w-28 animate-pulse rounded bg-stone-100" />
+      <div class="mt-6 space-y-3">
+        <div v-for="n in 3" :key="n" class="h-16 animate-pulse rounded-lg bg-stone-50" />
+      </div>
     </div>
 
-    <div v-else-if="loadError" class="rounded-2xl border border-rose-100 bg-rose-50/50 px-5 py-10 text-center" role="alert">
+    <div v-else-if="loadError" class="studio-panel px-5 py-10 text-center" role="alert">
       <p class="text-sm text-rose-600">{{ loadError }}</p>
-      <button type="button" class="mt-4 rounded-full border border-rose-200 bg-white px-4 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50" @click="load">
-        重新加载
-      </button>
+      <button type="button" class="btn-secondary mt-4" @click="load">重新加载</button>
     </div>
 
-    <template v-else>
-      <!-- 章节管理 -->
-      <section class="rounded-2xl border border-rose-100 bg-white/80 p-5 shadow-sm sm:p-6">
-        <div class="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h3 class="font-display text-lg font-bold text-rose-950">故事章节</h3>
-            <p class="mt-1 text-xs leading-6 text-rose-700/50">先建章节，再把故事放进对应章节；章节下还有故事时不能删除。</p>
+    <div v-else class="space-y-5">
+      <!-- 章节条：先浏览、按需编辑，不再常驻一整块表单 -->
+      <section class="studio-panel" aria-labelledby="studio-story-heading">
+        <header class="studio-panel-header">
+          <div class="min-w-0">
+            <h2 id="studio-story-heading" class="section-title">故事</h2>
+            <p class="section-description">共 {{ nodes.length }} 篇故事 · {{ chapters.length }} 个章节。章节下还有故事时不能删除。</p>
           </div>
-          <button type="button" class="rounded-full border border-rose-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-50" :disabled="loading" @click="load">
-            刷新
-          </button>
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" class="btn-ghost" :disabled="loading" @click="load">刷新</button>
+            <button type="button" class="btn-secondary" @click="openChapterCreate">新增章节</button>
+            <button type="button" class="btn-primary" :disabled="!chapters.length" @click="startNewStory">
+              新建故事
+            </button>
+          </div>
+        </header>
+
+        <div class="px-5 py-4">
+          <div v-if="!chapters.length" class="studio-empty">
+            <p class="text-sm font-semibold text-stone-800">还没有章节</p>
+            <p class="mt-1 text-xs text-stone-500">先新增一个章节，再开始写故事。</p>
+          </div>
+          <ul v-else class="flex flex-wrap gap-2" aria-label="故事章节">
+            <li
+              v-for="chapter in chapters"
+              :key="chapter.id"
+              class="flex items-center gap-1 rounded-lg border py-1 pl-2.5 pr-1 text-xs transition"
+              :class="chapterFormOpen && chapterForm.id === chapter.id
+                ? 'border-rose-300 bg-rose-50 text-rose-800'
+                : 'border-stone-200 bg-stone-50/70 text-stone-700'"
+            >
+              <span class="h-2 w-2 shrink-0 rounded-full" :style="{ backgroundColor: chapterAccent(chapter) }" aria-hidden="true" />
+              <span class="max-w-40 truncate font-semibold" :title="chapter.name">{{ chapter.name }}</span>
+              <span class="text-[10px] text-stone-400">{{ chapter.nodeCount }}</span>
+              <span v-if="!chapter.isVisible" class="rounded bg-stone-200/80 px-1 text-[10px] text-stone-500">隐藏</span>
+              <button
+                type="button"
+                class="rounded p-1 text-stone-400 transition hover:bg-white hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300"
+                :aria-label="`编辑章节 ${chapter.name}`"
+                title="编辑章节"
+                @click="editChapter(chapter)"
+              >
+                <EditPen class="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                class="rounded p-1 text-stone-400 transition hover:bg-white hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300"
+                :aria-label="`删除章节 ${chapter.name}`"
+                title="删除章节"
+                @click="removeChapter(chapter)"
+              >
+                <Delete class="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            </li>
+          </ul>
         </div>
 
-        <form class="mt-4 space-y-3" @submit.prevent="saveChapter">
-          <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_7rem]">
+        <div v-if="chapterEditorOpen" class="border-t border-stone-100 bg-stone-50/50 px-5 py-5">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h3 class="font-display text-base font-bold text-stone-900">
+              {{ chapterForm.id ? '编辑章节' : '新增章节' }}
+            </h3>
+            <button type="button" class="btn-ghost" @click="closeChapterEditor">关闭</button>
+          </div>
+
+          <form class="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_7rem]" @submit.prevent="saveChapter">
             <div>
-              <label for="studio-chapter-name" class="block text-sm font-semibold text-rose-900">章节名称</label>
+              <label for="studio-chapter-name" class="field-label">章节名称</label>
               <input
                 id="studio-chapter-name"
                 v-model="chapterForm.name"
                 maxlength="50"
-                class="mt-2 w-full rounded-xl border border-rose-200 bg-white px-3.5 py-3 text-sm text-rose-950 outline-none transition placeholder:text-rose-300 focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
-                placeholder="章节名称，例如「初见」"
+                class="field-input"
+                placeholder="例如「初见」"
               >
             </div>
             <div>
-              <label for="studio-chapter-sort" class="block text-sm font-semibold text-rose-900">排序</label>
+              <label for="studio-chapter-sort" class="field-label">排序</label>
               <input
                 id="studio-chapter-sort"
                 v-model.number="chapterForm.sortOrder"
                 type="number"
                 min="0"
-                class="mt-2 w-full rounded-xl border border-rose-200 bg-white px-3.5 py-3 text-sm text-rose-950 outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
-                placeholder="排序"
+                class="field-input"
               >
             </div>
-          </div>
-
-          <div class="rounded-2xl border border-rose-100 bg-rose-50/30 p-4">
-            <ThemeColorField
-              v-model="chapterForm.colorCode"
-              input-id="studio-chapter-color"
-              label="章节主题色"
-              hint="章节导航、故事时间线与章节标签都会使用这个颜色。"
-            />
-            <div class="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-rose-100 bg-white/80 px-3 py-2.5">
-              <span class="flex h-8 min-w-8 items-center justify-center rounded-lg px-1.5 text-[10px] font-bold shadow-sm" :style="chapterPreviewBadgeStyle">
-                {{ chapterForm.id ? '章节' : '预览' }}
-              </span>
-              <span class="min-w-0 truncate text-sm font-semibold text-rose-900">{{ chapterForm.name.trim() || '章节名称预览' }}</span>
-              <span class="ml-auto shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold" :style="chapterPreviewTagStyle">
-                {{ chapterForm.isVisible ? '展示中' : '已隐藏' }}
-              </span>
+            <div class="lg:col-span-2 grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <div class="rounded-xl border border-stone-200 bg-white p-3.5">
+                <ThemeColorField
+                  v-model="chapterForm.colorCode"
+                  input-id="studio-chapter-color"
+                  label="章节主题色"
+                  hint="章节导航、故事时间线与章节标签都会使用这个颜色。"
+                />
+              </div>
+              <div class="rounded-xl border border-stone-200 bg-white p-3.5">
+                <p class="text-xs font-semibold text-stone-500">章节预览</p>
+                <div class="mt-3 flex items-center gap-2 rounded-lg border border-stone-100 bg-stone-50/70 px-3 py-2.5">
+                  <span class="flex h-8 min-w-8 items-center justify-center rounded-md px-1.5 text-[10px] font-bold" :style="chapterPreviewBadgeStyle">
+                    {{ chapterForm.id ? '章节' : '预览' }}
+                  </span>
+                  <span class="min-w-0 flex-1 truncate text-sm font-semibold text-stone-900">{{ chapterForm.name.trim() || '章节名称预览' }}</span>
+                  <span class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold" :style="chapterPreviewTagStyle">
+                    {{ chapterForm.isVisible ? '展示中' : '已隐藏' }}
+                  </span>
+                </div>
+                <label class="mt-3 inline-flex items-center gap-2 text-xs text-stone-600">
+                  <input v-model="chapterForm.isVisible" type="checkbox" class="h-4 w-4 rounded border-stone-300 text-rose-600 focus:ring-rose-400">
+                  在空间故事中显示该章节
+                </label>
+              </div>
             </div>
-          </div>
 
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <label class="inline-flex items-center gap-2 text-xs text-rose-700/60">
-              <input v-model="chapterForm.isVisible" type="checkbox" class="h-4 w-4 rounded border-rose-300 text-rose-500 focus:ring-rose-400">
-              在空间故事中显示该章节
-            </label>
-            <div class="flex items-center gap-2">
-              <button
-                type="submit"
-                class="rounded-xl bg-rose-500 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
-                :disabled="chapterSaving"
-              >
+            <p v-if="chapterError" class="rounded-lg border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs leading-5 text-rose-700 lg:col-span-2" role="alert">
+              {{ chapterError }}
+            </p>
+
+            <div class="flex flex-wrap items-center gap-2 lg:col-span-2">
+              <button type="submit" class="btn-primary" :disabled="chapterSaving">
                 {{ chapterSaving ? '保存中…' : (chapterForm.id ? '保存章节' : '新增章节') }}
               </button>
-              <button
-                v-if="chapterForm.id"
-                type="button"
-                class="rounded-xl border border-rose-200 bg-white px-3 py-2.5 text-xs font-semibold text-rose-500 transition hover:bg-rose-50"
-                @click="resetChapterForm"
-              >
-                取消
-              </button>
+              <button v-if="chapterForm.id" type="button" class="btn-secondary" @click="closeChapterEditor">取消</button>
             </div>
-          </div>
-        </form>
-
-        <p v-if="chapterError" class="mt-3 rounded-xl border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs leading-5 text-rose-600" role="alert">
-          {{ chapterError }}
-        </p>
-
-        <div v-if="!chapters.length" class="mt-4 rounded-2xl border border-dashed border-rose-200 bg-white/55 px-4 py-8 text-center">
-          <p class="text-sm font-semibold text-rose-800/70">还没有章节</p>
-          <p class="mt-1 text-xs text-rose-700/45">先新增一个章节，再开始写故事。</p>
+          </form>
         </div>
-        <ul v-else class="mt-4 grid gap-2 sm:grid-cols-2">
-          <li
-            v-for="chapter in chapters"
-            :key="chapter.id"
-            class="relative flex items-start justify-between gap-3 overflow-hidden rounded-2xl border pl-5 pr-4 py-3"
-            :class="chapterForm.id === chapter.id ? 'border-rose-300 bg-rose-50/60' : 'border-rose-100 bg-rose-50/25'"
-          >
-            <span class="absolute inset-y-0 left-0 w-1.5" :style="{ backgroundColor: chapterAccent(chapter) }" aria-hidden="true" />
-            <div class="min-w-0">
-              <p class="flex items-center gap-2 text-sm font-semibold text-rose-900">
-                <span class="truncate">{{ chapter.name }}</span>
-                <span v-if="!chapter.isVisible" class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">已隐藏</span>
-              </p>
-              <p class="mt-1 text-[11px] text-rose-700/45">{{ chapter.nodeCount }} 个故事 · 排序 {{ chapter.sortOrder ?? 0 }}</p>
-            </div>
-            <div class="flex shrink-0 gap-1.5">
-              <button type="button" class="rounded-full px-2.5 py-1 text-[11px] font-semibold text-rose-500 transition hover:bg-white" @click="editChapter(chapter)">
-                编辑
-              </button>
-              <button type="button" class="rounded-full px-2.5 py-1 text-[11px] font-semibold text-rose-400 transition hover:bg-white hover:text-rose-600" @click="removeChapter(chapter)">
-                删除
-              </button>
-            </div>
-          </li>
-        </ul>
       </section>
 
-      <!-- 故事节点 -->
-      <section class="rounded-2xl border border-rose-100 bg-white/80 p-5 shadow-sm sm:p-6">
-        <div class="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h3 class="font-display text-lg font-bold text-rose-950">故事内容</h3>
-            <p class="mt-1 text-xs leading-6 text-rose-700/50">新建内容默认仅空间成员可见；完成两人绑定后才可主动公开到恋爱广场。</p>
-          </div>
-          <ThemeSelect
-            v-model="selectedChapterId"
-            input-id="studio-story-filter"
-            size="sm"
-            placeholder="全部章节"
-            :options="chapterFilterOptions"
-          />
-        </div>
+      <div class="grid gap-5 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] xl:items-start">
+        <!-- 故事列表：先选择条目 -->
+        <section class="studio-panel min-w-0" aria-labelledby="studio-story-list-heading">
+          <header class="studio-panel-header">
+            <div class="min-w-0">
+              <h3 id="studio-story-list-heading" class="section-title">故事列表</h3>
+              <p class="section-description">选择一篇故事，在右侧编辑内容。</p>
+            </div>
+            <ThemeSelect
+              v-model="selectedChapterId"
+              input-id="studio-story-filter"
+              size="sm"
+              placeholder="全部章节"
+              :options="chapterFilterOptions"
+            />
+          </header>
 
-        <div v-if="!filteredNodes.length" class="mt-4 rounded-2xl border border-dashed border-rose-200 bg-white/55 px-4 py-8 text-center">
-          <p class="text-sm font-semibold text-rose-800/70">还没有故事</p>
-          <p class="mt-1 text-xs text-rose-700/45">在下方表单写下第一段故事。</p>
-        </div>
-        <ul v-else class="mt-4 space-y-2">
-          <li v-for="node in filteredNodes" :key="node.id" class="rounded-2xl border border-rose-100 bg-rose-50/25 px-4 py-3">
-            <div class="flex flex-wrap items-start justify-between gap-3">
-              <div class="min-w-0">
-                <p class="flex flex-wrap items-center gap-2 text-sm font-semibold text-rose-900">
+          <div v-if="!filteredNodes.length" class="studio-panel-body">
+            <div class="studio-empty">
+              <p class="text-sm font-semibold text-stone-800">还没有故事</p>
+              <p class="mt-1 text-xs text-stone-500">点击「新建故事」写下第一段。</p>
+            </div>
+          </div>
+          <ul v-else class="divide-y divide-stone-100" aria-label="故事条目">
+            <li
+              v-for="node in filteredNodes"
+              :key="node.id"
+              class="flex items-start gap-2 px-4 py-3 transition"
+              :class="editingNodeId === node.id ? 'bg-rose-50/60' : 'hover:bg-stone-50/70'"
+            >
+              <button
+                type="button"
+                class="min-w-0 flex-1 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300"
+                :aria-label="`编辑故事 ${node.title}`"
+                :aria-current="editingNodeId === node.id ? 'true' : undefined"
+                @click="editNode(node)"
+              >
+                <span class="flex flex-wrap items-center gap-1.5 text-sm font-semibold text-stone-900">
                   <span class="truncate">{{ node.title }}</span>
                   <span
                     v-if="node.tagLabel"
@@ -160,162 +185,248 @@
                   >
                     {{ node.tagLabel }}
                   </span>
-                  <span class="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-rose-500">{{ visibilityLabel(node.visibility) }}</span>
                   <span v-if="node.isMilestone" class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">里程碑</span>
-                </p>
-                <p class="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] leading-5 text-rose-700/45">
-                  <span class="h-2 w-2 shrink-0 rounded-full" :style="{ backgroundColor: chapterAccentById(node.chapterId) }" aria-hidden="true" />
-                  <span>{{ node.chapterName || '未分章' }}</span>
-                  <span>· {{ formatSpaceDateTime(node.happenedTime) }}</span>
-                  <span v-if="node.location"> · {{ node.location }}</span>
-                  <span v-if="node.images?.length"> · {{ node.images.length }} 张图片</span>
-                </p>
-                <p v-if="node.summary" class="mt-1 line-clamp-2 text-xs leading-5 text-rose-800/60">{{ node.summary }}</p>
-              </div>
-              <div class="flex shrink-0 gap-1.5">
-                <button type="button" class="rounded-full px-2.5 py-1 text-[11px] font-semibold text-rose-500 transition hover:bg-white" @click="editNode(node)">
-                  编辑
-                </button>
-                <button type="button" class="rounded-full px-2.5 py-1 text-[11px] font-semibold text-rose-400 transition hover:bg-white hover:text-rose-600" @click="removeNode(node)">
-                  删除
-                </button>
-              </div>
-            </div>
-          </li>
-        </ul>
-      </section>
-
-      <!-- 新增/编辑表单 -->
-      <section id="story-node-form" class="scroll-mt-24 rounded-2xl border border-rose-100 bg-white/80 p-5 shadow-sm sm:p-6">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <h3 class="font-display text-lg font-bold text-rose-950">{{ editingNodeId ? '编辑故事' : '新增故事' }}</h3>
-          <button v-if="editingNodeId" type="button" class="rounded-full border border-rose-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-rose-500 transition hover:bg-rose-50" @click="resetNodeForm">
-            取消编辑
-          </button>
-        </div>
-
-        <form class="mt-4 space-y-4" @submit.prevent="saveNode">
-          <div class="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label for="studio-node-chapter" class="block text-sm font-semibold text-rose-900">所属章节</label>
-              <ThemeSelect
-                v-model="nodeForm.chapterId"
-                input-id="studio-node-chapter"
-                class="mt-2"
-                placeholder="请先创建章节"
-                :options="chapterOptions"
-              />
-            </div>
-            <div>
-              <label for="studio-node-happened" class="block text-sm font-semibold text-rose-900">发生时间</label>
-              <ThemeDatePicker
-                v-model="nodeForm.happenedTime"
-                input-id="studio-node-happened"
-                class="mt-2"
-                mode="datetime"
-                placeholder="选择故事发生时间"
-              />
-            </div>
-            <div class="sm:col-span-2">
-              <label for="studio-node-title" class="block text-sm font-semibold text-rose-900">标题</label>
-              <input id="studio-node-title" v-model="nodeForm.title" maxlength="100" class="mt-2 w-full rounded-xl border border-rose-200 bg-white px-3.5 py-3 text-sm text-rose-950 outline-none placeholder:text-rose-300 focus:border-rose-400 focus:ring-4 focus:ring-rose-100" placeholder="这一章故事的名字">
-            </div>
-            <div class="sm:col-span-2">
-              <label for="studio-node-summary" class="block text-sm font-semibold text-rose-900">摘要</label>
-              <textarea id="studio-node-summary" v-model="nodeForm.summary" rows="2" maxlength="500" class="mt-2 w-full resize-y rounded-xl border border-rose-200 bg-white px-3.5 py-3 text-sm leading-6 text-rose-950 outline-none placeholder:text-rose-300 focus:border-rose-400 focus:ring-4 focus:ring-rose-100" placeholder="一句话概括这段故事（选填）" />
-            </div>
-            <div class="sm:col-span-2">
-              <label for="studio-node-content" class="block text-sm font-semibold text-rose-900">正文</label>
-              <textarea id="studio-node-content" v-model="nodeForm.content" rows="6" maxlength="20000" class="mt-2 w-full resize-y rounded-xl border border-rose-200 bg-white px-3.5 py-3 text-sm leading-7 text-rose-950 outline-none placeholder:text-rose-300 focus:border-rose-400 focus:ring-4 focus:ring-rose-100" placeholder="把那天发生的事写下来……" />
-            </div>
-            <div>
-              <label for="studio-node-location" class="block text-sm font-semibold text-rose-900">地点</label>
-              <input id="studio-node-location" v-model="nodeForm.location" maxlength="100" class="mt-2 w-full rounded-xl border border-rose-200 bg-white px-3.5 py-3 text-sm text-rose-950 outline-none placeholder:text-rose-300 focus:border-rose-400 focus:ring-4 focus:ring-rose-100" placeholder="发生地点（选填）">
-            </div>
-            <div>
-              <label for="studio-node-sort" class="block text-sm font-semibold text-rose-900">章节内排序</label>
-              <input id="studio-node-sort" v-model.number="nodeForm.sortOrder" type="number" min="0" class="mt-2 w-full rounded-xl border border-rose-200 bg-white px-3.5 py-3 text-sm text-rose-950 outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-100">
-            </div>
-            <div class="sm:col-span-2 rounded-2xl border border-rose-100 bg-rose-50/30 p-4">
-              <div class="flex flex-wrap items-center justify-between gap-2">
-                <p class="text-sm font-semibold text-rose-900">故事标签</p>
-                <span class="text-[11px] text-rose-700/45">可选，用一句短标签概括这段故事</span>
-              </div>
-              <div class="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-                <div>
-                  <label for="studio-node-tag" class="block text-sm font-semibold text-rose-900">标签文字</label>
-                  <input id="studio-node-tag" v-model="nodeForm.tagLabel" maxlength="30" class="mt-2 w-full rounded-xl border border-rose-200 bg-white px-3.5 py-3 text-sm text-rose-950 outline-none placeholder:text-rose-300 focus:border-rose-400 focus:ring-4 focus:ring-rose-100" placeholder="例如：初见">
-                </div>
-                <ThemeColorField
-                  v-model="nodeForm.tagColor"
-                  input-id="studio-node-tag-color"
-                  label="标签颜色"
-                  allow-clear
-                  hint="留空时使用默认玫瑰色；只在填写标签文字后展示。"
-                />
-              </div>
-              <div class="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-rose-100 bg-white/80 px-3 py-2.5">
-                <span class="text-[11px] font-semibold text-rose-700/45">标签预览</span>
-                <span class="max-w-full truncate rounded-full border px-2.5 py-1 text-[11px] font-semibold" :style="nodeTagPreviewStyle">
-                  {{ nodeForm.tagLabel.trim() || '故事标签' }}
                 </span>
-              </div>
-            </div>
-            <div>
-              <label for="studio-node-visibility" class="block text-sm font-semibold text-rose-900">可见性</label>
-              <ThemeSelect
-                v-model="nodeForm.visibility"
-                input-id="studio-node-visibility"
-                class="mt-2"
-                :options="visibilityOptions"
-              />
-            </div>
-            <label class="flex items-center gap-2 self-end rounded-xl border border-rose-100 bg-rose-50/40 px-3.5 py-3 text-xs font-semibold text-rose-800">
-              <input v-model="nodeForm.isMilestone" type="checkbox" class="h-4 w-4 rounded border-rose-300 text-rose-500 focus:ring-rose-400">
-              标记为里程碑
-            </label>
-            <div class="sm:col-span-2">
-              <SpaceImageField v-model="nodeForm.coverImage" input-id="studio-node-cover" label="封面图片" :disabled="nodeSaving" @uploading="onImageUploading" />
-            </div>
-          </div>
-
-          <div>
-            <div class="flex items-center justify-between gap-2">
-              <p class="text-sm font-semibold text-rose-900">故事图片</p>
-              <button type="button" class="rounded-full border border-rose-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-rose-600 transition hover:bg-rose-50" @click="addImageRow">
-                添加图片
+                <span class="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] leading-5 text-stone-500">
+                  <span class="h-1.5 w-1.5 shrink-0 rounded-full" :style="{ backgroundColor: chapterAccentById(node.chapterId) }" aria-hidden="true" />
+                  <span>{{ node.chapterName || '未分章' }}</span>
+                  <span aria-hidden="true">·</span>
+                  <span>{{ formatSpaceDateTime(node.happenedTime) }}</span>
+                  <span v-if="node.images?.length" aria-hidden="true">·</span>
+                  <span v-if="node.images?.length">{{ node.images.length }} 张图片</span>
+                </span>
+                <span class="mt-1 block text-[10px] text-stone-400">{{ visibilityLabel(node.visibility) }}</span>
               </button>
+              <button
+                type="button"
+                class="mt-0.5 shrink-0 rounded p-1.5 text-stone-400 transition hover:bg-white hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300"
+                :aria-label="`删除故事 ${node.title}`"
+                title="删除故事"
+                @click="removeNode(node)"
+              >
+                <Delete class="h-4 w-4" aria-hidden="true" />
+              </button>
+            </li>
+          </ul>
+        </section>
+
+        <!-- 编辑区：紧凑分组，保存操作固定在底部 -->
+        <section id="story-node-form" class="studio-panel scroll-mt-24" aria-labelledby="studio-story-editor-heading">
+          <header class="studio-panel-header">
+            <div class="min-w-0">
+              <h3 id="studio-story-editor-heading" class="section-title">
+                {{ editingNodeId ? '编辑故事' : '新建故事' }}
+              </h3>
+              <p class="section-description">
+                {{ editingNodeId ? '修改后会同步更新空间中的这篇故事。' : '新故事默认仅空间成员可见。' }}
+              </p>
             </div>
-            <p v-if="!nodeForm.images.length" class="mt-2 text-xs text-rose-700/45">还没有添加图片，可上传或粘贴图片地址。</p>
-            <div v-for="(image, index) in nodeForm.images" :key="index" class="mt-3 rounded-2xl border border-rose-100 bg-rose-50/30 p-3">
-              <div class="flex items-start gap-2">
-                <div class="min-w-0 flex-1">
-                  <SpaceImageField v-model="image.url" :input-id="`studio-node-image-${index}`" label="" :disabled="nodeSaving" @uploading="onImageUploading" />
-                  <input v-model="image.altText" maxlength="100" class="mt-2 w-full rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs text-rose-950 outline-none focus:border-rose-400" placeholder="图片描述（选填）">
+            <button v-if="editingNodeId" type="button" class="btn-ghost" @click="resetNodeForm">取消编辑</button>
+          </header>
+
+          <form @submit.prevent="saveNode">
+            <div class="px-5 py-5">
+              <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label for="studio-node-chapter" class="field-label">所属章节</label>
+                  <ThemeSelect
+                    v-model="nodeForm.chapterId"
+                    input-id="studio-node-chapter"
+                    class="mt-2"
+                    placeholder="请先创建章节"
+                    :options="chapterOptions"
+                  />
                 </div>
-                <button type="button" class="mt-1 shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold text-rose-400 transition hover:bg-white hover:text-rose-600" @click="removeImageRow(index)">
-                  移除
-                </button>
+                <div>
+                  <label for="studio-node-happened" class="field-label">发生时间</label>
+                  <ThemeDatePicker
+                    v-model="nodeForm.happenedTime"
+                    input-id="studio-node-happened"
+                    class="mt-2"
+                    mode="datetime"
+                    placeholder="选择故事发生时间"
+                  />
+                </div>
+                <div class="sm:col-span-2">
+                  <label for="studio-node-title" class="field-label">标题</label>
+                  <input
+                    id="studio-node-title"
+                    v-model="nodeForm.title"
+                    maxlength="100"
+                    class="field-input"
+                    placeholder="这一章故事的名字"
+                  >
+                </div>
+                <div class="sm:col-span-2">
+                  <label for="studio-node-summary" class="field-label">摘要</label>
+                  <textarea
+                    id="studio-node-summary"
+                    v-model="nodeForm.summary"
+                    rows="2"
+                    maxlength="500"
+                    class="field-input resize-y leading-6"
+                    placeholder="一句话概括这段故事（选填）"
+                  />
+                </div>
+                <div class="sm:col-span-2">
+                  <label for="studio-node-content" class="field-label">正文</label>
+                  <textarea
+                    id="studio-node-content"
+                    v-model="nodeForm.content"
+                    rows="7"
+                    maxlength="20000"
+                    class="field-input resize-y leading-7"
+                    placeholder="把那天发生的事写下来……"
+                  />
+                </div>
+                <div>
+                  <label for="studio-node-location" class="field-label">地点</label>
+                  <input
+                    id="studio-node-location"
+                    v-model="nodeForm.location"
+                    maxlength="100"
+                    class="field-input"
+                    placeholder="发生地点（选填）"
+                  >
+                </div>
+                <div>
+                  <label for="studio-node-sort" class="field-label">章节内排序</label>
+                  <input
+                    id="studio-node-sort"
+                    v-model.number="nodeForm.sortOrder"
+                    type="number"
+                    min="0"
+                    class="field-input"
+                  >
+                </div>
               </div>
+
+              <div class="mt-5 rounded-xl border border-stone-200 bg-stone-50/70 p-4">
+                <p class="text-xs font-bold text-stone-500">发布设置</p>
+                <div class="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                  <div>
+                    <label for="studio-node-visibility" class="field-label">可见性</label>
+                    <ThemeSelect
+                      v-model="nodeForm.visibility"
+                      input-id="studio-node-visibility"
+                      class="mt-2"
+                      :options="visibilityOptions"
+                    />
+                  </div>
+                  <label class="flex items-center gap-2 self-end rounded-lg border border-stone-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-stone-700">
+                    <input v-model="nodeForm.isMilestone" type="checkbox" class="h-4 w-4 rounded border-stone-300 text-rose-600 focus:ring-rose-400">
+                    标记为里程碑
+                  </label>
+                </div>
+              </div>
+
+              <div class="mt-5 overflow-hidden rounded-xl border border-stone-200">
+                <button
+                  type="button"
+                  class="flex w-full items-center justify-between gap-3 bg-stone-50/70 px-4 py-3 text-left text-xs font-semibold text-stone-700 transition hover:bg-stone-100/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-rose-300"
+                  :aria-expanded="showExtras ? 'true' : 'false'"
+                  aria-controls="studio-story-extras"
+                  @click="showExtras = !showExtras"
+                >
+                  <span>标签、封面与故事图片</span>
+                  <span class="flex items-center gap-2 text-[11px] font-normal text-stone-400">
+                    {{ extrasSummary }}
+                    <svg
+                      class="h-4 w-4 transition"
+                      :class="{ 'rotate-180': showExtras }"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      aria-hidden="true"
+                    >
+                      <path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  </span>
+                </button>
+
+                <div v-if="showExtras" id="studio-story-extras" class="space-y-4 px-4 py-4">
+                  <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                    <div>
+                      <label for="studio-node-tag" class="field-label">标签文字</label>
+                      <input
+                        id="studio-node-tag"
+                        v-model="nodeForm.tagLabel"
+                        maxlength="30"
+                        class="field-input"
+                        placeholder="例如：初见"
+                      >
+                    </div>
+                    <ThemeColorField
+                      v-model="nodeForm.tagColor"
+                      input-id="studio-node-tag-color"
+                      label="标签颜色"
+                      allow-clear
+                      hint="留空时使用默认玫瑰色。"
+                    />
+                  </div>
+
+                  <div>
+                    <SpaceImageField
+                      v-model="nodeForm.coverImage"
+                      input-id="studio-node-cover"
+                      label="封面图片"
+                      :disabled="nodeSaving"
+                      @uploading="onImageUploading"
+                    />
+                  </div>
+
+                  <div>
+                    <div class="flex items-center justify-between gap-2">
+                      <p class="text-sm font-semibold text-stone-800">故事图片</p>
+                      <button type="button" class="btn-ghost" @click="addImageRow">添加图片</button>
+                    </div>
+                    <p v-if="!nodeForm.images.length" class="mt-2 text-xs text-stone-500">还没有添加图片。</p>
+                    <div v-for="(image, index) in nodeForm.images" :key="index" class="mt-3 rounded-lg border border-stone-200 bg-stone-50/60 p-3">
+                      <div class="flex items-start gap-2">
+                        <div class="min-w-0 flex-1">
+                          <SpaceImageField
+                            v-model="image.url"
+                            :input-id="`studio-node-image-${index}`"
+                            label=""
+                            :disabled="nodeSaving"
+                            @uploading="onImageUploading"
+                          />
+                          <input
+                            v-model="image.altText"
+                            maxlength="100"
+                            class="field-input font-normal"
+                            placeholder="图片描述（选填）"
+                            :aria-label="`第 ${index + 1} 张故事图片的描述`"
+                          >
+                        </div>
+                        <button type="button" class="btn-ghost mt-1 shrink-0" :aria-label="`移除第 ${index + 1} 张图片`" @click="removeImageRow(index)">
+                          移除
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <p v-if="nodeError" class="mt-4 rounded-lg border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs leading-5 text-rose-700" role="alert">
+                {{ nodeError }}
+              </p>
             </div>
-          </div>
 
-          <p v-if="nodeError" class="rounded-xl border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs leading-5 text-rose-600" role="alert">
-            {{ nodeError }}
-          </p>
-
-          <div class="flex flex-wrap items-center gap-2">
-            <button type="submit" class="rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-5 py-2.5 text-xs font-semibold text-white shadow-sm shadow-rose-200 transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60" :disabled="nodeSaving || uploadingCount > 0 || !chapters.length">
-              {{ nodeSaving ? '保存中…' : (uploadingCount > 0 ? '图片上传中…' : (editingNodeId ? '保存故事' : '新增故事')) }}
-            </button>
-            <button type="button" class="rounded-full border border-rose-200 bg-white px-4 py-2.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50" :disabled="nodeSaving" @click="resetNodeForm">
-              清空表单
-            </button>
-            <span v-if="dirty" class="text-[11px] font-medium text-amber-600">有未保存的修改</span>
-          </div>
-        </form>
-      </section>
-    </template>
+            <div class="flex flex-wrap items-center gap-2 border-t border-stone-100 bg-stone-50/40 px-5 py-4">
+              <button type="submit" class="btn-primary" :disabled="nodeSaving || uploadingCount > 0 || !chapters.length">
+                {{ nodeSaving ? '保存中…' : (uploadingCount > 0 ? '图片上传中…' : (editingNodeId ? '保存故事' : '新增故事')) }}
+              </button>
+              <button type="button" class="btn-secondary" :disabled="nodeSaving" @click="resetNodeForm">
+                清空表单
+              </button>
+              <span v-if="dirty" class="text-[11px] font-medium text-amber-700" role="status">有未保存的修改</span>
+            </div>
+          </form>
+        </section>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -324,6 +435,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import 'element-plus/es/components/message/style/css'
 import 'element-plus/es/components/message-box/style/css'
+import { Delete, EditPen } from '@element-plus/icons-vue'
 import SpaceImageField from '@/components/frontend/space-studio/SpaceImageField.vue'
 import ThemeColorField from '@/components/frontend/space-studio/ThemeColorField.vue'
 import ThemeDatePicker from '@/components/frontend/space-studio/ThemeDatePicker.vue'
@@ -373,11 +485,13 @@ const visibilityOptions = computed(() => buildVisibilityOptions(props.canPublish
 const chapterForm = reactive({ id: null, name: '', colorCode: '#D94F70', sortOrder: 10, isVisible: true })
 const chapterSaving = ref(false)
 const chapterError = ref('')
+const chapterEditorOpen = ref(false)
 
 const editingNodeId = ref(null)
 const nodeSaving = ref(false)
 const uploadingCount = ref(0)
 const nodeError = ref('')
+const showExtras = ref(false)
 const nodeForm = reactive(emptyNodeForm())
 let baseline = ''
 
@@ -392,6 +506,16 @@ const chapterPreviewTagStyle = computed(() => ({
   color: accentTextColor(chapterPreviewAccent.value),
 }))
 
+const extrasSummary = computed(() => {
+  const parts = []
+  if (nodeForm.tagLabel.trim()) parts.push('已填标签')
+  if (nodeForm.coverImage.trim()) parts.push('有封面')
+  if (nodeForm.images.filter(image => image.url.trim()).length) {
+    parts.push(`${nodeForm.images.filter(image => image.url.trim()).length} 张图片`)
+  }
+  return parts.length ? parts.join(' · ') : '选填'
+})
+
 /** 故事标签的浅底 + 主题文字样式；亮色会自动压暗文字，保证可读。 */
 function tagStyle(color) {
   const accent = normalizeHexColor(color, DEFAULT_THEME_COLOR)
@@ -401,8 +525,6 @@ function tagStyle(color) {
     color: accentTextColor(accent),
   }
 }
-
-const nodeTagPreviewStyle = computed(() => tagStyle(nodeForm.tagColor))
 
 function chapterAccent(chapter) {
   return normalizeHexColor(chapter?.colorCode, DEFAULT_THEME_COLOR)
@@ -469,6 +591,16 @@ function resetChapterForm() {
   captureBaseline()
 }
 
+function openChapterCreate() {
+  resetChapterForm()
+  chapterEditorOpen.value = true
+}
+
+function closeChapterEditor() {
+  chapterEditorOpen.value = false
+  resetChapterForm()
+}
+
 function nextChapterSort() {
   return chapters.value.reduce((max, chapter) => Math.max(max, Number(chapter.sortOrder) || 0), 0) + 10
 }
@@ -480,6 +612,7 @@ function editChapter(chapter) {
   chapterForm.sortOrder = Number(chapter.sortOrder) || 0
   chapterForm.isVisible = chapter.isVisible !== false
   chapterError.value = ''
+  chapterEditorOpen.value = true
 }
 
 function resetNodeForm() {
@@ -489,11 +622,18 @@ function resetNodeForm() {
   nodeForm.chapterId = chapters.value[0]?.id ?? ''
   nodeForm.sortOrder = 0
   nodeError.value = ''
+  showExtras.value = false
   captureBaseline()
+}
+
+function startNewStory() {
+  resetNodeForm()
+  document.getElementById('story-node-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 function addImageRow() {
   nodeForm.images.push({ url: '', altText: '' })
+  showExtras.value = true
 }
 
 function removeImageRow(index) {
@@ -516,6 +656,7 @@ function editNode(node) {
   nodeForm.visibility = Number(node.visibility) || 0
   nodeForm.images = (node.images || []).map(image => ({ url: image.url || '', altText: image.altText || '' }))
   nodeError.value = ''
+  showExtras.value = Boolean(nodeForm.tagLabel || nodeForm.coverImage || nodeForm.images.length)
   document.getElementById('story-node-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
@@ -529,6 +670,7 @@ async function load() {
     ])
     chapters.value = Array.isArray(chapterData) ? chapterData : []
     nodes.value = Array.isArray(nodeData) ? nodeData : []
+    chapterEditorOpen.value = false
     resetChapterForm()
     resetNodeForm()
   } catch (error) {
@@ -665,7 +807,7 @@ async function removeNode(node) {
     return
   }
   try {
-    ensureSuccess(await deleteStoryManageNode(node.id), '删除故事失败')
+    ensureSuccess(await deleteStoryManageNode(node.id), '故事删除失败')
     ElMessage.success('故事已删除')
     await load()
   } catch (error) {

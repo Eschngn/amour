@@ -1,44 +1,39 @@
 <template>
   <CouplePageScaffold>
     <main class="relative z-10">
-      <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
-        <section class="relative overflow-hidden rounded-3xl border border-rose-100/80 bg-white/70 px-4 py-7 shadow-sm shadow-rose-100/50 backdrop-blur-sm sm:rounded-[2rem] sm:px-8 sm:py-10 lg:px-10">
-          <div class="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full bg-rose-100/80 blur-3xl" aria-hidden="true" />
-          <div class="pointer-events-none absolute -bottom-24 left-1/3 h-48 w-48 rounded-full bg-fuchsia-100/60 blur-3xl" aria-hidden="true" />
-          <div class="relative grid items-end gap-8 lg:grid-cols-[minmax(0,1fr)_24rem]">
-            <div>
-              <p class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.28em] text-rose-500">
-                <span class="h-1.5 w-1.5 rounded-full bg-rose-400" aria-hidden="true" />
-                Our Story
-              </p>
-              <h1 class="mt-4 font-display text-3xl font-extrabold tracking-tight text-rose-950 sm:text-5xl lg:text-6xl">
+      <div class="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+        <header class="border-b border-stone-200/80 pb-7 sm:pb-9">
+          <div class="grid items-end gap-7 lg:grid-cols-[minmax(0,1fr)_21rem] lg:gap-12">
+            <div class="min-w-0">
+              <p class="section-kicker">OUR STORY</p>
+              <h1 class="mt-3 font-display text-3xl font-bold leading-tight tracking-tight text-stone-900 sm:text-4xl lg:text-5xl">
                 从陌生人，<br class="hidden sm:block" />到彼此
               </h1>
-              <p class="mt-4 max-w-xl text-sm leading-7 text-rose-800/65 sm:text-base">
+              <p class="mt-4 max-w-xl text-sm leading-7 text-stone-600">
                 记录每一个让我们走得更近的瞬间。那些普通又珍贵的日子，拼成了只属于我们的故事。
               </p>
-              <p class="mt-5 inline-flex max-w-full items-center gap-2 text-xs text-rose-500/70">
-                <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-400" aria-hidden="true">♡</span>
+              <p class="mt-4 inline-flex max-w-full items-center gap-2 text-xs text-stone-500">
+                <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-rose-400" aria-hidden="true" />
                 从 {{ startYear }} 年开始，故事一直在继续
               </p>
             </div>
 
-            <div class="grid grid-cols-3 gap-2 sm:gap-3">
-              <div class="min-w-0 rounded-2xl border border-rose-100 bg-white/80 px-2 py-4 text-center shadow-sm sm:px-4 sm:py-5">
-                <p class="font-display text-2xl font-bold text-rose-600 sm:text-3xl">{{ stats.totalNodes }}</p>
-                <p class="mt-1 text-[11px] text-rose-800/45">故事节点</p>
+            <dl class="grid grid-cols-3 divide-x divide-stone-200 overflow-hidden rounded-xl border border-stone-200 bg-white">
+              <div class="flex min-w-0 flex-col-reverse px-2 py-4 text-center sm:px-4">
+                <dt class="mt-1 text-[11px] text-stone-500">故事节点</dt>
+                <dd class="font-display text-2xl font-bold text-stone-900 sm:text-3xl">{{ stats.totalNodes }}</dd>
               </div>
-              <div class="min-w-0 rounded-2xl border border-rose-100 bg-white/80 px-2 py-4 text-center shadow-sm sm:px-4 sm:py-5">
-                <p class="font-display text-2xl font-bold text-rose-600 sm:text-3xl">{{ stats.totalSeasons }}</p>
-                <p class="mt-1 text-[11px] text-rose-800/45">一起走过</p>
+              <div class="flex min-w-0 flex-col-reverse px-2 py-4 text-center sm:px-4">
+                <dt class="mt-1 text-[11px] text-stone-500">一起走过</dt>
+                <dd class="font-display text-2xl font-bold text-stone-900 sm:text-3xl">{{ stats.totalSeasons }}</dd>
               </div>
-              <div class="min-w-0 rounded-2xl border border-rose-100 bg-white/80 px-2 py-4 text-center shadow-sm sm:px-4 sm:py-5">
-                <p class="font-display text-2xl font-bold text-rose-600 sm:text-3xl">{{ shortStartYear }}</p>
-                <p class="mt-1 text-[11px] text-rose-800/45">故事开始</p>
+              <div class="flex min-w-0 flex-col-reverse px-2 py-4 text-center sm:px-4">
+                <dt class="mt-1 text-[11px] text-stone-500">故事开始</dt>
+                <dd class="font-display text-2xl font-bold text-stone-900 sm:text-3xl">{{ shortStartYear }}</dd>
               </div>
-            </div>
+            </dl>
           </div>
-        </section>
+        </header>
 
         <!-- 页面加载状态 -->
         <section v-if="loading" class="mt-10 grid gap-8 lg:grid-cols-[17rem_minmax(0,1fr)]" aria-label="正在加载故事" aria-busy="true">

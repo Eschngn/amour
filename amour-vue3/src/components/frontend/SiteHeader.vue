@@ -1,29 +1,33 @@
 <template>
   <header
-    class="sticky top-0 z-40 border-b border-rose-100/90 bg-white/80 shadow-sm shadow-rose-100/50 backdrop-blur-xl"
+    class="sticky top-0 z-40 border-b border-stone-200/80 bg-[#fcfaf7]/90 backdrop-blur-xl"
   >
     <div
-      class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8"
+      class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8"
     >
       <RouterLink
         to="/"
-        class="group flex items-center gap-2 font-display text-lg font-semibold tracking-tight text-rose-950 sm:text-xl"
+        class="group flex shrink-0 items-center gap-2.5"
       >
         <span
-          class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-rose-400 to-pink-500 text-base text-white shadow-md shadow-rose-300/60 transition group-hover:scale-105"
+          class="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-600 text-base text-white transition group-hover:bg-rose-700"
           aria-hidden="true"
         >♥</span>
-        <span class="text-rose-500">恋语间</span>
+        <span class="flex flex-col leading-none">
+          <span class="font-display text-base font-bold tracking-wide text-stone-900 sm:text-lg">恋语间</span>
+          <span class="mt-1 hidden text-[9px] font-semibold uppercase tracking-[0.2em] text-stone-400 sm:block">Amour</span>
+        </span>
       </RouterLink>
 
       <nav
-        class="hidden items-center gap-0.5 text-sm font-medium text-rose-800/70 md:flex lg:gap-1"
+        class="hidden min-w-0 items-center gap-0.5 lg:flex"
         aria-label="主导航"
       >
         <RouterLink
           to="/plaza"
           class="nav-link"
           :class="{ 'nav-link-active': isPlazaSection }"
+          :aria-current="isPlazaSection ? 'page' : undefined"
         >
           恋爱广场
         </RouterLink>
@@ -32,6 +36,7 @@
           to="/"
           class="nav-link"
           :class="{ 'nav-link-active': isHomeSection }"
+          :aria-current="isHomeSection ? 'page' : undefined"
         >
           我的情侣空间
         </RouterLink>
@@ -40,6 +45,7 @@
           to="/story"
           class="nav-link"
           :class="{ 'nav-link-active': isSection('/story') }"
+          :aria-current="isSection('/story') ? 'page' : undefined"
         >
           我们的故事
         </RouterLink>
@@ -48,6 +54,7 @@
           to="/message"
           class="nav-link"
           :class="{ 'nav-link-active': isSection('/message') }"
+          :aria-current="isSection('/message') ? 'page' : undefined"
         >
           留言板
         </RouterLink>
@@ -56,6 +63,7 @@
           to="/photo"
           class="nav-link"
           :class="{ 'nav-link-active': isSection('/photo') }"
+          :aria-current="isSection('/photo') ? 'page' : undefined"
         >
           相册
         </RouterLink>
@@ -64,32 +72,42 @@
           to="/anniversary"
           class="nav-link"
           :class="{ 'nav-link-active': isSection('/anniversary') }"
+          :aria-current="isSection('/anniversary') ? 'page' : undefined"
         >
           纪念日
         </RouterLink>
+
+        <span
+          v-if="canOpenStudio || showSpaceEntry"
+          class="mx-2 h-5 w-px shrink-0 bg-stone-200"
+          aria-hidden="true"
+        />
+
         <RouterLink
           v-if="canOpenStudio"
           to="/space/studio"
-          class="nav-link"
-          :class="{ 'nav-link-active': isSection('/space/studio') }"
+          class="nav-link-utility"
+          :class="{ 'nav-link-utility-active': isSection('/space/studio') }"
+          :aria-current="isSection('/space/studio') ? 'page' : undefined"
         >
           空间编辑
         </RouterLink>
         <RouterLink
           v-if="showSpaceEntry"
           to="/space/setup"
-          class="nav-link"
-          :class="{ 'nav-link-active': isSection('/space/setup') }"
+          class="nav-link-utility"
+          :class="{ 'nav-link-utility-active': isSection('/space/setup') }"
+          :aria-current="isSection('/space/setup') ? 'page' : undefined"
         >
           {{ spaceEntryLabel }}
         </RouterLink>
       </nav>
 
-      <div class="flex shrink-0 items-center gap-2 sm:gap-3">
+      <div class="flex shrink-0 items-center gap-2">
         <RouterLink
           v-if="!frontendLoggedIn"
           to="/login"
-          class="rounded-full border border-rose-200 bg-white/90 px-3 py-2 text-sm font-medium text-rose-700/90 shadow-sm transition hover:border-rose-300 hover:bg-rose-50/90 hover:text-rose-600 sm:px-4"
+          class="rounded-lg border border-stone-200 bg-white px-3.5 py-2 text-sm font-semibold text-stone-700 transition hover:border-rose-300 hover:text-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 sm:px-4"
         >
           登录
         </RouterLink>
@@ -100,21 +118,26 @@
           <button
             ref="triggerRef"
             type="button"
-            class="flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50/80 py-1.5 pl-1.5 pr-3 text-sm font-medium text-rose-700 transition hover:border-rose-300 hover:bg-rose-100 sm:pr-4"
+            class="flex items-center gap-2 rounded-lg px-1.5 py-1.5 text-sm font-medium text-stone-700 transition hover:bg-stone-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2"
+            aria-haspopup="menu"
+            :aria-expanded="dropdownOpen ? 'true' : 'false'"
+            :aria-label="`打开 ${frontendDisplayName || frontendUsername || '用户'} 的账号菜单`"
             @click="toggleDropdown"
+            @keydown.esc="dropdownOpen = false"
           >
-            <span class="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-rose-400 to-pink-500 text-[10px] font-bold text-white">
+            <span class="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-rose-600 text-[10px] font-bold text-white">
               {{ initials(frontendDisplayName || frontendUsername) }}
               <img v-if="frontendAvatar" :src="frontendAvatar" alt="" class="absolute inset-0 h-full w-full object-cover" @load="$event.currentTarget.style.display = ''" @error="$event.currentTarget.style.display = 'none'">
             </span>
-            <span class="max-w-24 truncate">{{ frontendDisplayName || frontendUsername }}</span>
+            <span class="hidden max-w-24 truncate sm:block">{{ frontendDisplayName || frontendUsername }}</span>
             <svg
-              class="h-3.5 w-3.5 text-rose-400 transition"
+              class="h-3.5 w-3.5 text-stone-400 transition"
               :class="{ 'rotate-180': dropdownOpen }"
               fill="none"
               stroke="currentColor"
               stroke-width="2"
               viewBox="0 0 24 24"
+              aria-hidden="true"
             >
               <path stroke-linecap="round" stroke-linejoin="round" d="m19 9-7 7-7-7" />
             </svg>
@@ -124,13 +147,14 @@
     </div>
 
     <nav
-      class="mobile-nav flex items-center gap-1.5 overflow-x-auto border-t border-rose-100/70 px-4 pb-2.5 pt-2 text-xs font-semibold text-rose-700/65 md:hidden"
+      class="mobile-nav flex items-center gap-1 overflow-x-auto border-t border-stone-200/70 px-4 pb-2.5 pt-2 text-xs font-semibold text-stone-600 lg:hidden"
       aria-label="移动端主导航"
     >
       <RouterLink
         to="/plaza"
         class="mobile-nav-link"
         :class="{ 'mobile-nav-link-active': isPlazaSection }"
+        :aria-current="isPlazaSection ? 'page' : undefined"
       >
         恋爱广场
       </RouterLink>
@@ -139,6 +163,7 @@
         to="/"
         class="mobile-nav-link"
         :class="{ 'mobile-nav-link-active': isHomeSection }"
+        :aria-current="isHomeSection ? 'page' : undefined"
       >
         我的情侣空间
       </RouterLink>
@@ -147,6 +172,7 @@
         to="/story"
         class="mobile-nav-link"
         :class="{ 'mobile-nav-link-active': isSection('/story') }"
+        :aria-current="isSection('/story') ? 'page' : undefined"
       >
         我们的故事
       </RouterLink>
@@ -155,6 +181,7 @@
         to="/photo"
         class="mobile-nav-link"
         :class="{ 'mobile-nav-link-active': isSection('/photo') }"
+        :aria-current="isSection('/photo') ? 'page' : undefined"
       >
         相册
       </RouterLink>
@@ -163,6 +190,7 @@
         to="/anniversary"
         class="mobile-nav-link"
         :class="{ 'mobile-nav-link-active': isSection('/anniversary') }"
+        :aria-current="isSection('/anniversary') ? 'page' : undefined"
       >
         纪念日
       </RouterLink>
@@ -171,6 +199,7 @@
         to="/message"
         class="mobile-nav-link"
         :class="{ 'mobile-nav-link-active': isSection('/message') }"
+        :aria-current="isSection('/message') ? 'page' : undefined"
       >
         留言板
       </RouterLink>
@@ -179,6 +208,7 @@
         to="/space/studio"
         class="mobile-nav-link"
         :class="{ 'mobile-nav-link-active': isSection('/space/studio') }"
+        :aria-current="isSection('/space/studio') ? 'page' : undefined"
       >
         空间编辑
       </RouterLink>
@@ -187,6 +217,7 @@
         to="/space/setup"
         class="mobile-nav-link"
         :class="{ 'mobile-nav-link-active': isSection('/space/setup') }"
+        :aria-current="isSection('/space/setup') ? 'page' : undefined"
       >
         {{ spaceEntryLabel }}
       </RouterLink>
@@ -200,11 +231,16 @@
         :style="dropdownStyle"
         class="fixed z-[9999] pt-2"
       >
-        <div class="min-w-[120px] rounded-xl border border-rose-100 bg-white p-1.5 shadow-lg shadow-rose-100/40">
+        <div
+          class="min-w-[140px] rounded-xl border border-stone-200 bg-white p-1.5 shadow-sm"
+          role="menu"
+          @keydown.esc="dropdownOpen = false"
+        >
           <RouterLink
             v-if="isSpaceReady"
             to="/"
-            class="block w-full rounded-lg px-3 py-2 text-left text-sm text-rose-700 transition hover:bg-rose-50"
+            role="menuitem"
+            class="dropdown-link"
             @click="dropdownOpen = false"
           >
             我的情侣空间
@@ -212,7 +248,8 @@
           <RouterLink
             v-if="canOpenStudio"
             to="/space/studio"
-            class="block w-full rounded-lg px-3 py-2 text-left text-sm text-rose-700 transition hover:bg-rose-50"
+            role="menuitem"
+            class="dropdown-link"
             @click="dropdownOpen = false"
           >
             空间编辑
@@ -220,21 +257,25 @@
           <RouterLink
             v-if="showSpaceEntry"
             to="/space/setup"
-            class="block w-full rounded-lg px-3 py-2 text-left text-sm text-rose-700 transition hover:bg-rose-50"
+            role="menuitem"
+            class="dropdown-link"
             @click="dropdownOpen = false"
           >
             {{ spaceEntryLabel }}
           </RouterLink>
           <RouterLink
             to="/profile"
-            class="block w-full rounded-lg px-3 py-2 text-left text-sm text-rose-700 transition hover:bg-rose-50"
+            role="menuitem"
+            class="dropdown-link"
             @click="dropdownOpen = false"
           >
             个人设置
           </RouterLink>
+          <div class="my-1 h-px bg-stone-100" aria-hidden="true" />
           <button
             type="button"
-            class="w-full rounded-lg px-3 py-2 text-left text-sm text-rose-700 transition hover:bg-rose-50 cursor-pointer"
+            role="menuitem"
+            class="dropdown-link w-full cursor-pointer text-left"
             @click="onLogout"
           >
             退出登录
@@ -371,34 +412,34 @@ async function onLogout() {
 </script>
 
 <style scoped>
-/* 桌面端导航项：默认图标式文字，选中时加粗、加深并出现渐变下划线 */
+/* 桌面端主导航：中性文字 + 当前栏目短下划线，不使用整块胶囊背景 */
 .nav-link {
   position: relative;
   display: inline-flex;
   align-items: center;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.75rem;
-  color: rgb(136 19 55 / 0.62);
-  transition: color 0.2s ease, background-color 0.2s ease;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.5rem;
+  color: #57534e;
+  font-weight: 500;
+  transition: color 0.18s ease;
 }
 
 .nav-link::after {
   content: '';
   position: absolute;
-  left: 0.75rem;
-  right: 0.75rem;
-  bottom: 0.15rem;
+  left: 0.7rem;
+  right: 0.7rem;
+  bottom: 0.1rem;
   height: 2px;
   border-radius: 9999px;
-  background: linear-gradient(90deg, #fb7185 0%, #f43f5e 50%, #db2777 100%);
+  background: #e11d48;
   transform: scaleX(0);
   transform-origin: center;
-  transition: transform 0.24s ease;
+  transition: transform 0.2s ease;
 }
 
 .nav-link:hover {
-  color: rgb(225 29 72);
-  background-color: rgb(255 241 242 / 0.75);
+  color: #be123c;
 }
 
 .nav-link:focus-visible {
@@ -407,27 +448,53 @@ async function onLogout() {
 }
 
 .nav-link-active {
+  color: #be123c;
   font-weight: 700;
-  color: rgb(190 18 60);
-  background-color: rgb(255 241 242 / 0.9);
 }
 
 .nav-link-active::after {
   transform: scaleX(1);
 }
 
-/* 移动端导航项：用实心胶囊 + 下划线双重强调 */
+/* 空间管理入口：与内容导航做轻度区分，但不做成独立卡片 */
+.nav-link-utility {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 0.65rem;
+  border-radius: 0.5rem;
+  color: #78716c;
+  font-size: 0.72rem;
+  font-weight: 600;
+  transition: color 0.18s ease, background-color 0.18s ease;
+}
+
+.nav-link-utility:hover {
+  color: #be123c;
+  background-color: #f5f5f4;
+}
+
+.nav-link-utility:focus-visible {
+  outline: 2px solid #fb7185;
+  outline-offset: 2px;
+}
+
+.nav-link-utility-active {
+  color: #be123c;
+  background-color: #fff1f2;
+}
+
+/* 移动端导航：横向滚动，当前项用浅底与文字加深 */
 .mobile-nav-link {
-  position: relative;
   flex-shrink: 0;
-  padding: 0.4rem 0.75rem 0.5rem;
-  border-radius: 9999px;
-  transition: color 0.2s ease, background-color 0.2s ease;
+  padding: 0.4rem 0.7rem;
+  border-radius: 0.5rem;
+  color: #57534e;
+  transition: color 0.18s ease, background-color 0.18s ease;
 }
 
 .mobile-nav-link:hover {
-  color: rgb(225 29 72);
-  background-color: rgb(255 241 242 / 0.8);
+  color: #be123c;
+  background-color: #f5f5f4;
 }
 
 .mobile-nav-link:focus-visible {
@@ -441,18 +508,6 @@ async function onLogout() {
   font-weight: 700;
 }
 
-.mobile-nav-link-active::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: 0.1rem;
-  height: 2px;
-  width: 1.1rem;
-  transform: translateX(-50%);
-  border-radius: 9999px;
-  background: linear-gradient(90deg, #fb7185, #db2777);
-}
-
 .mobile-nav {
   scrollbar-width: none;
 }
@@ -461,9 +516,28 @@ async function onLogout() {
   display: none;
 }
 
+.dropdown-link {
+  display: block;
+  width: 100%;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  color: #44403c;
+  text-align: left;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.dropdown-link:hover,
+.dropdown-link:focus-visible {
+  background-color: #fff1f2;
+  color: #be123c;
+  outline: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .nav-link::after,
   .nav-link,
+  .nav-link-utility,
   .mobile-nav-link {
     transition: none;
   }

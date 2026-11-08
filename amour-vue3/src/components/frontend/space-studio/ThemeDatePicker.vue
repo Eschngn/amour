@@ -104,22 +104,22 @@ function onUpdate(value) {
 .theme-date-picker :deep(.dp--menu) {
   --dp-font-family: 'Nunito', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   --dp-font-size: 0.875rem;
-  --dp-border-radius: 0.75rem;
-  --dp-cell-border-radius: 0.6rem;
+  --dp-border-radius: 0.5rem;
+  --dp-cell-border-radius: 0.45rem;
   --dp-background-color: #ffffff;
-  --dp-text-color: #4c0519;
-  --dp-primary-color: #f43f5e;
+  --dp-text-color: #292524;
+  --dp-primary-color: #e11d48;
   --dp-primary-disabled-color: #fda4af;
   --dp-primary-text-color: #ffffff;
-  --dp-secondary-color: #d8c4c9;
-  --dp-border-color: #fecdd3;
-  --dp-border-color-hover: #fda4af;
+  --dp-secondary-color: #d6d3d1;
+  --dp-border-color: #e7e5e4;
+  --dp-border-color-hover: #d6d3d1;
   --dp-border-color-focus: #fb7185;
-  --dp-menu-border-color: #ffe4e6;
-  --dp-hover-color: #fff1f2;
+  --dp-menu-border-color: #e7e5e4;
+  --dp-hover-color: #f5f5f4;
   --dp-hover-text-color: #be123c;
   --dp-hover-icon-color: #e11d48;
-  --dp-icon-color: #fb7185;
+  --dp-icon-color: #a8a29e;
   --dp-highlight-color: rgb(244 63 94 / 0.12);
   --dp-menu-min-width: 21rem;
   --dp-cell-size: 2.2rem;
@@ -131,28 +131,31 @@ function onUpdate(value) {
 
 .theme-date-picker :deep(.dp--main) {
   width: 100%;
+  cursor: pointer;
 }
 
 .theme-date-picker :deep(.dp--input) {
   width: 100%;
-  border: 1px solid #fecdd3;
-  box-shadow: 0 1px 2px rgb(76 5 25 / 0.03);
-  color: #4c0519;
+  min-height: 2.75rem;
+  cursor: pointer;
+  border: 1px solid #e7e5e4;
+  box-shadow: none;
+  color: #292524;
   transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
 .theme-date-picker :deep(.dp--input::placeholder) {
-  color: #fda4af;
+  color: #a8a29e;
   opacity: 1;
 }
 
 .theme-date-picker :deep(.dp--input:hover:not(.dp--input-focus)) {
-  border-color: #fda4af;
+  border-color: #d6d3d1;
 }
 
 .theme-date-picker :deep(.dp--input-focus) {
   border-color: #fb7185;
-  box-shadow: 0 0 0 4px #ffe4e6;
+  box-shadow: 0 0 0 2px #ffe4e6;
 }
 
 .theme-date-picker :deep(.dp--input-icon) {
@@ -160,7 +163,8 @@ function onUpdate(value) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #fb7185;
+  color: #a8a29e;
+  cursor: pointer;
   transition: color 160ms ease, transform 160ms ease;
 }
 
@@ -187,14 +191,14 @@ function onUpdate(value) {
 
 .theme-date-picker :deep(.dp--menu) {
   z-index: 80;
-  border-radius: 1rem;
-  box-shadow: 0 18px 45px rgb(76 5 25 / 0.13);
+  border-radius: 0.75rem;
+  box-shadow: 0 16px 40px rgb(41 37 36 / 0.12);
   font-family: 'Nunito', 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
 .theme-date-picker :deep(.dp--calendar-header-cell) {
-  border-bottom-color: #ffe4e6;
-  color: #9f1239;
+  border-bottom-color: #f5f5f4;
+  color: #57534e;
   font-weight: 600;
 }
 
@@ -208,8 +212,8 @@ function onUpdate(value) {
 }
 
 .theme-date-picker :deep(.dp--active) {
-  background: linear-gradient(135deg, #fb7185 0%, #f43f5e 100%);
-  box-shadow: 0 4px 12px rgb(244 63 94 / 0.28);
+  background: #e11d48;
+  box-shadow: none;
 }
 
 .theme-date-picker :deep(.dp--inner-nav:hover) {

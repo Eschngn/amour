@@ -1,374 +1,388 @@
 <template>
-  <div class="space-y-5">
-          <!-- 空间概览：状态、成员、首次公开时间 -->
+  <div class="space-y-6">
+          <!-- 空间概览：状态、成员、公开信息以一条事实带呈现 -->
           <section
-            class="rounded-[1.75rem] border p-6 shadow-sm sm:p-7"
-            :class="statusCard.panelClass"
+            id="space-overview"
+            class="panel scroll-mt-24"
             aria-labelledby="space-settings-summary"
           >
-            <div class="flex flex-wrap items-start justify-between gap-4">
-              <div class="min-w-0">
-                <p class="text-[10px] font-bold uppercase tracking-[0.22em]" :class="statusCard.eyebrowClass">Current space</p>
-                <h2 id="space-settings-summary" class="mt-1 break-words font-display text-2xl font-bold text-rose-950">
-                  {{ spaceStatus.spaceName || '我们的故事' }}
-                </h2>
-                <p class="mt-2 text-sm leading-6 text-rose-800/60">{{ statusCard.description }}</p>
+            <div class="px-5 py-5 sm:px-6">
+              <div class="flex flex-wrap items-start justify-between gap-4">
+                <div class="min-w-0">
+                  <p class="section-kicker">当前空间</p>
+                  <h2 id="space-settings-summary" class="mt-1 break-words font-display text-xl font-bold text-stone-900 sm:text-2xl">
+                    {{ spaceStatus.spaceName || '我们的故事' }}
+                  </h2>
+                  <p class="mt-1 max-w-2xl text-xs leading-6 text-stone-500">{{ statusCard.description }}</p>
+                </div>
+                <div class="flex shrink-0 flex-wrap items-center gap-2">
+                  <span
+                    class="status-pill"
+                    :class="statusCard.badgeClass"
+                  >
+                    <span class="h-1.5 w-1.5 rounded-full" :class="statusCard.dotClass" aria-hidden="true" />
+                    {{ statusCard.label }}
+                  </span>
+                  <button
+                    type="button"
+                    class="btn-secondary !py-1.5"
+                    :disabled="spaceLoading"
+                    @click="refreshStatus"
+                  >
+                    {{ spaceLoading ? '刷新中…' : '刷新状态' }}
+                  </button>
+                </div>
               </div>
-              <div class="flex shrink-0 flex-wrap items-center gap-2">
-                <span
-                  class="inline-flex items-center gap-1.5 rounded-full border border-white/80 bg-white/80 px-3 py-1.5 text-xs font-semibold"
-                  :class="statusCard.badgeClass"
-                >
-                  <span class="h-1.5 w-1.5 rounded-full" :class="statusCard.dotClass" aria-hidden="true" />
-                  {{ statusCard.label }}
-                </span>
-                <button
-                  type="button"
-                  class="rounded-full border border-white/80 bg-white/80 px-3 py-1.5 text-xs font-semibold transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
-                  :class="statusCard.badgeClass"
-                  :disabled="spaceLoading"
-                  @click="refreshStatus"
-                >
-                  {{ spaceLoading ? '刷新中…' : '刷新状态' }}
-                </button>
-              </div>
-            </div>
 
-            <dl class="mt-5 grid gap-3 sm:grid-cols-3">
-              <div class="rounded-2xl bg-white/70 px-4 py-3">
-                <dt class="text-[11px] font-semibold text-rose-700/50">有效成员</dt>
-                <dd class="mt-1 text-sm font-semibold text-rose-950">{{ memberCount }} / {{ spaceStatus.memberLimit || 2 }}</dd>
-              </div>
-              <div class="rounded-2xl bg-white/70 px-4 py-3">
-                <dt class="text-[11px] font-semibold text-rose-700/50">恋爱广场</dt>
-                <dd class="mt-1 text-sm font-semibold" :class="isPublic ? 'text-emerald-600' : 'text-rose-800/70'">
-                  {{ isPublic ? '公开中' : '私密' }}
-                </dd>
-              </div>
-              <div class="rounded-2xl bg-white/70 px-4 py-3">
-                <dt class="text-[11px] font-semibold text-rose-700/50">首次公开时间</dt>
-                <dd class="mt-1 text-sm font-semibold text-rose-950">{{ publicAtText }}</dd>
-              </div>
-            </dl>
+              <dl class="mt-5 grid gap-px overflow-hidden rounded-lg border border-stone-200 bg-stone-200 sm:grid-cols-2 lg:grid-cols-4">
+                <div class="bg-white px-4 py-3">
+                  <dt class="text-[11px] font-semibold text-stone-400">成员</dt>
+                  <dd class="mt-2 flex items-center gap-2">
+                    <span v-if="members.length" class="flex -space-x-1.5" aria-hidden="true">
+                      <span
+                        v-for="member in members.slice(0, 2)"
+                        :key="member.amourId || member.displayName"
+                        class="relative flex h-6 w-6 items-center justify-center overflow-hidden rounded-full border border-white bg-rose-100 text-[9px] font-bold text-rose-700"
+                      >
+                        {{ memberInitial(member) }}
+                        <img
+                          v-if="member.avatar"
+                          :src="member.avatar"
+                          alt=""
+                          class="absolute inset-0 h-full w-full object-cover"
+                          @error="$event.currentTarget.style.display = 'none'"
+                        >
+                      </span>
+                    </span>
+                    <span class="text-sm font-semibold text-stone-900">{{ memberCount }} / {{ spaceStatus.memberLimit || 2 }}</span>
+                  </dd>
+                </div>
+                <div class="bg-white px-4 py-3">
+                  <dt class="text-[11px] font-semibold text-stone-400">恋爱广场</dt>
+                  <dd class="mt-2 text-sm font-semibold" :class="isPublic ? 'text-emerald-700' : 'text-stone-700'">
+                    {{ isPublic ? '公开中' : '私密' }}
+                  </dd>
+                </div>
+                <div class="bg-white px-4 py-3">
+                  <dt class="text-[11px] font-semibold text-stone-400">首次公开时间</dt>
+                  <dd class="mt-2 text-sm font-semibold text-stone-900">{{ publicAtText }}</dd>
+                </div>
+                <div class="bg-white px-4 py-3">
+                  <dt class="text-[11px] font-semibold text-stone-400">
+                    {{ isSpaceWaiting ? '待接受邀请' : '创建时间' }}
+                  </dt>
+                  <dd class="mt-2 text-sm font-semibold text-stone-900">
+                    {{ isSpaceWaiting ? (Number(spaceStatus.pendingInvitationCount) || 0) + ' 条' : createdAtText }}
+                  </dd>
+                </div>
+              </dl>
 
-            <p
-              v-if="spaceError"
-              class="mt-4 rounded-xl border border-amber-200/80 bg-amber-50/85 px-3.5 py-2.5 text-xs leading-5 text-amber-800"
-              role="status"
-            >
-              空间状态刷新失败：{{ spaceError }}。下面展示的是上一次确认过的状态，操作结果仍以服务器为准。
-            </p>
-          </section>
-
-          <!-- 空间内容编辑入口：等待绑定与正常状态都可用 -->
-          <section
-            v-if="canOpenStudio"
-            class="rounded-[1.75rem] border border-rose-200/80 bg-gradient-to-br from-rose-50 to-pink-50 p-5 shadow-sm sm:p-6"
-            aria-labelledby="space-studio-heading"
-          >
-            <div class="flex flex-wrap items-center justify-between gap-4">
-              <div class="min-w-0">
-                <p class="text-[10px] font-bold uppercase tracking-[0.22em] text-rose-400">Space Studio</p>
-                <h2 id="space-studio-heading" class="mt-1 font-display text-xl font-bold text-rose-950">布置空间内容</h2>
-                <p class="mt-2 text-xs leading-6 text-rose-700/55">
-                  编辑空间首页、故事、留言、相册和纪念日。所有内容都保存在当前空间，未主动公开时不会出现在恋爱广场。
-                </p>
-              </div>
-              <RouterLink
-                to="/space/studio"
-                class="shrink-0 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-5 py-2.5 text-xs font-semibold text-white shadow-sm shadow-rose-200 transition hover:brightness-105"
+              <p
+                v-if="spaceError"
+                class="mt-4 rounded-lg border border-amber-200/80 bg-amber-50/85 px-3.5 py-2.5 text-xs leading-5 text-amber-800"
+                role="status"
               >
-                进入空间编辑
-              </RouterLink>
+                空间状态刷新失败：{{ spaceError }}。下面展示的是上一次确认过的状态，操作结果仍以服务器为准。
+              </p>
             </div>
           </section>
+
+          <div
+            class="grid gap-6 lg:items-start"
+            :class="hasLifecycle
+              ? 'lg:grid-cols-[minmax(0,1fr)_20rem] xl:grid-cols-[minmax(0,1fr)_22rem]'
+              : 'lg:grid-cols-1'"
+          >
+            <div class="min-w-0 space-y-6">
 
           <!-- 父页面按需插入内容：等待绑定阶段会在这里放置邀请区 -->
           <slot name="after-overview" />
 
           <!-- 编辑空间信息（仅等待另一半加入时可用） -->
-          <section
-            v-if="canEditSpaceInfo"
-            id="space-edit"
-            class="rounded-[1.75rem] border border-rose-100 bg-white/90 p-6 shadow-lg shadow-rose-100/40 sm:p-7"
-            aria-labelledby="space-edit-heading"
-          >
-            <p class="text-[10px] font-bold uppercase tracking-[0.22em] text-rose-400">Edit space</p>
-            <h2 id="space-edit-heading" class="mt-1 font-display text-xl font-bold text-rose-950">编辑空间信息</h2>
-            <p class="mt-2 text-xs leading-6 text-rose-700/55">
-              另一半加入前，你可以修改空间名称、简介和恋爱开始时间；对方加入后这些信息将固定。
-            </p>
-
-            <form class="mt-4 space-y-3" @submit.prevent="saveSpaceInfo">
-              <div>
-                <label for="space-edit-name" class="block text-sm font-semibold text-rose-900">空间名称</label>
-                <input
-                  id="space-edit-name"
-                  v-model="editForm.spaceName"
-                  maxlength="30"
-                  class="mt-2 w-full rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm text-rose-950 outline-none transition placeholder:text-rose-300 focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
-                  placeholder="例如：我们的故事"
-                  autocomplete="off"
-                  @input="editSpaceError = ''"
-                >
-              </div>
-              <div>
-                <label for="space-edit-description" class="block text-sm font-semibold text-rose-900">空间简介</label>
-                <textarea
-                  id="space-edit-description"
-                  v-model="editForm.description"
-                  rows="3"
-                  maxlength="500"
-                  class="mt-2 w-full resize-y rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm leading-6 text-rose-950 outline-none transition placeholder:text-rose-300 focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
-                  placeholder="写一句只属于你们的介绍（选填）"
-                  @input="editSpaceError = ''"
-                />
-              </div>
-              <div>
-                <label for="space-edit-love-start" class="block text-sm font-semibold text-rose-900">恋爱开始时间</label>
-                <input
-                  id="space-edit-love-start"
-                  v-model="editForm.loveStartTime"
-                  type="datetime-local"
-                  step="60"
-                  class="mt-2 w-full rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm text-rose-950 outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
-                  @input="editSpaceError = ''"
-                >
-                <p class="mt-1.5 text-[11px] text-rose-700/45">选填；修改后会更新首页展示的相伴时间。</p>
-              </div>
-
-              <p v-if="editSpaceError" class="rounded-xl border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs leading-5 text-rose-600" role="alert">
-                {{ editSpaceError }}
-              </p>
-
-              <div class="flex flex-wrap items-center gap-2">
-                <button
-                  type="submit"
-                  class="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-5 py-2.5 text-xs font-semibold text-white shadow-sm shadow-rose-200 transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
-                  :disabled="busyAction !== ''"
-                  :aria-busy="isBusy('space-edit') ? 'true' : 'false'"
-                >
-                  {{ isBusy('space-edit') ? '保存中…' : '保存修改' }}
-                </button>
-                <button
-                  type="button"
-                  class="rounded-full border border-rose-200 bg-white px-4 py-2.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
-                  :disabled="busyAction !== ''"
-                  @click="resetEditForm"
-                >
-                  重置
-                </button>
-              </div>
-            </form>
-          </section>
-
-          <!-- 1. 恋爱广场公开设置 -->
-          <section
-            class="rounded-[1.75rem] border border-rose-100 bg-white/90 p-6 shadow-lg shadow-rose-100/40 sm:p-7"
-            aria-labelledby="space-visibility-heading"
-          >
-            <div class="flex flex-wrap items-start justify-between gap-4">
+          <!-- 空间设置：公开状态与基础信息收进同一组设置行 -->
+          <section class="panel" aria-labelledby="space-settings-heading">
+            <header class="panel-header">
               <div class="min-w-0">
-                <p class="text-[10px] font-bold uppercase tracking-[0.22em] text-rose-400">Plaza visibility</p>
-                <h2 id="space-visibility-heading" class="mt-1 font-display text-xl font-bold text-rose-950">恋爱广场公开设置</h2>
-                <p id="space-visibility-desc" class="mt-2 text-xs leading-6 text-rose-700/55">
-                  公开后整个空间会出现在恋爱广场；隐藏只影响空间入口，不会改动故事、照片、纪念日各自的公开设置。
-                </p>
+                <h2 id="space-settings-heading" class="section-title">公开与空间信息</h2>
+              </div>
+            </header>
+
+            <div class="px-5 sm:px-6">
+              <div v-if="canOpenStudio" class="settings-row border-b border-stone-100">
+                <div class="min-w-0">
+                  <h3 class="text-sm font-semibold text-stone-900">布置空间内容</h3>
+                  <p class="mt-1 text-xs leading-6 text-stone-500">
+                    编辑首页、故事、留言、相册和纪念日；未公开的内容不会出现在恋爱广场。
+                  </p>
+                </div>
+                <RouterLink to="/space/studio" class="btn-primary shrink-0">
+                  进入空间编辑
+                </RouterLink>
               </div>
 
-              <div class="flex shrink-0 items-center gap-3">
-                <span class="text-xs font-semibold" :class="isPublic ? 'text-emerald-600' : 'text-rose-700/60'">
-                  {{ isPublic ? '已公开' : '私密' }}
-                </span>
-                <button
-                  type="button"
-                  role="switch"
-                  :aria-checked="isPublic ? 'true' : 'false'"
-                  aria-labelledby="space-visibility-heading"
-                  aria-describedby="space-visibility-desc space-visibility-reason"
-                  class="settings-switch relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  :class="isPublic ? 'settings-switch-on border-rose-400' : 'border-rose-200 bg-rose-100/80'"
-                  :disabled="visibilitySwitchDisabled"
-                  :aria-busy="isBusy('visibility') ? 'true' : 'false'"
-                  @click="toggleVisibility"
-                >
-                  <span class="sr-only">{{ isPublic ? '切换为私密' : '公开到恋爱广场' }}</span>
-                  <span
-                    class="settings-switch-thumb inline-block h-5 w-5 transform rounded-full bg-white shadow transition"
-                    :class="isPublic ? 'translate-x-6' : 'translate-x-1'"
-                    aria-hidden="true"
-                  />
-                </button>
-              </div>
-            </div>
-
-            <p
-              id="space-visibility-reason"
-              class="mt-4 rounded-xl border px-3.5 py-2.5 text-xs leading-5"
-              :class="visibilityNotice.class"
-              role="status"
-            >
-              {{ visibilityNotice.text }}
-            </p>
-
-            <p v-if="isBusy('visibility')" class="mt-2 text-xs font-medium text-rose-500" role="status">
-              正在保存公开设置…
-            </p>
-          </section>
-
-          <!-- 2. 恢复（仅冻结/归档） -->
-          <section
-            v-if="isRestorableSpace(spaceStatus)"
-            class="rounded-[1.75rem] border border-sky-200/80 bg-sky-50/60 p-6 shadow-sm sm:p-7"
-            aria-labelledby="space-restore-heading"
-          >
-            <p class="text-[10px] font-bold uppercase tracking-[0.22em] text-sky-500">Restore</p>
-            <h2 id="space-restore-heading" class="mt-1 font-display text-xl font-bold text-rose-950">恢复情侣空间</h2>
-            <p class="mt-2 text-xs leading-6 text-rose-800/60">
-              冻结或归档的空间需要双方确认后才能恢复。恢复后空间回到正常状态，但<strong class="font-semibold">仍保持私密</strong>，
-              需要你在这里手动重新公开。
-            </p>
-
-            <p class="mt-4 text-xs font-semibold text-rose-800/70" role="status">
-              已确认 {{ restoreConfirmedCount }} / {{ restoreRequiredCount }} 人
-              <span v-if="spaceStatus.restoreConfirmedByMe" class="ml-1 text-emerald-600">（你已确认）</span>
-            </p>
-            <p class="mt-1 text-[11px] leading-5 text-rose-700/45">
-              有几名有效成员就需要几人确认；对方确认后空间才会恢复。
-            </p>
-
-            <button
-              type="button"
-              class="mt-4 inline-flex items-center justify-center rounded-full bg-sky-500 px-5 py-2.5 text-xs font-semibold text-white shadow-sm shadow-sky-200 transition hover:bg-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-              :disabled="busyAction !== ''"
-              :aria-busy="isBusy('restore') ? 'true' : 'false'"
-              @click="restoreSpace"
-            >
-              {{ isBusy('restore') ? '确认中…' : (spaceStatus.restoreConfirmedByMe ? '再次确认恢复' : '确认恢复空间') }}
-            </button>
-          </section>
-
-          <!-- 3. 解绑情侣空间（双向申请，仅两名有效成员时展示） -->
-          <section
-            v-if="showUnbindSection"
-            id="space-unbind"
-            class="scroll-mt-24 rounded-[1.75rem] border border-rose-200/90 bg-rose-50/50 p-6 shadow-sm sm:p-7"
-            aria-labelledby="space-unbind-heading"
-          >
-            <p class="text-[10px] font-bold uppercase tracking-[0.22em] text-rose-500">Unbind</p>
-            <h2 id="space-unbind-heading" class="mt-1 font-display text-xl font-bold text-rose-950">解绑情侣空间</h2>
-            <p id="space-unbind-desc" class="mt-2 text-xs leading-6 text-rose-800/60">
-              解绑需双方确认：对方同意后才会生效，拒绝则空间保持不变。
-            </p>
-
-            <!-- 已有待处理申请：展示发起人、时间与可执行动作 -->
-            <div
-              v-if="unbindPending"
-              class="mt-4 rounded-2xl border border-rose-200/80 bg-white/80 px-4 py-3.5"
-              role="status"
-            >
-              <!-- 发起人视角：等待另一半处理，只能取消申请 -->
-              <template v-if="unbindRequestedByMe">
-                <p class="text-xs font-semibold text-rose-900">等待另一方确认</p>
-                <p class="mt-1 text-[11px] leading-5 text-rose-700/60">
-                  已提交解绑申请，申请时间：{{ unbindRequestedAtText }}。对方确认前可随时撤销。
-                </p>
-              </template>
-
-              <!-- 另一方视角：展示申请人公开资料与申请时间，可同意或拒绝 -->
-              <template v-else>
-                <div class="flex items-start gap-3">
-                  <span class="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-rose-400 to-pink-500 text-xs font-bold text-white">
-                    {{ unbindRequesterInitial }}
-                    <img
-                      v-if="unbindRequester?.avatar"
-                      :src="unbindRequester.avatar"
-                      alt=""
-                      class="absolute inset-0 h-full w-full object-cover"
-                      @error="$event.currentTarget.style.display = 'none'"
-                    >
-                  </span>
+              <div v-if="canEditSpaceInfo" id="space-edit" class="scroll-mt-24 border-b border-stone-100 py-5">
+                <div class="flex flex-wrap items-start justify-between gap-3">
                   <div class="min-w-0">
-                    <p class="text-xs font-semibold text-rose-900">
-                      {{ unbindRequesterName }} 发起了情侣空间解绑申请
-                    </p>
-                    <p class="mt-1 text-[11px] leading-5 text-rose-700/60">
-                      <span v-if="unbindRequester?.amourId">恋语 ID：{{ unbindRequester.amourId }} · </span>
-                      申请时间：{{ unbindRequestedAtText }}
-                    </p>
-                    <p class="mt-1 text-[11px] leading-5 text-rose-700/45">
-                      同意后双方都会退出这个空间；拒绝则申请失效，空间保持不变。
+                    <h3 id="space-edit-heading" class="text-sm font-semibold text-stone-900">编辑空间信息</h3>
+                    <p class="mt-1 text-xs leading-6 text-stone-500">
+                      另一半加入后，空间名称、简介和恋爱开始时间将不能再修改。
                     </p>
                   </div>
                 </div>
-              </template>
 
-              <div class="mt-3 flex flex-wrap gap-2">
-                <button
-                  v-if="unbindCanCancel"
-                  type="button"
-                  class="inline-flex items-center justify-center rounded-full border border-rose-300 bg-white px-5 py-2.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  :disabled="busyAction !== ''"
-                  :aria-busy="isBusy('unbind-cancel') ? 'true' : 'false'"
-                  @click="cancelUnbind"
-                >
-                  {{ isBusy('unbind-cancel') ? '撤销中…' : '撤销解绑申请' }}
-                </button>
-                <button
-                  v-if="unbindCanConfirm"
-                  type="button"
-                  class="inline-flex items-center justify-center rounded-full bg-rose-500 px-5 py-2.5 text-xs font-semibold text-white shadow-sm shadow-rose-200 transition hover:bg-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-                  :disabled="busyAction !== ''"
-                  :aria-busy="isBusy('unbind-confirm') ? 'true' : 'false'"
-                  @click="confirmUnbind"
-                >
-                  {{ isBusy('unbind-confirm') ? '确认中…' : '同意解绑' }}
-                </button>
-                <button
-                  v-if="unbindCanReject"
-                  type="button"
-                  class="inline-flex items-center justify-center rounded-full border border-rose-200 bg-white px-5 py-2.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  :disabled="busyAction !== ''"
-                  :aria-busy="isBusy('unbind-reject') ? 'true' : 'false'"
-                  @click="rejectUnbind"
-                >
-                  {{ isBusy('unbind-reject') ? '处理中…' : '拒绝申请' }}
-                </button>
+                <form class="mt-4" @submit.prevent="saveSpaceInfo">
+                  <div class="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label for="space-edit-name" class="field-label">空间名称</label>
+                      <input
+                        id="space-edit-name"
+                        v-model="editForm.spaceName"
+                        maxlength="30"
+                        class="field-input"
+                        placeholder="例如：我们的故事"
+                        autocomplete="off"
+                        @input="editSpaceError = ''"
+                      >
+                    </div>
+                    <div>
+                      <label for="space-edit-love-start" class="field-label">恋爱开始时间</label>
+                      <ThemeDatePicker
+                        v-model="editForm.loveStartTime"
+                        input-id="space-edit-love-start"
+                        placeholder="选择恋爱开始时间"
+                        @update:model-value="editSpaceError = ''"
+                      />
+                      <p class="field-hint">选填；修改后会更新首页展示的相伴时间。</p>
+                    </div>
+                    <div class="sm:col-span-2">
+                      <label for="space-edit-description" class="field-label">空间简介</label>
+                      <textarea
+                        id="space-edit-description"
+                        v-model="editForm.description"
+                        rows="3"
+                        maxlength="500"
+                        class="field-input resize-y leading-6"
+                        placeholder="写一句只属于你们的介绍（选填）"
+                        @input="editSpaceError = ''"
+                      />
+                    </div>
+                  </div>
+
+                  <p v-if="editSpaceError" class="mt-3 rounded-lg border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs leading-5 text-rose-700" role="alert">
+                    {{ editSpaceError }}
+                  </p>
+
+                  <div class="mt-4 flex flex-wrap items-center gap-2">
+                    <button
+                      type="submit"
+                      class="btn-primary"
+                      :disabled="busyAction !== ''"
+                      :aria-busy="isBusy('space-edit') ? 'true' : 'false'"
+                    >
+                      {{ isBusy('space-edit') ? '保存中…' : '保存修改' }}
+                    </button>
+                    <button
+                      type="button"
+                      class="btn-secondary"
+                      :disabled="busyAction !== ''"
+                      @click="resetEditForm"
+                    >
+                      重置
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <div class="settings-row">
+                <div class="min-w-0">
+                  <h3 id="space-visibility-heading" class="text-sm font-semibold text-stone-900">恋爱广场公开</h3>
+                  <p id="space-visibility-desc" class="mt-1 text-xs leading-6 text-stone-500">
+                    公开后，空间会出现在恋爱广场；故事、照片和纪念日仍按各自的公开设置展示。隐藏只影响空间入口，不会改动这些设置。
+                  </p>
+                  <p v-if="visibilityNotice" id="space-visibility-reason" class="mt-2 flex items-start gap-1.5 text-xs leading-5" :class="visibilityNotice.textClass" role="status">
+                    <span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" :class="visibilityNotice.dotClass" aria-hidden="true" />
+                    <span>{{ visibilityNotice.text }}</span>
+                  </p>
+                  <p v-if="isBusy('visibility')" class="mt-2 text-xs font-medium text-stone-500" role="status">
+                    正在保存公开设置…
+                  </p>
+                </div>
+
+                <div class="flex shrink-0 items-center gap-3">
+                  <span class="inline-flex items-center gap-1.5 text-xs font-semibold" :class="isPublic ? 'text-emerald-700' : 'text-stone-500'">
+                    <span class="h-1.5 w-1.5 rounded-full" :class="isPublic ? 'bg-emerald-500' : 'bg-stone-300'" aria-hidden="true" />
+                    {{ isPublic ? '已公开' : '私密' }}
+                  </span>
+                  <button
+                    type="button"
+                    role="switch"
+                    :aria-checked="isPublic ? 'true' : 'false'"
+                    aria-labelledby="space-visibility-heading"
+                    :aria-describedby="visibilityDescribedBy"
+                    class="settings-switch relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    :class="isPublic ? 'settings-switch-on border-rose-500' : 'border-stone-300 bg-stone-200'"
+                    :disabled="visibilitySwitchDisabled"
+                    :aria-busy="isBusy('visibility') ? 'true' : 'false'"
+                    @click="toggleVisibility"
+                  >
+                    <span class="sr-only">{{ isPublic ? '切换为私密' : '公开到恋爱广场' }}</span>
+                    <span
+                      class="settings-switch-thumb inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition"
+                      :class="isPublic ? 'translate-x-6' : 'translate-x-1'"
+                      aria-hidden="true"
+                    />
+                  </button>
+                </div>
               </div>
             </div>
-
-            <!-- 没有待处理申请：发起入口 -->
-            <template v-else>
-              <p
-                v-if="unbindRejectedNotice"
-                class="mt-3 rounded-xl border border-amber-200/80 bg-amber-50/85 px-3.5 py-2.5 text-xs leading-5 text-amber-800"
-                role="status"
-              >
-                {{ unbindRejectedNotice }}
-              </p>
-              <p
-                v-if="!canRequestUnbindNow"
-                class="mt-3 rounded-xl border border-rose-200/80 bg-white/70 px-3.5 py-2.5 text-xs leading-5 text-rose-700"
-                role="status"
-              >
-                {{ unbindRequestBlockReason }}
-              </p>
-              <button
-                type="button"
-                class="mt-4 inline-flex items-center justify-center rounded-full border border-rose-300 bg-white px-5 py-2.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                :disabled="busyAction !== '' || !canRequestUnbindNow"
-                aria-describedby="space-unbind-desc"
-                :aria-busy="isBusy('unbind-request') ? 'true' : 'false'"
-                @click="requestUnbind"
-              >
-                {{ isBusy('unbind-request') ? '提交中…' : '申请解绑' }}
-              </button>
-            </template>
           </section>
+          </div>
 
-          <p v-if="showUnbindSection" class="px-1 text-center text-[11px] leading-5 text-rose-700/40">
-            隐藏、冻结不会改变成员关系，只有对方同意解绑才会让双方退出空间。
-          </p>
+          <aside v-if="hasLifecycle" class="space-y-6 lg:sticky lg:top-24">
+            <section
+              v-if="isRestorableSpace(spaceStatus) || showUnbindSection"
+              class="overflow-hidden rounded-2xl border border-stone-200/80 bg-stone-50/70"
+            >
+              <div v-if="isRestorableSpace(spaceStatus)" class="px-5 py-5" aria-labelledby="space-restore-heading">
+                <h3 id="space-restore-heading" class="text-sm font-semibold text-stone-900">恢复空间</h3>
+                <p class="mt-1 text-xs leading-5 text-stone-500">
+                  所有成员确认后才会恢复，恢复后仍为私密状态。
+                </p>
+                <p class="mt-3 text-xs font-semibold text-stone-700" role="status">
+                  已确认 {{ restoreConfirmedCount }} / {{ restoreRequiredCount }} 人
+                  <span v-if="spaceStatus.restoreConfirmedByMe" class="ml-1 text-emerald-700">（你已确认）</span>
+                </p>
+
+                <button
+                  type="button"
+                  class="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-sky-600 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                  :disabled="busyAction !== ''"
+                  :aria-busy="isBusy('restore') ? 'true' : 'false'"
+                  @click="restoreSpace"
+                >
+                  {{ isBusy('restore') ? '确认中…' : (spaceStatus.restoreConfirmedByMe ? '再次确认恢复' : '确认恢复空间') }}
+                </button>
+              </div>
+
+              <div
+                v-if="showUnbindSection"
+                id="space-unbind"
+                class="scroll-mt-24 px-5 py-5"
+                :class="isRestorableSpace(spaceStatus) ? 'border-t border-stone-200/70' : ''"
+                aria-labelledby="space-unbind-heading"
+              >
+                <h3 id="space-unbind-heading" class="text-sm font-semibold text-stone-900">解绑情侣空间</h3>
+                <p v-if="!unbindPending" id="space-unbind-desc" class="mt-1 text-xs leading-5 text-stone-500">
+                  申请后需要另一半同意才会解绑，拒绝则空间保持不变。
+                </p>
+
+                <!-- 已有待处理申请：展示发起人、时间与可执行动作 -->
+                <div
+                  v-if="unbindPending"
+                  class="mt-3 rounded-lg border border-rose-200/80 bg-white px-3.5 py-3"
+                  role="status"
+                >
+                  <!-- 发起人视角：等待另一半处理，只能取消申请 -->
+                  <template v-if="unbindRequestedByMe">
+                    <p class="text-xs font-semibold text-stone-900">申请已提交，等待另一半确认</p>
+                    <p class="mt-1 text-[11px] leading-5 text-stone-500">
+                      申请时间：{{ unbindRequestedAtText }}。确认前你可以随时撤销。
+                    </p>
+                  </template>
+
+                  <!-- 另一方视角：展示申请人公开资料与申请时间，可同意或拒绝 -->
+                  <template v-else>
+                    <div class="flex items-start gap-3">
+                      <span class="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-rose-600 text-xs font-bold text-white">
+                        {{ unbindRequesterInitial }}
+                        <img
+                          v-if="unbindRequester?.avatar"
+                          :src="unbindRequester.avatar"
+                          alt=""
+                          class="absolute inset-0 h-full w-full object-cover"
+                          @error="$event.currentTarget.style.display = 'none'"
+                        >
+                      </span>
+                      <div class="min-w-0">
+                        <p class="text-xs font-semibold text-stone-900">
+                          {{ unbindRequesterName }} 想解绑情侣空间
+                        </p>
+                        <p class="mt-1 text-[11px] leading-5 text-stone-500">
+                          <span v-if="unbindRequester?.amourId">恋语 ID：{{ unbindRequester.amourId }} · </span>
+                          申请时间：{{ unbindRequestedAtText }}
+                        </p>
+                        <p class="mt-1 text-[11px] leading-5 text-stone-400">
+                          同意后双方都会退出空间；拒绝则空间保持不变。
+                        </p>
+                      </div>
+                    </div>
+                  </template>
+
+                  <div class="mt-3 flex flex-col gap-2">
+                    <button
+                      v-if="unbindCanConfirm"
+                      type="button"
+                      class="btn-primary w-full"
+                      :disabled="busyAction !== ''"
+                      :aria-busy="isBusy('unbind-confirm') ? 'true' : 'false'"
+                      @click="confirmUnbind"
+                    >
+                      {{ isBusy('unbind-confirm') ? '确认中…' : '同意解绑' }}
+                    </button>
+                    <button
+                      v-if="unbindCanReject"
+                      type="button"
+                      class="btn-secondary w-full"
+                      :disabled="busyAction !== ''"
+                      :aria-busy="isBusy('unbind-reject') ? 'true' : 'false'"
+                      @click="rejectUnbind"
+                    >
+                      {{ isBusy('unbind-reject') ? '处理中…' : '拒绝申请' }}
+                    </button>
+                    <button
+                      v-if="unbindCanCancel"
+                      type="button"
+                      class="btn-danger w-full"
+                      :disabled="busyAction !== ''"
+                      :aria-busy="isBusy('unbind-cancel') ? 'true' : 'false'"
+                      @click="cancelUnbind"
+                    >
+                      {{ isBusy('unbind-cancel') ? '撤销中…' : '撤销解绑申请' }}
+                    </button>
+                  </div>
+                </div>
+
+                <!-- 没有待处理申请：发起入口 -->
+                <template v-else>
+                  <p
+                    v-if="unbindRejectedNotice"
+                    class="mt-3 rounded-lg border border-amber-200/80 bg-amber-50/85 px-3 py-2 text-[11px] leading-5 text-amber-800"
+                    role="status"
+                  >
+                    {{ unbindRejectedNotice }}
+                  </p>
+                  <p
+                    v-if="!canRequestUnbindNow"
+                    class="mt-3 rounded-lg border border-stone-200 bg-white/70 px-3 py-2 text-[11px] leading-5 text-stone-600"
+                    role="status"
+                  >
+                    {{ unbindRequestBlockReason }}
+                  </p>
+                  <button
+                    type="button"
+                    class="btn-danger mt-3 w-full"
+                    :disabled="busyAction !== '' || !canRequestUnbindNow"
+                    aria-describedby="space-unbind-desc"
+                    :aria-busy="isBusy('unbind-request') ? 'true' : 'false'"
+                    @click="requestUnbind"
+                  >
+                    {{ isBusy('unbind-request') ? '提交中…' : '申请解绑' }}
+                  </button>
+                </template>
+              </div>
+            </section>
+          </aside>
+        </div>
   </div>
 </template>
 
@@ -387,6 +401,7 @@ import {
   updateCoupleSpace,
   updateCoupleSpaceVisibility,
 } from '@/api/space'
+import ThemeDatePicker from '@/components/frontend/space-studio/ThemeDatePicker.vue'
 import {
   clearSpaceStatus,
   useFrontendSpace,
@@ -442,8 +457,18 @@ async function refreshStatus() {
 }
 
 const memberCount = computed(() => activeSpaceMemberCount(spaceStatus.value))
+const members = computed(() => (
+  Array.isArray(spaceStatus.value?.members) ? spaceStatus.value.members : []
+))
+
+function memberInitial(member) {
+  return String(member?.displayName || member?.amourId || '恋').trim().slice(0, 1).toUpperCase()
+}
 // 刚创建、另一半还没加入的单人空间不展示解绑入口。
 const showUnbindSection = computed(() => canShowUnbindSection(spaceStatus.value))
+const hasLifecycle = computed(() => (
+  isRestorableSpace(spaceStatus.value) || showUnbindSection.value
+))
 const canEditSpaceInfo = computed(() => (
   isSpaceWaiting.value
   && hasActiveSpaceMembership(spaceStatus.value)
@@ -565,31 +590,41 @@ const visibilitySwitchDisabled = computed(() => {
 const visibilityNotice = computed(() => {
   if (!hasActiveSpaceMembership(spaceStatus.value)) {
     return {
-      text: '你不是该情侣空间的有效成员，无法修改公开设置。',
-      class: 'border-rose-200/80 bg-rose-50/70 text-rose-700',
+      text: '你不是这个空间的成员，无法修改公开设置。',
+      textClass: 'text-rose-700',
+      dotClass: 'bg-rose-500',
     }
   }
   if (isPublic.value) {
     return {
-      text: '空间当前公开在恋爱广场。切换为私密后列表和详情都会立即不可见，历史公开时间会保留。',
-      class: 'border-emerald-200/80 bg-emerald-50/70 text-emerald-700',
+      text: '关闭公开后，空间会立即从恋爱广场隐藏；首次公开时间会保留。',
+      textClass: 'text-emerald-700',
+      dotClass: 'bg-emerald-500',
     }
   }
   const reason = visibilityBlockReason(spaceStatus.value)
   if (reason) {
     return {
-      text: `${reason}，暂时不能公开。`,
-      class: 'border-amber-200/80 bg-amber-50/70 text-amber-800',
+      text: `${reason}。`,
+      textClass: 'text-amber-800',
+      dotClass: 'bg-amber-500',
     }
   }
-  return {
-    text: '空间当前为私密状态。公开后两名成员的内容入口都会出现在恋爱广场。',
-    class: 'border-rose-200/80 bg-rose-50/70 text-rose-700',
-  }
+  return null
 })
+
+const visibilityDescribedBy = computed(() => (
+  visibilityNotice.value
+    ? 'space-visibility-desc space-visibility-reason'
+    : 'space-visibility-desc'
+))
 
 const publicAtText = computed(() => (
   spaceStatus.value?.publicAt ? formatSpaceDateTime(spaceStatus.value.publicAt) : '尚未公开过'
+))
+
+const createdAtText = computed(() => (
+  spaceStatus.value?.createTime ? formatSpaceDateTime(spaceStatus.value.createTime) : '暂无记录'
 ))
 
 const statusCard = computed(() => {
@@ -597,51 +632,41 @@ const statusCard = computed(() => {
   if (status === SPACE_STATUS.WAITING) {
     return {
       label: '等待绑定',
-      description: '空间已创建，等待另一半接受邀请加入。',
-      panelClass: 'border-amber-200/80 bg-amber-50/70',
-      eyebrowClass: 'text-amber-500',
-      badgeClass: 'text-amber-700',
-      dotClass: 'bg-amber-400',
+      description: '等待另一半接受邀请后即可正常使用。',
+      badgeClass: 'border-amber-200 bg-amber-50 text-amber-800',
+      dotClass: 'bg-amber-500',
     }
   }
   if (status === SPACE_STATUS.FROZEN) {
     return {
       label: '已冻结',
-      description: '空间当前被冻结，内容暂不加载；需要双方确认后才能恢复。',
-      panelClass: 'border-sky-200/80 bg-sky-50/70',
-      eyebrowClass: 'text-sky-500',
-      badgeClass: 'text-sky-700',
-      dotClass: 'bg-sky-400',
+      description: '空间已冻结，内容暂不加载；恢复后可继续使用。',
+      badgeClass: 'border-sky-200 bg-sky-50 text-sky-700',
+      dotClass: 'bg-sky-500',
     }
   }
   if (status === SPACE_STATUS.ARCHIVED) {
     return {
       label: '已归档',
-      description: '空间处于历史归档状态并从恋爱广场隐藏，内容全部保留；确认恢复后可继续使用。',
-      panelClass: 'border-slate-200 bg-slate-50/80',
-      eyebrowClass: 'text-slate-500',
-      badgeClass: 'text-slate-700',
-      dotClass: 'bg-slate-400',
+      description: '空间已归档，并从恋爱广场隐藏；恢复后可继续使用。',
+      badgeClass: 'border-stone-200 bg-stone-100 text-stone-600',
+      dotClass: 'bg-stone-400',
     }
   }
   if (status === SPACE_STATUS.NORMAL) {
     return {
       label: '正常',
-      description: '空间可以正常使用，你可以随时调整公开状态或管理空间生命周期。',
-      panelClass: 'border-emerald-200/80 bg-emerald-50/70',
-      eyebrowClass: 'text-emerald-500',
-      badgeClass: 'text-emerald-700',
-      dotClass: 'bg-emerald-400',
+      description: '空间可以正常使用，可调整公开状态或申请解绑。',
+      badgeClass: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+      dotClass: 'bg-emerald-500',
     }
   }
   // 删除等待期 / 已删除 / 未知状态：不能当作「正常」展示，也不提供公开或解绑入口。
   return {
     label: '暂不可用',
     description: '当前空间状态无法进入设置操作，请返回恋爱广场或刷新空间状态后再试。',
-    panelClass: 'border-rose-200/80 bg-rose-50/70',
-    eyebrowClass: 'text-rose-500',
-    badgeClass: 'text-rose-700',
-    dotClass: 'bg-rose-400',
+    badgeClass: 'border-rose-200 bg-rose-50 text-rose-700',
+    dotClass: 'bg-rose-500',
   }
 })
 
@@ -902,7 +927,7 @@ onMounted(async () => {
 
 <style scoped>
 .settings-switch-on {
-  background: linear-gradient(90deg, #fb7185, #ec4899);
+  background-color: #e11d48;
 }
 
 .settings-switch-thumb {
