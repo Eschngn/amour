@@ -1,45 +1,118 @@
 .admin-shell {
-  --admin-primary: #e11d48;
-  --admin-primary-soft: #fff1f2;
-  --admin-border: rgba(226, 232, 240, 0.82);
-  background:
-    radial-gradient(circle at 92% 4%, rgba(251, 113, 133, 0.08), transparent 28rem),
-    radial-gradient(circle at 8% 96%, rgba(244, 63, 94, 0.045), transparent 24rem),
-    #f7f8fb;
+  --admin-primary: var(--admin-brand);
+  --admin-primary-soft: var(--admin-brand-soft);
+  --admin-control-height: 40px;
+  --admin-control-radius: 12px;
+  --admin-panel-radius: 18px;
+  --admin-control-shadow: 0 1px 2px rgba(28, 25, 23, 0.03);
+  --admin-panel-shadow: 0 1px 2px rgba(28, 25, 23, 0.03), 0 10px 28px rgba(28, 25, 23, 0.035);
+  --admin-panel-shadow-hover: 0 1px 2px rgba(28, 25, 23, 0.03), 0 14px 36px rgba(28, 25, 23, 0.055);
+  background: var(--admin-canvas);
+  color: var(--admin-text);
 }
 
 .admin-sidebar {
-  background:
-    radial-gradient(circle at 15% 0%, rgba(225, 29, 72, 0.16), transparent 16rem),
-    linear-gradient(180deg, #161b2a 0%, #101521 100%);
+  border-right: 1px solid var(--admin-border);
+  background: var(--admin-surface-muted);
+  color: var(--admin-text-secondary);
 }
 
-.logo-mark,
+.admin-sidebar-brand {
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.admin-sidebar-icon-button {
+  color: var(--admin-text-muted);
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.admin-sidebar-icon-button:hover {
+  background: var(--admin-nav-hover);
+  color: var(--admin-text);
+}
+
+.brand-mark {
+  background: var(--admin-brand-soft);
+  color: var(--admin-brand-strong);
+  box-shadow: inset 0 0 0 1px var(--admin-brand-soft-border);
+}
+
 .admin-avatar {
-  background: linear-gradient(135deg, #fb7185 0%, #e11d48 58%, #be123c 100%);
+  background: var(--admin-brand);
+  box-shadow: 0 6px 16px -12px rgba(190, 18, 60, 0.55);
 }
 
-.admin-nav-active {
-  background: linear-gradient(90deg, rgba(225, 29, 72, 0.2), rgba(225, 29, 72, 0.08));
-  box-shadow: inset 0 0 0 1px rgba(251, 113, 133, 0.12);
+.admin-nav-group-label {
+  color: var(--admin-text-muted);
+}
+
+.admin-nav-link {
+  color: var(--admin-text-secondary);
+}
+
+.admin-nav-link:hover {
+  background: var(--admin-nav-hover);
+  color: var(--admin-text);
+}
+
+.admin-nav-link:focus-visible,
+.admin-sidebar-action:focus-visible,
+.admin-sidebar-icon-button:focus-visible {
+  outline: 2px solid var(--admin-brand-soft-border);
+  outline-offset: 2px;
+}
+
+.admin-nav-active,
+.admin-nav-active:hover {
+  background: var(--admin-brand-soft);
+  color: var(--admin-brand-strong);
+  box-shadow: inset 0 0 0 1px var(--admin-brand-soft-border);
 }
 
 .admin-nav-active::before {
   position: absolute;
   left: 0;
   width: 3px;
-  height: 20px;
+  height: 18px;
   border-radius: 0 999px 999px 0;
-  background: #fb7185;
-  box-shadow: 0 0 12px rgba(251, 113, 133, 0.6);
+  background: var(--admin-brand-strong);
   content: '';
 }
 
+.admin-nav-empty {
+  color: var(--admin-text-muted);
+}
+
+.admin-sidebar-actions {
+  border: 1px solid var(--admin-border);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.admin-sidebar-action {
+  color: var(--admin-text-secondary);
+}
+
+.admin-sidebar-action:hover {
+  background: var(--admin-nav-hover);
+  color: var(--admin-text);
+}
+
+.admin-sidebar-action--danger:hover {
+  background: var(--admin-brand-soft);
+  color: var(--admin-brand-strong);
+}
+
 .admin-header {
-  border-color: rgba(226, 232, 240, 0.74);
-  background: rgba(255, 255, 255, 0.82);
+  border-color: var(--admin-border);
+  background: var(--admin-header-bg);
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(16px);
+}
+
+.admin-header-meta {
+  border-color: var(--admin-border);
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--admin-text-secondary);
 }
 
 .admin-page-toolbar {
@@ -47,13 +120,14 @@
   padding: 0 2px;
 }
 
-.admin-page-toolbar input {
-  background: rgba(255, 255, 255, 0.9);
+.admin-page-toolbar .admin-search-input {
+  background: var(--admin-surface);
 }
 
 .admin-footer {
-  border-top: 1px solid rgba(226, 232, 240, 0.65);
-  background: rgba(255, 255, 255, 0.48);
+  border-top: 1px solid var(--admin-border);
+  background: transparent;
+  color: var(--admin-text-muted);
 }
 
 .admin-main > div > div > .space-y-4,
@@ -62,25 +136,27 @@
   animation: admin-content-in 0.36s ease-out both;
 }
 
-.admin-main .rounded-xl.border.border-slate-200.bg-white {
+.admin-main .rounded-xl.border.border-slate-200.bg-white,
+.admin-main .rounded-2xl.border.border-slate-200.bg-white {
   border-color: var(--admin-border);
-  border-radius: 18px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.025), 0 10px 28px rgba(15, 23, 42, 0.035);
-  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+  border-radius: var(--admin-panel-radius);
+  box-shadow: var(--admin-panel-shadow);
+  transition: border-color 180ms ease, box-shadow 180ms ease;
 }
 
-.admin-main .rounded-xl.border.border-slate-200.bg-white:hover {
-  border-color: rgba(251, 113, 133, 0.22);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.025), 0 14px 36px rgba(15, 23, 42, 0.055);
+.admin-main .rounded-xl.border.border-slate-200.bg-white:hover,
+.admin-main .rounded-2xl.border.border-slate-200.bg-white:hover {
+  border-color: var(--admin-border-strong);
+  box-shadow: var(--admin-panel-shadow-hover);
 }
 
 .admin-main table thead {
-  background: #fafbfc;
+  background: var(--admin-surface-muted);
 }
 
 .admin-main table th {
   height: 44px;
-  color: #64748b;
+  color: var(--admin-text-muted);
   font-weight: 600;
   letter-spacing: 0.035em;
 }
@@ -90,19 +166,318 @@
 }
 
 .admin-main table tbody tr:hover {
-  background: rgba(255, 241, 242, 0.48);
-  box-shadow: inset 3px 0 0 rgba(251, 113, 133, 0.5);
+  background: var(--admin-surface-muted);
+  box-shadow: inset 2px 0 0 var(--admin-brand-soft-border);
 }
 
-.admin-main input:not([type='checkbox']):not([type='radio']) {
-  min-height: 40px;
-  background-color: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.02);
+/*
+ * 原生输入框只通过显式类名接管样式。
+ * Element Plus 的 el-input / el-select / el-date-picker 内部同样会渲染 <input>，
+ * 若按元素选择器统一设置 min-height，日期范围选择器的内部输入会被撑高，
+ * 进而撑开整个控件并挤压相邻筛选控件。
+ */
+.admin-main .admin-search-icon {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  width: 16px;
+  height: 16px;
+  color: var(--admin-text-muted);
+  transform: translateY(-50%);
+  pointer-events: none;
 }
 
-.admin-main input:not([type='checkbox']):not([type='radio']):focus {
-  border-color: rgba(244, 63, 94, 0.48);
-  box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.09);
+.admin-main .admin-search-input {
+  display: block;
+  width: 100%;
+  height: var(--admin-control-height);
+  min-height: var(--admin-control-height);
+  padding: 0 36px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-control-radius);
+  background-color: var(--admin-surface);
+  color: var(--admin-text);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  outline: none;
+  box-shadow: 0 1px 2px rgba(28, 25, 23, 0.03);
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.admin-main .admin-search-input::placeholder {
+  color: var(--admin-text-placeholder);
+}
+
+.admin-main .admin-search-input:hover {
+  border-color: var(--admin-border-hover);
+}
+
+.admin-main .admin-search-input:focus {
+  border-color: var(--admin-brand);
+  box-shadow: 0 0 0 3px var(--admin-focus-ring);
+}
+
+.admin-main .admin-search-input:disabled {
+  cursor: not-allowed;
+  background-color: var(--admin-surface-sunken);
+  color: var(--admin-text-muted);
+}
+
+/*
+ * 后台筛选面板
+ * 筛选区独立成行、独占整张卡片宽度，不再与页面标题争抢横向空间。
+ * 布局分三档：
+ *   1. 手机：单列，控件与按钮占满整行；
+ *   2. 平板 / 窄桌面（640px 起）：两列网格，搜索框与日期范围独占整行；
+ *   3. 宽桌面（1360px 起）：单行排列，控件固定宽度，操作按钮靠右，字段不足时才在内部换行。
+ */
+.admin-main .admin-filter-panel {
+  padding: 14px 16px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-panel-radius);
+  background: var(--admin-surface);
+  box-shadow: var(--admin-panel-shadow);
+}
+
+.admin-main .admin-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.admin-main .admin-filter-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  flex: 1 1 100%;
+  gap: 10px;
+  min-width: 0;
+}
+
+.admin-main .admin-filter-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.admin-main .admin-filter-field {
+  min-width: 0;
+}
+
+.admin-main .admin-filter-field--search {
+  position: relative;
+}
+
+.admin-main .admin-filter-field > .el-select,
+.admin-main .admin-filter-field > .el-input,
+.admin-main .admin-filter-field > .el-input-number,
+.admin-main .admin-filter-field > .el-date-editor,
+.admin-main .admin-filter-field.el-input-number,
+.admin-main .admin-filter-field.el-date-editor {
+  width: 100%;
+}
+
+.admin-main .admin-filter-field--check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: var(--admin-control-height);
+  padding: 0 2px;
+  border-radius: 10px;
+  color: var(--admin-text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.admin-main .admin-filter-field--check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--admin-brand);
+  cursor: pointer;
+}
+
+.admin-main .admin-filter-field--check input:focus-visible {
+  outline: 2px solid var(--admin-brand);
+  outline-offset: 2px;
+}
+
+/* 筛选按钮：主操作、次级操作与纯图标三种状态，和输入控件共用高度与圆角 */
+.admin-main .admin-filter-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: var(--admin-control-height);
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: var(--admin-control-radius);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.admin-main .admin-filter-button:focus-visible {
+  outline: 2px solid var(--admin-brand);
+  outline-offset: 2px;
+}
+
+.admin-main .admin-filter-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.admin-main .admin-filter-button--primary {
+  background: var(--admin-brand);
+  box-shadow: 0 8px 18px -14px rgba(190, 18, 60, 0.75);
+  color: #ffffff;
+}
+
+.admin-main .admin-filter-button--primary:hover:not(:disabled) {
+  background: var(--admin-brand-strong);
+}
+
+.admin-main .admin-filter-button--secondary {
+  border-color: var(--admin-border);
+  background: var(--admin-surface);
+  box-shadow: var(--admin-control-shadow);
+  color: var(--admin-text-secondary);
+}
+
+.admin-main .admin-filter-button--secondary:hover:not(:disabled) {
+  border-color: var(--admin-border-hover);
+  background: var(--admin-surface-muted);
+  color: var(--admin-text);
+}
+
+.admin-main .admin-filter-button--icon {
+  width: var(--admin-control-height);
+  padding: 0;
+}
+
+/* Element Plus 控件只限定在筛选面板内，避免影响弹窗与表格内的输入组件 */
+.admin-main .admin-filter-panel .el-select__wrapper,
+.admin-main .admin-filter-panel .el-input__wrapper {
+  min-height: var(--admin-control-height);
+  border-radius: var(--admin-control-radius);
+  background-color: var(--admin-surface);
+  box-shadow: 0 0 0 1px var(--admin-border) inset;
+  transition: box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.admin-main .admin-filter-panel .el-select__wrapper:hover,
+.admin-main .admin-filter-panel .el-input__wrapper:hover {
+  box-shadow: 0 0 0 1px var(--admin-border-hover) inset;
+}
+
+.admin-main .admin-filter-panel .el-select__wrapper.is-focused,
+.admin-main .admin-filter-panel .el-input__wrapper.is-focus,
+.admin-main .admin-filter-panel .el-date-editor.is-active {
+  box-shadow: 0 0 0 1px var(--admin-brand) inset, 0 0 0 3px var(--admin-focus-ring);
+}
+
+.admin-main .admin-filter-panel .el-select__wrapper.is-disabled,
+.admin-main .admin-filter-panel .el-input__wrapper.is-disabled,
+.admin-main .admin-filter-panel .el-input-number.is-disabled .el-input__wrapper,
+.admin-main .admin-filter-panel .el-date-editor.is-disabled {
+  background-color: var(--admin-surface-sunken);
+  box-shadow: 0 0 0 1px var(--admin-border) inset;
+  cursor: not-allowed;
+}
+
+/*
+ * 日期范围：外壳固定为统一高度，内部 .el-range-input 保持 Element Plus 原始高度。
+ * 不按元素选择器设置 input 高度，避免撑开日期控件或误伤其他 Element Plus 输入组件。
+ */
+.admin-main .admin-filter-panel .el-date-editor.el-input__wrapper {
+  height: var(--admin-control-height);
+  min-height: var(--admin-control-height);
+  padding-right: 8px;
+  padding-left: 8px;
+}
+
+.admin-main .admin-filter-panel .el-range-input {
+  font-size: 13px;
+}
+
+.admin-main .admin-filter-panel .el-range-separator {
+  flex: 0 0 auto;
+  padding: 0 4px;
+  font-size: 13px;
+}
+
+.admin-main .admin-filter-panel .el-range__icon,
+.admin-main .admin-filter-panel .el-range__close-icon {
+  flex: 0 0 auto;
+}
+
+@media (min-width: 640px) {
+  .admin-main .admin-filter-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-main .admin-filter-field--search,
+  .admin-main .admin-filter-field--wide,
+  .admin-main .admin-filter-field--date {
+    grid-column: span 2;
+  }
+}
+
+@media (min-width: 1280px) {
+  .admin-main .admin-filter-fields {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    flex: 1 1 auto;
+  }
+
+  .admin-main .admin-filter-actions {
+    width: auto;
+    margin-left: auto;
+    flex: 0 0 auto;
+  }
+
+  .admin-main .admin-filter-field--search {
+    flex: 1 1 220px;
+    max-width: 320px;
+  }
+
+  .admin-main .admin-filter-field--select {
+    flex: 0 0 140px;
+  }
+
+  .admin-main .admin-filter-field--wide {
+    flex: 0 0 240px;
+  }
+
+  .admin-main .admin-filter-field--date {
+    flex: 0 0 300px;
+  }
+
+  .admin-main .admin-filter-field--check {
+    flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 639px) {
+  .admin-main .admin-filter-actions > .admin-filter-button--primary {
+    flex: 1 1 auto;
+  }
+}
+
+@media (pointer: coarse) {
+  .admin-shell {
+    --admin-control-height: 44px;
+  }
 }
 
 .admin-page-enter-active,

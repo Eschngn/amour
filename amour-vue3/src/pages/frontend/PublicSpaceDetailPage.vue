@@ -12,6 +12,14 @@
             </svg>
             返回恋爱广场
           </RouterLink>
+          <button
+            v-if="!isOwnPublicSpace"
+            type="button"
+            class="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-white/75 px-3.5 py-2 text-xs font-semibold text-rose-500 transition hover:border-rose-300 hover:bg-rose-50"
+            @click="reportTarget('space', space?.spaceId, displayName)"
+          >
+            举报该空间
+          </button>
         </div>
 
         <div v-if="loading" class="space-y-6" aria-label="正在加载公开情侣空间" aria-busy="true">
@@ -185,6 +193,14 @@
                             <span class="truncate">{{ story.location }}</span>
                           </span>
                           <span v-if="story.tagLabel" class="rounded-full border px-2 py-0.5 text-[10px] font-semibold" :style="storyTagStyle(story)">{{ story.tagLabel }}</span>
+                          <button
+                            v-if="!isOwnPublicSpace"
+                            type="button"
+                            class="ml-auto rounded-full border border-rose-200/80 px-2 py-0.5 text-[10px] font-semibold text-rose-500 transition hover:bg-rose-100/60"
+                            @click="reportTarget('story', story.storyId, story.title)"
+                          >
+                            举报
+                          </button>
                         </div>
                         <h3 class="mt-2 break-words font-display text-lg font-bold text-rose-950">{{ story.title || '未命名故事' }}</h3>
                         <p v-if="story.summary" class="mt-2 line-clamp-2 break-words text-sm leading-6 text-rose-800/65">{{ story.summary }}</p>
@@ -250,6 +266,14 @@
                         <p v-if="photo.location" class="mt-0.5 truncate text-[10px] text-white/65">{{ photo.location }}</p>
                       </figcaption>
                     </div>
+                    <button
+                      v-if="!isOwnPublicSpace"
+                      type="button"
+                      class="absolute right-2 top-2 rounded-full bg-white/80 px-2 py-1 text-[10px] font-semibold text-rose-600 shadow-sm backdrop-blur transition hover:bg-white"
+                      @click.stop="reportTarget('photo', photo.photoId, photo.title)"
+                    >
+                      举报
+                    </button>
                   </figure>
                 </div>
               </section>
@@ -292,6 +316,14 @@
                             <span class="h-1 w-1 rounded-full" :style="anniversaryDotStyle(anniversary)" aria-hidden="true" />
                             <span class="truncate">{{ anniversary.location }}</span>
                           </span>
+                          <button
+                            v-if="!isOwnPublicSpace"
+                            type="button"
+                            class="rounded-full border border-rose-200/80 px-2 py-0.5 text-[10px] font-semibold text-rose-500 transition hover:bg-rose-100/60"
+                            @click="reportTarget('anniversary', anniversary.anniversaryId, anniversary.title)"
+                          >
+                            举报
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -318,12 +350,15 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import CouplePageScaffold from '@/components/frontend/CouplePageScaffold.vue'
 import defaultBoyAvatar from '@/assets/boy.jpeg'
 import defaultGirlAvatar from '@/assets/girl.jpeg'
 import { fetchPublicSpaceDetail } from '@/api/gallery'
+import { submitContentReport } from '@/api/report'
 import { useFrontendSpace } from '@/composables/useFrontendSpace'
+import { isFrontendAuthenticated } from '@/utils/auth'
 import {
   formatCount,
   formatMemberRole,
@@ -343,6 +378,7 @@ import {
 import { readSpaceErrorMessage } from '@/utils/spaceState'
 
 const route = useRoute()
+const router = useRouter()
 const { spaceStatus, isSpaceReady } = useFrontendSpace()
 
 const space = ref(null)
@@ -424,6 +460,44 @@ function memberAvatar(member, index) {
 
 function markImageFailed(key) {
   failedImages.value = { ...failedImages.value, [key]: true }
+}
+
+/**
+ * 只允许举报恋爱广场中实际公开的空间或内容；登录态由后端再次校验。
+ */
+async function reportTarget(contentType, contentId, title) {
+  if (!contentId) return
+  if (!isFrontendAuthenticated()) {
+    router.push({ path: '/login', query: { redirect: route.fullPath } })
+    return
+  }
+  let reason
+  try {
+    const result = await ElMessageBox.prompt(
+      `举报“${title || '该内容'}”。请说明具体问题，平台会尽快核实。`,
+      '举报内容',
+      {
+        confirmButtonText: '提交举报',
+        cancelButtonText: '取消',
+        inputPlaceholder: '请填写举报原因（必填）',
+        inputValidator: value => (String(value || '').trim().length > 0 ? true : '请填写举报原因'),
+      },
+    )
+    reason = String(result.value || '').trim()
+  } catch {
+    return
+  }
+  try {
+    const { data } = await submitContentReport({
+      contentType,
+      contentId: Number(contentId),
+      reason,
+    })
+    if (!data?.success) throw new Error(data?.message || '举报提交失败')
+    ElMessage.success('举报已提交，平台会尽快核实')
+  } catch (error) {
+    ElMessage.error(error.response?.data?.message || error.message || '举报提交失败')
+  }
 }
 
 function monthDay(value) {

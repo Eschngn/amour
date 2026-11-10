@@ -9,5 +9,8 @@ import lombok.*;
 @Builder
 @Data
 public class FindStoryPageListReqVO extends BasePageQuery {
+    private Long spaceId;
     private String title;
+    private Integer visibility;
+    private Boolean includeDeleted;
 }

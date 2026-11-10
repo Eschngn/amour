@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 
 @Data
@@ -14,4 +15,10 @@ import javax.validation.constraints.NotNull;
 public class DeleteAnniversaryReqVO {
     @NotNull(message = "纪念日ID不能为空")
     private Long id;
+
+    @NotNull(message = "空间ID不能为空")
+    private Long spaceId;
+
+    @NotBlank(message = "请填写删除原因")
+    private String reason;
 }

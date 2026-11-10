@@ -26,6 +26,42 @@ public interface AnniversaryMapper extends BaseMapper<AnniversaryDO> {
                 .orderByDesc(AnniversaryDO::getId));
     }
 
+    /**
+     * 后台治理分页：显式空间过滤、真实 visibility、可查看逻辑删除。
+     */
+    default IPage<AnniversaryDO> selectAdminGovernancePage(long current, long size, Long spaceId,
+                                                           String keyword, Integer visibility,
+                                                           boolean includeDeleted) {
+        return selectPage(new Page<>(current, size), new LambdaQueryWrapper<AnniversaryDO>()
+                .eq(spaceId != null, AnniversaryDO::getSpaceId, spaceId)
+                .eq(!includeDeleted, AnniversaryDO::getIsDeleted, false)
+                .eq(visibility != null, AnniversaryDO::getVisibility, visibility)
+                .like(cn.hutool.core.util.StrUtil.isNotBlank(keyword), AnniversaryDO::getTitle,
+                        cn.hutool.core.util.StrUtil.trim(keyword))
+                .orderByDesc(AnniversaryDO::getUpdateTime)
+                .orderByDesc(AnniversaryDO::getId));
+    }
+
+    /**
+     * 后台详情：同时匹配 id 与 spaceId，不因逻辑删除而隐藏已删除内容。
+     */
+    default AnniversaryDO selectAdminById(Long spaceId, Long id) {
+        return selectOne(new LambdaQueryWrapper<AnniversaryDO>()
+                .eq(AnniversaryDO::getSpaceId, spaceId)
+                .eq(AnniversaryDO::getId, id));
+    }
+
+    default int moderateVisibility(Long spaceId, Long id, Integer visibility,
+                                   Long updatedBy, LocalDateTime updateTime) {
+        return update(null, new LambdaUpdateWrapper<AnniversaryDO>()
+                .eq(AnniversaryDO::getSpaceId, spaceId)
+                .eq(AnniversaryDO::getId, id)
+                .eq(AnniversaryDO::getIsDeleted, false)
+                .set(AnniversaryDO::getVisibility, visibility)
+                .set(AnniversaryDO::getUpdatedBy, updatedBy)
+                .set(AnniversaryDO::getUpdateTime, updateTime));
+    }
+
     default AnniversaryDO selectActiveById(Long spaceId, Long id) {
         return selectOne(new LambdaQueryWrapper<AnniversaryDO>()
                 .eq(AnniversaryDO::getSpaceId, spaceId)

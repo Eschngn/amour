@@ -1,9 +1,9 @@
 <template>
-  <div class="admin-shell flex h-dvh overflow-hidden font-sans text-slate-900 antialiased">
+  <div class="admin-shell flex h-dvh overflow-hidden font-sans text-stone-900 antialiased">
     <button
       v-if="mobileSidebarOpen"
       type="button"
-      class="fixed inset-0 z-30 bg-slate-950/45 backdrop-blur-[2px] lg:hidden"
+      class="fixed inset-0 z-30 bg-stone-950/30 backdrop-blur-[2px] lg:hidden"
       aria-label="关闭导航菜单"
       @click="mobileSidebarOpen = false"
     />

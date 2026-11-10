@@ -35,7 +35,13 @@ public class AdminSpacePageRspVO {
      */
     private String deletedAt;
 
+    private String publicAt;
+
+    private String archivedAt;
+
     private String createTime;
+
+    private String updateTime;
 
     /**
      * 当前保留的历史成员关系，正常空间为 2 条，双方解绑后也保留 2 条已退出记录。

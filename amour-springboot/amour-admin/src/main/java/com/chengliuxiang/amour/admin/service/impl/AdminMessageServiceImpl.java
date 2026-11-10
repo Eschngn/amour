@@ -1,125 +1,84 @@
 package com.chengliuxiang.amour.admin.service.impl;
 
-import cn.hutool.core.collection.CollUtil;
+import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.StrUtil;
+import com.chengliuxiang.amour.admin.model.vo.content.AdminContentDeleteReqVO;
+import com.chengliuxiang.amour.admin.model.vo.content.AdminContentPageReqVO;
+import com.chengliuxiang.amour.admin.model.vo.content.AdminContentPageRspVO;
 import com.chengliuxiang.amour.admin.model.vo.message.DeleteMessageReqVO;
 import com.chengliuxiang.amour.admin.model.vo.message.FindMessagePageListReqVO;
 import com.chengliuxiang.amour.admin.model.vo.message.FindMessagePageListRspVO;
+import com.chengliuxiang.amour.admin.service.AdminContentGovernanceService;
 import com.chengliuxiang.amour.admin.service.AdminMessageService;
-import com.chengliuxiang.amour.common.domain.dos.MessageDO;
-import com.chengliuxiang.amour.common.domain.dos.MessageReplyDO;
-import com.chengliuxiang.amour.common.domain.dos.UserDO;
-import com.chengliuxiang.amour.common.domain.mapper.MessageMapper;
-import com.chengliuxiang.amour.common.domain.mapper.MessageReplyMapper;
-import com.chengliuxiang.amour.common.domain.mapper.UserMapper;
-import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.chengliuxiang.amour.common.constant.ContentGovernanceConstants;
 import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
 import com.chengliuxiang.amour.common.exception.BizException;
 import com.chengliuxiang.amour.common.model.PageResult;
 import com.chengliuxiang.amour.common.utils.Response;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * 兼容旧路径的留言治理实现。留言始终是空间私密内容（visibility=0），
+ * 后台只提供按空间查看和违规逻辑删除，不提供代发/代回复。
+ */
 @Service
-@Slf4j
 public class AdminMessageServiceImpl implements AdminMessageService {
 
-    private static final DateTimeFormatter DATE_TIME_FORMATTER =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-
     @Resource
-    private MessageMapper messageMapper;
-    @Resource
-    private MessageReplyMapper messageReplyMapper;
-    @Resource
-    private UserMapper userMapper;
+    private AdminContentGovernanceService adminContentGovernanceService;
 
     @Override
     public Response<PageResult<FindMessagePageListRspVO>> findMessagePageList(FindMessagePageListReqVO reqVO) {
-        IPage<MessageDO> messagePage = messageMapper.selectAdminPage(
-                reqVO.getCurrent(), reqVO.getSize(), null, reqVO.getContent());
+        AdminContentPageReqVO query = new AdminContentPageReqVO();
+        query.setCurrent(reqVO.getCurrent());
+        query.setSize(reqVO.getSize());
+        query.setSpaceId(reqVO.getSpaceId());
+        query.setKeyword(reqVO.getContent());
+        query.setIncludeDeleted(reqVO.getIncludeDeleted());
+        query.setContentType(ContentGovernanceConstants.TYPE_MESSAGE);
 
-        List<MessageDO> messages = messagePage.getRecords();
-        if (CollUtil.isEmpty(messages)) {
-            return Response.success(PageResult.<FindMessagePageListRspVO>builder()
-                    .current(messagePage.getCurrent())
-                    .size(messagePage.getSize())
-                    .total(messagePage.getTotal())
-                    .records(Collections.emptyList())
-                    .build());
-        }
-
-        List<MessageReplyDO> replies = loadReplies(messages);
-        Map<Long, Long> replyCountMap = replies.stream()
-                .collect(Collectors.groupingBy(MessageReplyDO::getMessageId, Collectors.counting()));
-
-        Set<Long> userIds = new HashSet<>();
-        messages.forEach(message -> addUserId(userIds, message.getUserId()));
-        Map<Long, String> userNameMap = new HashMap<>();
-        if (CollUtil.isNotEmpty(userIds)) {
-            userNameMap.putAll(userMapper.findUsersByIds(userIds)
-                    .stream()
-                    .collect(Collectors.toMap(UserDO::getId,
-                            user -> StrUtil.blankToDefault(user.getDisplayName(), "恋人"))));
-        }
-
-        List<FindMessagePageListRspVO> records = messages.stream()
-                .map(message -> FindMessagePageListRspVO.builder()
-                        .messageId(String.valueOf(message.getId()))
-                        .userName(getUserName(userNameMap, message.getUserId()))
-                        .content(message.getContent())
-                        .replyCount(replyCountMap.getOrDefault(message.getId(), 0L))
-                        .createTime(formatDateTime(message.getCreateTime()))
+        Response<PageResult<AdminContentPageRspVO>> response = adminContentGovernanceService.findPage(query);
+        PageResult<AdminContentPageRspVO> page = response.getData();
+        List<FindMessagePageListRspVO> records = page.getRecords().stream()
+                .map(item -> FindMessagePageListRspVO.builder()
+                        .messageId(String.valueOf(item.getContentId()))
+                        .spaceId(item.getSpaceId())
+                        .spaceCode(item.getSpaceCode())
+                        .spaceName(item.getSpaceName())
+                        .userName(item.getAuthorName())
+                        .userAmourId(item.getAuthorAmourId())
+                        .content(item.getTitle())
+                        .replyCount(item.getReplyCount() == null ? 0L : item.getReplyCount().longValue())
+                        .visibility(item.getVisibility())
+                        .visibilityText(item.getVisibilityText())
+                        .deleted(item.getDeleted())
+                        .reportCount(item.getReportCount())
+                        .pendingReportCount(item.getPendingReportCount())
+                        .createTime(item.getCreateTime())
+                        .updateTime(item.getUpdateTime())
                         .build())
                 .collect(Collectors.toList());
-
         return Response.success(PageResult.<FindMessagePageListRspVO>builder()
-                .current(messagePage.getCurrent())
-                .size(messagePage.getSize())
-                .total(messagePage.getTotal())
+                .current(page.getCurrent())
+                .size(page.getSize())
+                .total(page.getTotal())
                 .records(records)
                 .build());
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public Response<Void> deleteMessage(DeleteMessageReqVO reqVO) {
         Long messageId = parseMessageId(reqVO.getMessageId());
-        MessageDO message = messageMapper.selectById(messageId);
-        if (message == null || Boolean.TRUE.equals(message.getIsDeleted())) {
-            throw new BizException(ResponseCodeEnum.MESSAGE_NOT_EXIST);
-        }
-
-        int updatedRows = messageMapper.softDelete(message.getSpaceId(), messageId, LocalDateTime.now());
-        if (updatedRows == 0) {
-            throw new BizException(ResponseCodeEnum.MESSAGE_NOT_EXIST);
-        }
-
-        messageReplyMapper.softDeleteByMessageId(message.getSpaceId(), messageId, LocalDateTime.now());
-        return Response.success();
-    }
-
-    private List<MessageReplyDO> loadReplies(List<MessageDO> messages) {
-        Map<Long, List<Long>> messageIdsBySpaceId = messages.stream()
-                .filter(message -> message.getSpaceId() != null)
-                .collect(Collectors.groupingBy(MessageDO::getSpaceId,
-                        Collectors.mapping(MessageDO::getId, Collectors.toList())));
-        return messageIdsBySpaceId.entrySet().stream()
-                .flatMap(entry -> messageReplyMapper
-                        .selectActiveByMessageIds(entry.getKey(), entry.getValue()).stream())
-                .collect(Collectors.toList());
+        AdminContentDeleteReqVO delete = new AdminContentDeleteReqVO();
+        delete.setContentType(ContentGovernanceConstants.TYPE_MESSAGE);
+        delete.setContentId(messageId);
+        delete.setSpaceId(reqVO.getSpaceId());
+        delete.setReason(reqVO.getReason());
+        return adminContentGovernanceService.deleteContent(delete);
     }
 
     private Long parseMessageId(String messageId) {
@@ -128,19 +87,5 @@ public class AdminMessageServiceImpl implements AdminMessageService {
         } catch (NumberFormatException exception) {
             throw new BizException(ResponseCodeEnum.MESSAGE_NOT_EXIST);
         }
-    }
-
-    private void addUserId(Set<Long> userIds, Long userId) {
-        if (userId != null) {
-            userIds.add(userId);
-        }
-    }
-
-    private String getUserName(Map<Long, String> userNameMap, Long userId) {
-        return userId == null ? null : userNameMap.get(userId);
-    }
-
-    private String formatDateTime(LocalDateTime dateTime) {
-        return dateTime == null ? null : dateTime.format(DATE_TIME_FORMATTER);
     }
 }

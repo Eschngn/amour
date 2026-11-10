@@ -1,28 +1,46 @@
 <template>
   <aside
-    class="admin-sidebar fixed inset-y-0 left-0 z-40 flex w-72 shrink-0 flex-col text-slate-300 transition-[width,transform] duration-300 ease-out lg:relative lg:z-20 lg:translate-x-0"
+    class="admin-sidebar fixed inset-y-0 left-0 z-40 flex w-72 shrink-0 flex-col transition-[width,transform] duration-300 ease-out lg:relative lg:z-20 lg:translate-x-0"
     :class="[
-      open ? 'translate-x-0 shadow-2xl' : '-translate-x-full',
+      open ? 'translate-x-0 shadow-xl' : '-translate-x-full',
       collapsed ? 'lg:w-[88px]' : 'lg:w-[248px]',
     ]"
     aria-label="后台主导航"
   >
-    <div class="flex h-[72px] shrink-0 items-center border-b border-white/[0.07] px-5">
-      <RouterLink to="/admin/story" class="group flex min-w-0 items-center gap-3" @click="$emit('close')">
+    <div
+      class="admin-sidebar-brand flex h-[72px] shrink-0 items-center px-5"
+      :class="{ 'lg:justify-center lg:px-0': collapsed }"
+    >
+      <RouterLink
+        :to="entryPath"
+        class="group flex min-w-0 items-center gap-3"
+        :class="{ 'lg:justify-center': collapsed }"
+        @click="$emit('close')"
+      >
         <span
-          class="logo-mark flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-base font-bold text-white shadow-lg shadow-rose-950/30"
+          class="brand-mark flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px]"
           aria-hidden="true"
-        >A</span>
+        >
+          <svg viewBox="0 0 24 24" fill="none" class="h-[22px] w-[22px]">
+            <path
+              d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </span>
         <div class="min-w-0 transition-opacity" :class="{ 'lg:hidden': collapsed }">
-          <p class="truncate text-[15px] font-semibold tracking-wide text-white">恋语间</p>
-          <p class="mt-0.5 truncate text-[10px] font-medium uppercase tracking-[0.2em] text-slate-500">
-            Content studio
+          <p class="truncate font-display text-[17px] font-semibold tracking-wide text-stone-900">恋语间</p>
+          <p class="mt-0.5 truncate text-[10px] font-medium uppercase tracking-[0.16em] text-stone-500">
+            Admin Console
           </p>
         </div>
       </RouterLink>
       <button
         type="button"
-        class="ml-auto rounded-lg p-2 text-slate-500 transition hover:bg-white/[0.06] hover:text-white lg:hidden"
+        class="admin-sidebar-icon-button ml-auto rounded-lg p-2 lg:hidden"
         aria-label="关闭导航菜单"
         @click="$emit('close')"
       >
@@ -30,36 +48,38 @@
       </button>
     </div>
 
-    <nav class="admin-nav flex-1 overflow-y-auto px-3 py-5">
-      <p
-        class="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-600"
-        :class="{ 'lg:text-center lg:px-0': collapsed }"
-      >
-        {{ collapsed ? '•••' : '内容管理' }}
+    <nav class="admin-nav flex-1 overflow-y-auto px-3 py-4">
+      <div v-for="group in visibleGroups" :key="group.label" class="mb-4">
+        <p
+          class="admin-nav-group-label mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.18em]"
+          :class="{ 'lg:text-center lg:px-0': collapsed }"
+        >
+          {{ collapsed ? '•••' : group.label }}
+        </p>
+        <RouterLink
+          v-for="item in group.items"
+          :key="item.to"
+          :to="item.to"
+          class="admin-nav-link group relative mb-1 flex h-11 items-center gap-3 overflow-hidden rounded-xl px-3 text-sm font-medium transition-colors duration-200"
+          :class="{ 'lg:justify-center lg:px-0': collapsed }"
+          active-class="admin-nav-active"
+          :title="collapsed ? item.label : undefined"
+          @click="$emit('close')"
+        >
+          <component :is="item.icon" class="h-[18px] w-[18px] shrink-0" />
+          <span class="truncate" :class="{ 'lg:hidden': collapsed }">{{ item.label }}</span>
+        </RouterLink>
+      </div>
+      <p v-if="!visibleGroups.length" class="admin-nav-empty px-3 py-6 text-center text-xs leading-5">
+        当前账号暂无可访问的后台菜单
       </p>
-      <RouterLink
-        v-for="item in menu"
-        :key="item.to"
-        :to="item.to"
-        class="group relative mb-1 flex h-11 items-center gap-3 overflow-hidden rounded-xl px-3 text-sm font-medium text-slate-400 transition-all duration-200 hover:bg-white/[0.06] hover:text-white"
-        active-class="admin-nav-active text-white"
-        :title="collapsed ? item.label : undefined"
-        @click="$emit('close')"
-      >
-        <component :is="item.icon" class="h-[18px] w-[18px] shrink-0 transition-transform duration-200 group-hover:scale-110" />
-        <span class="truncate" :class="{ 'lg:hidden': collapsed }">{{ item.label }}</span>
-        <span
-          v-if="item.badge"
-          class="ml-auto rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-slate-300"
-          :class="{ 'lg:hidden': collapsed }"
-        >{{ item.badge }}</span>
-      </RouterLink>
     </nav>
 
-    <div class="m-3 rounded-2xl border border-white/[0.07] bg-white/[0.035] p-2">
+    <div class="admin-sidebar-actions m-3 rounded-2xl p-2">
       <RouterLink
         to="/"
-        class="flex h-10 items-center gap-3 rounded-xl px-2.5 text-sm text-slate-400 transition hover:bg-white/[0.06] hover:text-white"
+        class="admin-sidebar-action flex h-10 items-center gap-3 rounded-xl px-2.5 text-sm transition-colors"
+        :class="{ 'lg:justify-center lg:px-0': collapsed }"
         :title="collapsed ? '返回前台' : undefined"
         @click="$emit('close')"
       >
@@ -69,7 +89,8 @@
       </RouterLink>
       <button
         type="button"
-        class="flex h-10 w-full items-center gap-3 rounded-xl px-2.5 text-left text-sm text-slate-400 transition hover:bg-rose-500/10 hover:text-rose-300"
+        class="admin-sidebar-action admin-sidebar-action--danger flex h-10 w-full items-center gap-3 rounded-xl px-2.5 text-left text-sm transition-colors"
+        :class="{ 'lg:justify-center lg:px-0': collapsed }"
         :title="collapsed ? '退出登录' : undefined"
         @click="onLogout"
       >
@@ -88,17 +109,25 @@ import {
   Collection,
   CollectionTag,
   Connection,
-  Lock,
-  User,
-  UserFilled,
+  DataBoard,
+  Document,
+  Files,
   House,
   Picture,
   SwitchButton,
   TopRight,
+  User,
+  Warning,
 } from '@element-plus/icons-vue'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/axios'
-import { clearAdminSession } from '@/utils/adminAuth.js'
+import {
+  ADMIN_PERMISSIONS,
+  clearAdminSession,
+  hasAdminPermission,
+  resolveAdminEntryPath,
+} from '@/utils/adminAuth.js'
 
 defineProps({
   open: { type: Boolean, default: false },
@@ -108,6 +137,7 @@ defineProps({
 defineEmits(['close'])
 
 const router = useRouter()
+const entryPath = computed(() => resolveAdminEntryPath())
 
 async function onLogout() {
   try {
@@ -120,15 +150,43 @@ async function onLogout() {
   }
 }
 
-const menu = [
-  { to: '/admin/story', label: '故事管理', icon: Collection },
-  { to: '/admin/message', label: '留言板管理', icon: ChatDotRound },
-  { to: '/admin/photo', label: '相册管理', icon: Picture },
-  { to: '/admin/anniversary', label: '纪念日管理', icon: Calendar },
-  { to: '/admin/dict', label: '字典配置', icon: CollectionTag },
-  { to: '/admin/role', label: '角色管理', icon: UserFilled },
-  { to: '/admin/permission', label: '权限管理', icon: Lock },
-  { to: '/admin/user', label: '用户管理', icon: User },
-  { to: '/admin/space', label: '空间管理', icon: Connection },
+const groups = [
+  {
+    label: '平台治理',
+    items: [
+      { to: '/admin/dashboard', label: '工作台', icon: DataBoard, permission: ADMIN_PERMISSIONS.DASHBOARD_QUERY },
+      { to: '/admin/space', label: '空间管理', icon: Connection, permission: ADMIN_PERMISSIONS.SPACE_QUERY },
+      { to: '/admin/report', label: '举报审核', icon: Warning, permission: ADMIN_PERMISSIONS.REPORT_QUERY },
+    ],
+  },
+  {
+    label: '内容治理',
+    items: [
+      { to: '/admin/story', label: '故事治理', icon: Collection, permission: ADMIN_PERMISSIONS.CONTENT_QUERY },
+      { to: '/admin/photo', label: '照片治理', icon: Picture, permission: ADMIN_PERMISSIONS.CONTENT_QUERY },
+      { to: '/admin/message', label: '留言治理', icon: ChatDotRound, permission: ADMIN_PERMISSIONS.CONTENT_QUERY },
+      { to: '/admin/anniversary', label: '纪念日治理', icon: Calendar, permission: ADMIN_PERMISSIONS.CONTENT_QUERY },
+    ],
+  },
+  {
+    label: '平台管理',
+    items: [
+      { to: '/admin/user', label: '用户管理', icon: User, permission: ADMIN_PERMISSIONS.USER_QUERY },
+      { to: '/admin/dict', label: '平台配置', icon: CollectionTag, permission: ADMIN_PERMISSIONS.DICT_QUERY },
+    ],
+  },
+  {
+    label: '后台安全',
+    items: [
+      { to: '/admin/audit', label: '操作审计', icon: Document, permission: ADMIN_PERMISSIONS.AUDIT_QUERY },
+    ],
+  },
 ]
+
+const visibleGroups = computed(() => groups
+  .map(group => ({
+    ...group,
+    items: group.items.filter(item => hasAdminPermission(item.permission)),
+  }))
+  .filter(group => group.items.length > 0))
 </script>

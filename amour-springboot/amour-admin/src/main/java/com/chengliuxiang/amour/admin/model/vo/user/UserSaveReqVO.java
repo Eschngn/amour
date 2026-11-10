@@ -16,4 +16,7 @@ public class UserSaveReqVO {
     @NotNull private Integer status;
     /** 是否为平台管理员 */
     private Boolean platformAdmin;
+
+    /** 停用或重要资料变更原因，停用时必填 */
+    @Size(max = 1000) private String reason;
 }

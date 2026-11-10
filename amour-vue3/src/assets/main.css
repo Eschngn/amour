@@ -12,6 +12,32 @@ html:root {
   --el-color-primary-light-9: #fff1f2;
   --el-color-primary-dark-2: #be123c;
   --el-font-family: 'Nunito', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+
+  /*
+   * 后台视觉体系：登录页与管理台共享的中性色和品牌强调。
+   * 页面底色、表面、边框、文字与导航状态都从这里取值，避免色值散落在各组件。
+   */
+  --admin-canvas: #f5f4f2;
+  --admin-surface: #ffffff;
+  --admin-surface-muted: #faf9f7;
+  --admin-surface-sunken: #f1efec;
+  --admin-text: #1c1917;
+  --admin-text-secondary: #57534e;
+  --admin-text-muted: #78716c;
+  --admin-text-placeholder: #8a817b;
+  --admin-border: #e7e5e4;
+  --admin-border-strong: #d6d3d1;
+  --admin-border-hover: #c5beb8;
+  --admin-brand: #e11d48;
+  --admin-brand-strong: #be123c;
+  --admin-brand-deep: #9f1239;
+  --admin-brand-soft: #fff1f2;
+  --admin-brand-soft-border: #fecdd3;
+  --admin-brand-wash: #fdf7f7;
+  --admin-focus-ring: rgba(225, 29, 72, 0.12);
+  --admin-nav-hover: #f3f1ee;
+  --admin-header-bg: rgba(255, 255, 255, 0.88);
+  --admin-overlay: rgba(28, 25, 23, 0.32);
 }
 
 /* 顶部轻提示：半透明圆角卡片 + 玫瑰色描边与柔和投影 */

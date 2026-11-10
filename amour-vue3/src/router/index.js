@@ -1,13 +1,11 @@
 import Index from '@/pages/frontend/index.vue'
 import AdminLayout from '@/pages/admin/index.vue'
-import AdminAnniversaryManage from '@/pages/admin/AdminAnniversaryManage.vue'
+import AdminAuditManage from '@/pages/admin/AdminAuditManage.vue'
+import AdminContentGovernance from '@/pages/admin/AdminContentGovernance.vue'
+import AdminDashboard from '@/pages/admin/AdminDashboard.vue'
 import AdminDictManage from '@/pages/admin/AdminDictManage.vue'
 import AdminLogin from '@/pages/admin/AdminLogin.vue'
-import AdminMessageManage from '@/pages/admin/AdminMessageManage.vue'
-import AdminPhotoManage from '@/pages/admin/AdminPhotoManage.vue'
-import AdminStoryManage from '@/pages/admin/AdminStoryManage.vue'
-import AdminRoleManage from '@/pages/admin/AdminRoleManage.vue'
-import AdminPermissionManage from '@/pages/admin/AdminPermissionManage.vue'
+import AdminReportManage from '@/pages/admin/AdminReportManage.vue'
 import AdminSpaceManage from '@/pages/admin/AdminSpaceManage.vue'
 import AdminUserManage from '@/pages/admin/AdminUserManage.vue'
 import AnniversaryPage from '@/pages/frontend/AnniversaryPage.vue'
@@ -21,7 +19,15 @@ import StoryDetail from '@/pages/frontend/StoryDetail.vue'
 import FrontendLogin from '@/pages/frontend/FrontendLogin.vue'
 import UserProfilePage from '@/pages/frontend/UserProfilePage.vue'
 import PhotoAlbumPage from '@/pages/frontend/PhotoAlbumPage.vue'
-import { ADMIN_PERMISSIONS, isAdminAuthenticated } from '@/utils/adminAuth.js'
+import {
+  ADMIN_PERMISSIONS,
+  hasAdminPermission,
+  hasAdminPermissionsLoaded,
+  isAdminAuthenticated,
+  resolveAdminEntryPath,
+  setAdminPermissions,
+} from '@/utils/adminAuth.js'
+import { fetchAdminPermissions } from '@/api/admin/auth'
 import { clearFrontendSession, hasFrontendQueryPermission, isFrontendAuthenticated, setFrontendProfile } from '@/utils/auth.js'
 import { isSpaceReady, isSpaceStatusUnknown, refreshSpaceStatus, spaceStatus } from '@/composables/useFrontendSpace.js'
 import { canEditSpaceContent } from '@/utils/spaceState.js'
@@ -118,56 +124,18 @@ const routes = [
   {
     path: '/admin',
     component: AdminLayout,
-    redirect: '/admin/story',
+    redirect: '/admin/dashboard',
     meta: { title: '后台管理 · 恋语间' },
     children: [
       {
-        path: 'story',
-        name: 'admin-story',
-        component: AdminStoryManage,
-        meta: { title: '故事管理 · 后台', pageTitle: '故事管理' },
-      },
-      {
-        path: 'message',
-        name: 'admin-message',
-        component: AdminMessageManage,
-        meta: { title: '留言板管理 · 后台', pageTitle: '留言板管理' },
-      },
-      {
-        path: 'photo',
-        name: 'admin-photo',
-        component: AdminPhotoManage,
-        meta: { title: '相册管理 · 后台', pageTitle: '相册管理' },
-      },
-      {
-        path: 'anniversary',
-        name: 'admin-anniversary',
-        component: AdminAnniversaryManage,
-        meta: { title: '纪念日管理 · 后台', pageTitle: '纪念日管理' },
-      },
-      {
-        path: 'dict',
-        name: 'admin-dict',
-        component: AdminDictManage,
-        meta: { title: '字典配置 · 后台', pageTitle: '字典配置' },
-      },
-      {
-        path: 'role',
-        name: 'admin-role',
-        component: AdminRoleManage,
-        meta: { title: '角色管理 · 后台', pageTitle: '角色管理' },
-      },
-      {
-        path: 'permission',
-        name: 'admin-permission',
-        component: AdminPermissionManage,
-        meta: { title: '权限管理 · 后台', pageTitle: '权限管理' },
-      },
-      {
-        path: 'user',
-        name: 'admin-user',
-        component: AdminUserManage,
-        meta: { title: '用户管理 · 后台', pageTitle: '用户管理' },
+        path: 'dashboard',
+        name: 'admin-dashboard',
+        component: AdminDashboard,
+        meta: {
+          title: '工作台 · 后台',
+          pageTitle: '工作台',
+          adminPermission: ADMIN_PERMISSIONS.DASHBOARD_QUERY,
+        },
       },
       {
         path: 'space',
@@ -177,7 +145,94 @@ const routes = [
           title: '空间管理 · 后台',
           pageTitle: '空间管理',
           adminPermission: ADMIN_PERMISSIONS.SPACE_QUERY,
-          adminRestorePermission: ADMIN_PERMISSIONS.SPACE_RESTORE,
+        },
+      },
+      {
+        path: 'report',
+        name: 'admin-report',
+        component: AdminReportManage,
+        meta: {
+          title: '举报审核 · 后台',
+          pageTitle: '举报审核',
+          adminPermission: ADMIN_PERMISSIONS.REPORT_QUERY,
+        },
+      },
+      {
+        path: 'content',
+        redirect: '/admin/story',
+      },
+      {
+        path: 'story',
+        name: 'admin-story',
+        component: AdminContentGovernance,
+        meta: {
+          title: '故事治理 · 后台',
+          pageTitle: '故事治理',
+          contentType: 'story',
+          adminPermission: ADMIN_PERMISSIONS.CONTENT_QUERY,
+        },
+      },
+      {
+        path: 'photo',
+        name: 'admin-photo',
+        component: AdminContentGovernance,
+        meta: {
+          title: '照片治理 · 后台',
+          pageTitle: '照片治理',
+          contentType: 'photo',
+          adminPermission: ADMIN_PERMISSIONS.CONTENT_QUERY,
+        },
+      },
+      {
+        path: 'message',
+        name: 'admin-message',
+        component: AdminContentGovernance,
+        meta: {
+          title: '留言治理 · 后台',
+          pageTitle: '留言治理',
+          contentType: 'message',
+          adminPermission: ADMIN_PERMISSIONS.CONTENT_QUERY,
+        },
+      },
+      {
+        path: 'anniversary',
+        name: 'admin-anniversary',
+        component: AdminContentGovernance,
+        meta: {
+          title: '纪念日治理 · 后台',
+          pageTitle: '纪念日治理',
+          contentType: 'anniversary',
+          adminPermission: ADMIN_PERMISSIONS.CONTENT_QUERY,
+        },
+      },
+      {
+        path: 'audit',
+        name: 'admin-audit',
+        component: AdminAuditManage,
+        meta: {
+          title: '操作审计 · 后台',
+          pageTitle: '操作审计',
+          adminPermission: ADMIN_PERMISSIONS.AUDIT_QUERY,
+        },
+      },
+      {
+        path: 'dict',
+        name: 'admin-dict',
+        component: AdminDictManage,
+        meta: {
+          title: '平台配置 · 后台',
+          pageTitle: '平台配置',
+          adminPermission: ADMIN_PERMISSIONS.DICT_QUERY,
+        },
+      },
+      {
+        path: 'user',
+        name: 'admin-user',
+        component: AdminUserManage,
+        meta: {
+          title: '用户管理 · 后台',
+          pageTitle: '用户管理',
+          adminPermission: ADMIN_PERMISSIONS.USER_QUERY,
         },
       },
     ],
@@ -190,6 +245,25 @@ const router = createRouter({
 })
 
 let frontendAuthCheck = null
+let adminPermissionCheck = null
+
+async function ensureAdminPermissions() {
+  if (hasAdminPermissionsLoaded()) return true
+  if (adminPermissionCheck) return adminPermissionCheck
+  adminPermissionCheck = fetchAdminPermissions()
+    .then(({ data }) => {
+      if (data?.success && Array.isArray(data.data?.permissions)) {
+        setAdminPermissions(data.data.permissions)
+        return true
+      }
+      return false
+    })
+    .catch(() => false)
+    .finally(() => {
+      adminPermissionCheck = null
+    })
+  return adminPermissionCheck
+}
 
 async function validateFrontendSession() {
   if (!isFrontendAuthenticated()) return true
@@ -293,17 +367,35 @@ router.beforeEach(async (to) => {
   }
   if (to.path === '/admin/login') {
     if (isAdminAuthenticated()) {
-      return { path: '/admin/story' }
+      const loaded = await ensureAdminPermissions()
+      if (loaded) {
+        const entry = resolveAdminEntryPath()
+        if (entry !== '/admin/login') {
+          return { path: entry }
+        }
+      }
     }
     return true
   }
-  if (isAdminAuthenticated()) {
-    return true
+  if (!isAdminAuthenticated()) {
+    return {
+      path: '/admin/login',
+      query: { redirect: to.fullPath },
+    }
   }
-  return {
-    path: '/admin/login',
-    query: { redirect: to.fullPath },
+  const permissionsLoaded = await ensureAdminPermissions()
+  if (!permissionsLoaded) {
+    return { path: '/admin/login', query: { expired: '1', redirect: to.fullPath } }
   }
+  const requiredPermission = to.meta?.adminPermission
+  if (requiredPermission && !hasAdminPermission(requiredPermission)) {
+    const entry = resolveAdminEntryPath()
+    if (entry === '/admin/login' || entry === to.path) {
+      return { path: '/admin/login', query: { expired: '1' } }
+    }
+    return { path: entry }
+  }
+  return true
 })
 
 router.afterEach((to) => {

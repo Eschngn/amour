@@ -27,6 +27,15 @@ public interface CoupleInvitationMapper extends BaseMapper<CoupleInvitationDO> {
     }
 
     /**
+     * 后台空间详情：返回该空间全部邀请记录（含已接受/撤销/过期），不返回 token。
+     */
+    default List<CoupleInvitationDO> selectBySpaceId(Long spaceId) {
+        return selectList(new LambdaQueryWrapper<CoupleInvitationDO>()
+                .eq(CoupleInvitationDO::getSpaceId, spaceId)
+                .orderByDesc(CoupleInvitationDO::getId));
+    }
+
+    /**
      * 查询空间内尚未过期的待接受邀请。
      */
     default List<CoupleInvitationDO> selectPendingBySpaceId(Long spaceId, LocalDateTime now) {

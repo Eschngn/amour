@@ -12,7 +12,12 @@ import lombok.NoArgsConstructor;
 public class PhotoCategoryListRspVO {
 
     private Long id;
+
+    private Long spaceId;
+
     private String categoryName;
+
     private Integer sortOrder;
+
     private Boolean isEnabled;
 }

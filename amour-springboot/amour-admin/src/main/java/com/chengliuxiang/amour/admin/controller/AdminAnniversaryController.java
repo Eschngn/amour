@@ -1,6 +1,11 @@
 package com.chengliuxiang.amour.admin.controller;
 
-import com.chengliuxiang.amour.admin.model.vo.anniversary.*;
+import com.chengliuxiang.amour.admin.model.vo.anniversary.DeleteAnniversaryReqVO;
+import com.chengliuxiang.amour.admin.model.vo.anniversary.FindAnniversaryDetailReqVO;
+import com.chengliuxiang.amour.admin.model.vo.anniversary.FindAnniversaryDetailRspVO;
+import com.chengliuxiang.amour.admin.model.vo.anniversary.FindAnniversaryPageListReqVO;
+import com.chengliuxiang.amour.admin.model.vo.anniversary.FindAnniversaryPageListRspVO;
+import com.chengliuxiang.amour.admin.model.vo.anniversary.UpdateAnniversaryVisibleStatusReqVO;
 import com.chengliuxiang.amour.admin.service.AdminAnniversaryService;
 import com.chengliuxiang.amour.common.aspect.ApiOperationLog;
 import com.chengliuxiang.amour.common.model.PageResult;
@@ -22,37 +27,27 @@ public class AdminAnniversaryController {
     private AdminAnniversaryService adminAnniversaryService;
 
     @PostMapping("/list")
-    @ApiOperationLog(description = "查询后台纪念日分页数据")
-    public Response<PageResult<FindAnniversaryPageListRspVO>> findAnniversaryPageList(@RequestBody FindAnniversaryPageListReqVO reqVO) {
+    @ApiOperationLog(description = "查询后台纪念日治理分页数据")
+    public Response<PageResult<FindAnniversaryPageListRspVO>> findAnniversaryPageList(
+            @RequestBody FindAnniversaryPageListReqVO reqVO) {
         return adminAnniversaryService.findAnniversaryPageList(reqVO);
     }
 
     @PostMapping("/detail")
-    @ApiOperationLog(description = "查询纪念日详情")
-    public Response<FindAnniversaryDetailRspVO> findAnniversaryDetail(@Validated @RequestBody FindAnniversaryDetailReqVO reqVO) {
+    public Response<FindAnniversaryDetailRspVO> findAnniversaryDetail(
+            @Validated @RequestBody FindAnniversaryDetailReqVO reqVO) {
         return adminAnniversaryService.findAnniversaryDetail(reqVO);
     }
 
-    @PostMapping("/add")
-    @ApiOperationLog(description = "新增纪念日")
-    public Response<Long> addAnniversary(@Validated @RequestBody AddAnniversaryReqVO reqVO) {
-        return adminAnniversaryService.addAnniversary(reqVO);
-    }
-
-    @PostMapping("/update")
-    @ApiOperationLog(description = "更新纪念日")
-    public Response<Void> updateAnniversary(@Validated @RequestBody UpdateAnniversaryReqVO reqVO) {
-        return adminAnniversaryService.updateAnniversary(reqVO);
-    }
-
     @PostMapping("/updateVisibleStatus")
-    @ApiOperationLog(description = "更新纪念日显示状态")
-    public Response<Void> updateVisibleStatus(@Validated @RequestBody UpdateAnniversaryVisibleStatusReqVO reqVO) {
+    @ApiOperationLog(description = "更新纪念日可见性")
+    public Response<Void> updateVisibleStatus(
+            @Validated @RequestBody UpdateAnniversaryVisibleStatusReqVO reqVO) {
         return adminAnniversaryService.updateVisibleStatus(reqVO);
     }
 
     @PostMapping("/delete")
-    @ApiOperationLog(description = "删除纪念日")
+    @ApiOperationLog(description = "逻辑删除纪念日")
     public Response<Void> deleteAnniversary(@Validated @RequestBody DeleteAnniversaryReqVO reqVO) {
         return adminAnniversaryService.deleteAnniversary(reqVO);
     }

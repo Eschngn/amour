@@ -8,24 +8,47 @@
       </div>
     </section>
 
-    <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div class="flex flex-col gap-3 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-end">
-        <div class="flex flex-col gap-2 sm:flex-row">
-          <div class="relative sm:w-64">
-            <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input v-model="keyword" type="search" placeholder="搜索键名、名称或值" class="w-full rounded-xl border border-slate-200 py-2 pl-9 pr-3 text-sm outline-none transition placeholder:text-slate-400" />
-          </div>
-          <div class="config-type-filter relative sm:w-40">
-            <Filter class="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <el-select v-model="valueType" clearable placeholder="全部类型" class="config-type-select w-full">
-              <el-option v-for="option in typeOptions" :key="option.value" :label="option.label" :value="option.value" />
-            </el-select>
-          </div>
-          <button type="button" class="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-200 px-3 text-xs font-medium text-slate-500 transition hover:bg-slate-50 hover:text-slate-800" @click="fetchConfigs"><Refresh class="h-3.5 w-3.5" :class="{ 'animate-spin': loading }" /> 刷新</button>
-          <button type="button" class="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-3 text-xs font-medium text-white shadow-sm transition hover:bg-rose-700" @click="openEditor()"><Plus class="h-3.5 w-3.5" /> 新增配置</button>
+    <section class="admin-filter-panel">
+      <div class="admin-filter-bar">
+        <div class="admin-filter-fields">
+          <label class="admin-filter-field admin-filter-field--search">
+            <Search class="admin-search-icon" />
+            <input
+              v-model="keyword"
+              type="search"
+              aria-label="搜索配置键名、名称或值"
+              placeholder="搜索键名、名称或值"
+              class="admin-search-input"
+              @keyup.enter="applyFilters"
+            />
+          </label>
+          <el-select
+            v-model="valueType"
+            clearable
+            placeholder="全部值类型"
+            class="admin-filter-field admin-filter-field--select"
+          >
+            <el-option v-for="option in typeOptions" :key="option.value" :label="option.label" :value="option.value" />
+          </el-select>
+        </div>
+        <div class="admin-filter-actions">
+          <button
+            type="button"
+            class="admin-filter-button admin-filter-button--secondary admin-filter-button--icon"
+            aria-label="刷新配置列表"
+            title="刷新配置列表"
+            @click="fetchConfigs"
+          >
+            <Refresh class="h-3.5 w-3.5" :class="{ 'animate-spin': loading }" />
+          </button>
+          <button type="button" class="admin-filter-button admin-filter-button--primary" @click="openEditor()">
+            <Plus class="h-3.5 w-3.5" />新增配置
+          </button>
         </div>
       </div>
+    </section>
 
+    <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <div v-if="loading" class="flex items-center justify-center py-24 text-sm text-slate-400"><Loading class="mr-2 h-4 w-4 animate-spin" />加载中…</div>
       <div v-else-if="!configs.length" class="flex flex-col items-center justify-center px-6 py-24 text-center">
         <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400"><CollectionTag class="h-6 w-6" /></span>
@@ -153,7 +176,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { CollectionTag, Close, Delete, Edit, Filter, Loading, Plus, Refresh, Search, Setting, Upload } from '@element-plus/icons-vue'
+import { CollectionTag, Close, Delete, Edit, Loading, Plus, Refresh, Search, Setting, Upload } from '@element-plus/icons-vue'
 import 'element-plus/es/components/message/style/css'
 import 'element-plus/es/components/message-box/style/css'
 import api from '@/axios'
@@ -291,10 +314,13 @@ function typeLabel(type) {
   return editableTypeOptions.find(option => option.value === type)?.label || type
 }
 
-watch(currentPage, fetchConfigs)
-watch(valueType, () => { currentPage.value = 1; fetchConfigs() })
 let searchTimer
-watch(keyword, () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { currentPage.value = 1; fetchConfigs() }, 250) })
+function resetAndLoad() { if (currentPage.value === 1) fetchConfigs(); else currentPage.value = 1 }
+function applyFilters() { clearTimeout(searchTimer); resetAndLoad() }
+
+watch(currentPage, fetchConfigs)
+watch(valueType, applyFilters)
+watch(keyword, () => { clearTimeout(searchTimer); searchTimer = setTimeout(resetAndLoad, 250) })
 onMounted(fetchConfigs)
 </script>
 
@@ -370,9 +396,4 @@ onMounted(fetchConfigs)
 .image-preview-full { max-height: 90vh; max-width: 92vw; object-fit: contain; border-radius: 0.75rem; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35); }
 .image-preview-close { position: absolute; right: 1.25rem; top: 1.25rem; display: inline-flex; align-items: center; justify-content: center; border-radius: 0.75rem; padding: 0.625rem; color: #fff; background: rgba(255, 255, 255, 0.14); transition: background 160ms ease; }
 .image-preview-close:hover { background: rgba(255, 255, 255, 0.24); }
-:deep(.config-type-select .el-select__wrapper) { min-height: 40px; border-radius: 12px; background: #fff; box-shadow: 0 0 0 1px #e2e8f0 inset; transition: box-shadow 160ms ease, transform 160ms ease; }
-:deep(.config-type-select .el-select__wrapper) { padding-left: 34px; }
-:deep(.config-type-select .el-select__wrapper:hover) { box-shadow: 0 0 0 1px #c7d2fe inset; }
-:deep(.config-type-select .el-select__wrapper.is-focused) { box-shadow: 0 0 0 1px #818cf8 inset, 0 0 0 3px rgba(99, 102, 241, 0.1); }
-:deep(.config-type-select .el-select__placeholder) { font-size: 13px; color: #64748b; }
 </style>

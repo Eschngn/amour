@@ -119,6 +119,54 @@ public interface PhotoMapper extends BaseMapper<PhotoDO> {
                 .orderByDesc(PhotoDO::getId));
     }
 
+    /**
+     * 后台治理分页：显式空间过滤、真实 visibility、可查看逻辑删除。
+     */
+    default IPage<PhotoDO> findAdminGovernancePage(long current, long size, Long spaceId,
+                                                    String keyword, Integer visibility,
+                                                    boolean includeDeleted) {
+        return selectPage(new Page<>(current, size), new LambdaQueryWrapper<PhotoDO>()
+                .eq(spaceId != null, PhotoDO::getSpaceId, spaceId)
+                .eq(!includeDeleted, PhotoDO::getIsDeleted, false)
+                .eq(visibility != null, PhotoDO::getVisibility, visibility)
+                .like(cn.hutool.core.util.StrUtil.isNotBlank(keyword), PhotoDO::getTitle,
+                        cn.hutool.core.util.StrUtil.trim(keyword))
+                .orderByDesc(PhotoDO::getUpdateTime)
+                .orderByDesc(PhotoDO::getId));
+    }
+
+    /**
+     * 后台详情：同时匹配 id 与 spaceId，不因逻辑删除而隐藏已删除内容。
+     */
+    default PhotoDO findAdminById(Long spaceId, Long id) {
+        return selectOne(new LambdaQueryWrapper<PhotoDO>()
+                .eq(PhotoDO::getSpaceId, spaceId)
+                .eq(PhotoDO::getId, id));
+    }
+
+    default int markDeletedByAdmin(Long spaceId, Long id, Long updatedBy, LocalDateTime updateTime) {
+        return update(null, new LambdaUpdateWrapper<PhotoDO>()
+                .eq(PhotoDO::getSpaceId, spaceId)
+                .eq(PhotoDO::getId, id)
+                .eq(PhotoDO::getIsDeleted, false)
+                .set(PhotoDO::getIsDeleted, true)
+                .set(PhotoDO::getIsCover, false)
+                .set(PhotoDO::getUpdatedBy, updatedBy)
+                .set(PhotoDO::getUpdateTime, updateTime));
+    }
+
+    default int moderateVisibility(Long spaceId, Long id, Integer visibility,
+                                   Long updatedBy, LocalDateTime updateTime) {
+        return update(null, new LambdaUpdateWrapper<PhotoDO>()
+                .eq(PhotoDO::getSpaceId, spaceId)
+                .eq(PhotoDO::getId, id)
+                .eq(PhotoDO::getIsDeleted, false)
+                .set(PhotoDO::getVisibility, visibility)
+                .set(visibility != null && visibility != 1, PhotoDO::getIsCover, false)
+                .set(PhotoDO::getUpdatedBy, updatedBy)
+                .set(PhotoDO::getUpdateTime, updateTime));
+    }
+
     default int saveAdminPhoto(PhotoDO photo) {
         return insert(photo);
     }

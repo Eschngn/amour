@@ -21,6 +21,46 @@ public interface StoryNodeMapper extends BaseMapper<StoryNodeDO> {
                 .orderByAsc(StoryNodeDO::getHappenedTime));
     }
 
+    /**
+     * 后台治理分页：显式空间过滤、真实 visibility、可查看逻辑删除。
+     */
+    default IPage<StoryNodeDO> selectAdminGovernancePage(long current, long size, Long spaceId,
+                                                         String keyword, Integer visibility,
+                                                         boolean includeDeleted) {
+        return selectPage(new Page<>(current, size), new LambdaQueryWrapper<StoryNodeDO>()
+                .eq(spaceId != null, StoryNodeDO::getSpaceId, spaceId)
+                .eq(!includeDeleted, StoryNodeDO::getIsDeleted, false)
+                .eq(visibility != null, StoryNodeDO::getVisibility, visibility)
+                .and(cn.hutool.core.util.StrUtil.isNotBlank(keyword), w -> w
+                        .like(StoryNodeDO::getTitle, cn.hutool.core.util.StrUtil.trim(keyword))
+                        .or().like(StoryNodeDO::getSummary, cn.hutool.core.util.StrUtil.trim(keyword)))
+                .orderByDesc(StoryNodeDO::getUpdateTime)
+                .orderByDesc(StoryNodeDO::getId));
+    }
+
+    /**
+     * 后台详情：同时匹配 id 与 spaceId，不因逻辑删除而隐藏已删除内容。
+     */
+    default StoryNodeDO selectAdminById(Long spaceId, Long id) {
+        return selectOne(new LambdaQueryWrapper<StoryNodeDO>()
+                .eq(StoryNodeDO::getSpaceId, spaceId)
+                .eq(StoryNodeDO::getId, id));
+    }
+
+    /**
+     * 后台可见性处置：条件更新同时匹配 spaceId，避免跨空间篡改。
+     */
+    default int moderateVisibility(Long spaceId, Long id, Integer visibility,
+                                   Long updatedBy, LocalDateTime updateTime) {
+        return update(null, new LambdaUpdateWrapper<StoryNodeDO>()
+                .eq(StoryNodeDO::getSpaceId, spaceId)
+                .eq(StoryNodeDO::getId, id)
+                .eq(StoryNodeDO::getIsDeleted, false)
+                .set(StoryNodeDO::getVisibility, visibility)
+                .set(StoryNodeDO::getUpdatedBy, updatedBy)
+                .set(StoryNodeDO::getUpdateTime, updateTime));
+    }
+
     default StoryNodeDO selectActiveById(Long spaceId, Long id) {
         return selectOne(new LambdaQueryWrapper<StoryNodeDO>()
                 .eq(StoryNodeDO::getSpaceId, spaceId)

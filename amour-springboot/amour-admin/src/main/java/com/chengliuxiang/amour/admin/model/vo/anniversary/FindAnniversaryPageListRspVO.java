@@ -6,7 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -14,6 +13,11 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class FindAnniversaryPageListRspVO {
     private Long id;
+    private Long spaceId;
+    private String spaceCode;
+    private String spaceName;
+    private Integer spaceStatus;
+    private Integer spaceVisibility;
     private String title;
     private String description;
     private LocalDate anniversaryDate;
@@ -22,7 +26,18 @@ public class FindAnniversaryPageListRspVO {
     private String colorCode;
     private String location;
     private Integer sortOrder;
+    private Integer visibility;
+    private String visibilityText;
+    private Boolean deleted;
+    private String authorAmourId;
+    private String authorName;
+    private Long reportCount;
+    private Long pendingReportCount;
+    /**
+     * @deprecated 请使用 visibility
+     */
+    @Deprecated
     private Boolean isVisible;
-    private LocalDateTime createTime;
-    private LocalDateTime updateTime;
+    private String createTime;
+    private String updateTime;
 }

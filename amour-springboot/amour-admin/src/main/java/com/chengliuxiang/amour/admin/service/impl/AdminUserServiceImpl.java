@@ -7,7 +7,12 @@ import com.chengliuxiang.amour.admin.model.vo.user.UserIdReqVO;
 import com.chengliuxiang.amour.admin.model.vo.user.UserPageReqVO;
 import com.chengliuxiang.amour.admin.model.vo.user.UserPageRspVO;
 import com.chengliuxiang.amour.admin.model.vo.user.UserSaveReqVO;
+import com.chengliuxiang.amour.admin.security.AdminAuthorizationService;
+import com.chengliuxiang.amour.admin.service.AdminAuditService;
 import com.chengliuxiang.amour.admin.service.AdminUserService;
+import com.chengliuxiang.amour.common.constant.AdminAuditConstants;
+import com.chengliuxiang.amour.common.constant.AdminPermissionConstants;
+import com.chengliuxiang.amour.common.domain.dos.AdminAuditLogDO;
 import com.chengliuxiang.amour.common.domain.dos.UserDO;
 import com.chengliuxiang.amour.common.domain.mapper.UserMapper;
 import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
@@ -15,11 +20,14 @@ import com.chengliuxiang.amour.common.exception.BizException;
 import com.chengliuxiang.amour.common.model.PageResult;
 import com.chengliuxiang.amour.common.utils.AmourIdUtil;
 import com.chengliuxiang.amour.common.utils.Response;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
+import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -27,6 +35,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class AdminUserServiceImpl implements AdminUserService {
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final int AMOUR_ID_MAX_RETRIES = 5;
@@ -35,19 +44,49 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     @Resource private UserMapper userMapper;
     @Resource private PasswordEncoder passwordEncoder;
+    @Resource private AdminAuthorizationService adminAuthorizationService;
+    @Resource private AdminAuditService adminAuditService;
+    @Resource private PlatformTransactionManager transactionManager;
+
+    private TransactionTemplate transactionTemplate;
+
+    @PostConstruct
+    public void init() {
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
+    }
 
     @Override
     public Response<PageResult<UserPageRspVO>> findPage(UserPageReqVO reqVO) {
+        adminAuthorizationService.requirePermission(AdminPermissionConstants.USER_QUERY);
         long current = reqVO.getCurrent() == null || reqVO.getCurrent() < 1 ? 1 : reqVO.getCurrent();
         long size = reqVO.getSize() == null || reqVO.getSize() < 1 ? 10 : Math.min(reqVO.getSize(), 100);
         IPage<UserDO> page = userMapper.selectAdminPage(current, size, StrUtil.trim(reqVO.getKeyword()), reqVO.getStatus());
         List<UserPageRspVO> records = page.getRecords().stream().map(this::toResponse).collect(Collectors.toList());
-        return Response.success(PageResult.<UserPageRspVO>builder().current(page.getCurrent()).size(page.getSize()).total(page.getTotal()).records(records).build());
+        return Response.success(PageResult.<UserPageRspVO>builder()
+                .current(page.getCurrent())
+                .size(page.getSize())
+                .total(page.getTotal())
+                .records(records)
+                .build());
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public Response<Void> save(UserSaveReqVO reqVO) {
+        adminAuthorizationService.requirePermission(AdminPermissionConstants.USER_UPDATE);
+        Long adminUserId = StpUtil.getLoginIdAsLong();
+        String reason = StrUtil.trimToNull(reqVO.getReason());
+        try {
+            return transactionTemplate.execute(status -> {
+                doSave(reqVO, adminUserId, reason);
+                return Response.success();
+            });
+        } catch (RuntimeException exception) {
+            recordFailure(AdminAuditConstants.ACTION_USER_UPDATE, reqVO.getId(), adminUserId, reason, exception);
+            throw exception;
+        }
+    }
+
+    private void doSave(UserSaveReqVO reqVO, Long adminUserId, String reason) {
         String username = StrUtil.trim(reqVO.getUsername());
         UserDO duplicate = userMapper.selectAnyByUsername(username);
         if (duplicate != null && !duplicate.getId().equals(reqVO.getId())) {
@@ -55,42 +94,112 @@ public class AdminUserServiceImpl implements AdminUserService {
         }
         if (reqVO.getId() == null) {
             createUser(reqVO, username);
-            return Response.success();
+            adminAuditService.record(AdminAuditLogDO.builder()
+                    .adminUserId(adminUserId)
+                    .action(AdminAuditConstants.ACTION_USER_UPDATE)
+                    .targetType(AdminAuditConstants.TARGET_USER)
+                    .reason(reason)
+                    .result(AdminAuditConstants.RESULT_SUCCESS)
+                    .detail("user created")
+                    .createTime(LocalDateTime.now())
+                    .build());
+            return;
         }
 
         UserDO user = userMapper.selectAdminById(reqVO.getId());
         if (user == null) throw new BizException(ResponseCodeEnum.USER_NOT_EXIST);
+        boolean beforeDisabled = Boolean.TRUE.equals(user.getIsDeleted());
+        boolean beforePlatformAdmin = Boolean.TRUE.equals(user.getIsPlatformAdmin());
+        boolean afterDisabled = reqVO.getStatus() != 0;
+        if (afterDisabled && !beforeDisabled && StrUtil.isBlank(reason)) {
+            throw new BizException(ResponseCodeEnum.REASON_REQUIRED);
+        }
         user.setUsername(username);
         user.setDisplayName(StrUtil.trim(reqVO.getDisplayName()));
         user.setAvatar(StrUtil.nullToEmpty(reqVO.getAvatar()).trim());
-        user.setIsPlatformAdmin(Boolean.TRUE.equals(reqVO.getPlatformAdmin()));
+        if (reqVO.getPlatformAdmin() != null) {
+            user.setIsPlatformAdmin(Boolean.TRUE.equals(reqVO.getPlatformAdmin()));
+        }
         if (StrUtil.isNotBlank(reqVO.getPassword())) {
             validatePassword(reqVO.getPassword());
             user.setPassword(passwordEncoder.encode(reqVO.getPassword()));
         }
-        user.setIsDeleted(reqVO.getStatus() != 0);
+        user.setIsDeleted(afterDisabled);
         user.setUpdateTime(LocalDateTime.now());
         try {
             userMapper.save(user);
         } catch (DataIntegrityViolationException e) {
             throw new BizException(ResponseCodeEnum.USERNAME_ALREADY_EXISTS);
         }
-        if (Boolean.TRUE.equals(user.getIsDeleted())) {
+        if (afterDisabled) {
             StpUtil.logout(user.getId());
         }
-        return Response.success();
+        adminAuditService.record(AdminAuditLogDO.builder()
+                .adminUserId(adminUserId)
+                .action(afterDisabled ? AdminAuditConstants.ACTION_USER_DISABLE : AdminAuditConstants.ACTION_USER_UPDATE)
+                .targetType(AdminAuditConstants.TARGET_USER)
+                .targetUserId(user.getId())
+                .reason(reason)
+                .result(AdminAuditConstants.RESULT_SUCCESS)
+                .detail("disabled " + beforeDisabled + " -> " + afterDisabled
+                        + ", platform_admin " + beforePlatformAdmin + " -> "
+                        + Boolean.TRUE.equals(user.getIsPlatformAdmin()))
+                .createTime(LocalDateTime.now())
+                .build());
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public Response<Void> delete(UserIdReqVO reqVO) {
-        UserDO user = userMapper.selectActiveById(reqVO.getId());
-        if (user == null) throw new BizException(ResponseCodeEnum.USER_NOT_EXIST);
-        user.setIsDeleted(true);
-        user.setUpdateTime(LocalDateTime.now());
-        userMapper.updateById(user);
-        StpUtil.logout(user.getId());
-        return Response.success();
+        adminAuthorizationService.requirePermission(AdminPermissionConstants.USER_DISABLE);
+        String reason = StrUtil.trimToNull(reqVO.getReason());
+        if (StrUtil.isBlank(reason)) {
+            throw new BizException(ResponseCodeEnum.REASON_REQUIRED);
+        }
+        Long adminUserId = StpUtil.getLoginIdAsLong();
+        try {
+            return transactionTemplate.execute(status -> {
+                UserDO user = userMapper.selectActiveById(reqVO.getId());
+                if (user == null) throw new BizException(ResponseCodeEnum.USER_NOT_EXIST);
+                user.setIsDeleted(true);
+                user.setUpdateTime(LocalDateTime.now());
+                userMapper.updateById(user);
+                StpUtil.logout(user.getId());
+                adminAuditService.record(AdminAuditLogDO.builder()
+                        .adminUserId(adminUserId)
+                        .action(AdminAuditConstants.ACTION_USER_DISABLE)
+                        .targetType(AdminAuditConstants.TARGET_USER)
+                        .targetUserId(user.getId())
+                        .reason(reason)
+                        .result(AdminAuditConstants.RESULT_SUCCESS)
+                        .detail("disabled false -> true")
+                        .createTime(LocalDateTime.now())
+                        .build());
+                return Response.success();
+            });
+        } catch (RuntimeException exception) {
+            recordFailure(AdminAuditConstants.ACTION_USER_DISABLE, reqVO.getId(), adminUserId, reason, exception);
+            throw exception;
+        }
+    }
+
+    private void recordFailure(String action, Long targetUserId, Long adminUserId,
+                               String reason, RuntimeException exception) {
+        try {
+            adminAuditService.recordFailure(AdminAuditLogDO.builder()
+                    .adminUserId(adminUserId)
+                    .action(action)
+                    .targetType(AdminAuditConstants.TARGET_USER)
+                    .targetUserId(targetUserId)
+                    .reason(reason)
+                    .result(AdminAuditConstants.RESULT_FAILURE)
+                    .detail(exception instanceof BizException
+                            ? ((BizException) exception).getErrorCode() : "SYSTEM_ERROR")
+                    .createTime(LocalDateTime.now())
+                    .build());
+        } catch (Exception auditException) {
+            // 审计失败不应掩盖原始业务异常。
+            log.error("用户管理失败审计记录失败，targetUserId: {}", targetUserId, auditException);
+        }
     }
 
     /**
@@ -149,5 +258,7 @@ public class AdminUserServiceImpl implements AdminUserService {
                 .build();
     }
 
-    private String format(LocalDateTime time) { return time == null ? "" : FORMATTER.format(time); }
+    private String format(LocalDateTime time) {
+        return time == null ? "" : FORMATTER.format(time);
+    }
 }

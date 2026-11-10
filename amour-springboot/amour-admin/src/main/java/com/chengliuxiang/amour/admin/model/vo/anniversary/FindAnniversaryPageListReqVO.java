@@ -13,8 +13,15 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 public class FindAnniversaryPageListReqVO extends BasePageQuery {
+    private Long spaceId;
     private String title;
     private String category;
     private Integer repeatType;
+    private Integer visibility;
+    private Boolean includeDeleted;
+    /**
+     * @deprecated 请使用 visibility
+     */
+    @Deprecated
     private Boolean isVisible;
 }

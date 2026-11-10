@@ -5,8 +5,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
-
 @Data
 @Builder
 @NoArgsConstructor
@@ -14,16 +12,32 @@ import java.time.LocalDateTime;
 public class FindPhotoPageListRspVO {
 
     private Long id;
+    private Long spaceId;
+    private String spaceCode;
+    private String spaceName;
+    private Integer spaceStatus;
+    private Integer spaceVisibility;
     private String title;
     private String description;
     private Long photoCategoryId;
     private String categoryName;
     private String url;
-    private LocalDateTime takenTime;
+    private String takenTime;
     private String location;
     private Integer sortOrder;
     private Boolean isCover;
+    private Integer visibility;
+    private String visibilityText;
+    private Boolean deleted;
+    private String authorAmourId;
+    private String authorName;
+    private Long reportCount;
+    private Long pendingReportCount;
+    /**
+     * @deprecated 请使用 visibility
+     */
+    @Deprecated
     private Boolean isVisible;
-    private LocalDateTime createTime;
-    private LocalDateTime updateTime;
+    private String createTime;
+    private String updateTime;
 }

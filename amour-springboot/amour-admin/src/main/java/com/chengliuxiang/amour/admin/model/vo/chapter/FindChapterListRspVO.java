@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 @Builder
 public class FindChapterListRspVO {
     private Long id;
+    private Long spaceId;
     private String name;
     private String colorCode;
     private Integer sortOrder;

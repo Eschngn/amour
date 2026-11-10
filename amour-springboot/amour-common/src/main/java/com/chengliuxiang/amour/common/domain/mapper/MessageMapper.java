@@ -35,6 +35,29 @@ public interface MessageMapper extends BaseMapper<MessageDO> {
                 .orderByDesc(MessageDO::getCreateTime));
     }
 
+    /**
+     * 后台治理分页：显式空间过滤、可查看逻辑删除。
+     */
+    default IPage<MessageDO> selectAdminGovernancePage(long current, long size, Long spaceId,
+                                                       String keyword, boolean includeDeleted) {
+        return selectPage(new Page<>(current, size), new LambdaQueryWrapper<MessageDO>()
+                .eq(spaceId != null, MessageDO::getSpaceId, spaceId)
+                .eq(!includeDeleted, MessageDO::getIsDeleted, false)
+                .like(cn.hutool.core.util.StrUtil.isNotBlank(keyword), MessageDO::getContent,
+                        cn.hutool.core.util.StrUtil.trim(keyword))
+                .orderByDesc(MessageDO::getUpdateTime)
+                .orderByDesc(MessageDO::getId));
+    }
+
+    default int softDeleteAsAdmin(Long spaceId, Long messageId, Long updatedBy, LocalDateTime updateTime) {
+        return update(null, new LambdaUpdateWrapper<MessageDO>()
+                .eq(MessageDO::getSpaceId, spaceId)
+                .eq(MessageDO::getId, messageId)
+                .eq(MessageDO::getIsDeleted, false)
+                .set(MessageDO::getIsDeleted, true)
+                .set(MessageDO::getUpdateTime, updateTime));
+    }
+
     default int softDelete(Long spaceId, Long messageId, LocalDateTime updateTime) {
         return update(null, new LambdaUpdateWrapper<MessageDO>()
                 .eq(MessageDO::getSpaceId, spaceId)

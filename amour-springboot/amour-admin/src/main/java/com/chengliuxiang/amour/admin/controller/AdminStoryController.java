@@ -27,25 +27,12 @@ public class AdminStoryController {
     }
 
     @PostMapping("/detail")
-    @ApiOperationLog(description = "查询故事内容详情")
     public Response<FindStoryDetailRspVO> findStoryDetail(@RequestBody @Validated FindStoryDetailReqVO findStoryDetailReqVO) {
         return adminStoryService.findStoryDetail(findStoryDetailReqVO);
     }
 
-    @PostMapping("/add")
-    @ApiOperationLog(description = "新增故事")
-    public Response<Long> addStory(@RequestBody @Validated AddStoryReqVO reqVO) {
-        return adminStoryService.addStory(reqVO);
-    }
-
-    @PostMapping("/update")
-    @ApiOperationLog(description = "更新故事")
-    public Response<Void> updateStory(@RequestBody @Validated UpdateStoryReqVO reqVO) {
-        return adminStoryService.updateStory(reqVO);
-    }
-
     @PostMapping("/updatePublishStatus")
-    @ApiOperationLog(description = "更新故事发布状态")
+    @ApiOperationLog(description = "更新故事可见性")
     public Response<Void> updatePublishStatus(@RequestBody @Validated UpdateStoryVisibleStatusReqVO reqVO) {
         return adminStoryService.updatePublishStatus(reqVO);
     }

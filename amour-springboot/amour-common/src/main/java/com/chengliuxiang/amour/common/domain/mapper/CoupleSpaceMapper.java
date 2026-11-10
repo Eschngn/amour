@@ -197,7 +197,20 @@ public interface CoupleSpaceMapper extends BaseMapper<CoupleSpaceDO> {
                 .eq(visibility != null, CoupleSpaceDO::getVisibility, visibility)
                 .and(org.apache.commons.lang3.StringUtils.isNotBlank(keyword), w -> w
                         .like(CoupleSpaceDO::getSpaceName, keyword)
-                        .or().like(CoupleSpaceDO::getSpaceCode, keyword))
+                        .or().like(CoupleSpaceDO::getSpaceCode, keyword)
+                        .or().apply("EXISTS (SELECT 1 FROM couple_member cm "
+                                + "JOIN `user` u ON u.id = cm.user_id "
+                                + "WHERE cm.space_id = couple_space.id "
+                                + "AND u.amour_id LIKE {0})", "%" + keyword + "%"))
                 .orderByDesc(CoupleSpaceDO::getId));
+    }
+
+    /**
+     * 工作台空间状态计数。返回每行包含 status 与 count 两个字段。
+     */
+    default List<java.util.Map<String, Object>> selectStatusCounts() {
+        return selectMaps(new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<CoupleSpaceDO>()
+                .select("status AS status", "COUNT(*) AS total")
+                .groupBy("status"));
     }
 }

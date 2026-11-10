@@ -14,4 +14,9 @@ import javax.validation.constraints.NotNull;
 public class FindAnniversaryDetailReqVO {
     @NotNull(message = "纪念日ID不能为空")
     private Long id;
+
+    /**
+     * 目标空间；缺少时要求跨空间权限。
+     */
+    private Long spaceId;
 }

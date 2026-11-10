@@ -13,7 +13,19 @@ import java.util.List;
 @Builder
 public class FindStoryDetailRspVO {
     private Long id;
+    private Long spaceId;
+    private String spaceCode;
+    private String spaceName;
+    private Integer spaceStatus;
+    private String spaceStatusText;
+    private Integer spaceVisibility;
+    private Integer visibility;
+    private String visibilityText;
+    private Boolean deleted;
+    private String authorAmourId;
+    private String authorName;
     private String title;
+    private String summary;
     private String content;
     private String chapterId;
     private String chapterName;
@@ -23,6 +35,9 @@ public class FindStoryDetailRspVO {
     private String tagLabel;
     private String tagColor;
     private Boolean isMilestone;
+    private String createTime;
+    private String updateTime;
+    private Long pendingReportCount;
     private List<ImageVO> images;
 
     @Data

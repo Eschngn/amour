@@ -24,6 +24,8 @@ public class SaTokenConfigure implements WebMvcConfigurer {
                     // 故事/相册/纪念日均为空间私密内容，统一要求登录后再由空间成员关系校验归属。
                     SaRouter.match("/story/**", "/photo/**", "/anniversary/**")
                             .check(route -> StpUtil.checkLogin());
+                    // 举报提交必须登录，具体目标是否公开由 Service 校验。
+                    SaRouter.match("/report/**").check(route -> StpUtil.checkLogin());
                     // 邀请预览允许未登录查看，其余空间操作必须登录。
                     SaRouter.match("/space/**")
                             .notMatch("/space/invitation/preview")

@@ -463,3 +463,57 @@ CREATE TABLE `content_report` (
 CREATE INDEX `idx_content_report_status_time` ON `content_report` (`status`, `create_time`);
 CREATE INDEX `idx_content_report_target` ON `content_report` (`content_type`, `content_id`);
 CREATE INDEX `idx_content_report_reporter` ON `content_report` (`reporter_user_id`, `create_time`);
+
+-- 举报处理备注；与 content_report 分表保存，避免对既有表做不可重复执行的 ALTER。
+CREATE TABLE `content_report_handle` (
+    -- 举报处理记录主键ID
+    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+    -- 被处理的举报ID
+    `report_id` INTEGER NOT NULL,
+    -- 处理管理员用户ID
+    `admin_user_id` INTEGER NOT NULL,
+    -- 处理动作：reject-驳回 confirm-确认违规
+    `action` TEXT NOT NULL,
+    -- 处理备注，必填
+    `note` TEXT NOT NULL,
+    -- 处理时间
+    `create_time` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX `uk_content_report_handle_report` ON `content_report_handle` (`report_id`);
+CREATE INDEX `idx_content_report_handle_admin_time` ON `content_report_handle` (`admin_user_id`, `create_time`);
+
+-- 后台管理操作审计。只记录元数据，不记录内容正文、密码、openid 或邀请明文 token。
+CREATE TABLE `admin_audit_log` (
+    -- 审计主键ID
+    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+    -- 操作管理员用户ID
+    `admin_user_id` INTEGER NOT NULL,
+    -- 动作标识，例如 SPACE_RESTORE / CONTENT_VISIBILITY / REPORT_PROCESS
+    `action` TEXT NOT NULL,
+    -- 目标类型：space/content/user/report/dict/admin
+    `target_type` TEXT NOT NULL DEFAULT '',
+    -- 目标空间ID
+    `target_space_id` INTEGER DEFAULT NULL,
+    -- 目标内容类型：story/photo/anniversary/message/space
+    `target_content_type` TEXT DEFAULT NULL,
+    -- 目标内容ID
+    `target_content_id` INTEGER DEFAULT NULL,
+    -- 目标用户ID
+    `target_user_id` INTEGER DEFAULT NULL,
+    -- 目标举报ID
+    `target_report_id` INTEGER DEFAULT NULL,
+    -- 操作原因
+    `reason` TEXT NOT NULL DEFAULT '',
+    -- 执行结果：SUCCESS/FAILURE
+    `result` TEXT NOT NULL DEFAULT 'SUCCESS',
+    -- 状态摘要，不包含正文
+    `detail` TEXT NOT NULL DEFAULT '',
+    -- 操作时间
+    `create_time` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX `idx_admin_audit_action_time` ON `admin_audit_log` (`action`, `create_time`);
+CREATE INDEX `idx_admin_audit_space_time` ON `admin_audit_log` (`target_space_id`, `create_time`);
+CREATE INDEX `idx_admin_audit_admin_time` ON `admin_audit_log` (`admin_user_id`, `create_time`);
+
+-- 后台管理员由 user.is_platform_admin 标识，不建角色/权限表；
+-- 管理员账号通过 db/amour_platform_v2_seed.sql 或 amour_admin_governance_sqlite.sql 初始化。
