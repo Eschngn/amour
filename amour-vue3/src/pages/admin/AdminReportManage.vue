@@ -84,42 +84,43 @@
         <button type="button" class="ml-2 font-semibold underline" @click="load">重试</button>
       </div>
       <div v-else class="overflow-x-auto">
-        <table class="min-w-[1180px] w-full divide-y divide-slate-200 text-left text-sm">
+        <table class="w-full min-w-[900px] divide-y divide-slate-200 text-left text-sm">
           <thead class="bg-slate-50 text-xs font-medium tracking-wide text-slate-500">
             <tr>
-              <th class="px-5 py-3">举报</th>
+              <th class="px-5 py-3">举报原因</th>
               <th class="px-4 py-3">目标内容</th>
               <th class="px-4 py-3">所属空间</th>
               <th class="px-4 py-3">举报人</th>
               <th class="px-4 py-3">状态</th>
               <th class="px-4 py-3">时间</th>
-              <th class="px-5 py-3 text-right">操作</th>
+              <th class="px-5 py-3 admin-table-actions">操作</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
             <tr v-for="row in rows" :key="row.reportId" class="align-top hover:bg-slate-50/70">
               <td class="max-w-[18rem] px-5 py-4">
-                <p class="text-[11px] font-mono text-slate-400">#{{ row.reportId }} · {{ row.contentTypeText }}</p>
-                <p class="mt-1 line-clamp-3 break-words text-sm leading-6 text-slate-700">{{ row.reason || '未填写原因' }}</p>
+                <p class="line-clamp-2 break-words text-sm leading-6 text-slate-700" :title="row.reason || '未填写原因'">{{ row.reason || '未填写原因' }}</p>
               </td>
               <td class="max-w-[18rem] px-4 py-4">
-                <p class="truncate font-medium text-slate-800">{{ row.targetTitle || '目标内容不存在或已删除' }}</p>
-                <p class="mt-1 text-[11px] text-slate-400">
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <span class="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">{{ row.contentTypeText }}</span>
+                  <p class="min-w-0 truncate font-medium text-slate-800" :title="row.targetTitle || '目标内容不存在或已删除'">{{ row.targetTitle || '目标内容不存在或已删除' }}</p>
+                  <span v-if="row.targetDeleted" class="shrink-0 text-[11px] text-rose-500">已删除</span>
+                </div>
+                <p class="mt-1 truncate text-[11px] text-slate-400">
                   ID {{ row.contentId }} · {{ row.targetVisibilityText || '状态未知' }}
-                  <span v-if="row.targetDeleted" class="ml-1 text-rose-500">已删除</span>
                 </p>
               </td>
               <td class="px-4 py-4">
-                <p class="font-medium text-slate-700">{{ row.spaceName || '未知空间' }}</p>
-                <p class="mt-1 font-mono text-[11px] text-slate-400">ID {{ row.spaceId }} · {{ row.spaceCode || '-' }}</p>
-                <p class="mt-1 text-[11px] text-slate-400">{{ spaceStatusText(row.spaceStatus) }} / {{ row.spaceVisibility === 1 ? '公开' : '私密' }}</p>
+                <p class="max-w-[11rem] truncate font-medium text-slate-700" :title="row.spaceName || '未知空间'">{{ row.spaceName || '未知空间' }}</p>
+                <p class="mt-1 truncate font-mono text-[11px] text-slate-400" :title="`空间 ID ${row.spaceId}`">ID {{ row.spaceId }} · {{ row.spaceCode || '-' }}</p>
               </td>
               <td class="px-4 py-4">
-                <p class="text-sm text-slate-700">{{ row.reporterName || '用户' }}</p>
+                <p class="max-w-[8rem] truncate text-sm text-slate-700" :title="row.reporterName || '用户'">{{ row.reporterName || '用户' }}</p>
                 <p class="mt-1 font-mono text-[11px] text-slate-400">{{ row.reporterAmourId || '-' }}</p>
               </td>
               <td class="px-4 py-4">
-                <span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold" :class="statusClass(row.status)">
+                <span class="inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold" :class="statusClass(row.status)">
                   {{ row.statusText }}
                 </span>
                 <p v-if="row.processedByName" class="mt-2 text-[11px] text-slate-400">
@@ -127,13 +128,16 @@
                 </p>
               </td>
               <td class="whitespace-nowrap px-4 py-4 text-xs text-slate-500">
-                <p>举报：{{ row.createTime || '-' }}</p>
+                <p>{{ row.createTime || '-' }}</p>
                 <p v-if="row.processedAt" class="mt-1">处理：{{ row.processedAt }}</p>
               </td>
-              <td class="whitespace-nowrap px-5 py-4 text-right">
-                <button type="button" class="report-action" @click="openDetail(row)">
-                  <View class="h-3.5 w-3.5" /> {{ row.status === 0 ? '处理' : '详情' }}
-                </button>
+              <td class="whitespace-nowrap px-5 py-4 admin-table-actions">
+                <div class="admin-table-action-group admin-table-action-group--single">
+                  <button type="button" class="admin-table-action text-slate-600 hover:bg-slate-100" @click="openDetail(row)">
+                    <component :is="row.status === 0 ? DocumentChecked : View" class="h-3.5 w-3.5" aria-hidden="true" />
+                    {{ row.status === 0 ? '处理' : '详情' }}
+                  </button>
+                </div>
               </td>
             </tr>
             <tr v-if="!rows.length">
@@ -231,7 +235,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { Refresh, View } from '@element-plus/icons-vue'
+import { DocumentChecked, Refresh, View } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { fetchAdminReportDetail, fetchAdminReportPage, processAdminReport } from '@/api/admin/report'
 import { fetchAdminSpacePage } from '@/api/admin/space'
@@ -266,11 +270,6 @@ function statusClass(status) {
   if (status === 0) return 'bg-amber-50 text-amber-600'
   if (status === 1) return 'bg-emerald-50 text-emerald-600'
   return 'bg-slate-100 text-slate-500'
-}
-
-function spaceStatusText(status) {
-  const map = { 0: '等待绑定', 1: '正常', 2: '已冻结', 3: '已归档', 4: '删除等待期', 5: '已解绑' }
-  return map[status] || '未知'
 }
 
 async function loadSpaceOptions() {
@@ -378,18 +377,3 @@ onMounted(() => {
   load()
 })
 </script>
-
-<style scoped>
-.report-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  border-radius: 6px;
-  padding: 4px 8px;
-  font-size: 12px;
-  font-weight: 500;
-  color: #475569;
-  transition: background-color 0.15s ease;
-}
-.report-action:hover { background: #f1f5f9; }
-</style>

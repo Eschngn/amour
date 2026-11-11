@@ -2,54 +2,50 @@
   <header class="admin-header sticky top-0 z-20 flex min-h-[84px] shrink-0 items-center border-b px-4 py-3 sm:px-6 xl:px-8">
     <button
       type="button"
-      class="mr-3 rounded-xl p-2 text-stone-500 transition hover:bg-stone-100 hover:text-stone-900 lg:hidden"
+      class="admin-header-icon-button mr-3 inline-flex lg:hidden"
       aria-label="打开导航菜单"
       @click="$emit('open-sidebar')"
     >
-      <Menu class="h-5 w-5" />
+      <Menu class="h-5 w-5" aria-hidden="true" />
     </button>
     <button
       type="button"
-      class="mr-4 hidden rounded-xl p-2 text-stone-400 transition hover:bg-stone-100 hover:text-stone-800 lg:inline-flex"
+      class="admin-header-icon-button mr-4 hidden lg:inline-flex"
       :aria-label="sidebarCollapsed ? '展开侧栏' : '收起侧栏'"
       @click="$emit('toggle-sidebar')"
     >
-      <Fold v-if="!sidebarCollapsed" class="h-5 w-5" />
-      <Expand v-else class="h-5 w-5" />
+      <Fold v-if="!sidebarCollapsed" class="h-5 w-5" aria-hidden="true" />
+      <Expand v-else class="h-5 w-5" aria-hidden="true" />
     </button>
 
     <div class="flex min-w-0 items-center gap-3.5 sm:gap-4">
-      <span class="admin-page-icon flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl" :class="pageIconTone">
+      <span
+        class="admin-page-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl sm:h-11 sm:w-11 sm:rounded-2xl"
+        :class="pageIconTone"
+        aria-hidden="true"
+      >
         <component :is="pageIcon" class="h-5 w-5" />
       </span>
       <div class="min-w-0">
-        <div class="flex items-center gap-2 text-[11px] font-medium tracking-wide text-stone-400">
-          <span>管理后台</span>
-          <ArrowRight class="h-3 w-3 text-stone-300" />
-          <span class="truncate text-stone-500">{{ pageTitle }}</span>
-        </div>
-        <p class="mt-0.5 truncate text-base font-semibold text-stone-900 sm:text-lg">
-          {{ pageTitle }}
-        </p>
+        <p class="text-[11px] font-medium tracking-wide text-stone-400">管理后台</p>
+        <h1 class="mt-0.5 truncate text-base font-semibold text-stone-900 sm:text-lg">{{ pageTitle }}</h1>
         <p class="mt-0.5 hidden truncate text-xs text-stone-500 sm:block">{{ pageDescription }}</p>
       </div>
     </div>
 
     <div class="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
       <div class="admin-header-meta hidden items-center gap-2 rounded-xl border px-3 py-2 text-xs shadow-sm xl:flex">
-        <Calendar class="h-4 w-4 text-rose-500" />
+        <Calendar class="h-4 w-4 text-rose-500" aria-hidden="true" />
         <span>{{ todayText }}</span>
       </div>
-      <div class="flex items-center gap-2.5 rounded-xl py-1 pl-1 sm:pr-2">
-        <span class="admin-avatar flex h-9 w-9 items-center justify-center rounded-xl text-xs font-bold text-white shadow-sm">
-          AM
-        </span>
-        <div class="hidden leading-tight md:block">
-          <p class="text-xs font-semibold text-stone-700">管理员</p>
-          <p class="mt-0.5 flex items-center gap-1 text-[10px] text-emerald-600">
-            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500" /> 在线
-          </p>
-        </div>
+      <div
+        class="admin-header-meta flex h-9 w-9 items-center justify-center gap-2 rounded-xl border text-xs sm:w-auto sm:px-2.5"
+        role="img"
+        aria-label="当前登录身份：管理员"
+        title="当前登录身份：管理员"
+      >
+        <UserFilled class="h-4 w-4" aria-hidden="true" />
+        <span class="hidden text-xs font-medium sm:inline">管理员</span>
       </div>
     </div>
   </header>
@@ -58,7 +54,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { ArrowRight, Calendar, ChatDotRound, Collection, CollectionTag, Connection, DataBoard, Document, Expand, Fold, Menu, Picture, User } from '@element-plus/icons-vue'
+import { Calendar, ChatDotRound, Collection, CollectionTag, Connection, DataBoard, Document, Expand, Fold, Menu, Picture, User, UserFilled } from '@element-plus/icons-vue'
 
 defineProps({
   sidebarCollapsed: { type: Boolean, default: false },

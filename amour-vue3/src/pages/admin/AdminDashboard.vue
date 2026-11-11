@@ -27,7 +27,7 @@
         <div class="flex items-start justify-between gap-3">
           <div>
             <h2 class="text-sm font-semibold text-slate-900">空间状态</h2>
-            <p class="mt-1 text-xs text-slate-400">全部为数据库实时计数，不含推算指标</p>
+            <p class="mt-1 text-xs text-slate-400">按空间当前状态统计</p>
           </div>
           <RouterLink
             v-if="canSpace"
@@ -60,9 +60,7 @@
             <span class="flex items-center gap-2 text-sm font-medium text-rose-700">
               <Warning class="h-4 w-4" /> 待处理举报
             </span>
-            <span class="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-rose-600">
-              {{ loading ? '—' : summary.pendingReportCount }}
-            </span>
+            <ArrowRight class="h-3.5 w-3.5 text-rose-300" />
           </RouterLink>
           <RouterLink
             v-if="canContent"
@@ -82,14 +80,10 @@
           </RouterLink>
         </div>
 
-        <div class="mt-5 grid grid-cols-3 gap-3 border-t border-slate-100 pt-4">
+        <div class="mt-5 grid grid-cols-2 gap-3 border-t border-slate-100 pt-4">
           <div>
             <p class="text-[11px] text-slate-400">用户总数</p>
             <p class="mt-1 text-lg font-semibold tabular-nums text-slate-800">{{ loading ? '—' : summary.totalUserCount }}</p>
-          </div>
-          <div>
-            <p class="text-[11px] text-slate-400">启用用户</p>
-            <p class="mt-1 text-lg font-semibold tabular-nums text-slate-800">{{ loading ? '—' : summary.activeUserCount }}</p>
           </div>
           <div>
             <p class="text-[11px] text-slate-400">平台管理员</p>

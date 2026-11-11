@@ -37,11 +37,6 @@
   box-shadow: inset 0 0 0 1px var(--admin-brand-soft-border);
 }
 
-.admin-avatar {
-  background: var(--admin-brand);
-  box-shadow: 0 6px 16px -12px rgba(190, 18, 60, 0.55);
-}
-
 .admin-nav-group-label {
   color: var(--admin-text-muted);
 }
@@ -115,6 +110,27 @@
   color: var(--admin-text-secondary);
 }
 
+/* 顶栏图标按钮：统一 40px 点击区域、hover 与键盘焦点 */
+.admin-header-icon-button {
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  color: var(--admin-text-muted);
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.admin-header-icon-button:hover {
+  background: var(--admin-nav-hover);
+  color: var(--admin-text);
+}
+
+.admin-header-icon-button:focus-visible {
+  outline: 2px solid var(--admin-brand-soft-border);
+  outline-offset: 2px;
+}
+
 .admin-page-toolbar {
   min-height: 40px;
   padding: 0 2px;
@@ -168,6 +184,102 @@
 .admin-main table tbody tr:hover {
   background: var(--admin-surface-muted);
   box-shadow: inset 2px 0 0 var(--admin-brand-soft-border);
+}
+
+/*
+ * 列表操作列：
+ * 表头与单元格都用 admin-table-actions 显式标记，避免依赖 text-right/列顺序。
+ * 按钮组在单元格内稳定居中，行内按钮按权限增减时由 min-width 预留宽度，
+ * 防止翻页后操作列宽度跳动。窄屏由表格外层 overflow-x-auto 承载横向滚动。
+ */
+.admin-main .admin-table-actions {
+  width: 1%;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.admin-main .admin-table-action-group {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.admin-main .admin-table-action-group--content {
+  min-width: 202px;
+}
+
+.admin-main .admin-table-action-group--space {
+  min-width: 142px;
+}
+
+.admin-main .admin-table-action-group--double {
+  min-width: 124px;
+}
+
+.admin-main .admin-table-action-group--single {
+  min-width: 64px;
+}
+
+.admin-main .admin-table-action {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.admin-main .admin-table-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.admin-main .admin-table-action:focus-visible {
+  outline: 2px solid var(--admin-brand);
+  outline-offset: 2px;
+}
+
+/*
+ * 窄屏下操作列吸附在滚动容器右侧：
+ * 表格其余列可以横向滚动，但“操作”入口始终可见，不需要先滚到最右侧。
+ */
+@media (max-width: 1023px) {
+  .admin-main .admin-table-actions {
+    position: sticky;
+    right: 0;
+    z-index: 2;
+    background: var(--admin-surface);
+    box-shadow: -10px 0 14px -14px rgba(28, 25, 23, 0.5);
+  }
+
+  .admin-main thead .admin-table-actions {
+    z-index: 3;
+    background: var(--admin-surface-muted);
+  }
+
+  .admin-main tbody tr:hover .admin-table-actions {
+    background: var(--admin-surface-muted);
+  }
+
+  .admin-main .admin-table-actions::before {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 1px;
+    background: var(--admin-border);
+    content: '';
+  }
 }
 
 /*
@@ -507,11 +619,5 @@
     scroll-behavior: auto !important;
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
-  }
-}
-
-@media (max-width: 1023px) {
-  .admin-main table {
-    min-width: 760px;
   }
 }

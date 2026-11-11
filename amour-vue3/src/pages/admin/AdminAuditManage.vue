@@ -66,7 +66,7 @@
         <button type="button" class="ml-2 font-semibold underline" @click="load">重试</button>
       </div>
       <div v-else class="overflow-x-auto">
-        <table class="min-w-[1100px] w-full divide-y divide-slate-200 text-left text-sm">
+        <table class="w-full min-w-[880px] divide-y divide-slate-200 text-left text-sm">
           <thead class="bg-slate-50 text-xs font-medium tracking-wide text-slate-500">
             <tr>
               <th class="px-5 py-3">时间</th>
@@ -85,8 +85,7 @@
                 <p class="mt-1 font-mono text-[11px] text-slate-400">{{ row.adminAmourId || '-' }}</p>
               </td>
               <td class="px-4 py-4">
-                <p class="font-medium text-slate-800">{{ row.actionText || row.action }}</p>
-                <p class="mt-1 font-mono text-[11px] text-slate-400">{{ row.action }}</p>
+                <p class="cursor-help font-medium text-slate-800" :title="row.action">{{ row.actionText || row.action }}</p>
               </td>
               <td class="max-w-[20rem] px-4 py-4 text-xs text-slate-600">
                 <p>{{ row.targetTypeText || row.targetType || '-' }}</p>
@@ -96,12 +95,12 @@
                   <span v-if="row.targetUserId"> · 用户 #{{ row.targetUserId }}</span>
                   <span v-if="row.targetReportId"> · 举报 #{{ row.targetReportId }}</span>
                 </p>
-                <p v-if="row.detail" class="mt-1 break-words text-[11px] text-slate-400">{{ row.detail }}</p>
+                <p v-if="row.detail" class="mt-1 line-clamp-2 break-words text-[11px] leading-5 text-slate-400" :title="row.detail">{{ row.detail }}</p>
               </td>
               <td class="max-w-[18rem] px-4 py-4 text-xs leading-5 text-slate-600">
-                <p class="line-clamp-3 break-words">{{ row.reason || '-' }}</p>
+                <p class="line-clamp-2 break-words" :title="row.reason || '-'">{{ row.reason || '-' }}</p>
               </td>
-              <td class="px-4 py-4">
+              <td class="whitespace-nowrap px-4 py-4">
                 <span class="rounded-full px-2.5 py-1 text-[11px] font-semibold" :class="row.result === 'FAILURE' ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'">
                   {{ row.result === 'FAILURE' ? '失败' : '成功' }}
                 </span>

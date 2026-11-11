@@ -1,8 +1,5 @@
 <template>
   <div class="space-y-5">
-    <section class="grid gap-4 sm:grid-cols-3">
-      <div v-for="stat in stats" :key="stat.label" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><div class="flex items-center justify-between"><span class="text-xs font-medium text-slate-400">{{ stat.label }}</span><component :is="stat.icon" class="h-4 w-4" :class="stat.color" /></div><p class="mt-3 text-2xl font-semibold tracking-tight text-slate-800">{{ stat.value }}</p><p class="mt-1 text-xs text-slate-400">{{ stat.note }}</p></div>
-    </section>
     <section class="admin-filter-panel">
       <div class="admin-filter-bar">
         <div class="admin-filter-fields">
@@ -38,7 +35,7 @@
             <Refresh class="h-3.5 w-3.5" :class="{ 'animate-spin': loading }" />
           </button>
           <button type="button" class="admin-filter-button admin-filter-button--primary" @click="openEditor()">
-            <Plus class="h-3.5 w-3.5" />新增用户
+            <Plus class="h-3.5 w-3.5" aria-hidden="true" />新增用户
           </button>
         </div>
       </div>
@@ -46,8 +43,55 @@
     <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <div v-if="loading" class="flex items-center justify-center py-24 text-sm text-slate-400"><Loading class="mr-2 h-4 w-4 animate-spin" />加载中...</div>
       <div v-else-if="!users.length" class="flex flex-col items-center justify-center px-6 py-24 text-center"><UserFilled class="h-9 w-9 text-slate-200" /><p class="mt-3 text-sm font-medium text-slate-600">暂无用户</p><p class="mt-1 text-xs text-slate-400">调整筛选条件，或新增一个用户。</p></div>
-      <div v-else class="overflow-x-auto"><table class="min-w-[980px] w-full divide-y divide-slate-200 text-left text-sm"><thead class="bg-slate-50 text-xs font-medium tracking-wide text-slate-500"><tr><th class="px-6 py-3">用户</th><th class="px-4 py-3">身份</th><th class="px-4 py-3">来源</th><th class="px-4 py-3">状态</th><th class="px-4 py-3">更新时间</th><th class="px-6 py-3 text-right">操作</th></tr></thead><tbody class="divide-y divide-slate-100"><tr v-for="user in users" :key="user.id"><td class="px-6 py-4"><div class="flex items-center gap-3"><img v-if="user.avatar" :src="user.avatar" :alt="user.displayName" class="h-9 w-9 rounded-xl object-cover" /><span v-else class="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 text-xs font-bold text-rose-500">{{ (user.displayName || user.username || 'U').slice(0, 1) }}</span><div><p class="font-medium text-slate-800">{{ user.displayName || '-' }}</p><p class="mt-1 font-mono text-xs text-slate-400">{{ user.username }}</p></div></div></td><td class="px-4 py-4"><span class="rounded-full px-2.5 py-1 text-[11px] font-medium" :class="user.platformAdmin ? 'bg-rose-50 text-rose-600' : 'bg-slate-100 text-slate-500'">{{ user.platformAdmin ? '平台管理员' : '普通用户' }}</span></td><td class="px-4 py-4"><span class="rounded-full px-2.5 py-1 text-[11px] font-medium" :class="user.wechatOpenid ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'">{{ user.wechatOpenid ? '微信' : '账号' }}</span></td><td class="px-4 py-4"><span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium" :class="user.status ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'"><span class="h-1.5 w-1.5 rounded-full" :class="user.status ? 'bg-emerald-500' : 'bg-slate-300'" />{{ user.status ? '启用' : '停用' }}</span></td><td class="whitespace-nowrap px-4 py-4 text-xs text-slate-400">{{ user.updateTime || '-' }}</td><td class="whitespace-nowrap px-6 py-4 text-right"><div class="inline-flex items-center gap-1"><button type="button" class="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-100" @click="openEditor(user)"><Edit class="h-3.5 w-3.5" />编辑</button><button v-if="user.status" type="button" class="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-rose-600 transition hover:bg-rose-50" @click="remove(user)"><Delete class="h-3.5 w-3.5" />停用</button></div></td></tr></tbody></table></div>
-      <div class="flex flex-col items-center justify-between gap-3 border-t border-slate-100 px-5 py-3 text-xs text-slate-400 sm:flex-row sm:px-6"><span>共 {{ total }} 条 · 第 {{ currentPage }} / {{ totalPages }} 页</span><div class="flex items-center gap-1"><button type="button" :disabled="currentPage <= 1 || loading" class="rounded-lg px-3 py-1.5 transition enabled:hover:bg-slate-100 disabled:text-slate-300" @click="currentPage -= 1">上一页</button><button type="button" class="rounded-lg bg-indigo-600 px-3 py-1.5 font-medium text-white shadow-sm">{{ currentPage }}</button><button type="button" :disabled="currentPage >= totalPages || loading" class="rounded-lg px-3 py-1.5 transition enabled:hover:bg-slate-100 disabled:text-slate-300" @click="currentPage += 1">下一页</button></div></div>
+      <div v-else class="overflow-x-auto">
+        <table class="w-full min-w-[880px] divide-y divide-slate-200 text-left text-sm">
+          <thead class="bg-slate-50 text-xs font-medium tracking-wide text-slate-500">
+            <tr>
+              <th class="px-6 py-3">用户</th>
+              <th class="px-4 py-3">恋语 ID</th>
+              <th class="px-4 py-3">身份</th>
+              <th class="px-4 py-3">状态</th>
+              <th class="px-4 py-3">更新时间</th>
+              <th class="px-6 py-3 admin-table-actions">操作</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <tr v-for="user in users" :key="user.id">
+              <td class="px-6 py-4">
+                <div class="flex max-w-[18rem] items-center gap-3">
+                  <img v-if="user.avatar" :src="user.avatar" :alt="user.displayName" class="h-9 w-9 shrink-0 rounded-xl object-cover">
+                  <span v-else class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-xs font-bold text-rose-500">{{ (user.displayName || user.username || 'U').slice(0, 1) }}</span>
+                  <div class="min-w-0">
+                    <p class="truncate font-medium text-slate-800" :title="user.displayName || ''">{{ user.displayName || '-' }}</p>
+                    <p class="mt-1 truncate font-mono text-xs text-slate-400" :title="user.username">{{ user.username }}</p>
+                  </div>
+                </div>
+              </td>
+              <td class="whitespace-nowrap px-4 py-4 font-mono text-xs text-slate-500">{{ user.amourId || '-' }}</td>
+              <td class="whitespace-nowrap px-4 py-4">
+                <span class="rounded-full px-2.5 py-1 text-[11px] font-medium" :class="user.platformAdmin ? 'bg-rose-50 text-rose-600' : 'bg-slate-100 text-slate-500'">{{ user.platformAdmin ? '平台管理员' : '普通用户' }}</span>
+              </td>
+              <td class="whitespace-nowrap px-4 py-4">
+                <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium" :class="user.status ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'">
+                  <span class="h-1.5 w-1.5 rounded-full" :class="user.status ? 'bg-emerald-500' : 'bg-slate-300'" />{{ user.status ? '启用' : '停用' }}
+                </span>
+              </td>
+              <td class="whitespace-nowrap px-4 py-4 text-xs text-slate-400">{{ user.updateTime || '-' }}</td>
+              <td class="whitespace-nowrap px-6 py-4 admin-table-actions">
+                <div class="admin-table-action-group admin-table-action-group--double">
+                  <button type="button" class="admin-table-action text-slate-600 hover:bg-slate-100" @click="openEditor(user)">
+                    <Edit class="h-3.5 w-3.5" aria-hidden="true" />编辑
+                  </button>
+                  <button v-if="user.status" type="button" class="admin-table-action text-rose-600 hover:bg-rose-50" @click="remove(user)">
+                    <Lock class="h-3.5 w-3.5" aria-hidden="true" />停用
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="flex flex-col items-center justify-between gap-3 border-t border-slate-100 px-5 py-3 text-xs text-slate-400 sm:flex-row sm:px-6"><span>共 {{ total }} 条 · 第 {{ currentPage }} / {{ totalPages }} 页</span><div class="flex items-center gap-1"><button type="button" :disabled="currentPage <= 1 || loading" class="rounded-lg px-3 py-1.5 transition enabled:hover:bg-slate-100 disabled:text-slate-300" @click="currentPage -= 1">上一页</button><button type="button" class="rounded-lg bg-rose-600 px-3 py-1.5 font-medium text-white shadow-sm">{{ currentPage }}</button><button type="button" :disabled="currentPage >= totalPages || loading" class="rounded-lg px-3 py-1.5 transition enabled:hover:bg-slate-100 disabled:text-slate-300" @click="currentPage += 1">下一页</button></div></div>
     </section>
     <el-dialog v-model="dialog.visible" :title="dialog.form.id ? '编辑用户' : '新增用户'" width="min(640px, calc(100vw - 32px))" class="user-editor-dialog" append-to-body destroy-on-close><el-form :model="dialog.form" label-position="top"><div class="grid gap-4 sm:grid-cols-2"><el-form-item label="用户名" required><el-input v-model="dialog.form.username" maxlength="60" placeholder="用于登录的账号" /></el-form-item><el-form-item label="昵称" required><el-input v-model="dialog.form.displayName" maxlength="60" placeholder="前台展示名称" /></el-form-item><el-form-item label="密码" :required="!dialog.form.id" class="sm:col-span-2"><el-input v-model="dialog.form.password" type="password" show-password maxlength="64" :placeholder="dialog.form.id ? '留空表示不修改密码' : '至少 6 位字符'" /></el-form-item><el-form-item label="头像地址" class="sm:col-span-2"><el-input v-model="dialog.form.avatar" maxlength="500" placeholder="可选，填写图片 URL" /></el-form-item><el-form-item label="状态"><el-select v-model="dialog.form.status" class="!w-full"><el-option :value="0" label="启用" /><el-option :value="1" label="停用" /></el-select></el-form-item><el-form-item v-if="dialog.form.id && dialog.form.status === 1" label="停用原因" class="sm:col-span-2" required><el-input v-model="dialog.form.reason" type="textarea" :rows="2" maxlength="1000" show-word-limit placeholder="停用会立即退出登录，请填写原因用于审计" /></el-form-item><el-form-item label="平台管理员" class="sm:col-span-2"><el-switch v-model="dialog.form.platformAdmin" /></el-form-item></div></el-form><template #footer><div class="flex justify-end gap-3"><el-button @click="dialog.visible = false">取消</el-button><el-button type="primary" :loading="saving" @click="save">保存</el-button></div></template></el-dialog>
   </div>
@@ -56,10 +100,10 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, Edit, Loading, Plus, Refresh, Search, UserFilled } from '@element-plus/icons-vue'
+import { Edit, Loading, Lock, Plus, Refresh, Search, UserFilled } from '@element-plus/icons-vue'
 import api from '@/axios'
 const pageSize = 10; const currentPage = ref(1); const keyword = ref(''); const status = ref(null); const loading = ref(false); const saving = ref(false); const users = ref([]); const total = ref(0); const dialog = reactive({ visible: false, form: createForm() })
-const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize))); const stats = computed(() => [{ label: '用户总数', value: total.value, note: '当前筛选结果', icon: UserFilled, color: 'text-rose-500' }, { label: '启用用户', value: users.value.filter(item => item.status).length, note: '当前页统计', icon: UserFilled, color: 'text-emerald-500' }, { label: '平台管理员', value: users.value.filter(item => item.platformAdmin).length, note: '当前页统计', icon: UserFilled, color: 'text-indigo-500' }])
+const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
 function createForm() { return { id: null, username: '', displayName: '', password: '', avatar: '', status: 0, platformAdmin: false, reason: '' } }
 async function load() { loading.value = true; try { const { data } = await api.post('/admin/user/list', { current: currentPage.value, size: pageSize, keyword: keyword.value.trim() || undefined, status: status.value }); if (!data.success) throw new Error(data.message || '加载用户失败'); users.value = data.data?.records || []; total.value = Number(data.data?.total) || 0 } catch (e) { ElMessage.error(e.response?.data?.message || e.message || '加载用户失败') } finally { loading.value = false } }
 function resetAndLoad() { if (currentPage.value === 1) load(); else currentPage.value = 1 }

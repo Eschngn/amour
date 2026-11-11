@@ -97,22 +97,20 @@
         <button type="button" class="mt-3 text-xs font-semibold text-rose-600 underline" @click="load">重试</button>
       </div>
       <div v-else class="overflow-x-auto">
-        <table class="min-w-[1180px] w-full divide-y divide-slate-200 text-left text-sm">
+        <table class="w-full min-w-[900px] divide-y divide-slate-200 text-left text-sm">
           <thead class="bg-slate-50 text-xs font-medium tracking-wide text-slate-500">
             <tr>
               <th class="px-5 py-3">内容</th>
               <th class="px-4 py-3">所属空间</th>
               <th class="px-4 py-3">作者</th>
-              <th class="px-4 py-3">可见性</th>
-              <th class="px-4 py-3">状态</th>
+              <th v-if="contentType !== 'message'" class="px-4 py-3">可见性</th>
               <th class="px-4 py-3">举报</th>
-              <th class="px-4 py-3">更新时间</th>
-              <th class="px-5 py-3 text-right">操作</th>
+              <th class="px-5 py-3 admin-table-actions">操作</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
             <tr v-for="row in rows" :key="`${row.contentType}-${row.contentId}`" class="align-top hover:bg-slate-50/70">
-              <td class="max-w-[22rem] px-5 py-4">
+              <td class="max-w-[20rem] px-5 py-4">
                 <div class="flex items-start gap-3">
                   <img
                     v-if="row.coverImage"
@@ -121,8 +119,11 @@
                     class="h-10 w-10 shrink-0 rounded-lg object-cover ring-1 ring-slate-100"
                   >
                   <div class="min-w-0">
-                    <p class="truncate font-medium text-slate-800">{{ row.title || '未命名内容' }}</p>
-                    <p class="mt-1 line-clamp-2 break-words text-xs leading-5 text-slate-400">
+                    <div class="flex flex-wrap items-center gap-1.5">
+                      <p class="min-w-0 truncate font-medium text-slate-800" :title="row.title || '未命名内容'">{{ row.title || '未命名内容' }}</p>
+                      <span v-if="row.deleted" class="shrink-0 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-600">已删除</span>
+                    </div>
+                    <p class="mt-1 line-clamp-2 break-words text-xs leading-5 text-slate-400" :title="row.summary || ''">
                       {{ row.summary || (contentType === 'message' ? '私密留言，仅空间成员可见' : row.title) || '暂无摘要' }}
                     </p>
                     <p v-if="row.chapterName || row.categoryName" class="mt-1 text-[11px] text-slate-400">
@@ -132,75 +133,67 @@
                 </div>
               </td>
               <td class="px-4 py-4">
-                <p class="font-medium text-slate-700">{{ row.spaceName || '未知空间' }}</p>
-                <p class="mt-1 font-mono text-[11px] text-slate-400">ID {{ row.spaceId }} · {{ row.spaceCode || '-' }}</p>
-                <p class="mt-1 text-[11px] text-slate-400">
-                  空间：{{ spaceStatusText(row.spaceStatus) }} / {{ row.spaceVisibility === 1 ? '公开' : '私密' }}
-                </p>
+                <p class="max-w-[11rem] truncate font-medium text-slate-700" :title="row.spaceName || '未知空间'">{{ row.spaceName || '未知空间' }}</p>
+                <p class="mt-1 truncate font-mono text-[11px] text-slate-400" :title="`空间 ID ${row.spaceId}`">ID {{ row.spaceId }} · {{ row.spaceCode || '-' }}</p>
               </td>
               <td class="px-4 py-4">
-                <p class="text-sm text-slate-700">{{ row.authorName || '恋人' }}</p>
+                <p class="max-w-[9rem] truncate text-sm text-slate-700" :title="row.authorName || '恋人'">{{ row.authorName || '恋人' }}</p>
                 <p class="mt-1 font-mono text-[11px] text-slate-400">{{ row.authorAmourId || '-' }}</p>
               </td>
-              <td class="px-4 py-4">
-                <span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold" :class="visibilityClass(row.visibility)">
+              <td v-if="contentType !== 'message'" class="px-4 py-4">
+                <span class="inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold" :class="visibilityClass(row.visibility)">
                   {{ row.visibilityText || visibilityText(row.visibility) }}
-                </span>
-              </td>
-              <td class="px-4 py-4">
-                <span
-                  class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold"
-                  :class="row.deleted ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'"
-                >
-                  {{ row.deleted ? '已删除' : '正常' }}
                 </span>
               </td>
               <td class="px-4 py-4">
                 <button
                   v-if="row.reportCount"
                   type="button"
-                  class="text-xs font-semibold text-rose-600 underline-offset-2 hover:underline"
+                  class="whitespace-nowrap text-xs font-semibold text-rose-600 underline-offset-2 hover:underline"
                   @click="openReports(row)"
                 >
                   {{ row.pendingReportCount || 0 }} 待处理 / {{ row.reportCount }} 总
                 </button>
                 <span v-else class="text-xs text-slate-400">无</span>
               </td>
-              <td class="whitespace-nowrap px-4 py-4 text-xs text-slate-500">{{ row.updateTime || row.createTime || '-' }}</td>
-              <td class="whitespace-nowrap px-5 py-4 text-right">
-                <div class="inline-flex flex-wrap items-center justify-end gap-1">
-                  <button type="button" class="content-action" @click="openDetail(row)">
-                    <View class="h-3.5 w-3.5" /> 详情
+              <td class="whitespace-nowrap px-5 py-4 admin-table-actions">
+                <div class="admin-table-action-group admin-table-action-group--content">
+                  <button
+                    type="button"
+                    class="admin-table-action text-slate-600 hover:bg-slate-100 hover:text-slate-800"
+                    @click="openDetail(row)"
+                  >
+                    <View class="h-3.5 w-3.5" aria-hidden="true" />详情
                   </button>
                   <button
                     v-if="canModerate && !row.deleted && contentType !== 'message' && row.visibility !== 2"
                     type="button"
-                    class="content-action text-amber-600 hover:bg-amber-50"
+                    class="admin-table-action text-amber-600 hover:bg-amber-50"
                     @click="moderate(row, 2)"
                   >
-                    <Hide class="h-3.5 w-3.5" /> 隐藏
+                    <Hide class="h-3.5 w-3.5" aria-hidden="true" />隐藏
                   </button>
                   <button
                     v-if="canModerate && !row.deleted && contentType !== 'message' && row.visibility === 2"
                     type="button"
-                    class="content-action text-emerald-600 hover:bg-emerald-50"
+                    class="admin-table-action text-emerald-600 hover:bg-emerald-50"
                     @click="moderate(row, 0)"
                   >
-                    <View class="h-3.5 w-3.5" /> 恢复展示
+                    <RefreshLeft class="h-3.5 w-3.5" aria-hidden="true" />恢复展示
                   </button>
                   <button
                     v-if="canDelete && !row.deleted"
                     type="button"
-                    class="content-action text-rose-600 hover:bg-rose-50"
+                    class="admin-table-action text-rose-600 hover:bg-rose-50"
                     @click="removeContent(row)"
                   >
-                    <Delete class="h-3.5 w-3.5" /> 删除
+                    <Delete class="h-3.5 w-3.5" aria-hidden="true" />删除
                   </button>
                 </div>
               </td>
             </tr>
             <tr v-if="!rows.length">
-              <td colspan="8" class="px-6 py-16 text-center text-sm text-slate-400">
+              <td :colspan="contentType === 'message' ? 6 : 7" class="px-6 py-16 text-center text-sm text-slate-400">
                 {{ canCrossSpace || filters.spaceId ? '暂无符合条件的内容' : '请选择空间后查询' }}
               </td>
             </tr>
@@ -226,6 +219,8 @@
             <div><p class="text-[11px] text-slate-400">空间状态</p><p class="mt-1 text-slate-700">{{ detail.spaceStatusText }} / {{ detail.spaceVisibilityText }}</p></div>
             <div><p class="text-[11px] text-slate-400">作者</p><p class="mt-1 text-slate-700">{{ detail.authorName }} · {{ detail.authorAmourId || '-' }}</p></div>
             <div><p class="text-[11px] text-slate-400">可见性</p><p class="mt-1"><span class="rounded-full px-2 py-0.5 text-[11px] font-semibold" :class="visibilityClass(detail.visibility)">{{ detail.visibilityText }}</span></p></div>
+            <div><p class="text-[11px] text-slate-400">创建时间</p><p class="mt-1 text-slate-700">{{ detail.createTime || '-' }}</p></div>
+            <div><p class="text-[11px] text-slate-400">更新时间</p><p class="mt-1 text-slate-700">{{ detail.updateTime || '-' }}</p></div>
           </div>
         </section>
 
@@ -267,7 +262,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Delete, Hide, Refresh, Search, View } from '@element-plus/icons-vue'
+import { Delete, Hide, Refresh, RefreshLeft, Search, View } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { fetchAdminContentDetail, fetchAdminContentPage, deleteAdminContent, moderateAdminContentVisibility } from '@/api/admin/content'
 import { fetchAdminSpacePage } from '@/api/admin/space'
@@ -318,11 +313,6 @@ function visibilityClass(value) {
   if (value === 1) return 'bg-emerald-50 text-emerald-600'
   if (value === 2) return 'bg-rose-50 text-rose-600'
   return 'bg-slate-100 text-slate-600'
-}
-
-function spaceStatusText(status) {
-  const map = { 0: '等待绑定', 1: '正常', 2: '已冻结', 3: '已归档', 4: '删除等待期', 5: '已解绑' }
-  return map[status] || '未知'
 }
 
 async function loadSpaceOptions() {
@@ -492,18 +482,3 @@ onMounted(() => {
   load()
 })
 </script>
-
-<style scoped>
-.content-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  border-radius: 6px;
-  padding: 4px 8px;
-  font-size: 12px;
-  font-weight: 500;
-  color: #475569;
-  transition: background-color 0.15s ease;
-}
-.content-action:hover { background: #f1f5f9; }
-</style>

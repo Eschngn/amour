@@ -72,7 +72,7 @@
         <p class="mt-1 text-xs text-slate-400">调整关键字、状态或公开状态后再查询。</p>
       </div>
       <div v-else class="overflow-x-auto">
-        <table class="min-w-[1220px] w-full divide-y divide-slate-200 text-left text-sm">
+        <table class="w-full min-w-[900px] divide-y divide-slate-200 text-left text-sm">
           <thead class="bg-slate-50 text-xs font-medium tracking-wide text-slate-500">
             <tr>
               <th class="px-6 py-3">空间</th>
@@ -80,15 +80,14 @@
               <th class="px-4 py-3">状态</th>
               <th class="px-4 py-3">公开</th>
               <th class="px-4 py-3">内容</th>
-              <th class="px-4 py-3">时间</th>
-              <th class="px-6 py-3 text-right">操作</th>
+              <th class="px-6 py-3 admin-table-actions">操作</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
             <tr v-for="row in rows" :key="row.spaceId" class="align-top hover:bg-slate-50/70">
               <td class="max-w-[18rem] px-6 py-4">
-                <p class="truncate font-medium text-slate-800">{{ row.spaceName || '未命名空间' }}</p>
-                <p class="mt-1 font-mono text-[11px] text-slate-400">ID {{ row.spaceId }} · {{ row.spaceCode || '-' }}</p>
+                <p class="truncate font-medium text-slate-800" :title="row.spaceName || '未命名空间'">{{ row.spaceName || '未命名空间' }}</p>
+                <p class="mt-1 truncate font-mono text-[11px] text-slate-400" :title="`空间 ID ${row.spaceId}`">ID {{ row.spaceId }} · {{ row.spaceCode || '-' }}</p>
               </td>
               <td class="px-4 py-4">
                 <div v-if="row.members?.length" class="space-y-1.5">
@@ -97,48 +96,40 @@
                       <img v-if="member.avatar" :src="member.avatar" alt="" class="h-7 w-7 rounded-full object-cover">
                       <template v-else>{{ (member.displayName || '恋').slice(0, 1) }}</template>
                     </span>
-                    <div class="min-w-0">
+                    <div class="min-w-0 flex-1">
                       <p class="truncate text-xs font-medium text-slate-700">{{ member.displayName || '恋人' }}</p>
                       <p class="truncate font-mono text-[10px] text-slate-400">{{ member.amourId || '-' }} · {{ member.roleText }}</p>
                     </div>
-                    <span class="shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500">{{ member.statusText }}</span>
+                    <span v-if="member.status !== 1" class="shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500">{{ member.statusText }}</span>
                   </div>
                 </div>
                 <p v-else class="text-xs text-rose-500">缺少成员关系</p>
               </td>
-              <td class="px-4 py-4">
+              <td class="whitespace-nowrap px-4 py-4">
                 <span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold" :class="statusClass(row.status)">{{ row.statusText }}</span>
-                <p class="mt-2 text-[11px] text-slate-400">有效成员 {{ row.activeMemberCount ?? 0 }} / {{ row.memberCount ?? 0 }}</p>
               </td>
-              <td class="px-4 py-4">
+              <td class="whitespace-nowrap px-4 py-4">
                 <span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold" :class="row.visibility === 1 ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'">
                   {{ row.visibilityText || '私密' }}
                 </span>
               </td>
-              <td class="px-4 py-4">
-                <p class="text-xs font-semibold text-slate-700">{{ row.contentCount ?? 0 }} 项</p>
-                <p class="mt-1 text-[11px] text-slate-400">故事 {{ row.storyCount ?? 0 }} · 照片 {{ row.photoCount ?? 0 }}</p>
-                <p class="text-[11px] text-slate-400">留言 {{ row.messageCount ?? 0 }} · 纪念日 {{ row.anniversaryCount ?? 0 }}</p>
+              <td class="whitespace-nowrap px-4 py-4">
+                <p class="text-xs font-semibold text-slate-700" :title="contentBreakdown(row)">{{ row.contentCount ?? 0 }} 项</p>
               </td>
-              <td class="px-4 py-4 text-xs text-slate-500">
-                <p>创建：{{ row.createTime || '-' }}</p>
-                <p class="mt-1">更新：{{ row.updateTime || '-' }}</p>
-                <p v-if="row.deletedAt" class="mt-1 text-rose-500">解绑：{{ row.deletedAt }}</p>
-              </td>
-              <td class="whitespace-nowrap px-6 py-4 text-right">
-                <div class="inline-flex flex-wrap items-center justify-end gap-1">
-                  <button type="button" class="space-action" @click="openDetail(row)">
-                    <View class="h-3.5 w-3.5" /> 详情
+              <td class="whitespace-nowrap px-6 py-4 admin-table-actions">
+                <div class="admin-table-action-group admin-table-action-group--space">
+                  <button type="button" class="admin-table-action text-slate-600 hover:bg-slate-100" @click="openDetail(row)">
+                    <View class="h-3.5 w-3.5" aria-hidden="true" /> 详情
                   </button>
                   <button
                     v-if="row.status === 5"
                     type="button"
-                    class="space-action text-emerald-600 hover:bg-emerald-50"
+                    class="admin-table-action text-emerald-600 hover:bg-emerald-50"
                     :disabled="!row.restorable || restoringId !== null"
                     :title="row.restorable ? '' : row.restoreBlockReason"
                     @click="restore(row)"
                   >
-                    <CircleCheck class="h-3.5 w-3.5" /> {{ restoringId === row.spaceId ? '恢复中…' : '人工恢复' }}
+                    <CircleCheck class="h-3.5 w-3.5" aria-hidden="true" /> {{ restoringId === row.spaceId ? '恢复中…' : '人工恢复' }}
                   </button>
                 </div>
               </td>
@@ -368,6 +359,10 @@ function statusClass(value) {
   return map[value] || 'bg-slate-100 text-slate-500'
 }
 
+function contentBreakdown(row) {
+  return `故事 ${row.storyCount ?? 0} · 照片 ${row.photoCount ?? 0} · 留言 ${row.messageCount ?? 0} · 纪念日 ${row.anniversaryCount ?? 0}`
+}
+
 function visibilityClass(value) {
   if (value === 1) return 'bg-emerald-50 text-emerald-600'
   if (value === 2) return 'bg-rose-50 text-rose-600'
@@ -475,19 +470,6 @@ onMounted(load)
 </script>
 
 <style scoped>
-.space-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  border-radius: 6px;
-  padding: 4px 8px;
-  font-size: 12px;
-  font-weight: 500;
-  color: #475569;
-  transition: background-color 0.15s ease;
-}
-.space-action:hover { background: #f1f5f9; }
-.space-action:disabled { cursor: not-allowed; opacity: 0.55; }
 .detail-card { border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; }
 .detail-label { font-size: 11px; color: #94a3b8; }
 .detail-value { margin-top: 4px; font-size: 13px; color: #334155; }

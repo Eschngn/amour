@@ -1,13 +1,5 @@
 <template>
   <div class="space-y-5">
-    <section class="grid gap-4 sm:grid-cols-3">
-      <div v-for="stat in stats" :key="stat.label" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div class="flex items-center justify-between"><span class="text-xs font-medium text-slate-400">{{ stat.label }}</span><component :is="stat.icon" class="h-4 w-4" :class="stat.color" /></div>
-        <p class="mt-3 text-2xl font-semibold tracking-tight text-slate-800">{{ stat.value }}</p>
-        <p class="mt-1 text-xs text-slate-400">{{ stat.note }}</p>
-      </div>
-    </section>
-
     <section class="admin-filter-panel">
       <div class="admin-filter-bar">
         <div class="admin-filter-fields">
@@ -42,7 +34,7 @@
             <Refresh class="h-3.5 w-3.5" :class="{ 'animate-spin': loading }" />
           </button>
           <button type="button" class="admin-filter-button admin-filter-button--primary" @click="openEditor()">
-            <Plus class="h-3.5 w-3.5" />新增配置
+            <Plus class="h-3.5 w-3.5" aria-hidden="true" />新增配置
           </button>
         </div>
       </div>
@@ -56,22 +48,27 @@
         <p class="mt-1 text-xs text-slate-400">调整搜索条件，或新增一条配置。</p>
       </div>
       <div v-else class="overflow-x-auto">
-        <table class="min-w-[1080px] w-full divide-y divide-slate-200 text-left text-sm">
+        <table class="w-full min-w-[880px] divide-y divide-slate-200 text-left text-sm">
           <thead class="bg-slate-50 text-xs font-medium tracking-wide text-slate-500">
             <tr>
               <th class="px-6 py-3">配置名称</th>
               <th class="px-4 py-3">配置键</th>
               <th class="px-4 py-3">配置值</th>
-              <th class="px-4 py-3">值类型</th>
-              <th class="px-4 py-3">排序</th>
               <th class="px-4 py-3">更新时间</th>
-              <th class="px-6 py-3 text-right">操作</th>
+              <th class="px-6 py-3 admin-table-actions">操作</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
             <tr v-for="config in configs" :key="config.id">
-              <td class="px-6 py-4"><div class="max-w-[180px]"><p class="truncate font-medium text-slate-800">{{ config.configName }}</p><p v-if="config.remark" class="mt-1 truncate text-xs text-slate-400">{{ config.remark }}</p></div></td>
-              <td class="px-4 py-4"><code class="rounded-lg bg-slate-100 px-2 py-1 font-mono text-xs text-slate-600">{{ config.configKey }}</code></td>
+              <td class="px-6 py-4">
+                <div class="max-w-[180px]">
+                  <p class="truncate font-medium text-slate-800" :title="config.configName">{{ config.configName }}</p>
+                  <p v-if="config.remark" class="mt-1 truncate text-xs text-slate-400" :title="config.remark">{{ config.remark }}</p>
+                </div>
+              </td>
+              <td class="px-4 py-4">
+                <code class="block max-w-[14rem] truncate rounded-lg bg-slate-100 px-2 py-1 font-mono text-xs text-slate-600" :title="config.configKey">{{ config.configKey }}</code>
+              </td>
               <td class="config-value-cell px-4 py-4">
                 <img
                   v-if="config.valueType === 'image' && config.configValue"
@@ -84,10 +81,17 @@
                 />
                 <span v-else class="block truncate text-xs text-slate-500" :title="config.configValue">{{ config.configValue || '-' }}</span>
               </td>
-              <td class="px-4 py-4"><span class="rounded-full px-2.5 py-1 text-[11px] font-medium" :class="typeClass(config.valueType)">{{ typeLabel(config.valueType) }}</span></td>
-              <td class="px-4 py-4 text-slate-500">{{ config.sortOrder ?? 0 }}</td>
               <td class="whitespace-nowrap px-4 py-4 text-xs text-slate-400">{{ config.updateTime || '-' }}</td>
-              <td class="whitespace-nowrap px-6 py-4 text-right"><div class="inline-flex items-center gap-1"><button type="button" class="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-100" @click="openEditor(config)"><Edit class="h-3.5 w-3.5" />编辑</button><button type="button" class="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-rose-600 transition hover:bg-rose-50" @click="deleteConfig(config)"><Delete class="h-3.5 w-3.5" />删除</button></div></td>
+              <td class="whitespace-nowrap px-6 py-4 admin-table-actions">
+                <div class="admin-table-action-group admin-table-action-group--double">
+                  <button type="button" class="admin-table-action text-slate-600 hover:bg-slate-100" @click="openEditor(config)">
+                    <Edit class="h-3.5 w-3.5" aria-hidden="true" />编辑
+                  </button>
+                  <button type="button" class="admin-table-action text-rose-600 hover:bg-rose-50" @click="deleteConfig(config)">
+                    <Delete class="h-3.5 w-3.5" aria-hidden="true" />删除
+                  </button>
+                </div>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -95,7 +99,7 @@
 
       <div class="flex flex-col items-center justify-between gap-3 border-t border-slate-100 px-5 py-3 text-xs text-slate-400 sm:flex-row sm:px-6">
         <span>共 {{ total }} 条 · 第 {{ currentPage }} / {{ totalPages }} 页</span>
-        <div class="flex items-center gap-1"><button type="button" :disabled="currentPage <= 1 || loading" class="rounded-lg px-3 py-1.5 transition enabled:hover:bg-slate-100 disabled:text-slate-300" @click="currentPage -= 1">上一页</button><button type="button" class="rounded-lg bg-indigo-600 px-3 py-1.5 font-medium text-white shadow-sm">{{ currentPage }}</button><button type="button" :disabled="currentPage >= totalPages || loading" class="rounded-lg px-3 py-1.5 transition enabled:hover:bg-slate-100 disabled:text-slate-300" @click="currentPage += 1">下一页</button></div>
+        <div class="flex items-center gap-1"><button type="button" :disabled="currentPage <= 1 || loading" class="rounded-lg px-3 py-1.5 transition enabled:hover:bg-slate-100 disabled:text-slate-300" @click="currentPage -= 1">上一页</button><button type="button" class="rounded-lg bg-rose-600 px-3 py-1.5 font-medium text-white shadow-sm">{{ currentPage }}</button><button type="button" :disabled="currentPage >= totalPages || loading" class="rounded-lg px-3 py-1.5 transition enabled:hover:bg-slate-100 disabled:text-slate-300" @click="currentPage += 1">下一页</button></div>
       </div>
     </section>
 
@@ -176,7 +180,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { CollectionTag, Close, Delete, Edit, Loading, Plus, Refresh, Search, Setting, Upload } from '@element-plus/icons-vue'
+import { CollectionTag, Close, Delete, Edit, Loading, Plus, Refresh, Search, Upload } from '@element-plus/icons-vue'
 import 'element-plus/es/components/message/style/css'
 import 'element-plus/es/components/message-box/style/css'
 import api from '@/axios'
@@ -201,12 +205,6 @@ const editableTypeOptions = [
   { value: 'image', label: '图片' },
 ]
 const typeOptions = editableTypeOptions
-
-const stats = computed(() => [
-  { label: '配置总数', value: total.value, note: '当前数据库记录', icon: CollectionTag, color: 'text-indigo-500' },
-  { label: '类型数量', value: new Set(configs.value.map(item => item.valueType).filter(Boolean)).size, note: '当前页统计', icon: Setting, color: 'text-violet-500' },
-  { label: '当前页', value: configs.value.length, note: `第 ${currentPage.value} 页`, icon: Refresh, color: 'text-emerald-500' },
-])
 
 function createForm() {
   return { id: null, configKey: '', configName: '', configValue: '', valueType: 'text', sortOrder: 0, remark: '' }
@@ -302,16 +300,6 @@ async function deleteConfig(config) {
   } catch (error) {
     ElMessage.error(error.response?.data?.message || error.message || '删除配置失败')
   }
-}
-
-function typeClass(type) {
-  if (type === 'image') return 'bg-sky-50 text-sky-600'
-  if (type === 'datetime') return 'bg-amber-50 text-amber-600'
-  return 'bg-slate-100 text-slate-600'
-}
-
-function typeLabel(type) {
-  return editableTypeOptions.find(option => option.value === type)?.label || type
 }
 
 let searchTimer
