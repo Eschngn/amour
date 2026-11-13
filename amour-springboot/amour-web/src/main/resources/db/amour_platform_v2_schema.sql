@@ -538,4 +538,4 @@ CREATE INDEX `idx_page_view_date_visitor` ON `page_view_event` (`view_date`, `vi
 CREATE INDEX `idx_page_view_date_page` ON `page_view_event` (`view_date`, `page_key`);
 
 -- 后台管理员由 user.is_platform_admin 标识，不建角色/权限表；
--- 管理员账号通过 db/amour_platform_v2_seed.sql 或 amour_admin_governance_sqlite.sql 初始化。
+-- 管理员账号通过 db/amour_platform_v2_seed.sql 初始化。
