@@ -6,3 +6,10 @@ import api from '@/axios'
 export function fetchAdminDashboardSummary() {
   return api.post('/admin/dashboard/summary')
 }
+
+/**
+ * 页面浏览活跃度趋势。startDate/endDate 为 yyyy-MM-dd，服务端按 Asia/Shanghai 切分。
+ */
+export function fetchAdminDashboardActivity(payload) {
+  return api.post('/admin/dashboard/activity', payload)
+}

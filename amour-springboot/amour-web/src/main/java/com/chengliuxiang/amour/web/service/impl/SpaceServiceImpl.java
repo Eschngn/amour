@@ -49,6 +49,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
@@ -154,6 +155,9 @@ public class SpaceServiceImpl implements SpaceService {
     }
 
     private Response<SpaceStatusVO> doCreateSpace(Long userId, CreateSpaceReqVO reqVO) {
+        // 先锁用户行：与后台人工恢复、接受邀请保持同一把数据库级用户锁，
+        // 避免多实例部署时「恢复旧空间」与「创建新空间」互相看不到对方的提交。
+        userMapper.lockById(userId);
         // 只把「未解绑空间」中的有效成员关系视为占用；status=5 的历史残留不阻挡用户开始新空间。
         if (countActiveMembershipsInLiveSpaces(userId) > 0) {
             throw new BizException(ResponseCodeEnum.SPACE_ALREADY_EXISTS);
@@ -247,6 +251,8 @@ public class SpaceServiceImpl implements SpaceService {
 
     private Response<CreateInvitationRspVO> doCreateInvitation(Long userId, Long spaceId,
                                                                CreateInvitationReqVO reqVO) {
+        // 与人工恢复共用用户行锁：避免恢复关闭冲突空间后，并发创建的邀请残留在已关闭空间。
+        userMapper.lockById(userId);
         requireActiveMembershipInSpace(userId, spaceId);
         CoupleSpaceDO space = requireSpace(spaceId);
         if (isDeletedSpace(space)) {
@@ -439,6 +445,9 @@ public class SpaceServiceImpl implements SpaceService {
     }
 
     private Response<SpaceStatusVO> doAcceptInvitation(Long userId, AcceptInvitationReqVO reqVO, Long expectedSpaceId) {
+        // 与创建空间、后台人工恢复共用数据库级用户锁：接受邀请成功后不能与恢复操作交叉，
+        // 否则可能同时留下「原空间恢复 + 新空间已成双人」的冲突状态。
+        userMapper.lockById(userId);
         LocalDateTime now = LocalDateTime.now();
         CoupleInvitationDO invitation = findInvitationForAccept(reqVO, userId);
         if (invitation.getInviteeUserId() != null && !invitation.getInviteeUserId().equals(userId)) {
@@ -1244,7 +1253,12 @@ public class SpaceServiceImpl implements SpaceService {
             return null;
         }
         if (memberships.size() > 1) {
-            log.warn("用户 {} 存在多个有效空间成员关系，数量：{}", userId, memberships.size());
+            // 多条有效关系说明数据已冲突（例如后台恢复旧空间时未收口新空间）。
+            // 不能按 id 排序静默选择，否则不同用户可能看到不同空间。
+            log.warn("用户 {} 存在多个有效空间成员关系，数量：{}，spaceIds：{}",
+                    userId, memberships.size(),
+                    memberships.stream().map(CoupleMemberDO::getSpaceId).collect(Collectors.toList()));
+            throw new BizException(ResponseCodeEnum.SPACE_MEMBERSHIP_CONFLICT);
         }
         return memberships.get(0);
     }
@@ -1336,6 +1350,7 @@ public class SpaceServiceImpl implements SpaceService {
             throw new BizException(ResponseCodeEnum.SPACE_NOT_MEMBER);
         }
         Long deletedSpaceId = null;
+        List<Long> liveSpaceIds = new ArrayList<>();
         for (CoupleMemberDO membership : memberships) {
             CoupleSpaceDO space = coupleSpaceMapper.findById(membership.getSpaceId());
             if (space == null) {
@@ -1343,11 +1358,18 @@ public class SpaceServiceImpl implements SpaceService {
             }
             if (!isDeletedSpace(space)) {
                 // 优先定位仍在使用的空间，避免被 status=5 的历史残留抢走目标。
-                return space.getId();
-            }
-            if (deletedSpaceId == null) {
+                liveSpaceIds.add(space.getId());
+            } else if (deletedSpaceId == null) {
                 deletedSpaceId = space.getId();
             }
+        }
+        if (liveSpaceIds.size() > 1) {
+            // 多条有效关系时不能随机选一个空间继续解绑，必须让用户/管理员先处理冲突。
+            log.warn("用户 {} 存在多个未解绑空间的有效成员关系：{}", userId, liveSpaceIds);
+            throw new BizException(ResponseCodeEnum.SPACE_MEMBERSHIP_CONFLICT);
+        }
+        if (!liveSpaceIds.isEmpty()) {
+            return liveSpaceIds.get(0);
         }
         if (deletedSpaceId != null) {
             return deletedSpaceId;

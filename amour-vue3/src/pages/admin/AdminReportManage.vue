@@ -156,7 +156,7 @@
       </div>
     </section>
 
-    <el-drawer v-model="detailVisible" :title="detail?.status === 0 ? '处理举报' : '举报详情'" size="min(720px, 94vw)" destroy-on-close>
+    <el-drawer v-model="detailVisible" :title="detail?.status === 0 ? '处理举报' : '举报详情'" size="min(720px, 94vw)" class="admin-dialog-surface" destroy-on-close>
       <div v-if="detailLoading" class="py-16 text-center text-sm text-slate-400">详情加载中…</div>
       <div v-else-if="detail" class="space-y-5">
         <section class="rounded-xl border border-slate-200 bg-slate-50/70 p-4">

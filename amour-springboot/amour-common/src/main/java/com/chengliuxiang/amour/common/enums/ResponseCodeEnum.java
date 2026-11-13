@@ -102,6 +102,12 @@ public enum ResponseCodeEnum implements BaseExceptionInterface {
     REPORT_ALREADY_PROCESSED("20082", "举报已被其他管理员处理"),
     REPORT_ACTION_NOT_SUPPORTED("20083", "不支持的举报处理动作"),
     AUDIT_LOG_NOT_SUPPORTED("20084", "操作审计记录失败"),
+    PAGE_VIEW_EVENT_INVALID("20085", "页面浏览上报无效"),
+    PAGE_VIEW_TOO_FREQUENT("20086", "页面浏览上报过于频繁，请稍后再试"),
+    ACTIVITY_RANGE_INVALID("20087", "统计区间不合法，请检查开始和结束日期"),
+    ACTIVITY_RANGE_TOO_LARGE("20088", "统计区间最长支持90天"),
+    SPACE_MEMBERSHIP_CONFLICT("20089", "该账号存在多个有效情侣空间，请先处理空间冲突后再操作"),
+    SPACE_RESTORE_CONFLICT("20090", "存在无法自动处理的冲突空间，请先处理后再恢复"),
 
     ;
 

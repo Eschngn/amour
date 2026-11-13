@@ -147,7 +147,7 @@
       </div>
     </section>
 
-    <el-drawer v-model="detailVisible" title="空间详情" size="min(900px, 96vw)" destroy-on-close>
+    <el-drawer v-model="detailVisible" title="空间详情" size="min(900px, 96vw)" class="admin-dialog-surface" destroy-on-close>
       <div v-if="detailLoading" class="py-20 text-center text-sm text-slate-400">详情加载中…</div>
       <div v-else-if="detail" class="space-y-4">
         <section class="rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-50/70 to-white p-5">
@@ -164,10 +164,11 @@
             <button
               v-if="detail.restore?.restorable"
               type="button"
-              class="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+              class="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="restoringId !== null"
               @click="restoreDetail"
             >
-              <CircleCheck class="h-4 w-4" /> 人工恢复
+              <CircleCheck class="h-4 w-4" /> {{ restoringId === detail.spaceId ? '恢复中…' : '人工恢复' }}
             </button>
           </div>
           <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -294,8 +295,21 @@
                     {{ confirm.displayName }}（{{ confirm.amourId || '-' }}）· {{ confirm.confirmedAt }}
                   </li>
                 </ul>
+                <div v-if="detail.restore?.conflictSpaces?.length" class="mt-3 rounded-lg border border-amber-100 bg-amber-50/70 px-3 py-2">
+                  <p class="text-[11px] font-semibold text-amber-700">
+                    检测到 {{ detail.restore.conflictSpaces.length }} 个冲突空间
+                  </p>
+                  <ul class="mt-1 space-y-1 text-[11px] leading-5 text-amber-700">
+                    <li v-for="conflict in detail.restore.conflictSpaces" :key="conflict.spaceId">
+                      ID {{ conflict.spaceId }} · {{ conflict.spaceName || '未命名空间' }} · {{ conflict.statusText }} · 有效成员 {{ conflict.activeMemberCount }}
+                      <span :class="conflict.autoClosable ? 'font-semibold text-emerald-700' : 'font-semibold text-rose-600'">
+                        {{ conflict.autoClosable ? '恢复时自动安全关闭' : (conflict.blockReason || '需先处理后再恢复') }}
+                      </span>
+                    </li>
+                  </ul>
+                </div>
                 <p class="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-[11px] leading-5 text-slate-500">
-                  冻结/归档空间必须由双方成员在用户端确认恢复；后台人工恢复仅处理 status=5 且成员关系完整的历史空间，恢复后保持私密。
+                  冻结/归档空间必须由双方成员在用户端确认恢复；后台人工恢复仅处理 status=5 且成员关系完整的历史空间，恢复后保持私密。解绑后新建的未绑定单人空间会被安全关闭，内容保留；若冲突空间已有其他有效成员，则拒绝恢复。
                 </p>
               </section>
             </div>
@@ -311,6 +325,11 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { CircleCheck, Connection, Refresh, Search, View } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { fetchAdminSpaceDetail, fetchAdminSpacePage, restoreAdminSpace } from '@/api/admin/space'
+import {
+  ADMIN_RESTORE_MESSAGE_BOX_CLASS,
+  buildRestorePromptMessage,
+  buildRestoreSuccessMessage,
+} from '@/utils/adminRestore'
 import { ADMIN_PERMISSIONS, hasAdminPermission } from '@/utils/adminAuth'
 
 const filters = reactive({ keyword: '', status: null, visibility: null })
@@ -370,6 +389,7 @@ function visibilityClass(value) {
 }
 
 let loadSequence = 0
+let detailSequence = 0
 async function load() {
   const requestId = ++loadSequence
   loading.value = true
@@ -402,27 +422,31 @@ function applyFilters() {
 }
 
 async function openDetail(row) {
+  const requestId = ++detailSequence
   detailVisible.value = true
   detailLoading.value = true
   detail.value = null
   activeTab.value = 'overview'
   try {
     const { data } = await fetchAdminSpaceDetail(row.spaceId)
+    if (requestId !== detailSequence) return
     if (!data?.success) throw new Error(data?.message || '空间详情加载失败')
     detail.value = data.data
   } catch (e) {
+    if (requestId !== detailSequence) return
     ElMessage.error(e.response?.data?.message || e.message || '空间详情加载失败')
     detailVisible.value = false
   } finally {
-    detailLoading.value = false
+    if (requestId === detailSequence) detailLoading.value = false
   }
 }
 
-async function promptReason(title, message) {
+async function promptReason(row) {
   try {
-    const result = await ElMessageBox.prompt(message, title, {
+    const result = await ElMessageBox.prompt(buildRestorePromptMessage(row), '人工恢复情侣空间', {
       confirmButtonText: '确认恢复',
       cancelButtonText: '取消',
+      customClass: ADMIN_RESTORE_MESSAGE_BOX_CLASS,
       inputPlaceholder: '请填写恢复原因（必填）',
       inputValidator: value => (String(value || '').trim().length > 0 ? true : '请填写恢复原因'),
     })
@@ -433,23 +457,36 @@ async function promptReason(title, message) {
 }
 
 async function restore(row) {
-  if (restoringId.value !== null || row.status !== 5 || !row.restorable) return
-  const reason = await promptReason(
-    '人工恢复情侣空间',
-    `确定恢复“${row.spaceName || row.spaceCode}”吗？恢复后两名原成员重新有效，空间回到正常但私密状态，既有内容保留。`,
-  )
+  if (restoringId.value !== null) return
+  if (row.status !== 5) {
+    ElMessage.warning('只有双方已解绑的空间才能人工恢复')
+    return
+  }
+  if (!row.restorable) {
+    ElMessage.warning(row.restoreBlockReason || '当前空间不满足人工恢复条件')
+    return
+  }
+  const reason = await promptReason(row)
   if (!reason) return
   restoringId.value = row.spaceId
   try {
     const { data } = await restoreAdminSpace(row.spaceId, reason)
     if (!data?.success) throw new Error(data?.message || '人工恢复失败')
-    ElMessage.success('情侣空间已恢复为正常且私密状态')
+    ElMessage.success(buildRestoreSuccessMessage(data.data))
+    // 恢复成功后详情可能已过期（成员、状态、邀请都被改写），必须重新拉取。
     if (detail.value?.spaceId === row.spaceId) {
-      await openDetail(row)
+      await openDetail({ spaceId: row.spaceId })
     }
     await load()
   } catch (e) {
     ElMessage.error(e.response?.data?.message || e.message || '人工恢复失败')
+    // 业务失败（冲突/状态已变化）时同步刷新，避免页面继续展示过期的恢复资格。
+    if (e.response?.data?.errorCode) {
+      if (detail.value?.spaceId === row.spaceId) {
+        await openDetail({ spaceId: row.spaceId })
+      }
+      await load()
+    }
   } finally {
     restoringId.value = null
   }
@@ -457,11 +494,16 @@ async function restore(row) {
 
 async function restoreDetail() {
   if (!detail.value) return
+  const conflicts = Array.isArray(detail.value.restore?.conflictSpaces) ? detail.value.restore.conflictSpaces : []
   await restore({
     spaceId: detail.value.spaceId,
     spaceName: detail.value.spaceName,
+    spaceCode: detail.value.spaceCode,
     status: detail.value.status,
     restorable: detail.value.restore?.restorable,
+    restoreBlockReason: detail.value.restore?.restoreBlockReason,
+    conflictSpaceCount: conflicts.length,
+    autoClosableConflictSpaceCount: conflicts.filter(conflict => conflict.autoClosable === true).length,
   })
 }
 

@@ -211,7 +211,7 @@
       </div>
     </section>
 
-    <el-drawer v-model="detailVisible" :title="`${contentTypeLabel}详情`" size="min(680px, 94vw)" destroy-on-close>
+    <el-drawer v-model="detailVisible" :title="`${contentTypeLabel}详情`" size="min(680px, 94vw)" class="admin-dialog-surface" destroy-on-close>
       <div v-if="detail" class="space-y-5 text-sm">
         <section class="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
           <div class="grid gap-3 sm:grid-cols-2">
@@ -267,6 +267,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { fetchAdminContentDetail, fetchAdminContentPage, deleteAdminContent, moderateAdminContentVisibility } from '@/api/admin/content'
 import { fetchAdminSpacePage } from '@/api/admin/space'
 import { hasAdminPermission, ADMIN_PERMISSIONS } from '@/utils/adminAuth'
+import { ADMIN_MESSAGE_BOX_CLASS } from '@/utils/adminRestore'
 
 const route = useRoute()
 const router = useRouter()
@@ -406,6 +407,7 @@ async function moderate(row, visibility) {
       {
         confirmButtonText: '确认',
         cancelButtonText: '取消',
+        customClass: ADMIN_MESSAGE_BOX_CLASS,
         inputPlaceholder: '请填写原因（必填）',
         inputValidator: value => (String(value || '').trim().length > 0 ? true : '请填写操作原因'),
       },
@@ -439,6 +441,7 @@ async function removeContent(row) {
       {
         confirmButtonText: '确认删除',
         cancelButtonText: '取消',
+        customClass: ADMIN_MESSAGE_BOX_CLASS,
         inputPlaceholder: '请填写原因（必填）',
         inputValidator: value => (String(value || '').trim().length > 0 ? true : '请填写删除原因'),
       },

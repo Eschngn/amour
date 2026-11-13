@@ -5,6 +5,7 @@ import com.chengliuxiang.amour.admin.model.vo.space.AdminSpaceDetailRspVO;
 import com.chengliuxiang.amour.admin.model.vo.space.AdminSpacePageReqVO;
 import com.chengliuxiang.amour.admin.model.vo.space.AdminSpacePageRspVO;
 import com.chengliuxiang.amour.admin.model.vo.space.AdminSpaceRestoreReqVO;
+import com.chengliuxiang.amour.admin.model.vo.space.AdminSpaceRestoreRspVO;
 import com.chengliuxiang.amour.admin.service.AdminSpaceService;
 import com.chengliuxiang.amour.common.aspect.ApiOperationLog;
 import com.chengliuxiang.amour.common.model.PageResult;
@@ -44,7 +45,7 @@ public class AdminSpaceController {
 
     @PostMapping("/restore")
     @ApiOperationLog(description = "人工恢复双方已解绑的情侣空间")
-    public Response<Void> restore(@RequestBody @Validated AdminSpaceRestoreReqVO reqVO) {
+    public Response<AdminSpaceRestoreRspVO> restore(@RequestBody @Validated AdminSpaceRestoreReqVO reqVO) {
         return adminSpaceService.restoreSpace(reqVO);
     }
 }

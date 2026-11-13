@@ -23,6 +23,11 @@ public class AdminSpaceRestoreSummaryVO {
 
     private List<ConfirmVO> confirmations;
 
+    /**
+     * 两名历史成员在其他未解绑空间中的有效关系。空列表表示不存在冲突。
+     */
+    private List<AdminSpaceRestoreConflictVO> conflictSpaces;
+
     @Data
     @Builder
     @NoArgsConstructor

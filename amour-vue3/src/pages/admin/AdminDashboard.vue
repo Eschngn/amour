@@ -22,6 +22,8 @@
       </article>
     </section>
 
+    <AdminActivityPanel />
+
     <section class="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
       <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <div class="flex items-start justify-between gap-3">
@@ -102,6 +104,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ArrowRight, Connection, Document, Files, Lock, User, Warning } from '@element-plus/icons-vue'
+import AdminActivityPanel from '@/components/admin/AdminActivityPanel.vue'
 import { fetchAdminDashboardSummary } from '@/api/admin/dashboard'
 import { ADMIN_PERMISSIONS, hasAdminPermission } from '@/utils/adminAuth'
 
@@ -135,7 +138,7 @@ const headlineCards = computed(() => [
   { label: '待处理举报', value: summary.pendingReportCount, note: '需要审核队列', icon: Warning, tone: 'text-rose-500' },
   { label: '空间总数', value: summary.totalSpaceCount, note: '含等待绑定/解绑历史', icon: Connection, tone: 'text-emerald-500' },
   { label: '公开空间', value: summary.publicSpaceCount, note: '恋爱广场可见', icon: Lock, tone: 'text-sky-500' },
-  { label: '活跃用户', value: summary.activeUserCount, note: '未停用账号', icon: User, tone: 'text-indigo-500' },
+  { label: '未停用账号', value: summary.activeUserCount, note: '注册账号数，不是活跃访客数', icon: User, tone: 'text-indigo-500' },
 ])
 
 const spaceStatusItems = computed(() => [

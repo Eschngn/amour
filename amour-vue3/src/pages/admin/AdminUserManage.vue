@@ -93,7 +93,7 @@
       </div>
       <div class="flex flex-col items-center justify-between gap-3 border-t border-slate-100 px-5 py-3 text-xs text-slate-400 sm:flex-row sm:px-6"><span>共 {{ total }} 条 · 第 {{ currentPage }} / {{ totalPages }} 页</span><div class="flex items-center gap-1"><button type="button" :disabled="currentPage <= 1 || loading" class="rounded-lg px-3 py-1.5 transition enabled:hover:bg-slate-100 disabled:text-slate-300" @click="currentPage -= 1">上一页</button><button type="button" class="rounded-lg bg-rose-600 px-3 py-1.5 font-medium text-white shadow-sm">{{ currentPage }}</button><button type="button" :disabled="currentPage >= totalPages || loading" class="rounded-lg px-3 py-1.5 transition enabled:hover:bg-slate-100 disabled:text-slate-300" @click="currentPage += 1">下一页</button></div></div>
     </section>
-    <el-dialog v-model="dialog.visible" :title="dialog.form.id ? '编辑用户' : '新增用户'" width="min(640px, calc(100vw - 32px))" class="user-editor-dialog" append-to-body destroy-on-close><el-form :model="dialog.form" label-position="top"><div class="grid gap-4 sm:grid-cols-2"><el-form-item label="用户名" required><el-input v-model="dialog.form.username" maxlength="60" placeholder="用于登录的账号" /></el-form-item><el-form-item label="昵称" required><el-input v-model="dialog.form.displayName" maxlength="60" placeholder="前台展示名称" /></el-form-item><el-form-item label="密码" :required="!dialog.form.id" class="sm:col-span-2"><el-input v-model="dialog.form.password" type="password" show-password maxlength="64" :placeholder="dialog.form.id ? '留空表示不修改密码' : '至少 6 位字符'" /></el-form-item><el-form-item label="头像地址" class="sm:col-span-2"><el-input v-model="dialog.form.avatar" maxlength="500" placeholder="可选，填写图片 URL" /></el-form-item><el-form-item label="状态"><el-select v-model="dialog.form.status" class="!w-full"><el-option :value="0" label="启用" /><el-option :value="1" label="停用" /></el-select></el-form-item><el-form-item v-if="dialog.form.id && dialog.form.status === 1" label="停用原因" class="sm:col-span-2" required><el-input v-model="dialog.form.reason" type="textarea" :rows="2" maxlength="1000" show-word-limit placeholder="停用会立即退出登录，请填写原因用于审计" /></el-form-item><el-form-item label="平台管理员" class="sm:col-span-2"><el-switch v-model="dialog.form.platformAdmin" /></el-form-item></div></el-form><template #footer><div class="flex justify-end gap-3"><el-button @click="dialog.visible = false">取消</el-button><el-button type="primary" :loading="saving" @click="save">保存</el-button></div></template></el-dialog>
+    <el-dialog v-model="dialog.visible" :title="dialog.form.id ? '编辑用户' : '新增用户'" width="min(640px, calc(100vw - 32px))" class="user-editor-dialog admin-dialog-surface" append-to-body destroy-on-close><el-form :model="dialog.form" label-position="top"><div class="grid gap-4 sm:grid-cols-2"><el-form-item label="用户名" required><el-input v-model="dialog.form.username" maxlength="60" placeholder="用于登录的账号" /></el-form-item><el-form-item label="昵称" required><el-input v-model="dialog.form.displayName" maxlength="60" placeholder="前台展示名称" /></el-form-item><el-form-item label="密码" :required="!dialog.form.id" class="sm:col-span-2"><el-input v-model="dialog.form.password" type="password" show-password maxlength="64" :placeholder="dialog.form.id ? '留空表示不修改密码' : '至少 6 位字符'" /></el-form-item><el-form-item label="头像地址" class="sm:col-span-2"><el-input v-model="dialog.form.avatar" maxlength="500" placeholder="可选，填写图片 URL" /></el-form-item><el-form-item label="状态"><el-select v-model="dialog.form.status" class="!w-full"><el-option :value="0" label="启用" /><el-option :value="1" label="停用" /></el-select></el-form-item><el-form-item v-if="dialog.form.id && dialog.form.status === 1" label="停用原因" class="sm:col-span-2" required><el-input v-model="dialog.form.reason" type="textarea" :rows="2" maxlength="1000" show-word-limit placeholder="停用会立即退出登录，请填写原因用于审计" /></el-form-item><el-form-item label="平台管理员" class="sm:col-span-2"><el-switch v-model="dialog.form.platformAdmin" /></el-form-item></div></el-form><template #footer><div class="flex justify-end gap-3"><el-button @click="dialog.visible = false">取消</el-button><el-button type="primary" :loading="saving" @click="save">保存</el-button></div></template></el-dialog>
   </div>
 </template>
 
@@ -101,6 +101,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Edit, Loading, Lock, Plus, Refresh, Search, UserFilled } from '@element-plus/icons-vue'
+import { ADMIN_MESSAGE_BOX_CLASS } from '@/utils/adminRestore'
 import api from '@/axios'
 const pageSize = 10; const currentPage = ref(1); const keyword = ref(''); const status = ref(null); const loading = ref(false); const saving = ref(false); const users = ref([]); const total = ref(0); const dialog = reactive({ visible: false, form: createForm() })
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
@@ -110,7 +111,7 @@ function resetAndLoad() { if (currentPage.value === 1) load(); else currentPage.
 function applyFilters() { clearTimeout(timer); resetAndLoad() }
 function openEditor(user) { dialog.form = user ? { ...user, password: '', status: user.status ? 0 : 1, platformAdmin: !!user.platformAdmin, reason: '' } : createForm(); dialog.visible = true }
 async function save() { if (!dialog.form.username.trim() || !dialog.form.displayName.trim()) return ElMessage.warning('请填写用户名和昵称'); if (!dialog.form.id && dialog.form.password.length < 6) return ElMessage.warning('新用户密码至少需要 6 位'); if (dialog.form.id && dialog.form.status === 1 && !String(dialog.form.reason || '').trim()) return ElMessage.warning('停用用户前请填写原因'); saving.value = true; try { const { data } = await api.post('/admin/user/save', dialog.form); if (!data.success) throw new Error(data.message || '保存用户失败'); ElMessage.success('用户已保存'); dialog.visible = false; await load() } catch (e) { ElMessage.error(e.response?.data?.message || e.message || '保存用户失败') } finally { saving.value = false } }
-async function remove(user) { let reason; try { const result = await ElMessageBox.prompt(`确定停用用户“${user.displayName || user.username}”吗？停用后将无法登录，并立即退出当前会话。请填写原因用于审计。`, '停用用户', { confirmButtonText: '确认停用', cancelButtonText: '取消', inputPlaceholder: '请填写停用原因（必填）', inputValidator: value => (String(value || '').trim().length > 0 ? true : '请填写停用原因') }); reason = String(result.value || '').trim() } catch { return } try { const { data } = await api.post('/admin/user/delete', { id: user.id, reason }); if (!data.success) throw new Error(data.message || '停用用户失败'); ElMessage.success('用户已停用'); await load() } catch (e) { ElMessage.error(e.response?.data?.message || e.message || '停用用户失败') } }
+async function remove(user) { let reason; try { const result = await ElMessageBox.prompt(`确定停用用户“${user.displayName || user.username}”吗？停用后将无法登录，并立即退出当前会话。请填写原因用于审计。`, '停用用户', { confirmButtonText: '确认停用', cancelButtonText: '取消', customClass: ADMIN_MESSAGE_BOX_CLASS, inputPlaceholder: '请填写停用原因（必填）', inputValidator: value => (String(value || '').trim().length > 0 ? true : '请填写停用原因') }); reason = String(result.value || '').trim() } catch { return } try { const { data } = await api.post('/admin/user/delete', { id: user.id, reason }); if (!data.success) throw new Error(data.message || '停用用户失败'); ElMessage.success('用户已停用'); await load() } catch (e) { ElMessage.error(e.response?.data?.message || e.message || '停用用户失败') } }
 watch(currentPage, load); watch(status, applyFilters); let timer; watch(keyword, () => { clearTimeout(timer); timer = setTimeout(resetAndLoad, 250) }); onMounted(load)
 </script>
 <style scoped>
@@ -134,24 +135,5 @@ watch(currentPage, load); watch(status, applyFilters); let timer; watch(keyword,
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-}
-
-:global(.user-editor-dialog .el-input__inner),
-:global(.user-editor-dialog .el-select__input),
-:global(.user-editor-dialog .el-textarea__inner) {
-  outline: none !important;
-  box-shadow: none !important;
-}
-
-:global(.user-editor-dialog .el-input__wrapper),
-:global(.user-editor-dialog .el-select__wrapper) {
-  box-shadow: 0 0 0 1px #e2e8f0 inset;
-}
-
-:global(.user-editor-dialog .el-input__wrapper.is-focus),
-:global(.user-editor-dialog .el-select__wrapper.is-focused),
-:global(.user-editor-dialog .el-input__wrapper:focus-within),
-:global(.user-editor-dialog .el-textarea__inner:focus) {
-  box-shadow: 0 0 0 1px #fb7185 inset !important;
 }
 </style>

@@ -167,6 +167,24 @@ public interface CoupleSpaceMapper extends BaseMapper<CoupleSpaceDO> {
                 .set(CoupleSpaceDO::getUpdateTime, updateTime));
     }
 
+    /**
+     * 后台人工恢复时安全关闭「等待绑定且只有一名有效成员」的冲突空间。
+     *
+     * <p>条件更新同时校验：空间仍为 status=0、且当前只有 1 名有效成员。
+     * 任一条件不满足（例如并发加入第三名成员）时返回 0，调用方必须回滚整笔恢复事务。
+     * 只改空间状态与可见性，不删除任何内容。</p>
+     */
+    default int closeWaitingSingleMemberSpace(Long spaceId, LocalDateTime deletedAt) {
+        return update(null, new LambdaUpdateWrapper<CoupleSpaceDO>()
+                .eq(CoupleSpaceDO::getId, spaceId)
+                .eq(CoupleSpaceDO::getStatus, 0)
+                .apply("(SELECT COUNT(*) FROM couple_member WHERE space_id = {0} AND status = 1) = 1", spaceId)
+                .set(CoupleSpaceDO::getStatus, 5)
+                .set(CoupleSpaceDO::getVisibility, 0)
+                .set(CoupleSpaceDO::getDeletedAt, deletedAt)
+                .set(CoupleSpaceDO::getUpdateTime, deletedAt));
+    }
+
     default List<CoupleSpaceDO> selectByCreatedBy(Long userId) {
         return selectList(new LambdaQueryWrapper<CoupleSpaceDO>()
                 .eq(CoupleSpaceDO::getCreatedBy, userId)

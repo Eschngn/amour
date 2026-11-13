@@ -107,7 +107,7 @@
       v-model="dialog.visible"
       :title="dialog.form.id ? '编辑配置' : '新增配置'"
       width="min(640px, calc(100vw - 32px))"
-      class="dict-editor-dialog"
+      class="dict-editor-dialog admin-dialog-surface"
       append-to-body
       destroy-on-close
     >
@@ -183,6 +183,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { CollectionTag, Close, Delete, Edit, Loading, Plus, Refresh, Search, Upload } from '@element-plus/icons-vue'
 import 'element-plus/es/components/message/style/css'
 import 'element-plus/es/components/message-box/style/css'
+import { ADMIN_MESSAGE_BOX_CLASS } from '@/utils/adminRestore'
 import api from '@/axios'
 
 const pageSize = 10
@@ -289,7 +290,7 @@ async function saveConfig() {
 
 async function deleteConfig(config) {
   try {
-    await ElMessageBox.confirm(`确定删除配置“${config.configName}”吗？删除后引用该配置的页面可能恢复默认值。`, '删除配置', { confirmButtonText: '确认删除', cancelButtonText: '取消', type: 'warning' })
+    await ElMessageBox.confirm(`确定删除配置“${config.configName}”吗？删除后引用该配置的页面可能恢复默认值。`, '删除配置', { confirmButtonText: '确认删除', cancelButtonText: '取消', type: 'warning', customClass: ADMIN_MESSAGE_BOX_CLASS })
   } catch { return }
   try {
     const { data: response } = await api.post('/admin/dict/config/delete', { id: config.id })
@@ -354,24 +355,6 @@ onMounted(fetchConfigs)
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-}
-
-:global(.dict-editor-dialog .el-input__inner),
-:global(.dict-editor-dialog .el-textarea__inner) {
-  outline: none !important;
-  box-shadow: none !important;
-}
-
-:global(.dict-editor-dialog .el-input__wrapper),
-:global(.dict-editor-dialog .el-select__wrapper) {
-  box-shadow: 0 0 0 1px #e2e8f0 inset;
-}
-
-:global(.dict-editor-dialog .el-input__wrapper.is-focus),
-:global(.dict-editor-dialog .el-select__wrapper.is-focused),
-:global(.dict-editor-dialog .el-input__wrapper:focus-within),
-:global(.dict-editor-dialog .el-textarea__inner:focus) {
-  box-shadow: 0 0 0 1px #fb7185 inset, 0 0 0 3px rgba(244, 63, 94, 0.09) !important;
 }
 
 .config-value-cell { width: 1%; min-width: 140px; }

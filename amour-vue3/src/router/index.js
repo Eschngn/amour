@@ -28,9 +28,11 @@ import {
   setAdminPermissions,
 } from '@/utils/adminAuth.js'
 import { fetchAdminPermissions } from '@/api/admin/auth'
+import { reportPageView } from '@/api/analytics'
 import { clearFrontendSession, hasFrontendQueryPermission, isFrontendAuthenticated, setFrontendProfile } from '@/utils/auth.js'
 import { isSpaceReady, isSpaceStatusUnknown, refreshSpaceStatus, spaceStatus } from '@/composables/useFrontendSpace.js'
 import { canEditSpaceContent } from '@/utils/spaceState.js'
+import { createPageViewTracker } from '@/utils/pageViewTracker.js'
 import api from '@/axios'
 import { createRouter, createWebHistory } from 'vue-router'
 
@@ -244,6 +246,16 @@ const router = createRouter({
   routes,
 })
 
+/**
+ * 用户侧页面浏览采集：只上报白名单路由键，fire-and-forget。
+ * 失败静默丢弃，不阻塞路由跳转，也不弹提示。
+ */
+const pageViewTracker = createPageViewTracker({
+  send: (payload) => {
+    reportPageView(payload).catch(() => {})
+  },
+})
+
 let frontendAuthCheck = null
 let adminPermissionCheck = null
 
@@ -398,11 +410,12 @@ router.beforeEach(async (to) => {
   return true
 })
 
-router.afterEach((to) => {
+router.afterEach((to, from) => {
   const t = to.meta?.title
   if (typeof t === 'string' && t.length) {
     document.title = t
   }
+  pageViewTracker.track(to, from)
 })
 
 export default router

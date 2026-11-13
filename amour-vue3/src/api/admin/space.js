@@ -27,6 +27,9 @@ export function fetchAdminSpaceDetail(spaceId) {
 /**
  * 人工恢复双方已解绑（status=5）的情侣空间。必须填写原因，后台会写审计。
  *
+ * 成功时 data 包含恢复后的空间状态、恢复成员数、撤销邀请数以及被安全关闭的
+ * 冲突空间列表；若冲突空间已有其他有效成员，后端返回 20090 并拒绝整笔恢复。
+ *
  * @param {number} spaceId
  * @param {string} reason
  * @returns {Promise<import('axios').AxiosResponse>}

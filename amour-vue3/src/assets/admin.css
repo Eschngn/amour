@@ -592,6 +592,120 @@
   }
 }
 
+/*
+ * 后台 Messagebox（ElMessageBox.prompt / confirm）输入框。
+ *
+ * Element Plus 会把 MessageBox 挂载到 body，页面 scoped 样式无法覆盖其内部节点，
+ * 因此统一使用专用 class 在全局样式中限定作用域，避免污染前台登录页与其他弹窗。
+ * 键盘焦点由 wrapper 的 focus-within 环提供，不使用 outline:none 后无替代焦点的写法。
+ */
+.el-message-box.admin-message-box {
+  width: min(440px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+}
+
+.admin-message-box .el-message-box__message {
+  white-space: pre-line;
+}
+
+.admin-message-box .el-message-box__input {
+  padding-top: 14px;
+}
+
+.admin-message-box .el-message-box__input .el-input__wrapper {
+  min-height: var(--admin-control-height, 40px);
+  border-radius: var(--admin-control-radius, 12px);
+  background-color: var(--admin-surface);
+  box-shadow: 0 0 0 1px var(--admin-border) inset;
+  transition: box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.admin-message-box .el-message-box__input .el-input__wrapper:hover {
+  box-shadow: 0 0 0 1px var(--admin-border-hover) inset;
+}
+
+.admin-message-box .el-message-box__input .el-input__wrapper.is-focus,
+.admin-message-box .el-message-box__input .el-input__wrapper:focus-within {
+  box-shadow: 0 0 0 1px var(--admin-brand) inset, 0 0 0 3px var(--admin-focus-ring);
+}
+
+.admin-message-box .el-message-box__input .el-input.invalid .el-input__wrapper,
+.admin-message-box .el-message-box__input .el-input.is-error .el-input__wrapper {
+  box-shadow: 0 0 0 1px var(--el-color-error) inset;
+}
+
+.admin-message-box .el-message-box__input .el-input.invalid .el-input__wrapper.is-focus,
+.admin-message-box .el-message-box__input .el-input.is-error .el-input__wrapper:focus-within {
+  box-shadow: 0 0 0 1px var(--el-color-error) inset, 0 0 0 3px rgba(245, 108, 108, 0.16);
+}
+
+.admin-message-box .el-message-box__input .el-input__wrapper.is-disabled {
+  background-color: var(--admin-surface-sunken);
+  box-shadow: 0 0 0 1px var(--admin-border) inset;
+  cursor: not-allowed;
+}
+
+.admin-message-box .el-message-box__errormsg {
+  margin-top: 4px;
+  color: var(--el-color-error);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/*
+ * 后台编辑弹窗 / 抽屉的输入控件。
+ * el-dialog / el-drawer 可能通过 append-to-body 挂到 body，scoped CSS 覆盖不到内部节点；
+ * 页面只需声明 admin-dialog-surface，即可共享统一的品牌 focus 环。
+ */
+.admin-dialog-surface .el-input__wrapper,
+.admin-dialog-surface .el-select__wrapper {
+  min-height: var(--admin-control-height, 40px);
+  border-radius: var(--admin-control-radius, 12px);
+  background-color: var(--admin-surface);
+  box-shadow: 0 0 0 1px var(--admin-border) inset;
+  transition: box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.admin-dialog-surface .el-input__wrapper:hover,
+.admin-dialog-surface .el-select__wrapper:hover {
+  box-shadow: 0 0 0 1px var(--admin-border-hover) inset;
+}
+
+.admin-dialog-surface .el-input__wrapper.is-focus,
+.admin-dialog-surface .el-input__wrapper:focus-within,
+.admin-dialog-surface .el-select__wrapper.is-focused,
+.admin-dialog-surface .el-date-editor.is-active {
+  box-shadow: 0 0 0 1px var(--admin-brand) inset, 0 0 0 3px var(--admin-focus-ring);
+}
+
+.admin-dialog-surface .el-input__wrapper.is-disabled,
+.admin-dialog-surface .el-select__wrapper.is-disabled,
+.admin-dialog-surface .el-input-number.is-disabled .el-input__wrapper {
+  background-color: var(--admin-surface-sunken);
+  box-shadow: 0 0 0 1px var(--admin-border) inset;
+  cursor: not-allowed;
+}
+
+.admin-dialog-surface .el-textarea__inner {
+  border-radius: var(--admin-control-radius, 12px);
+  box-shadow: 0 0 0 1px var(--admin-border) inset;
+  transition: box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.admin-dialog-surface .el-textarea__inner:hover {
+  box-shadow: 0 0 0 1px var(--admin-border-hover) inset;
+}
+
+.admin-dialog-surface .el-textarea__inner:focus {
+  box-shadow: 0 0 0 1px var(--admin-brand) inset, 0 0 0 3px var(--admin-focus-ring);
+}
+
+.admin-dialog-surface .el-form-item.is-error .el-input__wrapper,
+.admin-dialog-surface .el-form-item.is-error .el-select__wrapper,
+.admin-dialog-surface .el-form-item.is-error .el-textarea__inner {
+  box-shadow: 0 0 0 1px var(--el-color-error) inset;
+}
+
 .admin-page-enter-active,
 .admin-page-leave-active {
   transition: opacity 160ms ease, transform 160ms ease;

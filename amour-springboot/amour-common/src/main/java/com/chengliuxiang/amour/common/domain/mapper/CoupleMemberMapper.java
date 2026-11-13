@@ -63,6 +63,21 @@ public interface CoupleMemberMapper extends BaseMapper<CoupleMemberDO> {
                 .orderByDesc(CoupleMemberDO::getId));
     }
 
+    /**
+     * 批量查询多个用户的有效成员关系（不限空间状态），供后台人工恢复前检测冲突空间。
+     * 调用方仍需自行排除原空间与 status=5 的历史残留。
+     */
+    default List<CoupleMemberDO> selectActiveByUserIds(Collection<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return selectList(new LambdaQueryWrapper<CoupleMemberDO>()
+                .in(CoupleMemberDO::getUserId, userIds)
+                .eq(CoupleMemberDO::getStatus, 1)
+                .orderByAsc(CoupleMemberDO::getSpaceId)
+                .orderByAsc(CoupleMemberDO::getId));
+    }
+
     default Long countActiveBySpaceId(Long spaceId) {
         return selectCount(new LambdaQueryWrapper<CoupleMemberDO>()
                 .eq(CoupleMemberDO::getSpaceId, spaceId)
@@ -131,6 +146,21 @@ public interface CoupleMemberMapper extends BaseMapper<CoupleMemberDO> {
     default int leaveAllActive(Long spaceId, Integer status, LocalDateTime leftAt, LocalDateTime updateTime) {
         return update(null, new LambdaUpdateWrapper<CoupleMemberDO>()
                 .eq(CoupleMemberDO::getSpaceId, spaceId)
+                .eq(CoupleMemberDO::getStatus, 1)
+                .set(CoupleMemberDO::getStatus, status)
+                .set(CoupleMemberDO::getLeftAt, leftAt)
+                .set(CoupleMemberDO::getUpdateTime, updateTime));
+    }
+
+    /**
+     * 后台人工恢复时安全关闭冲突空间：只把指定用户在该空间的有效成员关系标记为退出。
+     * 条件更新保证只有「仍然有效」的关系被改写，返回受影响行数供调用方校验并回滚。
+     */
+    default int leaveActiveMembership(Long spaceId, Long userId, Integer status,
+                                     LocalDateTime leftAt, LocalDateTime updateTime) {
+        return update(null, new LambdaUpdateWrapper<CoupleMemberDO>()
+                .eq(CoupleMemberDO::getSpaceId, spaceId)
+                .eq(CoupleMemberDO::getUserId, userId)
                 .eq(CoupleMemberDO::getStatus, 1)
                 .set(CoupleMemberDO::getStatus, status)
                 .set(CoupleMemberDO::getLeftAt, leftAt)

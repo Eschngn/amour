@@ -80,4 +80,14 @@ public class AdminSpacePageRspVO {
      * 不满足恢复条件时的明确原因；可恢复时为空字符串。
      */
     private String restoreBlockReason;
+
+    /**
+     * 两名历史成员在其他未解绑空间中的有效关系数量。
+     */
+    private Integer conflictSpaceCount;
+
+    /**
+     * 其中可在恢复时安全关闭的冲突空间数量（等待绑定且仅剩该成员一人）。
+     */
+    private Integer autoClosableConflictSpaceCount;
 }

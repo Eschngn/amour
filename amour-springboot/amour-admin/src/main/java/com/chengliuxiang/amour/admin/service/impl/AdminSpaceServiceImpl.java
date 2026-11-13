@@ -12,7 +12,9 @@ import com.chengliuxiang.amour.admin.model.vo.space.AdminSpaceLifecycleEventVO;
 import com.chengliuxiang.amour.admin.model.vo.space.AdminSpaceMemberVO;
 import com.chengliuxiang.amour.admin.model.vo.space.AdminSpacePageReqVO;
 import com.chengliuxiang.amour.admin.model.vo.space.AdminSpacePageRspVO;
+import com.chengliuxiang.amour.admin.model.vo.space.AdminSpaceRestoreConflictVO;
 import com.chengliuxiang.amour.admin.model.vo.space.AdminSpaceRestoreReqVO;
+import com.chengliuxiang.amour.admin.model.vo.space.AdminSpaceRestoreRspVO;
 import com.chengliuxiang.amour.admin.model.vo.space.AdminSpaceRestoreSummaryVO;
 import com.chengliuxiang.amour.admin.model.vo.space.AdminSpaceUnbindSummaryVO;
 import com.chengliuxiang.amour.admin.security.AdminAuthorizationService;
@@ -85,6 +87,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class AdminSpaceServiceImpl implements AdminSpaceService {
 
+    private static final int SPACE_STATUS_WAITING = 0;
     private static final int SPACE_STATUS_NORMAL = 1;
     private static final int SPACE_STATUS_FROZEN = 2;
     private static final int SPACE_STATUS_ARCHIVED = 3;
@@ -179,9 +182,11 @@ public class AdminSpaceServiceImpl implements AdminSpaceService {
         List<CoupleSpaceDO> spaces = page.getRecords();
         Map<Long, List<CoupleMemberDO>> memberMap = loadMemberMap(spaces);
         Map<Long, UserDO> userMap = loadUserMap(memberMap);
+        Map<Long, List<AdminSpaceRestoreConflictVO>> conflictMap = loadRestoreConflictMap(spaces, memberMap);
 
         List<AdminSpacePageRspVO> records = spaces.stream()
-                .map(space -> toResponse(space, memberMap.get(space.getId()), userMap))
+                .map(space -> toResponse(space, memberMap.get(space.getId()), userMap,
+                        conflictMap.getOrDefault(space.getId(), Collections.emptyList())))
                 .collect(Collectors.toList());
 
         return Response.success(PageResult.<AdminSpacePageRspVO>builder()
@@ -249,7 +254,12 @@ public class AdminSpaceServiceImpl implements AdminSpaceService {
         long messageCount = count(messageMapper.countActiveBySpaceId(spaceId));
         long anniversaryCount = count(anniversaryMapper.countActiveBySpaceId(spaceId));
 
-        String restoreBlockReason = restoreBlockReason(space, members);
+        List<AdminSpaceRestoreConflictVO> restoreConflicts = loadRestoreConflictMap(
+                Collections.singletonList(space),
+                Collections.singletonMap(spaceId, members))
+                .getOrDefault(spaceId, Collections.emptyList());
+        String restoreBlockReason = combineRestoreBlockReason(
+                restoreBlockReason(space, members), restoreConflicts);
 
         Response<AdminSpaceDetailRspVO> response = Response.success(AdminSpaceDetailRspVO.builder()
                 .spaceId(spaceId)
@@ -288,7 +298,8 @@ public class AdminSpaceServiceImpl implements AdminSpaceService {
                 .messages(buildMessageItems(messages, userMap, pendingReportMap))
                 .anniversaries(buildAnniversaryItems(anniversaries, userMap, pendingReportMap))
                 .unbind(buildUnbindSummary(spaceId, unbindRequests, userMap))
-                .restore(buildRestoreSummary(space, members, restoreConfirms, userMap, restoreBlockReason))
+                .restore(buildRestoreSummary(space, members, restoreConfirms, userMap,
+                        restoreBlockReason, restoreConflicts))
                 .build());
 
         // 空间详情会展示私密内容索引，按现有架构记录一次读取审计；审计失败不阻断排障。
@@ -310,7 +321,7 @@ public class AdminSpaceServiceImpl implements AdminSpaceService {
     }
 
     @Override
-    public Response<Void> restoreSpace(AdminSpaceRestoreReqVO reqVO) {
+    public Response<AdminSpaceRestoreRspVO> restoreSpace(AdminSpaceRestoreReqVO reqVO) {
         adminAuthorizationService.requirePermission(AdminPermissionConstants.SPACE_RESTORE);
         if (reqVO == null || reqVO.getSpaceId() == null) {
             throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID);
@@ -325,6 +336,7 @@ public class AdminSpaceServiceImpl implements AdminSpaceService {
         lock.lock();
         try {
             // 事务必须在锁内提交，避免其他请求在提交前读到一半恢复的数据。
+            // JVM 锁只负责单实例串行；用户行锁与状态条件更新负责多实例最终一致性。
             return transactionTemplate.execute(status -> doRestoreSpace(spaceId, adminUserId, reason));
         } catch (RuntimeException exception) {
             recordRestoreFailure(spaceId, adminUserId, reason, exception);
@@ -334,45 +346,101 @@ public class AdminSpaceServiceImpl implements AdminSpaceService {
         }
     }
 
-    private Response<Void> doRestoreSpace(Long spaceId, Long adminUserId, String reason) {
-        CoupleSpaceDO space = coupleSpaceMapper.findById(spaceId);
-        if (space == null) {
-            throw new BizException(ResponseCodeEnum.SPACE_NOT_EXIST);
-        }
-        if (space.getStatus() == null || space.getStatus() != SPACE_STATUS_DELETED) {
-            throw new BizException(ResponseCodeEnum.SPACE_RESTORE_NOT_ALLOWED);
-        }
+    /**
+     * 人工恢复主流程。
+     *
+     * <p>顺序固定为：校验原空间 → 锁两名历史成员的用户行（按 ID 升序）→ 重读校验 →
+     * 检测冲突空间 → 按空间 ID 升序恢复原空间并安全关闭可收口的冲突空间 →
+     * 恢复两名原成员 → 清理邀请/解绑/恢复确认 → 写成功审计。任一步失败整体回滚。</p>
+     */
+    private Response<AdminSpaceRestoreRspVO> doRestoreSpace(Long spaceId, Long adminUserId, String reason) {
+        requireRestorableSpace(spaceId);
+        List<CoupleMemberDO> historicalMembers = requireHistoricalMembers(spaceId);
+        lockUserRows(historicalMembers);
 
-        List<CoupleMemberDO> members = coupleMemberMapper.selectBySpaceId(spaceId);
-        if (members.size() != 2) {
-            throw new BizException(ResponseCodeEnum.SPACE_RESTORE_MEMBER_INVALID);
-        }
-        for (CoupleMemberDO member : members) {
-            if (member.getStatus() == null
-                    || member.getStatus() != MEMBER_STATUS_LEFT
-                    || member.getLeftAt() == null) {
-                throw new BizException(ResponseCodeEnum.SPACE_RESTORE_MEMBER_INVALID);
-            }
+        // 等锁期间其他实例可能已完成恢复或改写数据，拿到用户锁后必须重新校验。
+        requireRestorableSpace(spaceId);
+        historicalMembers = requireHistoricalMembers(spaceId);
+
+        RestoreConflictAnalysis conflictAnalysis = analyzeRestoreConflicts(spaceId, historicalMembers);
+        if (conflictAnalysis.hasBlocking()) {
+            throw buildRestoreConflictException(conflictAnalysis.getBlocking());
         }
 
         LocalDateTime now = LocalDateTime.now();
+        int revokedInvitations = 0;
+        List<AdminSpaceRestoreRspVO.ClosedConflictSpaceVO> closedConflictSpaces = new ArrayList<>();
 
-        // 1. 两名历史成员恢复有效，清空 leftAt 并刷新 updateTime。
+        // 所有目标空间按 ID 升序处理，保证多实例下的加锁顺序一致。
+        List<Long> targetSpaceIds = new ArrayList<>();
+        targetSpaceIds.add(spaceId);
+        for (RestoreConflictSpace conflict : conflictAnalysis.getAutoClosable()) {
+            targetSpaceIds.add(conflict.getSpace().getId());
+        }
+        Collections.sort(targetSpaceIds);
+
+        for (Long targetSpaceId : targetSpaceIds) {
+            if (Objects.equals(targetSpaceId, spaceId)) {
+                // 原空间恢复正常且固定私密；publicAt、spaceCode、创建者与全部内容保持不变。
+                int restoredSpace = coupleSpaceMapper.restoreUnbound(spaceId, now);
+                if (restoredSpace != 1) {
+                    throw new BizException(ResponseCodeEnum.SPACE_RESTORE_NOT_ALLOWED);
+                }
+                continue;
+            }
+            RestoreConflictSpace conflict = conflictAnalysis.findAutoClosable(targetSpaceId);
+            if (conflict == null || conflict.getHistoricalMembership() == null) {
+                throw new BizException(ResponseCodeEnum.SPACE_RESTORE_CONFLICT);
+            }
+            // 条件更新同时校验 status=0 且仅剩 1 名有效成员，防止并发加入第三方后误关闭。
+            int closed = coupleSpaceMapper.closeWaitingSingleMemberSpace(targetSpaceId, now);
+            if (closed != 1) {
+                throw new BizException(ResponseCodeEnum.SPACE_RESTORE_CONFLICT);
+            }
+            int left = coupleMemberMapper.leaveActiveMembership(targetSpaceId,
+                    conflict.getHistoricalMembership().getUserId(), MEMBER_STATUS_LEFT, now, now);
+            if (left != 1) {
+                throw new BizException(ResponseCodeEnum.SPACE_RESTORE_CONFLICT);
+            }
+            int revoked = coupleInvitationMapper.revokePendingBySpaceId(targetSpaceId, now);
+            revokedInvitations += revoked;
+            unbindRequestMapper.cancelPendingBySpaceId(targetSpaceId, adminUserId, now);
+            restoreConfirmMapper.deleteBySpaceId(targetSpaceId);
+            closedConflictSpaces.add(AdminSpaceRestoreRspVO.ClosedConflictSpaceVO.builder()
+                    .spaceId(targetSpaceId)
+                    .spaceCode(conflict.getSpace().getSpaceCode())
+                    .spaceName(conflict.getSpace().getSpaceName())
+                    .previousStatus(conflict.getSpace().getStatus())
+                    .previousStatusText(spaceStatusText(conflict.getSpace().getStatus()))
+                    .revokedInvitationCount(revoked)
+                    .build());
+        }
+
+        // 两名原成员恢复有效，清空 leftAt 并刷新 updateTime。
         int restoredMembers = coupleMemberMapper.restoreAllLeft(spaceId, now);
         if (restoredMembers != 2) {
             throw new BizException(ResponseCodeEnum.SPACE_RESTORE_MEMBER_INVALID);
         }
 
-        // 2. 空间恢复正常且固定私密，清空归档/解绑时间；publicAt、spaceCode、创建者与内容保持不变。
-        int restoredSpace = coupleSpaceMapper.restoreUnbound(spaceId, now);
-        if (restoredSpace == 0) {
-            throw new BizException(ResponseCodeEnum.SPACE_RESTORE_NOT_ALLOWED);
-        }
-
-        // 3. 清理旧解绑申请、恢复确认与待处理邀请，不触碰任何内容表。
+        // 清理原空间的旧解绑申请、恢复确认与待处理邀请，不触碰任何内容表。
+        revokedInvitations += coupleInvitationMapper.revokePendingBySpaceId(spaceId, now);
         unbindRequestMapper.cancelPendingBySpaceId(spaceId, adminUserId, now);
         restoreConfirmMapper.deleteBySpaceId(spaceId);
-        coupleInvitationMapper.revokePendingBySpaceId(spaceId, now);
+
+        String memberAmourIds = historicalMembers.stream()
+                .map(member -> userMapper.findById(member.getUserId()))
+                .filter(Objects::nonNull)
+                .map(UserDO::getAmourId)
+                .filter(StrUtil::isNotBlank)
+                .collect(Collectors.joining(","));
+        String conflictDetail = closedConflictSpaces.stream()
+                .map(conflict -> "space=" + conflict.getSpaceId()
+                        + ",status=" + conflict.getPreviousStatus()
+                        + ",invitesRevoked=" + conflict.getRevokedInvitationCount())
+                .collect(Collectors.joining(";"));
+        String auditDetail = "status 5 -> 1, visibility=0, members restored=2, users=" + memberAmourIds
+                + ", revokedInvitations=" + revokedInvitations
+                + ", closedConflicts=" + (conflictDetail.isEmpty() ? "none" : conflictDetail);
 
         adminAuditService.record(AdminAuditLogDO.builder()
                 .adminUserId(adminUserId)
@@ -381,15 +449,150 @@ public class AdminSpaceServiceImpl implements AdminSpaceService {
                 .targetSpaceId(spaceId)
                 .reason(reason)
                 .result(AdminAuditConstants.RESULT_SUCCESS)
-                .detail("status 5 -> 1, visibility=0, members restored=2")
+                .detail(StrUtil.maxLength(auditDetail, 900))
                 .createTime(now)
                 .build());
-        log.info("管理员 {} 人工恢复情侣空间 {}", adminUserId, spaceId);
-        return Response.success();
+        log.info("管理员 {} 人工恢复情侣空间 {}，关闭冲突空间 {} 个",
+                adminUserId, spaceId, closedConflictSpaces.size());
+        return Response.success(AdminSpaceRestoreRspVO.builder()
+                .spaceId(spaceId)
+                .status(SPACE_STATUS_NORMAL)
+                .statusText(spaceStatusText(SPACE_STATUS_NORMAL))
+                .visibility(SPACE_VISIBILITY_PRIVATE)
+                .restoredMemberCount(restoredMembers)
+                .revokedInvitationCount(revokedInvitations)
+                .closedConflictSpaces(closedConflictSpaces)
+                .build());
+    }
+
+    private CoupleSpaceDO requireRestorableSpace(Long spaceId) {
+        CoupleSpaceDO space = coupleSpaceMapper.findById(spaceId);
+        if (space == null) {
+            throw new BizException(ResponseCodeEnum.SPACE_NOT_EXIST);
+        }
+        if (space.getStatus() == null || space.getStatus() != SPACE_STATUS_DELETED) {
+            throw new BizException(ResponseCodeEnum.SPACE_RESTORE_NOT_ALLOWED);
+        }
+        return space;
+    }
+
+    private List<CoupleMemberDO> requireHistoricalMembers(Long spaceId) {
+        List<CoupleMemberDO> members = coupleMemberMapper.selectBySpaceId(spaceId);
+        if (members.size() != 2) {
+            throw new BizException(ResponseCodeEnum.SPACE_RESTORE_MEMBER_INVALID);
+        }
+        Set<Long> userIds = new HashSet<>();
+        for (CoupleMemberDO member : members) {
+            if (member.getStatus() == null
+                    || member.getStatus() != MEMBER_STATUS_LEFT
+                    || member.getLeftAt() == null) {
+                throw new BizException(ResponseCodeEnum.SPACE_RESTORE_MEMBER_INVALID);
+            }
+            if (member.getUserId() != null) {
+                userIds.add(member.getUserId());
+            }
+        }
+        if (userIds.size() != 2) {
+            throw new BizException(ResponseCodeEnum.SPACE_RESTORE_MEMBER_INVALID);
+        }
+        return members;
+    }
+
+    /**
+     * 按用户 ID 升序加数据库行锁，与创建空间、接受邀请保持同一把跨实例锁。
+     */
+    private void lockUserRows(List<CoupleMemberDO> members) {
+        members.stream()
+                .map(CoupleMemberDO::getUserId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .sorted()
+                .forEach(userMapper::lockById);
+    }
+
+    /**
+     * 找出两名历史成员在其他未解绑空间中的有效成员关系，并区分可安全收口与必须拒绝的冲突。
+     */
+    private RestoreConflictAnalysis analyzeRestoreConflicts(Long originalSpaceId,
+                                                            List<CoupleMemberDO> historicalMembers) {
+        Set<Long> historicalUserIds = historicalMembers.stream()
+                .map(CoupleMemberDO::getUserId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        List<CoupleMemberDO> activeMemberships =
+                coupleMemberMapper.selectActiveByUserIds(historicalUserIds);
+        Set<Long> conflictSpaceIds = activeMemberships.stream()
+                .map(CoupleMemberDO::getSpaceId)
+                .filter(Objects::nonNull)
+                .filter(spaceId -> !Objects.equals(spaceId, originalSpaceId))
+                .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
+        if (conflictSpaceIds.isEmpty()) {
+            return new RestoreConflictAnalysis(Collections.emptyList(), Collections.emptyList());
+        }
+
+        Map<Long, CoupleSpaceDO> spaceMap = coupleSpaceMapper.selectBatchIds(conflictSpaceIds).stream()
+                .collect(Collectors.toMap(CoupleSpaceDO::getId, Function.identity(), (left, right) -> left));
+        Map<Long, List<CoupleMemberDO>> activeBySpace = coupleMemberMapper
+                .selectActiveBySpaceIds(conflictSpaceIds).stream()
+                .collect(Collectors.groupingBy(CoupleMemberDO::getSpaceId));
+
+        List<RestoreConflictSpace> autoClosable = new ArrayList<>();
+        List<RestoreConflictSpace> blocking = new ArrayList<>();
+        List<Long> sortedSpaceIds = new ArrayList<>(conflictSpaceIds);
+        Collections.sort(sortedSpaceIds);
+        for (Long conflictSpaceId : sortedSpaceIds) {
+            CoupleSpaceDO conflictSpace = spaceMap.get(conflictSpaceId);
+            if (conflictSpace == null
+                    || Objects.equals(conflictSpace.getStatus(), SPACE_STATUS_DELETED)) {
+                // status=5 的历史残留不代表有效空间，查询层已统一排除。
+                continue;
+            }
+            List<CoupleMemberDO> activeMembers = activeBySpace
+                    .getOrDefault(conflictSpaceId, Collections.emptyList());
+            CoupleMemberDO historicalMembership = activeMembers.stream()
+                    .filter(member -> historicalUserIds.contains(member.getUserId()))
+                    .findFirst().orElse(null);
+            // 只自动收口「等待绑定 + 仅该历史成员一人有效」的空间，其余一律拒绝恢复。
+            boolean safeToClose = Objects.equals(conflictSpace.getStatus(), SPACE_STATUS_WAITING)
+                    && activeMembers.size() == 1
+                    && historicalMembership != null
+                    && historicalUserIds.contains(activeMembers.get(0).getUserId());
+            RestoreConflictSpace conflict = new RestoreConflictSpace(
+                    conflictSpace, activeMembers, historicalMembership);
+            if (safeToClose) {
+                autoClosable.add(conflict);
+            } else {
+                blocking.add(conflict);
+            }
+        }
+        return new RestoreConflictAnalysis(autoClosable, blocking);
+    }
+
+    private BizException buildRestoreConflictException(List<RestoreConflictSpace> blocking) {
+        String details = blocking.stream()
+                .limit(5)
+                .map(conflict -> {
+                    CoupleSpaceDO space = conflict.getSpace();
+                    return "ID " + space.getId()
+                            + "（" + StrUtil.blankToDefault(space.getSpaceName(), "未命名空间")
+                            + " / " + StrUtil.blankToDefault(space.getSpaceCode(), "-")
+                            + "，" + spaceStatusText(space.getStatus())
+                            + "，有效成员 " + conflict.getActiveMembers().size() + " 人）";
+                })
+                .collect(Collectors.joining("；"));
+        String more = blocking.size() > 5 ? "；另有 " + (blocking.size() - 5) + " 个冲突空间" : "";
+        return new BizException(ResponseCodeEnum.SPACE_RESTORE_CONFLICT.getErrorCode(),
+                "存在无法自动处理的冲突空间：" + details + more + "。请先处理这些空间后再恢复。");
     }
 
     private void recordRestoreFailure(Long spaceId, Long adminUserId, String reason, RuntimeException exception) {
         try {
+            String detail = "SYSTEM_ERROR";
+            if (exception instanceof BizException) {
+                BizException bizException = (BizException) exception;
+                detail = bizException.getErrorCode() + ": "
+                        + StrUtil.blankToDefault(bizException.getErrorMessage(), "");
+            }
             adminAuditService.recordFailure(AdminAuditLogDO.builder()
                     .adminUserId(adminUserId)
                     .action(AdminAuditConstants.ACTION_SPACE_RESTORE)
@@ -397,13 +600,140 @@ public class AdminSpaceServiceImpl implements AdminSpaceService {
                     .targetSpaceId(spaceId)
                     .reason(reason)
                     .result(AdminAuditConstants.RESULT_FAILURE)
-                    .detail(exception instanceof BizException
-                            ? ((BizException) exception).getErrorCode() : "SYSTEM_ERROR")
+                    .detail(StrUtil.maxLength(detail, 900))
                     .createTime(LocalDateTime.now())
                     .build());
         } catch (Exception auditException) {
             log.error("人工恢复失败审计记录失败，spaceId: {}", spaceId, auditException);
         }
+    }
+
+    /**
+     * 批量检测分页/详情中的待恢复空间是否会与成员的其他有效空间冲突。
+     * 一次批量查询完成，避免逐条空间查询造成 N+1。
+     */
+    private Map<Long, List<AdminSpaceRestoreConflictVO>> loadRestoreConflictMap(
+            List<CoupleSpaceDO> spaces, Map<Long, List<CoupleMemberDO>> memberMap) {
+        List<CoupleSpaceDO> candidates = spaces.stream()
+                .filter(space -> Objects.equals(space.getStatus(), SPACE_STATUS_DELETED))
+                .filter(space -> restoreBlockReason(space,
+                        memberMap.getOrDefault(space.getId(), Collections.emptyList())).isEmpty())
+                .collect(Collectors.toList());
+        if (CollUtil.isEmpty(candidates)) {
+            return Collections.emptyMap();
+        }
+
+        Map<Long, Set<Long>> candidateUsers = new HashMap<>();
+        Set<Long> allUserIds = new HashSet<>();
+        for (CoupleSpaceDO candidate : candidates) {
+            Set<Long> userIds = memberMap.getOrDefault(candidate.getId(), Collections.emptyList()).stream()
+                    .map(CoupleMemberDO::getUserId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            candidateUsers.put(candidate.getId(), userIds);
+            allUserIds.addAll(userIds);
+        }
+        if (allUserIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        List<CoupleMemberDO> activeMemberships = coupleMemberMapper.selectActiveByUserIds(allUserIds);
+        Map<Long, Set<Long>> candidateConflictSpaceIds = new HashMap<>();
+        Set<Long> allConflictSpaceIds = new HashSet<>();
+        for (CoupleMemberDO membership : activeMemberships) {
+            for (Map.Entry<Long, Set<Long>> entry : candidateUsers.entrySet()) {
+                if (Objects.equals(entry.getKey(), membership.getSpaceId())
+                        || !entry.getValue().contains(membership.getUserId())) {
+                    continue;
+                }
+                candidateConflictSpaceIds
+                        .computeIfAbsent(entry.getKey(), key -> new java.util.LinkedHashSet<>())
+                        .add(membership.getSpaceId());
+                allConflictSpaceIds.add(membership.getSpaceId());
+            }
+        }
+        if (allConflictSpaceIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        Map<Long, CoupleSpaceDO> spaceMap = coupleSpaceMapper.selectBatchIds(allConflictSpaceIds).stream()
+                .collect(Collectors.toMap(CoupleSpaceDO::getId, Function.identity(), (left, right) -> left));
+        Map<Long, List<CoupleMemberDO>> activeBySpace = coupleMemberMapper
+                .selectActiveBySpaceIds(allConflictSpaceIds).stream()
+                .collect(Collectors.groupingBy(CoupleMemberDO::getSpaceId));
+
+        Map<Long, List<AdminSpaceRestoreConflictVO>> result = new HashMap<>();
+        for (CoupleSpaceDO candidate : candidates) {
+            Set<Long> conflictSpaceIds = candidateConflictSpaceIds.get(candidate.getId());
+            if (CollUtil.isEmpty(conflictSpaceIds)) {
+                continue;
+            }
+            Set<Long> userIds = candidateUsers.get(candidate.getId());
+            List<Long> sortedSpaceIds = new ArrayList<>(conflictSpaceIds);
+            Collections.sort(sortedSpaceIds);
+            List<AdminSpaceRestoreConflictVO> conflicts = new ArrayList<>();
+            for (Long conflictSpaceId : sortedSpaceIds) {
+                CoupleSpaceDO conflictSpace = spaceMap.get(conflictSpaceId);
+                if (conflictSpace == null
+                        || Objects.equals(conflictSpace.getStatus(), SPACE_STATUS_DELETED)) {
+                    continue;
+                }
+                List<CoupleMemberDO> activeMembers = activeBySpace
+                        .getOrDefault(conflictSpaceId, Collections.emptyList());
+                boolean autoClosable = Objects.equals(conflictSpace.getStatus(), SPACE_STATUS_WAITING)
+                        && activeMembers.size() == 1
+                        && userIds.contains(activeMembers.get(0).getUserId());
+                conflicts.add(AdminSpaceRestoreConflictVO.builder()
+                        .spaceId(conflictSpace.getId())
+                        .spaceCode(conflictSpace.getSpaceCode())
+                        .spaceName(conflictSpace.getSpaceName())
+                        .status(conflictSpace.getStatus())
+                        .statusText(spaceStatusText(conflictSpace.getStatus()))
+                        .activeMemberCount(activeMembers.size())
+                        .autoClosable(autoClosable)
+                        .blockReason(autoClosable ? ""
+                                : conflictBlockReason(conflictSpace, activeMembers, userIds))
+                        .build());
+            }
+            if (!conflicts.isEmpty()) {
+                result.put(candidate.getId(), conflicts);
+            }
+        }
+        return result;
+    }
+
+    private String conflictBlockReason(CoupleSpaceDO space, List<CoupleMemberDO> activeMembers,
+                                       Set<Long> historicalUserIds) {
+        if (!Objects.equals(space.getStatus(), SPACE_STATUS_WAITING)) {
+            return "空间状态为" + spaceStatusText(space.getStatus()) + "，不能自动关闭";
+        }
+        if (activeMembers.size() != 1) {
+            return "已有 " + activeMembers.size() + " 名有效成员，不能自动关闭";
+        }
+        if (!historicalUserIds.contains(activeMembers.get(0).getUserId())) {
+            return "有效成员与历史成员不一致，不能自动关闭";
+        }
+        return "";
+    }
+
+    private String combineRestoreBlockReason(String basicBlockReason,
+                                             List<AdminSpaceRestoreConflictVO> conflicts) {
+        if (StrUtil.isNotBlank(basicBlockReason)) {
+            return basicBlockReason;
+        }
+        List<AdminSpaceRestoreConflictVO> blocking = conflicts.stream()
+                .filter(conflict -> !Boolean.TRUE.equals(conflict.getAutoClosable()))
+                .collect(Collectors.toList());
+        if (blocking.isEmpty()) {
+            return "";
+        }
+        String details = blocking.stream()
+                .limit(5)
+                .map(conflict -> "ID " + conflict.getSpaceId()
+                        + "（" + conflict.getStatusText() + "）")
+                .collect(Collectors.joining("、"));
+        String more = blocking.size() > 5 ? " 等 " + blocking.size() + " 个空间" : "";
+        return "存在无法自动处理的冲突空间：" + details + more + "，请先处理后再恢复";
     }
 
     private void validateFilters(AdminSpacePageReqVO reqVO) {
@@ -449,7 +779,8 @@ public class AdminSpaceServiceImpl implements AdminSpaceService {
 
     private AdminSpacePageRspVO toResponse(CoupleSpaceDO space,
                                            List<CoupleMemberDO> members,
-                                           Map<Long, UserDO> userMap) {
+                                           Map<Long, UserDO> userMap,
+                                           List<AdminSpaceRestoreConflictVO> restoreConflicts) {
         List<CoupleMemberDO> safeMembers = members == null ? Collections.emptyList() : members;
         List<AdminSpaceMemberVO> memberVOs = safeMembers.stream()
                 .map(member -> buildMemberVO(member, userMap.get(member.getUserId())))
@@ -464,7 +795,13 @@ public class AdminSpaceServiceImpl implements AdminSpaceService {
         long messageCount = count(messageMapper.countActiveBySpaceId(space.getId()));
         long anniversaryCount = count(anniversaryMapper.countActiveBySpaceId(space.getId()));
 
-        String restoreBlockReason = restoreBlockReason(space, safeMembers);
+        List<AdminSpaceRestoreConflictVO> conflicts = restoreConflicts == null
+                ? Collections.emptyList() : restoreConflicts;
+        String restoreBlockReason = combineRestoreBlockReason(
+                restoreBlockReason(space, safeMembers), conflicts);
+        int autoClosableCount = (int) conflicts.stream()
+                .filter(conflict -> Boolean.TRUE.equals(conflict.getAutoClosable()))
+                .count();
 
         return AdminSpacePageRspVO.builder()
                 .spaceId(space.getId())
@@ -489,6 +826,8 @@ public class AdminSpaceServiceImpl implements AdminSpaceService {
                 .contentCount(storyCount + photoCount + messageCount + anniversaryCount)
                 .restorable(restoreBlockReason.isEmpty())
                 .restoreBlockReason(restoreBlockReason)
+                .conflictSpaceCount(conflicts.size())
+                .autoClosableConflictSpaceCount(autoClosableCount)
                 .build();
     }
 
@@ -705,7 +1044,8 @@ public class AdminSpaceServiceImpl implements AdminSpaceService {
                                                             List<CoupleMemberDO> members,
                                                             List<CoupleSpaceRestoreConfirmDO> confirms,
                                                             Map<Long, UserDO> userMap,
-                                                            String restoreBlockReason) {
+                                                            String restoreBlockReason,
+                                                            List<AdminSpaceRestoreConflictVO> conflicts) {
         Set<Long> activeUserIds = members.stream()
                 .filter(member -> Objects.equals(member.getStatus(), MEMBER_STATUS_ACTIVE))
                 .map(CoupleMemberDO::getUserId)
@@ -727,6 +1067,7 @@ public class AdminSpaceServiceImpl implements AdminSpaceService {
                 .confirmedCount(confirmVOs.size())
                 .requiredCount(activeUserIds.isEmpty() ? 2 : activeUserIds.size())
                 .confirmations(confirmVOs)
+                .conflictSpaces(conflicts == null ? Collections.emptyList() : conflicts)
                 .build();
     }
 
@@ -877,6 +1218,68 @@ public class AdminSpaceServiceImpl implements AdminSpaceService {
                 return "已取消";
             default:
                 return "未知状态";
+        }
+    }
+
+    /**
+     * 人工恢复前的冲突分析结果。
+     */
+    private static final class RestoreConflictAnalysis {
+
+        private final List<RestoreConflictSpace> autoClosable;
+        private final List<RestoreConflictSpace> blocking;
+
+        private RestoreConflictAnalysis(List<RestoreConflictSpace> autoClosable,
+                                        List<RestoreConflictSpace> blocking) {
+            this.autoClosable = autoClosable;
+            this.blocking = blocking;
+        }
+
+        private List<RestoreConflictSpace> getAutoClosable() {
+            return autoClosable;
+        }
+
+        private List<RestoreConflictSpace> getBlocking() {
+            return blocking;
+        }
+
+        private boolean hasBlocking() {
+            return !blocking.isEmpty();
+        }
+
+        private RestoreConflictSpace findAutoClosable(Long spaceId) {
+            return autoClosable.stream()
+                    .filter(conflict -> Objects.equals(conflict.getSpace().getId(), spaceId))
+                    .findFirst().orElse(null);
+        }
+    }
+
+    /**
+     * 单个冲突空间：空间本身、当前全部有效成员与该历史成员自己的成员关系。
+     */
+    private static final class RestoreConflictSpace {
+
+        private final CoupleSpaceDO space;
+        private final List<CoupleMemberDO> activeMembers;
+        private final CoupleMemberDO historicalMembership;
+
+        private RestoreConflictSpace(CoupleSpaceDO space, List<CoupleMemberDO> activeMembers,
+                                     CoupleMemberDO historicalMembership) {
+            this.space = space;
+            this.activeMembers = activeMembers;
+            this.historicalMembership = historicalMembership;
+        }
+
+        private CoupleSpaceDO getSpace() {
+            return space;
+        }
+
+        private List<CoupleMemberDO> getActiveMembers() {
+            return activeMembers;
+        }
+
+        private CoupleMemberDO getHistoricalMembership() {
+            return historicalMembership;
         }
     }
 }

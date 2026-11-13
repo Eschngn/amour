@@ -93,6 +93,10 @@ public class SpaceContentAccessService {
             }
             throw new BizException(ResponseCodeEnum.SPACE_NOT_EXIST);
         }
+        if (memberships.size() > 1) {
+            // 多个未解绑空间同时有效时，不能按排序静默选择，否则内容可能被写入错误空间。
+            throw new BizException(ResponseCodeEnum.SPACE_MEMBERSHIP_CONFLICT);
+        }
         CoupleMemberDO membership = memberships.get(0);
         if (membership.getStatus() == null || membership.getStatus() != MEMBER_STATUS_ACTIVE) {
             throw new BizException(ResponseCodeEnum.SPACE_NOT_MEMBER);
