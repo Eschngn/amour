@@ -32,6 +32,7 @@ public interface CoupleSpaceMapper extends BaseMapper<CoupleSpaceDO> {
                 .set(CoupleSpaceDO::getSpaceName, spaceName)
                 .set(CoupleSpaceDO::getDescription, description)
                 .set(CoupleSpaceDO::getLoveStartTime, loveStartTime)
+                .setSql("revision = revision + 1")
                 .set(CoupleSpaceDO::getUpdateTime, updateTime));
     }
 
@@ -49,6 +50,7 @@ public interface CoupleSpaceMapper extends BaseMapper<CoupleSpaceDO> {
                 .set(CoupleSpaceDO::getSpaceName, spaceName)
                 .set(CoupleSpaceDO::getDescription, description)
                 .set(CoupleSpaceDO::getLoveStartTime, loveStartTime)
+                .setSql("revision = revision + 1")
                 .set(CoupleSpaceDO::getUpdateTime, updateTime));
     }
 
@@ -93,8 +95,8 @@ public interface CoupleSpaceMapper extends BaseMapper<CoupleSpaceDO> {
     }
 
     /**
-     * 设置空间级公开/隐藏。公开只允许 status=1，隐藏额外允许冻结/归档但绝不改写状态。
-     * publicAt 只由 {@link #publishWithFirstPublicAt} 在首次公开时写入。
+     * 设置空间级公开/隐藏。隐藏额外允许冻结/归档但绝不改写状态。
+     * 公开只能由审核通过后的 {@link #publishApproved} 写入。
      */
     default int updateVisibility(Long spaceId, int visibility, LocalDateTime now) {
         LambdaUpdateWrapper<CoupleSpaceDO> wrapper = new LambdaUpdateWrapper<CoupleSpaceDO>()
@@ -108,21 +110,6 @@ public interface CoupleSpaceMapper extends BaseMapper<CoupleSpaceDO> {
                     .apply("(SELECT COUNT(*) FROM couple_member WHERE space_id = {0} AND status = 1) = 2", spaceId);
         }
         return update(null, wrapper);
-    }
-
-    /**
-     * 首次公开：仅当空间正常、已有两名有效成员且从未公开过（publicAt 为空）时写入公开时间。
-     * 返回 0 表示已经公开过或状态/成员条件不满足，由调用方决定是否走重复公开路径。
-     */
-    default int publishWithFirstPublicAt(Long spaceId, LocalDateTime now) {
-        return update(null, new LambdaUpdateWrapper<CoupleSpaceDO>()
-                .eq(CoupleSpaceDO::getId, spaceId)
-                .eq(CoupleSpaceDO::getStatus, 1)
-                .isNull(CoupleSpaceDO::getPublicAt)
-                .apply("(SELECT COUNT(*) FROM couple_member WHERE space_id = {0} AND status = 1) = 2", spaceId)
-                .set(CoupleSpaceDO::getVisibility, 1)
-                .set(CoupleSpaceDO::getPublicAt, now)
-                .set(CoupleSpaceDO::getUpdateTime, now));
     }
 
     /**
@@ -189,6 +176,46 @@ public interface CoupleSpaceMapper extends BaseMapper<CoupleSpaceDO> {
         return selectList(new LambdaQueryWrapper<CoupleSpaceDO>()
                 .eq(CoupleSpaceDO::getCreatedBy, userId)
                 .orderByDesc(CoupleSpaceDO::getId));
+    }
+
+    /**
+     * 审核通过前占用空间版本：只有工作版本仍等于审核快照版本时才成功。
+     * 成功后版本 +1，防止旧审核结果覆盖用户在审核期间产生的新版本。
+     */
+    default int claimRevision(Long spaceId, int expectedRevision, LocalDateTime now) {
+        return update(null, new LambdaUpdateWrapper<CoupleSpaceDO>()
+                .eq(CoupleSpaceDO::getId, spaceId)
+                .eq(CoupleSpaceDO::getRevision, expectedRevision)
+                .setSql("revision = revision + 1")
+                .set(CoupleSpaceDO::getUpdateTime, now));
+    }
+
+    /**
+     * 审核通过后把空间切换为公开。
+     *
+     * <p>只允许 status=1 且仍有两名有效成员；publicAt 仅在首次公开时写入。
+     * 使用条件更新，重复审核通过不会重复刷新首次公开时间。</p>
+     */
+    default int publishApproved(Long spaceId, LocalDateTime firstPublicAt, LocalDateTime now) {
+        return update(null, new LambdaUpdateWrapper<CoupleSpaceDO>()
+                .eq(CoupleSpaceDO::getId, spaceId)
+                .eq(CoupleSpaceDO::getStatus, 1)
+                .apply("(SELECT COUNT(*) FROM couple_member WHERE space_id = {0} AND status = 1) = 2", spaceId)
+                .set(CoupleSpaceDO::getVisibility, 1)
+                .set(firstPublicAt != null, CoupleSpaceDO::getPublicAt, firstPublicAt)
+                .setSql("revision = revision + 1")
+                .set(CoupleSpaceDO::getUpdateTime, now));
+    }
+
+    /**
+     * 管理员下架整个空间：只改空间可见性，不改写 status，也不删除任何成员内容。
+     */
+    default int adminUnpublish(Long spaceId, LocalDateTime now) {
+        return update(null, new LambdaUpdateWrapper<CoupleSpaceDO>()
+                .eq(CoupleSpaceDO::getId, spaceId)
+                .set(CoupleSpaceDO::getVisibility, 0)
+                .setSql("revision = revision + 1")
+                .set(CoupleSpaceDO::getUpdateTime, now));
     }
 
     /**

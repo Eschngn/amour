@@ -69,9 +69,5 @@ public class AdminContentPageRspVO {
 
     private String updateTime;
 
-    private Long reportCount;
-
-    private Long pendingReportCount;
-
     private Integer replyCount;
 }

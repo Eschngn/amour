@@ -73,8 +73,6 @@ public class AdminPhotoServiceImpl implements AdminPhotoService {
                         .deleted(item.getDeleted())
                         .authorAmourId(item.getAuthorAmourId())
                         .authorName(item.getAuthorName())
-                        .reportCount(item.getReportCount())
-                        .pendingReportCount(item.getPendingReportCount())
                         .isVisible(item.getVisibility() == null
                                 || item.getVisibility() != ContentGovernanceConstants.VISIBILITY_HIDDEN)
                         .createTime(item.getCreateTime())

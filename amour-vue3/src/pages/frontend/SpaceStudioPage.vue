@@ -76,6 +76,10 @@
           </template>
         </FrontendPageHeader>
 
+        <div class="mt-4">
+          <SpaceReviewStatusCard @submitted="onReviewSubmitted" />
+        </div>
+
         <div class="mt-6 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start lg:gap-8">
           <aside class="hidden lg:sticky lg:top-24 lg:block">
             <div class="rounded-2xl border border-stone-200/80 bg-white p-2">
@@ -166,6 +170,7 @@
               <SpaceStoryEditor
                 v-else-if="activeTab === 'story'"
                 :can-publish="canPublish"
+                :refresh-key="reviewRefreshKey"
                 @update:dirty="setDirty"
               />
               <SpaceMessageEditor
@@ -175,11 +180,13 @@
               <SpacePhotoEditor
                 v-else-if="activeTab === 'photo'"
                 :can-publish="canPublish"
+                :refresh-key="reviewRefreshKey"
                 @update:dirty="setDirty"
               />
               <SpaceAnniversaryEditor
                 v-else-if="activeTab === 'anniversary'"
                 :can-publish="canPublish"
+                :refresh-key="reviewRefreshKey"
                 @update:dirty="setDirty"
               />
             </div>
@@ -203,6 +210,7 @@ import SpaceStoryEditor from '@/components/frontend/space-studio/SpaceStoryEdito
 import SpaceMessageEditor from '@/components/frontend/space-studio/SpaceMessageEditor.vue'
 import SpacePhotoEditor from '@/components/frontend/space-studio/SpacePhotoEditor.vue'
 import SpaceAnniversaryEditor from '@/components/frontend/space-studio/SpaceAnniversaryEditor.vue'
+import SpaceReviewStatusCard from '@/components/frontend/space-studio/SpaceReviewStatusCard.vue'
 import { useFrontendSpace } from '@/composables/useFrontendSpace'
 import { hasFrontendQueryPermission } from '@/utils/auth'
 import { canEditSpaceContent, SPACE_STATUS } from '@/utils/spaceState'
@@ -229,6 +237,13 @@ const statusError = computed(() => Boolean(spaceError.value) && !spaceStatus.val
 const canEnterStudio = computed(() => canEditSpaceContent(spaceStatus.value))
 const isWaiting = computed(() => Number(spaceStatus.value?.status) === SPACE_STATUS.WAITING)
 const canPublish = computed(() => Number(spaceStatus.value?.status) === SPACE_STATUS.NORMAL)
+const reviewRefreshKey = ref(0)
+
+/** 重新提交公开审核成功后，同步刷新空间状态与三个内容编辑器的审核标记。 */
+function onReviewSubmitted() {
+  reviewRefreshKey.value += 1
+  refreshSpaceStatus()
+}
 
 // 首页编辑属于空间基础能力，沿用现有首页的准入方式（有效成员即可）；
 // 故事/留言/相册/纪念日仍按各自模块的查询权限展示，避免绕过模块权限。

@@ -4,6 +4,7 @@ import com.chengliuxiang.amour.common.aspect.ApiOperationLog;
 import com.chengliuxiang.amour.common.utils.Response;
 import com.chengliuxiang.amour.web.model.vo.story.GetStoryByChapterIdReqVO;
 import com.chengliuxiang.amour.web.model.vo.story.MilestoneStoryNodeVO;
+import com.chengliuxiang.amour.web.model.vo.space.SpaceContentSaveResultVO;
 import com.chengliuxiang.amour.web.model.vo.story.StoryChapterIdReqVO;
 import com.chengliuxiang.amour.web.model.vo.story.StoryChapterManageVO;
 import com.chengliuxiang.amour.web.model.vo.story.StoryChapterSaveReqVO;
@@ -95,7 +96,7 @@ public class StoryController {
 
     @PostMapping("/manage/node/save")
     @ApiOperationLog(description = "新增或编辑空间故事节点")
-    public Response<Long> saveNode(@RequestBody @Valid StoryNodeSaveReqVO reqVO) {
+    public Response<SpaceContentSaveResultVO> saveNode(@RequestBody @Valid StoryNodeSaveReqVO reqVO) {
         return spaceStoryManageService.saveNode(reqVO);
     }
 

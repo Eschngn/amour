@@ -33,7 +33,7 @@ public class AdminAuditPageRspVO {
 
     private Long targetUserId;
 
-    private Long targetReportId;
+    private Long targetReviewId;
 
     private String reason;
 

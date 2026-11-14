@@ -16,7 +16,7 @@
       <header class="studio-panel-header">
         <div class="min-w-0">
           <h2 class="section-title">首页设置</h2>
-          <p class="section-description">空间名称、成员展示与首页照片会同步展示在空间首页。</p>
+          <p class="section-description">空间名称、成员展示与首页照片会同步展示在空间首页。空间已公开时，这些修改会先进入审核，广场继续展示旧版本。</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
           <span v-if="dirty" class="text-[11px] font-medium text-amber-700" role="status">有未保存的修改</span>
@@ -286,8 +286,8 @@ async function save() {
 
     applyHome(data)
     captureSnapshot()
-    saveHint.value = '首页已保存，刷新页面后仍会保留。'
-    ElMessage.success('空间首页已保存')
+    saveHint.value = data.reviewMessage || '首页已保存，刷新页面后仍会保留。'
+    ElMessage.success(data.reviewMessage || '空间首页已保存')
     emit('saved', data)
     // 空间名/简介/恋爱开始时间也会影响全局空间上下文，保存后静默刷新。
     refreshSpaceStatusAfterLifecycleAction().catch(() => {})

@@ -66,8 +66,6 @@ public class AdminAnniversaryServiceImpl implements AdminAnniversaryService {
                         .deleted(item.getDeleted())
                         .authorAmourId(item.getAuthorAmourId())
                         .authorName(item.getAuthorName())
-                        .reportCount(item.getReportCount())
-                        .pendingReportCount(item.getPendingReportCount())
                         .isVisible(item.getVisibility() == null
                                 || item.getVisibility() != ContentGovernanceConstants.VISIBILITY_HIDDEN)
                         .createTime(item.getCreateTime())
@@ -111,7 +109,6 @@ public class AdminAnniversaryServiceImpl implements AdminAnniversaryService {
                 .colorCode(detail.getColorCode())
                 .location(detail.getLocation())
                 .sortOrder(detail.getSortOrder())
-                .pendingReportCount(detail.getPendingReportCount())
                 .isVisible(detail.getVisibility() == null
                         || detail.getVisibility() != ContentGovernanceConstants.VISIBILITY_HIDDEN)
                 .createTime(detail.getCreateTime())

@@ -2,6 +2,7 @@ package com.chengliuxiang.amour.web.service.impl;
 
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.chengliuxiang.amour.common.constant.SpaceReviewConstants;
 import com.chengliuxiang.amour.common.domain.dos.PhotoCategoryDO;
 import com.chengliuxiang.amour.common.domain.dos.PhotoDO;
 import com.chengliuxiang.amour.common.domain.mapper.PhotoCategoryMapper;
@@ -17,8 +18,11 @@ import com.chengliuxiang.amour.web.model.vo.photo.PhotoIdReqVO;
 import com.chengliuxiang.amour.web.model.vo.photo.PhotoManageItemVO;
 import com.chengliuxiang.amour.web.model.vo.photo.PhotoManagePageQueryReqVO;
 import com.chengliuxiang.amour.web.model.vo.photo.PhotoSaveReqVO;
+import com.chengliuxiang.amour.web.model.vo.space.SpaceContentSaveResultVO;
+import com.chengliuxiang.amour.web.model.vo.space.SpaceItemReviewStateVO;
 import com.chengliuxiang.amour.web.service.SpaceContentAccessService;
 import com.chengliuxiang.amour.web.service.SpacePhotoManageService;
+import com.chengliuxiang.amour.web.service.SpaceReviewService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,6 +57,9 @@ public class SpacePhotoManageServiceImpl implements SpacePhotoManageService {
 
     @Resource
     private PhotoMapper photoMapper;
+
+    @Resource
+    private SpaceReviewService spaceReviewService;
 
     @Override
     public Response<List<PhotoCategoryVO>> listCategories() {
@@ -150,9 +157,12 @@ public class SpacePhotoManageServiceImpl implements SpacePhotoManageService {
 
         IPage<PhotoDO> page = photoMapper.selectManagePage(current, size, spaceId, reqVO.getPhotoCategoryId());
         Map<Long, PhotoCategoryDO> categoryMap = loadCategoryMap(spaceId, page.getRecords());
+        Map<String, SpaceItemReviewStateVO> reviewStates = spaceReviewService.loadItemReviewStates(spaceId);
         List<PhotoManageItemVO> records = page.getRecords().stream()
                 .map(photo -> {
                     PhotoCategoryDO category = categoryMap.get(photo.getPhotoCategoryId());
+                    SpaceItemReviewStateVO reviewState = reviewStates.get(
+                            SpaceReviewConstants.ITEM_TYPE_PHOTO + ":" + photo.getId());
                     return PhotoManageItemVO.builder()
                             .id(photo.getId())
                             .title(photo.getTitle())
@@ -165,6 +175,13 @@ public class SpacePhotoManageServiceImpl implements SpacePhotoManageService {
                             .sortOrder(photo.getSortOrder())
                             .isCover(photo.getIsCover())
                             .visibility(photo.getVisibility())
+                            .reviewStatus(reviewState == null ? null : reviewState.getReviewStatus())
+                            .reviewRejectReason(reviewState == null
+                                    ? null : reviewState.getReviewRejectReason())
+                            .reviewHandledAt(reviewState == null
+                                    ? null : reviewState.getReviewHandledAt())
+                            .reviewHasPublishedVersion(reviewState == null
+                                    ? null : reviewState.getHasPublishedVersion())
                             .createTime(photo.getCreateTime())
                             .updateTime(photo.getUpdateTime())
                             .build();
@@ -180,9 +197,10 @@ public class SpacePhotoManageServiceImpl implements SpacePhotoManageService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Response<Long> savePhoto(PhotoSaveReqVO reqVO) {
+    public Response<SpaceContentSaveResultVO> savePhoto(PhotoSaveReqVO reqVO) {
         SpaceContentAccessService.SpaceAccess access = spaceContentAccessService.requireEditable();
         Long spaceId = access.getSpaceId();
+        spaceReviewService.prepareForPublicEdit(spaceId);
         if (reqVO.getPhotoCategoryId() == null) {
             throw new BizException(ResponseCodeEnum.PHOTO_CATEGORY_NOT_EXIST);
         }
@@ -217,11 +235,13 @@ public class SpacePhotoManageServiceImpl implements SpacePhotoManageService {
                     .isDeleted(false)
                     .createdBy(access.getUserId())
                     .updatedBy(access.getUserId())
+                    .revision(1)
                     .createTime(now)
                     .updateTime(now)
                     .build();
             photoMapper.saveAdminPhoto(photo);
-            return Response.success(photo.getId());
+            return Response.success(spaceReviewService.onContentSaved(
+                    spaceId, access.getUserId(), SpaceReviewConstants.ITEM_TYPE_PHOTO, photo.getId(), false));
         }
 
         PhotoDO current = requirePhoto(spaceId, reqVO.getId());
@@ -240,18 +260,23 @@ public class SpacePhotoManageServiceImpl implements SpacePhotoManageService {
         if (updated == 0) {
             throw new BizException(ResponseCodeEnum.PHOTO_NOT_EXIST);
         }
-        return Response.success(current.getId());
+        return Response.success(spaceReviewService.onContentSaved(
+                spaceId, access.getUserId(), SpaceReviewConstants.ITEM_TYPE_PHOTO, current.getId(), false));
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Response<Void> deletePhoto(PhotoIdReqVO reqVO) {
-        Long spaceId = spaceContentAccessService.requireEditableSpaceId();
+        SpaceContentAccessService.SpaceAccess access = spaceContentAccessService.requireEditable();
+        Long spaceId = access.getSpaceId();
+        spaceReviewService.prepareForPublicEdit(spaceId);
         requirePhoto(spaceId, reqVO.getId());
         int deleted = photoMapper.markDeletedById(spaceId, reqVO.getId(), LocalDateTime.now());
         if (deleted == 0) {
             throw new BizException(ResponseCodeEnum.PHOTO_NOT_EXIST);
         }
+        spaceReviewService.onContentSaved(spaceId, access.getUserId(),
+                SpaceReviewConstants.ITEM_TYPE_PHOTO, reqVO.getId(), true);
         return Response.success();
     }
 

@@ -5,8 +5,8 @@ import AdminContentGovernance from '@/pages/admin/AdminContentGovernance.vue'
 import AdminDashboard from '@/pages/admin/AdminDashboard.vue'
 import AdminDictManage from '@/pages/admin/AdminDictManage.vue'
 import AdminLogin from '@/pages/admin/AdminLogin.vue'
-import AdminReportManage from '@/pages/admin/AdminReportManage.vue'
 import AdminSpaceManage from '@/pages/admin/AdminSpaceManage.vue'
+import AdminSpaceReviewManage from '@/pages/admin/AdminSpaceReviewManage.vue'
 import AdminUserManage from '@/pages/admin/AdminUserManage.vue'
 import AnniversaryPage from '@/pages/frontend/AnniversaryPage.vue'
 import LovePlazaPage from '@/pages/frontend/LovePlazaPage.vue'
@@ -150,13 +150,13 @@ const routes = [
         },
       },
       {
-        path: 'report',
-        name: 'admin-report',
-        component: AdminReportManage,
+        path: 'space-review',
+        name: 'admin-space-review',
+        component: AdminSpaceReviewManage,
         meta: {
-          title: '举报审核 · 后台',
-          pageTitle: '举报审核',
-          adminPermission: ADMIN_PERMISSIONS.REPORT_QUERY,
+          title: '空间审核 · 后台',
+          pageTitle: '空间审核',
+          adminPermission: ADMIN_PERMISSIONS.SPACE_REVIEW_QUERY,
         },
       },
       {

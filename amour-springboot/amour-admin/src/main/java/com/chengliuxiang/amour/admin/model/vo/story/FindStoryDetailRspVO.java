@@ -37,7 +37,6 @@ public class FindStoryDetailRspVO {
     private Boolean isMilestone;
     private String createTime;
     private String updateTime;
-    private Long pendingReportCount;
     private List<ImageVO> images;
 
     @Data

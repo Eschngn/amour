@@ -161,6 +161,22 @@
                     <span v-if="photo.takenTime" aria-hidden="true">·</span>
                     <span v-if="photo.takenTime">{{ String(photo.takenTime).slice(0, 10) }}</span>
                     <span class="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold text-stone-500">{{ visibilityLabel(photo.visibility) }}</span>
+                    <span
+                      v-if="reviewStatusLabel(photo.reviewStatus)"
+                      class="rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                      :class="reviewStatusClass(photo.reviewStatus)"
+                    >
+                      {{ reviewStatusLabel(photo.reviewStatus) }}
+                    </span>
+                  </p>
+                  <p
+                    v-if="photo.reviewStatus === 'REJECTED'"
+                    class="mt-1.5 rounded-lg border border-rose-100 bg-rose-50/80 px-2 py-1.5 text-[10px] leading-5 text-rose-700"
+                  >
+                    <span class="font-semibold">驳回原因：</span>{{ photo.reviewRejectReason || '未填写原因' }}
+                    <span class="block text-rose-500">
+                      {{ photo.reviewHasPublishedVersion ? '恋爱广场继续展示上一次已通过的版本。' : '该内容尚未公开。' }}
+                    </span>
                   </p>
                 </div>
               </button>
@@ -313,6 +329,8 @@ import {
   buildVisibilityOptions,
   ensureSuccess,
   readContentErrorMessage,
+  reviewStatusLabel,
+  saveSuccessMessage,
   toBackendDateTime,
   toDateTimeLocalInput,
   VISIBILITY_OPTIONS,
@@ -322,6 +340,8 @@ const PAGE_SIZE = 8
 
 const props = defineProps({
   canPublish: { type: Boolean, default: false },
+  /** 重新提交公开审核后由父组件触发刷新。 */
+  refreshKey: { type: [String, Number], default: '' },
 })
 
 const emit = defineEmits(['update:dirty'])
@@ -377,6 +397,13 @@ watch([categoryForm, photoForm], () => emit('update:dirty', dirty.value), { deep
 
 function visibilityLabel(value) {
   return VISIBILITY_OPTIONS.find(option => option.value === Number(value))?.label || '仅空间成员可见'
+}
+
+function reviewStatusClass(status) {
+  if (status === 'PENDING') return 'bg-amber-100 text-amber-700'
+  if (status === 'REJECTED') return 'bg-rose-100 text-rose-700'
+  if (status === 'UNPUBLISHED') return 'bg-slate-200 text-slate-600'
+  return 'bg-emerald-100 text-emerald-700'
 }
 
 function nextCategorySort() {
@@ -540,7 +567,7 @@ async function savePhoto() {
 
   photoSaving.value = true
   try {
-    ensureSuccess(await savePhotoManagePhoto({
+    const result = ensureSuccess(await savePhotoManagePhoto({
       id: photoForm.id,
       photoCategoryId: Number(photoForm.categoryId),
       title: photoForm.title.trim(),
@@ -552,7 +579,7 @@ async function savePhoto() {
       isCover: photoForm.isCover,
       visibility: Number(photoForm.visibility),
     }), '照片保存失败')
-    ElMessage.success(photoForm.id ? '照片已更新' : '照片已添加')
+    ElMessage.success(saveSuccessMessage(result, photoForm.id ? '照片已更新' : '照片已添加'))
     await load()
   } catch (error) {
     photoError.value = readContentErrorMessage(error, '照片保存失败，请稍后重试')
@@ -594,6 +621,8 @@ watch(filterCategoryId, async () => {
 })
 
 onMounted(load)
+
+watch(() => props.refreshKey, () => load())
 
 defineExpose({ dirty, saving: photoSaving })
 </script>

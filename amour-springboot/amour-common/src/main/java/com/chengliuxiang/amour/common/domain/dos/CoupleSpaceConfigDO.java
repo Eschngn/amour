@@ -33,6 +33,11 @@ public class CoupleSpaceConfigDO {
 
     private Long createdBy;
 
+    /**
+     * 配置工作版本号，每次保存成功后递增。
+     */
+    private Integer revision;
+
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;

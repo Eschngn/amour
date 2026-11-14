@@ -70,11 +70,14 @@ public class AdminPermissionInterceptor implements HandlerInterceptor {
         if (path.startsWith("/admin/space/restore")) {
             return AdminPermissionConstants.SPACE_RESTORE;
         }
-        if (path.startsWith("/admin/report/list") || path.startsWith("/admin/report/detail")) {
-            return AdminPermissionConstants.REPORT_QUERY;
+        if (path.startsWith("/admin/space-review/list") || path.startsWith("/admin/space-review/detail")) {
+            return AdminPermissionConstants.SPACE_REVIEW_QUERY;
         }
-        if (path.startsWith("/admin/report/process")) {
-            return AdminPermissionConstants.REPORT_PROCESS;
+        if (path.startsWith("/admin/space-review/approve")
+                || path.startsWith("/admin/space-review/reject")
+                || path.startsWith("/admin/space-review/item/")
+                || path.startsWith("/admin/space-review/unpublish")) {
+            return AdminPermissionConstants.SPACE_REVIEW_PROCESS;
         }
         if (path.startsWith("/admin/audit/list")) {
             return AdminPermissionConstants.AUDIT_QUERY;

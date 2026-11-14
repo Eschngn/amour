@@ -34,8 +34,6 @@ public class FindStoryPageListRspVO {
     private Boolean isVisible;
     private String authorAmourId;
     private String authorName;
-    private Long reportCount;
-    private Long pendingReportCount;
     private String chapterId;
     private String chapterName;
     private String happenedTime;

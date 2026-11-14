@@ -16,6 +16,7 @@ import com.chengliuxiang.amour.admin.model.vo.space.AdminSpaceRestoreConflictVO;
 import com.chengliuxiang.amour.admin.model.vo.space.AdminSpaceRestoreReqVO;
 import com.chengliuxiang.amour.admin.model.vo.space.AdminSpaceRestoreRspVO;
 import com.chengliuxiang.amour.admin.model.vo.space.AdminSpaceRestoreSummaryVO;
+import com.chengliuxiang.amour.admin.model.vo.space.AdminSpaceReviewSummaryVO;
 import com.chengliuxiang.amour.admin.model.vo.space.AdminSpaceUnbindSummaryVO;
 import com.chengliuxiang.amour.admin.security.AdminAuthorizationService;
 import com.chengliuxiang.amour.admin.service.AdminAuditService;
@@ -23,9 +24,9 @@ import com.chengliuxiang.amour.admin.service.AdminSpaceService;
 import com.chengliuxiang.amour.common.constant.AdminAuditConstants;
 import com.chengliuxiang.amour.common.constant.AdminPermissionConstants;
 import com.chengliuxiang.amour.common.constant.ContentGovernanceConstants;
+import com.chengliuxiang.amour.common.constant.SpaceReviewConstants;
 import com.chengliuxiang.amour.common.domain.dos.AdminAuditLogDO;
 import com.chengliuxiang.amour.common.domain.dos.AnniversaryDO;
-import com.chengliuxiang.amour.common.domain.dos.ContentReportDO;
 import com.chengliuxiang.amour.common.domain.dos.CoupleInvitationDO;
 import com.chengliuxiang.amour.common.domain.dos.CoupleMemberDO;
 import com.chengliuxiang.amour.common.domain.dos.CoupleSpaceDO;
@@ -34,11 +35,12 @@ import com.chengliuxiang.amour.common.domain.dos.CoupleSpaceUnbindRequestDO;
 import com.chengliuxiang.amour.common.domain.dos.MessageDO;
 import com.chengliuxiang.amour.common.domain.dos.PhotoCategoryDO;
 import com.chengliuxiang.amour.common.domain.dos.PhotoDO;
+import com.chengliuxiang.amour.common.domain.dos.SpaceReviewItemDO;
+import com.chengliuxiang.amour.common.domain.dos.SpaceReviewSubmissionDO;
 import com.chengliuxiang.amour.common.domain.dos.StoryChapterDO;
 import com.chengliuxiang.amour.common.domain.dos.StoryNodeDO;
 import com.chengliuxiang.amour.common.domain.dos.UserDO;
 import com.chengliuxiang.amour.common.domain.mapper.AnniversaryMapper;
-import com.chengliuxiang.amour.common.domain.mapper.ContentReportMapper;
 import com.chengliuxiang.amour.common.domain.mapper.CoupleInvitationMapper;
 import com.chengliuxiang.amour.common.domain.mapper.CoupleMemberMapper;
 import com.chengliuxiang.amour.common.domain.mapper.CoupleSpaceMapper;
@@ -47,6 +49,8 @@ import com.chengliuxiang.amour.common.domain.mapper.CoupleSpaceUnbindRequestMapp
 import com.chengliuxiang.amour.common.domain.mapper.MessageMapper;
 import com.chengliuxiang.amour.common.domain.mapper.PhotoCategoryMapper;
 import com.chengliuxiang.amour.common.domain.mapper.PhotoMapper;
+import com.chengliuxiang.amour.common.domain.mapper.SpaceReviewItemMapper;
+import com.chengliuxiang.amour.common.domain.mapper.SpaceReviewSubmissionMapper;
 import com.chengliuxiang.amour.common.domain.mapper.StoryChapterMapper;
 import com.chengliuxiang.amour.common.domain.mapper.StoryNodeMapper;
 import com.chengliuxiang.amour.common.domain.mapper.UserMapper;
@@ -145,7 +149,9 @@ public class AdminSpaceServiceImpl implements AdminSpaceService {
     @Resource
     private AnniversaryMapper anniversaryMapper;
     @Resource
-    private ContentReportMapper contentReportMapper;
+    private SpaceReviewSubmissionMapper spaceReviewSubmissionMapper;
+    @Resource
+    private SpaceReviewItemMapper spaceReviewItemMapper;
     @Resource
     private AdminAuditService adminAuditService;
     @Resource
@@ -183,10 +189,12 @@ public class AdminSpaceServiceImpl implements AdminSpaceService {
         Map<Long, List<CoupleMemberDO>> memberMap = loadMemberMap(spaces);
         Map<Long, UserDO> userMap = loadUserMap(memberMap);
         Map<Long, List<AdminSpaceRestoreConflictVO>> conflictMap = loadRestoreConflictMap(spaces, memberMap);
+        Map<Long, AdminSpaceReviewSummaryVO> reviewMap = loadReviewSummaryMap(spaces);
 
         List<AdminSpacePageRspVO> records = spaces.stream()
                 .map(space -> toResponse(space, memberMap.get(space.getId()), userMap,
-                        conflictMap.getOrDefault(space.getId(), Collections.emptyList())))
+                        conflictMap.getOrDefault(space.getId(), Collections.emptyList()),
+                        reviewMap.get(space.getId())))
                 .collect(Collectors.toList());
 
         return Response.success(PageResult.<AdminSpacePageRspVO>builder()
@@ -243,7 +251,8 @@ public class AdminSpaceServiceImpl implements AdminSpaceService {
         Map<Long, String> categoryNameMap = photoCategoryMapper.findAdminList(spaceId).stream()
                 .collect(Collectors.toMap(PhotoCategoryDO::getId, PhotoCategoryDO::getCategoryName,
                         (left, right) -> left));
-        Map<String, Long> pendingReportMap = buildPendingReportMap(spaceId);
+        AdminSpaceReviewSummaryVO reviewSummary = loadReviewSummaryMap(Collections.singletonList(space))
+                .get(spaceId);
 
         List<AdminSpaceMemberVO> memberVOs = members.stream()
                 .map(member -> buildMemberVO(member, userMap.get(member.getUserId())))
@@ -293,13 +302,14 @@ public class AdminSpaceServiceImpl implements AdminSpaceService {
                 .members(memberVOs)
                 .invitations(buildInvitationVOs(invitations, userMap))
                 .timeline(buildTimeline(space, members, unbindRequests, userMap))
-                .stories(buildStoryItems(stories, chapterNameMap, userMap, pendingReportMap))
-                .photos(buildPhotoItems(photos, categoryNameMap, userMap, pendingReportMap))
-                .messages(buildMessageItems(messages, userMap, pendingReportMap))
-                .anniversaries(buildAnniversaryItems(anniversaries, userMap, pendingReportMap))
+                .stories(buildStoryItems(stories, chapterNameMap, userMap))
+                .photos(buildPhotoItems(photos, categoryNameMap, userMap))
+                .messages(buildMessageItems(messages, userMap))
+                .anniversaries(buildAnniversaryItems(anniversaries, userMap))
                 .unbind(buildUnbindSummary(spaceId, unbindRequests, userMap))
                 .restore(buildRestoreSummary(space, members, restoreConfirms, userMap,
                         restoreBlockReason, restoreConflicts))
+                .review(reviewSummary)
                 .build());
 
         // 空间详情会展示私密内容索引，按现有架构记录一次读取审计；审计失败不阻断排障。
@@ -780,7 +790,8 @@ public class AdminSpaceServiceImpl implements AdminSpaceService {
     private AdminSpacePageRspVO toResponse(CoupleSpaceDO space,
                                            List<CoupleMemberDO> members,
                                            Map<Long, UserDO> userMap,
-                                           List<AdminSpaceRestoreConflictVO> restoreConflicts) {
+                                           List<AdminSpaceRestoreConflictVO> restoreConflicts,
+                                           AdminSpaceReviewSummaryVO review) {
         List<CoupleMemberDO> safeMembers = members == null ? Collections.emptyList() : members;
         List<AdminSpaceMemberVO> memberVOs = safeMembers.stream()
                 .map(member -> buildMemberVO(member, userMap.get(member.getUserId())))
@@ -828,6 +839,7 @@ public class AdminSpaceServiceImpl implements AdminSpaceService {
                 .restoreBlockReason(restoreBlockReason)
                 .conflictSpaceCount(conflicts.size())
                 .autoClosableConflictSpaceCount(autoClosableCount)
+                .review(review)
                 .build();
     }
 
@@ -921,61 +933,55 @@ public class AdminSpaceServiceImpl implements AdminSpaceService {
 
     private List<AdminSpaceContentItemVO> buildStoryItems(List<StoryNodeDO> stories,
                                                           Map<Long, String> chapterNameMap,
-                                                          Map<Long, UserDO> userMap,
-                                                          Map<String, Long> pendingReportMap) {
+                                                          Map<Long, UserDO> userMap) {
         return stories.stream()
                 .map(story -> contentItem(ContentGovernanceConstants.TYPE_STORY, story.getId(),
                         story.getTitle(), chapterNameMap.get(story.getChapterId()), story.getVisibility(),
                         story.getIsDeleted(), story.getCreatedBy(), userMap,
                         format(story.getHappenedTime()), format(story.getCreateTime()),
-                        format(story.getUpdateTime()), pendingReportMap))
+                        format(story.getUpdateTime())))
                 .collect(Collectors.toList());
     }
 
     private List<AdminSpaceContentItemVO> buildPhotoItems(List<PhotoDO> photos,
                                                           Map<Long, String> categoryNameMap,
-                                                          Map<Long, UserDO> userMap,
-                                                          Map<String, Long> pendingReportMap) {
+                                                          Map<Long, UserDO> userMap) {
         return photos.stream()
                 .map(photo -> contentItem(ContentGovernanceConstants.TYPE_PHOTO, photo.getId(),
                         photo.getTitle(), categoryNameMap.get(photo.getPhotoCategoryId()),
                         photo.getVisibility(), photo.getIsDeleted(), photo.getCreatedBy(), userMap,
                         format(photo.getTakenTime()), format(photo.getCreateTime()),
-                        format(photo.getUpdateTime()), pendingReportMap))
+                        format(photo.getUpdateTime())))
                 .collect(Collectors.toList());
     }
 
     private List<AdminSpaceContentItemVO> buildMessageItems(List<MessageDO> messages,
-                                                            Map<Long, UserDO> userMap,
-                                                            Map<String, Long> pendingReportMap) {
+                                                            Map<Long, UserDO> userMap) {
         return messages.stream()
                 .map(message -> contentItem(ContentGovernanceConstants.TYPE_MESSAGE, message.getId(),
                         StrUtil.maxLength(StrUtil.blankToDefault(message.getContent(), ""), 60),
                         "", ContentGovernanceConstants.VISIBILITY_MEMBER_ONLY, message.getIsDeleted(),
                         message.getUserId(), userMap, format(message.getCreateTime()),
-                        format(message.getCreateTime()), format(message.getUpdateTime()), pendingReportMap))
+                        format(message.getCreateTime()), format(message.getUpdateTime())))
                 .collect(Collectors.toList());
     }
 
     private List<AdminSpaceContentItemVO> buildAnniversaryItems(List<AnniversaryDO> anniversaries,
-                                                                Map<Long, UserDO> userMap,
-                                                                Map<String, Long> pendingReportMap) {
+                                                                Map<Long, UserDO> userMap) {
         return anniversaries.stream()
                 .map(anniversary -> contentItem(ContentGovernanceConstants.TYPE_ANNIVERSARY,
                         anniversary.getId(), anniversary.getTitle(), anniversary.getCategory(),
                         anniversary.getVisibility(), anniversary.getIsDeleted(),
                         anniversary.getCreatedBy(), userMap,
                         anniversary.getAnniversaryDate() == null ? "" : anniversary.getAnniversaryDate().toString(),
-                        format(anniversary.getCreateTime()), format(anniversary.getUpdateTime()),
-                        pendingReportMap))
+                        format(anniversary.getCreateTime()), format(anniversary.getUpdateTime())))
                 .collect(Collectors.toList());
     }
 
     private AdminSpaceContentItemVO contentItem(String contentType, Long contentId, String title,
                                                  String extra, Integer visibility, Boolean deleted,
                                                  Long authorId, Map<Long, UserDO> userMap,
-                                                 String happenedTime, String createTime, String updateTime,
-                                                 Map<String, Long> pendingReportMap) {
+                                                 String happenedTime, String createTime, String updateTime) {
         UserDO author = authorId == null ? null : userMap.get(authorId);
         return AdminSpaceContentItemVO.builder()
                 .contentType(contentType)
@@ -991,21 +997,61 @@ public class AdminSpaceServiceImpl implements AdminSpaceService {
                 .happenedTime(happenedTime)
                 .createTime(createTime)
                 .updateTime(updateTime)
-                .pendingReportCount(pendingReportMap.getOrDefault(contentType + ":" + contentId, 0L))
                 .build();
     }
 
-    private Map<String, Long> buildPendingReportMap(Long spaceId) {
-        List<ContentReportDO> pending = contentReportMapper.selectPendingBySpaceId(spaceId);
-        if (CollUtil.isEmpty(pending)) {
+    /**
+     * 批量加载空间公开审核摘要：待审核提交、待审核项数量与最近一次处理结果。
+     */
+    private Map<Long, AdminSpaceReviewSummaryVO> loadReviewSummaryMap(List<CoupleSpaceDO> spaces) {
+        if (CollUtil.isEmpty(spaces)) {
             return Collections.emptyMap();
         }
-        Map<String, Long> counts = new HashMap<>();
-        for (ContentReportDO report : pending) {
-            String key = report.getContentType() + ":" + report.getContentId();
-            counts.put(key, counts.getOrDefault(key, 0L) + 1L);
+        List<Long> spaceIds = spaces.stream()
+                .map(CoupleSpaceDO::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+        List<SpaceReviewSubmissionDO> pendingList = spaceReviewSubmissionMapper.selectPendingBySpaceIds(spaceIds);
+        Map<Long, SpaceReviewSubmissionDO> pendingBySpace = pendingList.stream()
+                .collect(Collectors.toMap(SpaceReviewSubmissionDO::getSpaceId, item -> item,
+                        (left, right) -> left));
+        Map<Long, Integer> pendingItemCounts = new HashMap<>();
+        if (CollUtil.isNotEmpty(pendingList)) {
+            List<Long> submissionIds = pendingList.stream()
+                    .map(SpaceReviewSubmissionDO::getId)
+                    .collect(Collectors.toList());
+            for (SpaceReviewItemDO item : spaceReviewItemMapper.selectBySubmissionIds(submissionIds)) {
+                pendingItemCounts.merge(item.getSubmissionId(), 1, Integer::sum);
+            }
         }
-        return counts;
+        Map<Long, SpaceReviewSubmissionDO> handledBySpace = new HashMap<>();
+        for (SpaceReviewSubmissionDO submission : spaceReviewSubmissionMapper.selectLatestHandledBySpaceIds(spaceIds)) {
+            handledBySpace.putIfAbsent(submission.getSpaceId(), submission);
+        }
+
+        Map<Long, AdminSpaceReviewSummaryVO> result = new HashMap<>();
+        for (Long spaceId : spaceIds) {
+            SpaceReviewSubmissionDO pending = pendingBySpace.get(spaceId);
+            SpaceReviewSubmissionDO handled = handledBySpace.get(spaceId);
+            result.put(spaceId, AdminSpaceReviewSummaryVO.builder()
+                    .pending(pending != null)
+                    .submissionId(pending == null ? null : pending.getId())
+                    .reviewType(pending == null ? null : pending.getReviewType())
+                    .reviewTypeText(pending == null ? null
+                            : SpaceReviewConstants.reviewTypeText(pending.getReviewType()))
+                    .pendingItemCount(pending == null ? 0
+                            : pendingItemCounts.getOrDefault(pending.getId(), 0))
+                    .lastReviewStatus(handled == null ? null : handled.getStatus())
+                    .lastReviewStatusText(handled == null ? null
+                            : SpaceReviewConstants.statusText(handled.getStatus()))
+                    .lastReviewAt(handled == null ? null : format(handled.getHandledAt()))
+                    .rejectReason(handled == null
+                            || !(SpaceReviewConstants.STATUS_REJECTED.equals(handled.getStatus())
+                            || SpaceReviewConstants.STATUS_PARTIALLY_APPROVED.equals(handled.getStatus()))
+                            ? null : StrUtil.nullToEmpty(handled.getRejectReason()))
+                    .build());
+        }
+        return result;
     }
 
     private AdminSpaceUnbindSummaryVO buildUnbindSummary(Long spaceId,

@@ -7,6 +7,7 @@ import com.chengliuxiang.amour.common.domain.dos.AnniversaryDO;
 import com.chengliuxiang.amour.common.domain.dos.CoupleMemberDO;
 import com.chengliuxiang.amour.common.domain.dos.CoupleSpaceDO;
 import com.chengliuxiang.amour.common.domain.dos.PhotoDO;
+import com.chengliuxiang.amour.common.domain.dos.SpacePublishedItemDO;
 import com.chengliuxiang.amour.common.domain.dos.StoryNodeDO;
 import com.chengliuxiang.amour.common.domain.dos.StoryNodeImageDO;
 import com.chengliuxiang.amour.common.domain.dos.UserDO;
@@ -14,13 +15,20 @@ import com.chengliuxiang.amour.common.domain.mapper.AnniversaryMapper;
 import com.chengliuxiang.amour.common.domain.mapper.CoupleMemberMapper;
 import com.chengliuxiang.amour.common.domain.mapper.CoupleSpaceMapper;
 import com.chengliuxiang.amour.common.domain.mapper.PhotoMapper;
+import com.chengliuxiang.amour.common.domain.mapper.SpacePublishedItemMapper;
 import com.chengliuxiang.amour.common.domain.mapper.StoryNodeImageMapper;
 import com.chengliuxiang.amour.common.domain.mapper.StoryNodeMapper;
 import com.chengliuxiang.amour.common.domain.mapper.UserMapper;
 import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
 import com.chengliuxiang.amour.common.exception.BizException;
 import com.chengliuxiang.amour.common.model.PageResult;
+import com.chengliuxiang.amour.common.model.snapshot.AnniversaryPublicSnapshot;
+import com.chengliuxiang.amour.common.model.snapshot.PhotoPublicSnapshot;
+import com.chengliuxiang.amour.common.model.snapshot.SpacePublicSnapshot;
+import com.chengliuxiang.amour.common.model.snapshot.StoryPublicSnapshot;
+import com.chengliuxiang.amour.common.utils.JsonUtil;
 import com.chengliuxiang.amour.common.utils.Response;
+import com.chengliuxiang.amour.common.constant.SpaceReviewConstants;
 import com.chengliuxiang.amour.web.model.vo.gallery.GalleryAnniversaryVO;
 import com.chengliuxiang.amour.web.model.vo.gallery.GalleryPhotoVO;
 import com.chengliuxiang.amour.web.model.vo.gallery.GallerySpaceCardVO;
@@ -35,8 +43,13 @@ import com.chengliuxiang.amour.web.service.GalleryService;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -44,6 +57,14 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/**
+ * 恋爱广场读取服务。
+ *
+ * <p>只读取 space_published_item 中审核通过且未下架的公开快照；
+ * 待审核、驳回、撤回、管理员下架以及私密空间的内容都不会进入返回体。
+ * 功能上线前已经公开的历史空间没有快照，首次读取时按当前公开数据兼容展示，
+ * 一旦用户编辑公开内容，系统会先固化旧版本再进入审核。</p>
+ */
 @Service
 public class GalleryServiceImpl implements GalleryService {
 
@@ -59,6 +80,10 @@ public class GalleryServiceImpl implements GalleryService {
     private static final int LATEST_PHOTO_LIMIT = 3;
     private static final int LATEST_ANNIVERSARY_LIMIT = 3;
 
+    private static final DateTimeFormatter DATE_TIME_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
     @Resource
     private CoupleSpaceMapper coupleSpaceMapper;
     @Resource
@@ -73,13 +98,14 @@ public class GalleryServiceImpl implements GalleryService {
     private PhotoMapper photoMapper;
     @Resource
     private AnniversaryMapper anniversaryMapper;
+    @Resource
+    private SpacePublishedItemMapper publishedItemMapper;
 
     @Override
     public Response<PageResult<GallerySpaceCardVO>> pagePublicSpaces(GallerySpacePageQueryReqVO reqVO) {
         long current = normalizeCurrent(reqVO == null ? null : reqVO.getCurrent());
         long size = normalizeSize(reqVO == null ? null : reqVO.getSize());
 
-        // 公开查询方法本身只匹配 status=1、visibility=1 的空间，避免在 Service 中重复拼条件。
         IPage<CoupleSpaceDO> spacePage = coupleSpaceMapper.selectPublicPage(current, size);
         List<CoupleSpaceDO> spaces = spacePage.getRecords();
         if (CollUtil.isEmpty(spaces)) {
@@ -110,6 +136,7 @@ public class GalleryServiceImpl implements GalleryService {
 
         List<GallerySpaceCardVO> records = spaces.stream()
                 .map(space -> buildCard(space,
+                        loadSnapshotData(space),
                         membersBySpace.getOrDefault(space.getId(), Collections.emptyList()), userMap))
                 .collect(Collectors.toList());
 
@@ -140,27 +167,23 @@ public class GalleryServiceImpl implements GalleryService {
                 .collect(Collectors.toSet());
         List<GallerySpaceMemberVO> members = buildMemberVOs(memberDOs, loadUserMap(userIds));
 
-        // 详情只查公开内容，私密/隐藏内容不会进入返回体。
-        List<StoryNodeDO> storyDOs = storyNodeMapper.selectPublicList(spaceId);
-        List<PhotoDO> photoDOs = photoMapper.selectPublicList(spaceId);
-        List<AnniversaryDO> anniversaryDOs = anniversaryMapper.selectPublicList(spaceId);
+        GallerySnapshotData data = loadSnapshotData(space);
+        List<GalleryStoryDetailVO> stories = toStoryDetailVOs(data.stories);
+        List<GalleryPhotoVO> photos = toPhotoVOs(data.photos);
+        List<GalleryAnniversaryVO> anniversaries = toAnniversaryVOs(data.anniversaries);
 
-        List<GalleryStoryDetailVO> stories = buildStoryDetailVOs(spaceId, storyDOs);
-        List<GalleryPhotoVO> photos = toPhotoVOs(photoDOs);
-        List<GalleryAnniversaryVO> anniversaries = toAnniversaryVOs(anniversaryDOs);
-
-        GalleryStorySummaryVO latestStory = findLatestStory(spaceId);
-        List<GalleryPhotoVO> latestPhotos = toPhotoVOs(
-                photoMapper.selectLatestPublic(spaceId, LATEST_PHOTO_LIMIT));
-        List<GalleryAnniversaryVO> latestAnniversaries = toAnniversaryVOs(
-                anniversaryMapper.selectLatestPublic(spaceId, LATEST_ANNIVERSARY_LIMIT));
+        GalleryStorySummaryVO latestStory = findLatestStory(data.stories);
+        List<GalleryPhotoVO> latestPhotos = toPhotoVOs(limit(
+                sortPhotosForLatest(data.photos), LATEST_PHOTO_LIMIT));
+        List<GalleryAnniversaryVO> latestAnniversaries = toAnniversaryVOs(limit(
+                sortAnniversariesForLatest(data.anniversaries), LATEST_ANNIVERSARY_LIMIT));
 
         return Response.success(GallerySpaceDetailVO.builder()
-                .spaceId(space.getId())
-                .spaceName(space.getSpaceName())
-                .description(space.getDescription())
-                .coverImage(resolveCoverImage(space, latestPhotos, latestStory))
-                .loveStartTime(space.getLoveStartTime())
+                .spaceId(spaceId)
+                .spaceName(data.space.getSpaceName())
+                .description(data.space.getDescription())
+                .coverImage(resolveCoverImage(data, latestPhotos, latestStory))
+                .loveStartTime(parseDateTime(data.space.getLoveStartTime()))
                 .memberCount(members.size())
                 .members(members)
                 .publicStoryCount((long) stories.size())
@@ -176,38 +199,318 @@ public class GalleryServiceImpl implements GalleryService {
     }
 
     private GallerySpaceCardVO buildCard(CoupleSpaceDO space,
+                                         GallerySnapshotData data,
                                          List<CoupleMemberDO> memberDOs,
                                          Map<Long, UserDO> userMap) {
-        Long spaceId = space.getId();
         List<GallerySpaceMemberVO> members = buildMemberVOs(memberDOs, userMap);
-        Long storyCount = zeroIfNull(storyNodeMapper.countPublicBySpaceId(spaceId));
-        Long photoCount = zeroIfNull(photoMapper.countPublicBySpaceId(spaceId));
-        Long anniversaryCount = zeroIfNull(anniversaryMapper.countPublicBySpaceId(spaceId));
-        GalleryStorySummaryVO latestStory = findLatestStory(spaceId);
-        List<GalleryPhotoVO> latestPhotos = toPhotoVOs(
-                photoMapper.selectLatestPublic(spaceId, LATEST_PHOTO_LIMIT));
-        List<GalleryAnniversaryVO> latestAnniversaries = toAnniversaryVOs(
-                anniversaryMapper.selectLatestPublic(spaceId, LATEST_ANNIVERSARY_LIMIT));
+        GalleryStorySummaryVO latestStory = findLatestStory(data.stories);
+        List<GalleryPhotoVO> latestPhotos = toPhotoVOs(limit(
+                sortPhotosForLatest(data.photos), LATEST_PHOTO_LIMIT));
+        List<GalleryAnniversaryVO> latestAnniversaries = toAnniversaryVOs(limit(
+                sortAnniversariesForLatest(data.anniversaries), LATEST_ANNIVERSARY_LIMIT));
 
         return GallerySpaceCardVO.builder()
                 .spaceId(space.getId())
-                .spaceName(space.getSpaceName())
-                .description(space.getDescription())
-                .coverImage(resolveCoverImage(space, latestPhotos, latestStory))
-                .loveStartTime(space.getLoveStartTime())
+                .spaceName(data.space.getSpaceName())
+                .description(data.space.getDescription())
+                .coverImage(resolveCoverImage(data, latestPhotos, latestStory))
+                .loveStartTime(parseDateTime(data.space.getLoveStartTime()))
                 .memberCount(members.size())
                 .members(members)
-                .publicStoryCount(storyCount)
-                .publicPhotoCount(photoCount)
-                .publicAnniversaryCount(anniversaryCount)
+                .publicStoryCount((long) data.stories.size())
+                .publicPhotoCount((long) data.photos.size())
+                .publicAnniversaryCount((long) data.anniversaries.size())
                 .latestStory(latestStory)
                 .latestPhotos(latestPhotos)
                 .latestAnniversaries(latestAnniversaries)
                 .build();
     }
 
+    /**
+     * 读取空间广场数据：优先使用已发布快照，历史公开空间才回退到当前公开数据。
+     */
+    private GallerySnapshotData loadSnapshotData(CoupleSpaceDO space) {
+        Long spaceId = space.getId();
+        List<SpacePublishedItemDO> published = publishedItemMapper.selectPublishedBySpaceId(spaceId);
+        if (CollUtil.isNotEmpty(published)) {
+            SpacePublicSnapshot spaceSnapshot = null;
+            List<StoryPublicSnapshot> stories = new ArrayList<>();
+            List<PhotoPublicSnapshot> photos = new ArrayList<>();
+            List<AnniversaryPublicSnapshot> anniversaries = new ArrayList<>();
+            for (SpacePublishedItemDO item : published) {
+                if (SpaceReviewConstants.ITEM_TYPE_SPACE.equals(item.getItemType())) {
+                    spaceSnapshot = JsonUtil.parseObject(item.getSnapshotJson(), SpacePublicSnapshot.class);
+                } else if (SpaceReviewConstants.ITEM_TYPE_STORY.equals(item.getItemType())) {
+                    addIfNotNull(stories, JsonUtil.parseObject(item.getSnapshotJson(), StoryPublicSnapshot.class));
+                } else if (SpaceReviewConstants.ITEM_TYPE_PHOTO.equals(item.getItemType())) {
+                    addIfNotNull(photos, JsonUtil.parseObject(item.getSnapshotJson(), PhotoPublicSnapshot.class));
+                } else if (SpaceReviewConstants.ITEM_TYPE_ANNIVERSARY.equals(item.getItemType())) {
+                    addIfNotNull(anniversaries,
+                            JsonUtil.parseObject(item.getSnapshotJson(), AnniversaryPublicSnapshot.class));
+                }
+            }
+            if (spaceSnapshot == null) {
+                spaceSnapshot = toSpaceSnapshot(space);
+            }
+            sortStories(stories);
+            sortPhotos(photos);
+            sortAnniversaries(anniversaries);
+            return new GallerySnapshotData(spaceSnapshot, stories, photos, anniversaries);
+        }
+        return loadLiveSnapshotData(space);
+    }
+
+    /**
+     * 历史公开数据兼容：功能上线前已公开的空间没有审核快照，按当前公开数据展示。
+     * 用户第一次修改公开内容时，SpaceReviewService 会先固化这些数据再进入审核。
+     */
+    private GallerySnapshotData loadLiveSnapshotData(CoupleSpaceDO space) {
+        Long spaceId = space.getId();
+        List<StoryNodeDO> storyDOs = storyNodeMapper.selectPublicList(spaceId);
+        Map<Long, List<StoryNodeImageDO>> imageMap = loadStoryImages(spaceId, storyDOs);
+        List<StoryPublicSnapshot> stories = storyDOs.stream()
+                .map(story -> toStorySnapshot(story, imageMap.get(story.getId())))
+                .collect(Collectors.toList());
+        List<PhotoPublicSnapshot> photos = photoMapper.selectPublicList(spaceId).stream()
+                .map(this::toPhotoSnapshot)
+                .collect(Collectors.toList());
+        List<AnniversaryPublicSnapshot> anniversaries = anniversaryMapper.selectPublicList(spaceId).stream()
+                .map(this::toAnniversarySnapshot)
+                .collect(Collectors.toList());
+        sortStories(stories);
+        sortPhotos(photos);
+        sortAnniversaries(anniversaries);
+        return new GallerySnapshotData(toSpaceSnapshot(space), stories, photos, anniversaries);
+    }
+
+    private Map<Long, List<StoryNodeImageDO>> loadStoryImages(Long spaceId, List<StoryNodeDO> stories) {
+        if (CollUtil.isEmpty(stories)) {
+            return Collections.emptyMap();
+        }
+        List<Long> nodeIds = stories.stream()
+                .map(StoryNodeDO::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+        if (nodeIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<StoryNodeImageDO> images = storyNodeImageMapper.selectByNodeIds(spaceId, nodeIds);
+        if (CollUtil.isEmpty(images)) {
+            return Collections.emptyMap();
+        }
+        return images.stream()
+                .filter(image -> image.getNodeId() != null && StrUtil.isNotBlank(image.getUrl()))
+                .collect(Collectors.groupingBy(StoryNodeImageDO::getNodeId));
+    }
+
+    private SpacePublicSnapshot toSpaceSnapshot(CoupleSpaceDO space) {
+        return SpacePublicSnapshot.builder()
+                .spaceId(space.getId())
+                .spaceCode(space.getSpaceCode())
+                .spaceName(space.getSpaceName())
+                .description(space.getDescription())
+                .coverImage(space.getCoverImage())
+                .loveStartTime(format(space.getLoveStartTime()))
+                .publicAt(format(space.getPublicAt()))
+                .build();
+    }
+
+    private StoryPublicSnapshot toStorySnapshot(StoryNodeDO story, List<StoryNodeImageDO> images) {
+        return StoryPublicSnapshot.builder()
+                .storyId(story.getId())
+                .chapterId(story.getChapterId())
+                .title(story.getTitle())
+                .summary(story.getSummary())
+                .content(story.getContent())
+                .happenedTime(format(story.getHappenedTime()))
+                .location(story.getLocation())
+                .coverImage(story.getCoverImage())
+                .tagLabel(story.getTagLabel())
+                .tagColor(story.getTagColor())
+                .sortOrder(story.getSortOrder())
+                .milestone(Boolean.TRUE.equals(story.getIsMilestone()))
+                .images(CollUtil.isEmpty(images) ? Collections.emptyList() : images.stream()
+                        .map(image -> StoryPublicSnapshot.ImagePublicSnapshot.builder()
+                                .url(image.getUrl())
+                                .altText(StrUtil.nullToEmpty(image.getAltText()))
+                                .sortOrder(image.getSortOrder())
+                                .build())
+                        .collect(Collectors.toList()))
+                .build();
+    }
+
+    private PhotoPublicSnapshot toPhotoSnapshot(PhotoDO photo) {
+        return PhotoPublicSnapshot.builder()
+                .photoId(photo.getId())
+                .photoCategoryId(photo.getPhotoCategoryId())
+                .title(photo.getTitle())
+                .description(photo.getDescription())
+                .url(photo.getUrl())
+                .takenTime(format(photo.getTakenTime()))
+                .location(photo.getLocation())
+                .sortOrder(photo.getSortOrder())
+                .cover(Boolean.TRUE.equals(photo.getIsCover()))
+                .build();
+    }
+
+    private AnniversaryPublicSnapshot toAnniversarySnapshot(AnniversaryDO anniversary) {
+        return AnniversaryPublicSnapshot.builder()
+                .anniversaryId(anniversary.getId())
+                .title(anniversary.getTitle())
+                .description(anniversary.getDescription())
+                .anniversaryDate(format(anniversary.getAnniversaryDate()))
+                .repeatType(anniversary.getRepeatType())
+                .category(anniversary.getCategory())
+                .colorCode(anniversary.getColorCode())
+                .location(anniversary.getLocation())
+                .sortOrder(anniversary.getSortOrder())
+                .build();
+    }
+
+    private List<GalleryStoryDetailVO> toStoryDetailVOs(List<StoryPublicSnapshot> stories) {
+        return stories.stream()
+                .map(story -> GalleryStoryDetailVO.builder()
+                        .storyId(story.getStoryId())
+                        .title(story.getTitle())
+                        .summary(story.getSummary())
+                        .content(story.getContent())
+                        .happenedTime(parseDateTime(story.getHappenedTime()))
+                        .location(story.getLocation())
+                        .coverImage(story.getCoverImage())
+                        .tagLabel(story.getTagLabel())
+                        .tagColor(story.getTagColor())
+                        .isMilestone(story.getMilestone())
+                        .images(toStoryImageVOs(story.getImages()))
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    private List<GalleryStoryImageVO> toStoryImageVOs(
+            List<StoryPublicSnapshot.ImagePublicSnapshot> images) {
+        if (CollUtil.isEmpty(images)) {
+            return Collections.emptyList();
+        }
+        return images.stream()
+                .filter(image -> StrUtil.isNotBlank(image.getUrl()))
+                .map(image -> GalleryStoryImageVO.builder()
+                        .url(image.getUrl())
+                        .altText(StrUtil.nullToEmpty(image.getAltText()))
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    private List<GalleryPhotoVO> toPhotoVOs(List<PhotoPublicSnapshot> photos) {
+        if (CollUtil.isEmpty(photos)) {
+            return Collections.emptyList();
+        }
+        return photos.stream()
+                .map(photo -> GalleryPhotoVO.builder()
+                        .photoId(photo.getPhotoId())
+                        .title(photo.getTitle())
+                        .description(photo.getDescription())
+                        .url(photo.getUrl())
+                        .takenTime(parseDateTime(photo.getTakenTime()))
+                        .location(photo.getLocation())
+                        .isCover(photo.getCover())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    private List<GalleryAnniversaryVO> toAnniversaryVOs(List<AnniversaryPublicSnapshot> anniversaries) {
+        if (CollUtil.isEmpty(anniversaries)) {
+            return Collections.emptyList();
+        }
+        return anniversaries.stream()
+                .map(anniversary -> GalleryAnniversaryVO.builder()
+                        .anniversaryId(anniversary.getAnniversaryId())
+                        .title(anniversary.getTitle())
+                        .description(anniversary.getDescription())
+                        .anniversaryDate(parseDate(anniversary.getAnniversaryDate()))
+                        .repeatType(anniversary.getRepeatType())
+                        .category(anniversary.getCategory())
+                        .colorCode(anniversary.getColorCode())
+                        .location(anniversary.getLocation())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    private GalleryStorySummaryVO findLatestStory(List<StoryPublicSnapshot> stories) {
+        if (CollUtil.isEmpty(stories)) {
+            return null;
+        }
+        StoryPublicSnapshot story = stories.stream()
+                .max(Comparator.comparing(item -> StrUtil.nullToEmpty(item.getHappenedTime())))
+                .orElse(stories.get(0));
+        return GalleryStorySummaryVO.builder()
+                .storyId(story.getStoryId())
+                .title(story.getTitle())
+                .summary(story.getSummary())
+                .happenedTime(parseDateTime(story.getHappenedTime()))
+                .coverImage(story.getCoverImage())
+                .tagLabel(story.getTagLabel())
+                .tagColor(story.getTagColor())
+                .isMilestone(story.getMilestone())
+                .build();
+    }
+
+    private List<StoryPublicSnapshot> sortStories(List<StoryPublicSnapshot> stories) {
+        stories.sort(Comparator
+                .comparing((StoryPublicSnapshot item) -> item.getChapterId() == null
+                        ? Long.MAX_VALUE : item.getChapterId())
+                .thenComparing(item -> item.getSortOrder() == null ? 0 : item.getSortOrder())
+                .thenComparing(item -> StrUtil.nullToEmpty(item.getHappenedTime()))
+                .thenComparing(item -> item.getStoryId() == null ? Long.MAX_VALUE : item.getStoryId()));
+        return stories;
+    }
+
+    private List<PhotoPublicSnapshot> sortPhotos(List<PhotoPublicSnapshot> photos) {
+        photos.sort(Comparator
+                .comparing((PhotoPublicSnapshot item) -> item.getSortOrder() == null ? 0 : item.getSortOrder())
+                .thenComparing(item -> StrUtil.nullToEmpty(item.getTakenTime()), Comparator.reverseOrder())
+                .thenComparing(item -> item.getPhotoId() == null ? Long.MAX_VALUE : item.getPhotoId(),
+                        Comparator.reverseOrder()));
+        return photos;
+    }
+
+    private List<PhotoPublicSnapshot> sortPhotosForLatest(List<PhotoPublicSnapshot> photos) {
+        List<PhotoPublicSnapshot> sorted = new ArrayList<>(photos);
+        sorted.sort(Comparator
+                .comparing((PhotoPublicSnapshot item) -> StrUtil.nullToEmpty(item.getTakenTime()),
+                        Comparator.reverseOrder())
+                .thenComparing(item -> item.getPhotoId() == null ? Long.MAX_VALUE : item.getPhotoId(),
+                        Comparator.reverseOrder()));
+        return sorted;
+    }
+
+    private List<AnniversaryPublicSnapshot> sortAnniversaries(
+            List<AnniversaryPublicSnapshot> anniversaries) {
+        anniversaries.sort(Comparator
+                .comparing((AnniversaryPublicSnapshot item) -> item.getSortOrder() == null ? 0 : item.getSortOrder())
+                .thenComparing(item -> StrUtil.nullToEmpty(item.getAnniversaryDate()))
+                .thenComparing(item -> item.getAnniversaryId() == null
+                        ? Long.MAX_VALUE : item.getAnniversaryId()));
+        return anniversaries;
+    }
+
+    private List<AnniversaryPublicSnapshot> sortAnniversariesForLatest(
+            List<AnniversaryPublicSnapshot> anniversaries) {
+        List<AnniversaryPublicSnapshot> sorted = new ArrayList<>(anniversaries);
+        sorted.sort(Comparator
+                .comparing((AnniversaryPublicSnapshot item) -> StrUtil.nullToEmpty(item.getAnniversaryDate()),
+                        Comparator.reverseOrder())
+                .thenComparing(item -> item.getAnniversaryId() == null
+                        ? Long.MAX_VALUE : item.getAnniversaryId(), Comparator.reverseOrder()));
+        return sorted;
+    }
+
+    private <T> List<T> limit(List<T> source, int limit) {
+        if (source.size() <= limit) {
+            return source;
+        }
+        return new ArrayList<>(source.subList(0, limit));
+    }
+
     private CoupleSpaceDO requirePublicSpace(Long spaceId) {
-        // 正常路径直接使用 Mapper 的公开查询方法（status=1 且 visibility=1）。
         CoupleSpaceDO publicSpace = coupleSpaceMapper.selectPublicById(spaceId);
         if (publicSpace != null) {
             return publicSpace;
@@ -216,7 +519,6 @@ public class GalleryServiceImpl implements GalleryService {
         if (space == null) {
             throw new BizException(ResponseCodeEnum.SPACE_NOT_EXIST);
         }
-        // 隐藏、冻结、归档都属于「未公开」：对外统一返回 20046。
         if (!Integer.valueOf(SPACE_VISIBILITY_PUBLIC).equals(space.getVisibility())) {
             throw new BizException(ResponseCodeEnum.SPACE_NOT_PUBLIC);
         }
@@ -225,8 +527,6 @@ public class GalleryServiceImpl implements GalleryService {
                 || Integer.valueOf(SPACE_STATUS_ARCHIVED).equals(space.getStatus())) {
             throw new BizException(ResponseCodeEnum.SPACE_NOT_PUBLIC);
         }
-        // 已解绑(status=5)/删除等待期等非公开状态，或公开查询与原始记录不一致时，按当前不可访问处理。
-        // 广场列表只查 status=1，因此这些状态永远不会出现在公开列表中。
         throw new BizException(ResponseCodeEnum.SPACE_NOT_ACCESSIBLE);
     }
 
@@ -260,114 +560,11 @@ public class GalleryServiceImpl implements GalleryService {
                 .collect(Collectors.toList());
     }
 
-    private GalleryStorySummaryVO findLatestStory(Long spaceId) {
-        List<StoryNodeDO> latestStories = storyNodeMapper.selectLatestPublic(spaceId, LATEST_STORY_LIMIT);
-        return CollUtil.isEmpty(latestStories) ? null : toStorySummary(latestStories.get(0));
-    }
-
-    private GalleryStorySummaryVO toStorySummary(StoryNodeDO story) {
-        return GalleryStorySummaryVO.builder()
-                .storyId(story.getId())
-                .title(story.getTitle())
-                .summary(story.getSummary())
-                .happenedTime(story.getHappenedTime())
-                .coverImage(story.getCoverImage())
-                .tagLabel(story.getTagLabel())
-                .tagColor(story.getTagColor())
-                .isMilestone(story.getIsMilestone())
-                .build();
-    }
-
-    private List<GalleryStoryDetailVO> buildStoryDetailVOs(Long spaceId, List<StoryNodeDO> stories) {
-        if (CollUtil.isEmpty(stories)) {
-            return Collections.emptyList();
-        }
-        List<Long> nodeIds = stories.stream()
-                .map(StoryNodeDO::getId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-        Map<Long, List<StoryNodeImageDO>> imageMap = Collections.emptyMap();
-        if (!nodeIds.isEmpty()) {
-            List<StoryNodeImageDO> images = storyNodeImageMapper.selectByNodeIds(spaceId, nodeIds);
-            if (CollUtil.isNotEmpty(images)) {
-                imageMap = images.stream()
-                        .filter(image -> image.getNodeId() != null && StrUtil.isNotBlank(image.getUrl()))
-                        .collect(Collectors.groupingBy(StoryNodeImageDO::getNodeId));
-            }
-        }
-        final Map<Long, List<StoryNodeImageDO>> imagesByNode = imageMap;
-        return stories.stream()
-                .map(story -> GalleryStoryDetailVO.builder()
-                        .storyId(story.getId())
-                        .title(story.getTitle())
-                        .summary(story.getSummary())
-                        .content(story.getContent())
-                        .happenedTime(story.getHappenedTime())
-                        .location(story.getLocation())
-                        .coverImage(story.getCoverImage())
-                        .tagLabel(story.getTagLabel())
-                        .tagColor(story.getTagColor())
-                        .isMilestone(story.getIsMilestone())
-                        .images(toStoryImageVOs(imagesByNode.get(story.getId())))
-                        .build())
-                .collect(Collectors.toList());
-    }
-
-    private List<GalleryStoryImageVO> toStoryImageVOs(List<StoryNodeImageDO> images) {
-        if (CollUtil.isEmpty(images)) {
-            return Collections.emptyList();
-        }
-        return images.stream()
-                .map(image -> GalleryStoryImageVO.builder()
-                        .url(image.getUrl())
-                        .altText(StrUtil.blankToDefault(image.getAltText(), ""))
-                        .build())
-                .collect(Collectors.toList());
-    }
-
-    private List<GalleryPhotoVO> toPhotoVOs(List<PhotoDO> photos) {
-        if (CollUtil.isEmpty(photos)) {
-            return Collections.emptyList();
-        }
-        return photos.stream()
-                .map(photo -> GalleryPhotoVO.builder()
-                        .photoId(photo.getId())
-                        .title(photo.getTitle())
-                        .description(photo.getDescription())
-                        .url(photo.getUrl())
-                        .takenTime(photo.getTakenTime())
-                        .location(photo.getLocation())
-                        .isCover(photo.getIsCover())
-                        .build())
-                .collect(Collectors.toList());
-    }
-
-    private List<GalleryAnniversaryVO> toAnniversaryVOs(List<AnniversaryDO> anniversaries) {
-        if (CollUtil.isEmpty(anniversaries)) {
-            return Collections.emptyList();
-        }
-        return anniversaries.stream()
-                .map(anniversary -> GalleryAnniversaryVO.builder()
-                        .anniversaryId(anniversary.getId())
-                        .title(anniversary.getTitle())
-                        .description(anniversary.getDescription())
-                        .anniversaryDate(anniversary.getAnniversaryDate())
-                        .repeatType(anniversary.getRepeatType())
-                        .category(anniversary.getCategory())
-                        .colorCode(anniversary.getColorCode())
-                        .location(anniversary.getLocation())
-                        .build())
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * 空间封面为空时，从公开照片或公开故事封面中取一张，保证卡片有可展示的图片。
-     */
-    private String resolveCoverImage(CoupleSpaceDO space,
+    private String resolveCoverImage(GallerySnapshotData data,
                                      List<GalleryPhotoVO> latestPhotos,
                                      GalleryStorySummaryVO latestStory) {
-        if (StrUtil.isNotBlank(space.getCoverImage())) {
-            return space.getCoverImage().trim();
+        if (StrUtil.isNotBlank(data.space.getCoverImage())) {
+            return data.space.getCoverImage().trim();
         }
         if (CollUtil.isNotEmpty(latestPhotos)) {
             GalleryPhotoVO firstPhoto = latestPhotos.get(0);
@@ -381,8 +578,40 @@ public class GalleryServiceImpl implements GalleryService {
         return "";
     }
 
-    private Long zeroIfNull(Long value) {
-        return value == null ? 0L : value;
+    private <T> void addIfNotNull(List<T> target, T value) {
+        if (value != null) {
+            target.add(value);
+        }
+    }
+
+    private String format(LocalDateTime value) {
+        return value == null ? null : value.format(DATE_TIME_FORMATTER);
+    }
+
+    private String format(LocalDate value) {
+        return value == null ? null : value.format(DATE_FORMATTER);
+    }
+
+    private LocalDateTime parseDateTime(String value) {
+        if (StrUtil.isBlank(value)) {
+            return null;
+        }
+        try {
+            return LocalDateTime.parse(value.trim(), DATE_TIME_FORMATTER);
+        } catch (Exception exception) {
+            return null;
+        }
+    }
+
+    private LocalDate parseDate(String value) {
+        if (StrUtil.isBlank(value)) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(value.trim(), DATE_FORMATTER);
+        } catch (Exception exception) {
+            return null;
+        }
     }
 
     private long normalizeCurrent(Long current) {
@@ -394,5 +623,28 @@ public class GalleryServiceImpl implements GalleryService {
             return DEFAULT_PAGE_SIZE;
         }
         return Math.min(size, MAX_PAGE_SIZE);
+    }
+
+    /**
+     * 单个空间的广场数据视图。
+     */
+    private static final class GallerySnapshotData {
+
+        private final SpacePublicSnapshot space;
+
+        private final List<StoryPublicSnapshot> stories;
+
+        private final List<PhotoPublicSnapshot> photos;
+
+        private final List<AnniversaryPublicSnapshot> anniversaries;
+
+        private GallerySnapshotData(SpacePublicSnapshot space, List<StoryPublicSnapshot> stories,
+                                    List<PhotoPublicSnapshot> photos,
+                                    List<AnniversaryPublicSnapshot> anniversaries) {
+            this.space = space;
+            this.stories = stories;
+            this.photos = photos;
+            this.anniversaries = anniversaries;
+        }
     }
 }

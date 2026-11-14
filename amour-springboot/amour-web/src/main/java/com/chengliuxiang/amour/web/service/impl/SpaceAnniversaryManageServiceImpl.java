@@ -1,6 +1,7 @@
 package com.chengliuxiang.amour.web.service.impl;
 
 import cn.hutool.core.util.StrUtil;
+import com.chengliuxiang.amour.common.constant.SpaceReviewConstants;
 import com.chengliuxiang.amour.common.domain.dos.AnniversaryDO;
 import com.chengliuxiang.amour.common.domain.mapper.AnniversaryMapper;
 import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
@@ -9,8 +10,11 @@ import com.chengliuxiang.amour.common.utils.Response;
 import com.chengliuxiang.amour.web.model.vo.anniversary.AnniversaryIdReqVO;
 import com.chengliuxiang.amour.web.model.vo.anniversary.AnniversarySaveReqVO;
 import com.chengliuxiang.amour.web.model.vo.anniversary.AnniversaryVO;
+import com.chengliuxiang.amour.web.model.vo.space.SpaceContentSaveResultVO;
+import com.chengliuxiang.amour.web.model.vo.space.SpaceItemReviewStateVO;
 import com.chengliuxiang.amour.web.service.SpaceAnniversaryManageService;
 import com.chengliuxiang.amour.web.service.SpaceContentAccessService;
+import com.chengliuxiang.amour.web.service.SpaceReviewService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,21 +45,38 @@ public class SpaceAnniversaryManageServiceImpl implements SpaceAnniversaryManage
     @Resource
     private AnniversaryMapper anniversaryMapper;
 
+    @Resource
+    private SpaceReviewService spaceReviewService;
+
     @Override
     public Response<List<AnniversaryVO>> listAnniversaries() {
         Long spaceId = spaceContentAccessService.requireReadableSpaceId();
+        java.util.Map<String, SpaceItemReviewStateVO> reviewStates =
+                spaceReviewService.loadItemReviewStates(spaceId);
         List<AnniversaryVO> records = anniversaryMapper.selectManageList(spaceId)
                 .stream()
-                .map(this::toVO)
+                .map(item -> {
+                    AnniversaryVO vo = toVO(item);
+                    SpaceItemReviewStateVO reviewState = reviewStates.get(
+                            SpaceReviewConstants.ITEM_TYPE_ANNIVERSARY + ":" + item.getId());
+                    if (reviewState != null) {
+                        vo.setReviewStatus(reviewState.getReviewStatus());
+                        vo.setReviewRejectReason(reviewState.getReviewRejectReason());
+                        vo.setReviewHandledAt(reviewState.getReviewHandledAt());
+                        vo.setReviewHasPublishedVersion(reviewState.getHasPublishedVersion());
+                    }
+                    return vo;
+                })
                 .collect(Collectors.toList());
         return Response.success(records);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Response<Long> saveAnniversary(AnniversarySaveReqVO reqVO) {
+    public Response<SpaceContentSaveResultVO> saveAnniversary(AnniversarySaveReqVO reqVO) {
         SpaceContentAccessService.SpaceAccess access = spaceContentAccessService.requireEditable();
         Long spaceId = access.getSpaceId();
+        spaceReviewService.prepareForPublicEdit(spaceId);
 
         String title = StrUtil.trim(reqVO.getTitle());
         if (StrUtil.isBlank(title) || title.length() > 100 || reqVO.getAnniversaryDate() == null) {
@@ -91,11 +112,14 @@ public class SpaceAnniversaryManageServiceImpl implements SpaceAnniversaryManage
                     .isDeleted(false)
                     .createdBy(access.getUserId())
                     .updatedBy(access.getUserId())
+                    .revision(1)
                     .createTime(now)
                     .updateTime(now)
                     .build();
             anniversaryMapper.insertAnniversary(anniversary);
-            return Response.success(anniversary.getId());
+            return Response.success(spaceReviewService.onContentSaved(
+                    spaceId, access.getUserId(), SpaceReviewConstants.ITEM_TYPE_ANNIVERSARY,
+                    anniversary.getId(), false));
         }
 
         AnniversaryDO current = requireAnniversary(spaceId, reqVO.getId());
@@ -120,19 +144,24 @@ public class SpaceAnniversaryManageServiceImpl implements SpaceAnniversaryManage
         if (updated == 0) {
             throw new BizException(ResponseCodeEnum.ANNIVERSARY_NOT_EXIST);
         }
-        return Response.success(current.getId());
+        return Response.success(spaceReviewService.onContentSaved(
+                spaceId, access.getUserId(), SpaceReviewConstants.ITEM_TYPE_ANNIVERSARY,
+                current.getId(), false));
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Response<Void> deleteAnniversary(AnniversaryIdReqVO reqVO) {
         SpaceContentAccessService.SpaceAccess access = spaceContentAccessService.requireEditable();
+        spaceReviewService.prepareForPublicEdit(access.getSpaceId());
         requireAnniversary(access.getSpaceId(), reqVO.getId());
         int deleted = anniversaryMapper.softDelete(access.getSpaceId(), reqVO.getId(),
                 access.getUserId(), LocalDateTime.now());
         if (deleted == 0) {
             throw new BizException(ResponseCodeEnum.ANNIVERSARY_NOT_EXIST);
         }
+        spaceReviewService.onContentSaved(access.getSpaceId(), access.getUserId(),
+                SpaceReviewConstants.ITEM_TYPE_ANNIVERSARY, reqVO.getId(), true);
         return Response.success();
     }
 

@@ -4,6 +4,7 @@ import lombok.Data;
 
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 
 @Data
 public class AdminContentDeleteReqVO {
@@ -18,5 +19,6 @@ public class AdminContentDeleteReqVO {
     private Long spaceId;
 
     @NotBlank(message = "请填写删除原因")
+    @Size(max = 500, message = "删除原因不能超过500字")
     private String reason;
 }

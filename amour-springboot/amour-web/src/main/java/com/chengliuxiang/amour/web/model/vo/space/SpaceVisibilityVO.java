@@ -39,4 +39,19 @@ public class SpaceVisibilityVO {
      * 当前是否具备公开资格：status=1 且有效成员数为 2。
      */
     private Boolean canSetVisibility;
+
+    /**
+     * 是否已提交公开审核、正在等待管理员处理。
+     */
+    private Boolean reviewPending;
+
+    /**
+     * 面向用户的审核提示；私密且未提交时为空。
+     */
+    private String reviewMessage;
+
+    /**
+     * 待审核项数量。
+     */
+    private Integer pendingItemCount;
 }

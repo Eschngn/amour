@@ -90,4 +90,9 @@ public class AdminSpacePageRspVO {
      * 其中可在恢复时安全关闭的冲突空间数量（等待绑定且仅剩该成员一人）。
      */
     private Integer autoClosableConflictSpaceCount;
+
+    /**
+     * 当前公开审核摘要。
+     */
+    private AdminSpaceReviewSummaryVO review;
 }

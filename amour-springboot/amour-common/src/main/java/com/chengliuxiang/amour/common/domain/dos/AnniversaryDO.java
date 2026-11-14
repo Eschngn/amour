@@ -50,6 +50,11 @@ public class AnniversaryDO {
 
     private Long updatedBy;
 
+    /**
+     * 内容工作版本号，每次保存成功后递增；审核快照记录生成时的版本。
+     */
+    private Integer revision;
+
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;

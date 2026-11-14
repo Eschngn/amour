@@ -23,7 +23,7 @@
             <el-option value="space" label="情侣空间" />
             <el-option value="content" label="内容" />
             <el-option value="user" label="用户" />
-            <el-option value="report" label="举报" />
+            <el-option value="dict" label="字典/配置" />
           </el-select>
           <el-input-number
             v-model="filters.targetSpaceId"
@@ -53,7 +53,7 @@
             title="刷新审计日志"
             @click="load"
           >
-            <Refresh class="h-3.5 w-3.5" :class="{ 'animate-spin': loading }" />
+            <Refresh class="h-3.5 w-3.5" :class="{ 'animate-spin': loading }" aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -93,7 +93,7 @@
                   <span v-if="row.targetSpaceId">空间 #{{ row.targetSpaceId }}</span>
                   <span v-if="row.targetContentType"> · {{ row.targetContentType }} #{{ row.targetContentId }}</span>
                   <span v-if="row.targetUserId"> · 用户 #{{ row.targetUserId }}</span>
-                  <span v-if="row.targetReportId"> · 举报 #{{ row.targetReportId }}</span>
+                  <span v-if="row.targetReviewId"> · 审核提交 #{{ row.targetReviewId }}</span>
                 </p>
                 <p v-if="row.detail" class="mt-1 line-clamp-2 break-words text-[11px] leading-5 text-slate-400" :title="row.detail">{{ row.detail }}</p>
               </td>
@@ -135,8 +135,13 @@ const actionOptions = [
   { value: 'CONTENT_VIEW', label: '查看内容详情' },
   { value: 'CONTENT_VISIBILITY', label: '调整内容可见性' },
   { value: 'CONTENT_DELETE', label: '逻辑删除内容' },
-  { value: 'REPORT_VIEW', label: '查看举报详情' },
-  { value: 'REPORT_PROCESS', label: '处理举报' },
+  { value: 'SPACE_REVIEW_VIEW', label: '查看空间审核详情' },
+  { value: 'SPACE_REVIEW_APPROVE', label: '通过空间审核' },
+  { value: 'SPACE_REVIEW_REJECT', label: '驳回空间审核（全部）' },
+  { value: 'SPACE_REVIEW_REJECT_ITEM', label: '驳回待审核项' },
+  { value: 'SPACE_REVIEW_WITHDRAW', label: '撤回空间审核' },
+  { value: 'SPACE_REVIEW_UNPUBLISH', label: '暂停空间公开' },
+  { value: 'SPACE_REVIEW_UNPUBLISH_CONTENT', label: '下架公开内容' },
   { value: 'USER_DISABLE', label: '停用用户' },
   { value: 'USER_UPDATE', label: '更新用户' },
 ]

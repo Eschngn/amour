@@ -69,6 +69,26 @@ export const VISIBILITY_OPTIONS = Object.freeze([
   { value: 2, label: '隐藏' },
 ])
 
+/**
+ * 公开审核状态文案。null 表示该内容不需要审核。
+ */
+export const REVIEW_STATUS_LABELS = Object.freeze({
+  PENDING: '审核中',
+  REJECTED: '审核未通过',
+  PUBLISHED: '已公开',
+  UNPUBLISHED: '已下架',
+})
+
+export function reviewStatusLabel(status) {
+  return REVIEW_STATUS_LABELS[status] || ''
+}
+
+/** 保存成功后的提示：优先使用后端返回的审核提示。 */
+export function saveSuccessMessage(data, fallback) {
+  const message = typeof data?.reviewMessage === 'string' ? data.reviewMessage.trim() : ''
+  return message || fallback
+}
+
 /** 可见性下拉选项：未完成绑定的一方不能选择公开，同时保留禁用说明。 */
 export function buildVisibilityOptions(canPublish) {
   return VISIBILITY_OPTIONS.map(option => {

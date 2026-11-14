@@ -75,7 +75,25 @@
                   <span v-if="item.location" aria-hidden="true">·</span>
                   <span v-if="item.location" class="truncate">{{ item.location }}</span>
                 </span>
-                <span class="mt-1 block text-[10px] text-stone-400">{{ visibilityLabel(item.visibility) }}</span>
+                <span class="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-stone-400">
+                  <span>{{ visibilityLabel(item.visibility) }}</span>
+                  <span
+                    v-if="reviewStatusLabel(item.reviewStatus)"
+                    class="rounded-full px-1.5 py-0.5 font-semibold"
+                    :class="reviewStatusClass(item.reviewStatus)"
+                  >
+                    {{ reviewStatusLabel(item.reviewStatus) }}
+                  </span>
+                </span>
+                <span
+                  v-if="item.reviewStatus === 'REJECTED'"
+                  class="mt-1.5 block rounded-lg border border-rose-100 bg-rose-50/80 px-2 py-1.5 text-[10px] leading-5 text-rose-700"
+                >
+                  <span class="font-semibold">驳回原因：</span>{{ item.reviewRejectReason || '未填写原因' }}
+                  <span class="block text-rose-500">
+                    {{ item.reviewHasPublishedVersion ? '恋爱广场继续展示上一次已通过的版本。' : '该内容尚未公开。' }}
+                  </span>
+                </span>
               </button>
 
               <button
@@ -248,11 +266,15 @@ import {
   buildVisibilityOptions,
   ensureSuccess,
   readContentErrorMessage,
+  reviewStatusLabel,
+  saveSuccessMessage,
   VISIBILITY_OPTIONS,
 } from '@/utils/spaceContent'
 
 const props = defineProps({
   canPublish: { type: Boolean, default: false },
+  /** 重新提交公开审核后由父组件触发刷新。 */
+  refreshKey: { type: [String, Number], default: '' },
 })
 
 const emit = defineEmits(['update:dirty'])
@@ -338,6 +360,13 @@ function visibilityLabel(value) {
   return VISIBILITY_OPTIONS.find(option => option.value === Number(value))?.label || '仅空间成员可见'
 }
 
+function reviewStatusClass(status) {
+  if (status === 'PENDING') return 'bg-amber-100 text-amber-700'
+  if (status === 'REJECTED') return 'bg-rose-100 text-rose-700'
+  if (status === 'UNPUBLISHED') return 'bg-slate-200 text-slate-600'
+  return 'bg-emerald-100 text-emerald-700'
+}
+
 function categoryLabel(value) {
   return ANNIVERSARY_CATEGORIES.find(option => option.value === value)?.label || '其他'
 }
@@ -400,7 +429,7 @@ async function save() {
   }
   saving.value = true
   try {
-    ensureSuccess(await saveAnniversaryManage({
+    const result = ensureSuccess(await saveAnniversaryManage({
       id: form.id,
       title: form.title.trim(),
       description: form.description.trim(),
@@ -412,7 +441,7 @@ async function save() {
       sortOrder: Number(form.sortOrder) || 0,
       visibility: Number(form.visibility),
     }), '纪念日保存失败')
-    ElMessage.success(form.id ? '纪念日已更新' : '纪念日已创建')
+    ElMessage.success(saveSuccessMessage(result, form.id ? '纪念日已更新' : '纪念日已创建'))
     await load()
   } catch (err) {
     error.value = readContentErrorMessage(err, '纪念日保存失败，请稍后重试')
@@ -442,6 +471,8 @@ async function removeAnniversary(item) {
 }
 
 onMounted(load)
+
+watch(() => props.refreshKey, () => load())
 
 defineExpose({ dirty, saving })
 </script>

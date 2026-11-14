@@ -13,10 +13,12 @@ import com.chengliuxiang.amour.common.domain.mapper.UserMapper;
 import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
 import com.chengliuxiang.amour.common.exception.BizException;
 import com.chengliuxiang.amour.common.utils.Response;
+import com.chengliuxiang.amour.web.model.vo.space.SpaceContentSaveResultVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceHomeSaveReqVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceHomeVO;
 import com.chengliuxiang.amour.web.service.SpaceContentAccessService;
 import com.chengliuxiang.amour.web.service.SpaceHomeService;
+import com.chengliuxiang.amour.web.service.SpaceReviewService;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -90,6 +92,9 @@ public class SpaceHomeServiceImpl implements SpaceHomeService {
     @Resource
     private UserMapper userMapper;
 
+    @Resource
+    private SpaceReviewService spaceReviewService;
+
     @Override
     public Response<SpaceHomeVO> queryHome() {
         SpaceContentAccessService.SpaceAccess access = spaceContentAccessService.requireReadable();
@@ -102,6 +107,8 @@ public class SpaceHomeServiceImpl implements SpaceHomeService {
         SpaceContentAccessService.SpaceAccess access = spaceContentAccessService.requireEditable();
         CoupleSpaceDO space = access.getSpace();
         LocalDateTime now = LocalDateTime.now();
+        // 公开空间修改首页信息需要审核：先固化当前已发布版本，再保存工作数据。
+        spaceReviewService.prepareForPublicEdit(space.getId());
 
         String spaceName = reqVO.getSpaceName() == null
                 ? space.getSpaceName()
@@ -128,7 +135,12 @@ public class SpaceHomeServiceImpl implements SpaceHomeService {
         }
         SpaceContentAccessService.SpaceAccess latestAccess = new SpaceContentAccessService.SpaceAccess(
                 access.getUserId(), latest, access.getMembership());
-        return Response.success(buildHomeVO(latestAccess));
+        SpaceHomeVO homeVO = buildHomeVO(latestAccess);
+        SpaceContentSaveResultVO reviewResult = spaceReviewService.onHomeSaved(
+                latest.getId(), access.getUserId(), "编辑空间首页信息与主页配置");
+        homeVO.setReviewPending(reviewResult.getReviewStatus() != null);
+        homeVO.setReviewMessage(reviewResult.getReviewMessage());
+        return Response.success(homeVO);
     }
 
     private void saveConfig(Long spaceId, Long userId, String configKey, String rawValue, LocalDateTime now) {
@@ -160,6 +172,7 @@ public class SpaceHomeServiceImpl implements SpaceHomeService {
                 .configValue(value)
                 .valueType(rule.valueType)
                 .createdBy(userId)
+                .revision(1)
                 .createTime(now)
                 .updateTime(now)
                 .build();

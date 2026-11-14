@@ -21,8 +21,6 @@ public class FindMessagePageListRspVO {
     private Integer visibility;
     private String visibilityText;
     private Boolean deleted;
-    private Long reportCount;
-    private Long pendingReportCount;
     private String createTime;
     private String updateTime;
 }

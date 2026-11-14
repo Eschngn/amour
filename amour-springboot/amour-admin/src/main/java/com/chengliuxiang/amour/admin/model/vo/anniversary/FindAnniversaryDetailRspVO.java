@@ -32,7 +32,6 @@ public class FindAnniversaryDetailRspVO {
     private String colorCode;
     private String location;
     private Integer sortOrder;
-    private Long pendingReportCount;
     /**
      * @deprecated 请使用 visibility
      */

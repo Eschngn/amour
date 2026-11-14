@@ -95,12 +95,12 @@ public enum ResponseCodeEnum implements BaseExceptionInterface {
     CONTENT_OPERATION_NOT_SUPPORTED("20075", "该内容类型不支持此治理操作"),
     CONTENT_ALREADY_DELETED("20076", "内容已被逻辑删除"),
     REASON_REQUIRED("20077", "请填写操作原因"),
-    REPORT_NOT_EXIST("20078", "举报不存在"),
-    REPORT_TARGET_NOT_PUBLIC("20079", "只能举报已公开的情侣空间或公开内容"),
-    REPORT_DUPLICATE("20080", "你已举报过该内容，平台正在处理"),
-    REPORT_SUBMIT_TOO_FREQUENT("20081", "举报提交过于频繁，请稍后再试"),
-    REPORT_ALREADY_PROCESSED("20082", "举报已被其他管理员处理"),
-    REPORT_ACTION_NOT_SUPPORTED("20083", "不支持的举报处理动作"),
+    SPACE_REVIEW_NOT_EXIST("20078", "审核提交不存在或已失效"),
+    SPACE_REVIEW_NOT_PENDING("20079", "该审核提交已处理，请刷新列表"),
+    SPACE_REVIEW_REVISION_CONFLICT("20080", "审核对象已更新，请重新审核"),
+    SPACE_REVIEW_ALREADY_PENDING("20081", "已有待审核的修改，请等待审核完成"),
+    SPACE_REVIEW_SNAPSHOT_INVALID("20082", "审核快照已失效，请重新提交"),
+    SPACE_REVIEW_TARGET_NOT_FOUND("20083", "审核目标内容不存在或已被删除"),
     AUDIT_LOG_NOT_SUPPORTED("20084", "操作审计记录失败"),
     PAGE_VIEW_EVENT_INVALID("20085", "页面浏览上报无效"),
     PAGE_VIEW_TOO_FREQUENT("20086", "页面浏览上报过于频繁，请稍后再试"),
@@ -108,6 +108,7 @@ public enum ResponseCodeEnum implements BaseExceptionInterface {
     ACTIVITY_RANGE_TOO_LARGE("20088", "统计区间最长支持90天"),
     SPACE_MEMBERSHIP_CONFLICT("20089", "该账号存在多个有效情侣空间，请先处理空间冲突后再操作"),
     SPACE_RESTORE_CONFLICT("20090", "存在无法自动处理的冲突空间，请先处理后再恢复"),
+    SPACE_REVIEW_ITEM_NOT_PENDING("20091", "该审核项已被处理，请刷新后重试"),
 
     ;
 

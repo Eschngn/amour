@@ -51,6 +51,7 @@ public interface CoupleSpaceConfigMapper extends BaseMapper<CoupleSpaceConfigDO>
                 .eq(CoupleSpaceConfigDO::getSpaceId, spaceId)
                 .eq(CoupleSpaceConfigDO::getConfigKey, configKey)
                 .set(CoupleSpaceConfigDO::getConfigValue, configValue)
+                .setSql("revision = revision + 1")
                 .set(CoupleSpaceConfigDO::getUpdateTime, updateTime));
     }
 

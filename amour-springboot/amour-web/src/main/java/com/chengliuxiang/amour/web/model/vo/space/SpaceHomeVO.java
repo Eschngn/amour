@@ -58,4 +58,14 @@ public class SpaceHomeVO {
      * 当前登录用户是否可以编辑该空间首页。
      */
     private Boolean canEdit;
+
+    /**
+     * 本次保存是否进入公开审核。
+     */
+    private Boolean reviewPending;
+
+    /**
+     * 保存后的审核提示：已保存 / 等待审核 / 广场仍展示旧版本。
+     */
+    private String reviewMessage;
 }

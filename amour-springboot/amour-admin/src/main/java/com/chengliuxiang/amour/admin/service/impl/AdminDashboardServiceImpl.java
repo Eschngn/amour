@@ -11,9 +11,11 @@ import com.chengliuxiang.amour.common.constant.AdminPermissionConstants;
 import com.chengliuxiang.amour.common.constant.PageViewConstants;
 import com.chengliuxiang.amour.common.domain.dos.CoupleSpaceDO;
 import com.chengliuxiang.amour.common.domain.dos.UserDO;
-import com.chengliuxiang.amour.common.domain.mapper.ContentReportMapper;
 import com.chengliuxiang.amour.common.domain.mapper.CoupleSpaceMapper;
 import com.chengliuxiang.amour.common.domain.mapper.PageViewEventMapper;
+import com.chengliuxiang.amour.common.domain.mapper.SpacePublishedItemMapper;
+import com.chengliuxiang.amour.common.domain.mapper.SpaceReviewItemMapper;
+import com.chengliuxiang.amour.common.domain.mapper.SpaceReviewSubmissionMapper;
 import com.chengliuxiang.amour.common.domain.mapper.UserMapper;
 import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
 import com.chengliuxiang.amour.common.exception.BizException;
@@ -46,7 +48,11 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
     @Resource
     private CoupleSpaceMapper coupleSpaceMapper;
     @Resource
-    private ContentReportMapper contentReportMapper;
+    private SpaceReviewSubmissionMapper spaceReviewSubmissionMapper;
+    @Resource
+    private SpaceReviewItemMapper spaceReviewItemMapper;
+    @Resource
+    private SpacePublishedItemMapper spacePublishedItemMapper;
     @Resource
     private UserMapper userMapper;
     @Resource
@@ -58,7 +64,12 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
     public Response<AdminDashboardSummaryVO> summary() {
         adminAuthorizationService.requirePermission(AdminPermissionConstants.DASHBOARD_QUERY);
 
-        Long pendingReports = contentReportMapper.countPending();
+        long pendingSpaceReviews = spaceReviewSubmissionMapper.countPendingSpaces();
+        long pendingReviewItems = spaceReviewItemMapper.countPendingItems();
+        long pendingContentReviews = spaceReviewItemMapper.countPendingContentItems();
+        LocalDateTime recentSince = LocalDateTime.now().minusDays(7);
+        long recentRejected = spaceReviewSubmissionMapper.countByStatusSince("REJECTED", recentSince);
+        long recentUnpublished = spacePublishedItemMapper.countRecentlyUnpublished(recentSince);
         List<Map<String, Object>> statusRows = coupleSpaceMapper.selectStatusCounts();
         if (statusRows == null) {
             statusRows = Collections.emptyList();
@@ -116,7 +127,11 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
                                 + "WHERE r.space_id = couple_space.id AND r.status = 0)")));
 
         return Response.success(AdminDashboardSummaryVO.builder()
-                .pendingReportCount(pendingReports == null ? 0L : pendingReports)
+                .pendingSpaceReviewCount(pendingSpaceReviews)
+                .pendingReviewItemCount(pendingReviewItems)
+                .pendingContentReviewCount(pendingContentReviews)
+                .recentRejectedReviewCount(recentRejected)
+                .recentUnpublishedCount(recentUnpublished)
                 .totalSpaceCount(totalSpaces)
                 .waitingSpaceCount(waiting)
                 .normalSpaceCount(normal)

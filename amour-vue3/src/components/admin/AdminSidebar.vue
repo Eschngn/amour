@@ -117,7 +117,6 @@ import {
   SwitchButton,
   TopRight,
   User,
-  Warning,
 } from '@element-plus/icons-vue'
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
@@ -156,7 +155,7 @@ const groups = [
     items: [
       { to: '/admin/dashboard', label: '工作台', icon: DataBoard, permission: ADMIN_PERMISSIONS.DASHBOARD_QUERY },
       { to: '/admin/space', label: '空间管理', icon: Connection, permission: ADMIN_PERMISSIONS.SPACE_QUERY },
-      { to: '/admin/report', label: '举报审核', icon: Warning, permission: ADMIN_PERMISSIONS.REPORT_QUERY },
+      { to: '/admin/space-review', label: '空间审核', icon: Document, permission: ADMIN_PERMISSIONS.SPACE_REVIEW_QUERY },
     ],
   },
   {

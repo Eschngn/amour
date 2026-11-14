@@ -197,7 +197,7 @@
                 <div class="min-w-0">
                   <h3 id="space-visibility-heading" class="text-sm font-semibold text-stone-900">恋爱广场公开</h3>
                   <p id="space-visibility-desc" class="mt-1 text-xs leading-6 text-stone-500">
-                    公开后，空间会出现在恋爱广场；故事、照片和纪念日仍按各自的公开设置展示。隐藏只影响空间入口，不会改动这些设置。
+                    首次公开需要管理员审核。公开后，空间名称、简介、头像、封面、主页配置以及公开的故事、照片和纪念日修改也会进入审核；审核期间恋爱广场继续展示上一次通过的版本。
                   </p>
                   <p v-if="visibilityNotice" id="space-visibility-reason" class="mt-2 flex items-start gap-1.5 text-xs leading-5" :class="visibilityNotice.textClass" role="status">
                     <span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" :class="visibilityNotice.dotClass" aria-hidden="true" />
@@ -233,6 +233,10 @@
                     />
                   </button>
                 </div>
+              </div>
+
+              <div class="border-t border-stone-100 py-4">
+                <SpaceReviewStatusCard :refresh-key="reviewRefreshKey" @submitted="onReviewSubmitted" />
               </div>
             </div>
           </section>
@@ -402,6 +406,7 @@ import {
   updateCoupleSpaceVisibility,
 } from '@/api/space'
 import ThemeDatePicker from '@/components/frontend/space-studio/ThemeDatePicker.vue'
+import SpaceReviewStatusCard from '@/components/frontend/space-studio/SpaceReviewStatusCard.vue'
 import {
   clearSpaceStatus,
   useFrontendSpace,
@@ -445,6 +450,8 @@ const {
  * 从打开确认框到接口返回全程保持非空：既防重复提交，也禁用其它写操作。
  */
 const busyAction = ref('')
+/** 公开审核状态卡片的刷新标记：写操作成功后递增。 */
+const reviewRefreshKey = ref(0)
 
 function isBusy(action) {
   return busyAction.value === action
@@ -454,6 +461,12 @@ function isBusy(action) {
 async function refreshStatus() {
   if (spaceLoading.value) return
   await refreshSpaceStatus()
+}
+
+/** 重新提交公开审核后同步刷新空间状态与审核卡片。 */
+function onReviewSubmitted() {
+  reviewRefreshKey.value += 1
+  refreshSpaceStatus()
 }
 
 const memberCount = computed(() => activeSpaceMemberCount(spaceStatus.value))
@@ -597,7 +610,7 @@ const visibilityNotice = computed(() => {
   }
   if (isPublic.value) {
     return {
-      text: '关闭公开后，空间会立即从恋爱广场隐藏；首次公开时间会保留。',
+      text: '关闭公开后，空间会立即从恋爱广场隐藏；首次公开时间会保留。重新公开需要再次审核。',
       textClass: 'text-emerald-700',
       dotClass: 'bg-emerald-500',
     }
@@ -692,7 +705,10 @@ async function toggleVisibility() {
       return
     }
     await refreshSpaceStatusAfterLifecycleAction()
-    ElMessage.success(target === 1 ? '已公开到恋爱广场' : '已从恋爱广场隐藏')
+    reviewRefreshKey.value += 1
+    ElMessage.success(target === 1
+      ? '已提交公开审核，审核通过后会出现在恋爱广场'
+      : '已从恋爱广场隐藏')
   } catch (error) {
     ElMessage.error(readSpaceErrorMessage(error, '公开设置失败，请稍后重试'))
   } finally {

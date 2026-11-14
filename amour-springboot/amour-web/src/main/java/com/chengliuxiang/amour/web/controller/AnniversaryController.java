@@ -5,6 +5,7 @@ import com.chengliuxiang.amour.common.utils.Response;
 import com.chengliuxiang.amour.web.model.vo.anniversary.AnniversaryIdReqVO;
 import com.chengliuxiang.amour.web.model.vo.anniversary.AnniversarySaveReqVO;
 import com.chengliuxiang.amour.web.model.vo.anniversary.AnniversaryVO;
+import com.chengliuxiang.amour.web.model.vo.space.SpaceContentSaveResultVO;
 import com.chengliuxiang.amour.web.service.AnniversaryService;
 import com.chengliuxiang.amour.web.service.SpaceAnniversaryManageService;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -42,7 +43,7 @@ public class AnniversaryController {
 
     @PostMapping("/manage/save")
     @ApiOperationLog(description = "新增或编辑空间纪念日")
-    public Response<Long> saveAnniversary(@Valid @RequestBody AnniversarySaveReqVO reqVO) {
+    public Response<SpaceContentSaveResultVO> saveAnniversary(@Valid @RequestBody AnniversarySaveReqVO reqVO) {
         return spaceAnniversaryManageService.saveAnniversary(reqVO);
     }
 

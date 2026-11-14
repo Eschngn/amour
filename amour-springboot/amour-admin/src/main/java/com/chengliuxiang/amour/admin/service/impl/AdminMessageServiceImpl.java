@@ -56,8 +56,6 @@ public class AdminMessageServiceImpl implements AdminMessageService {
                         .visibility(item.getVisibility())
                         .visibilityText(item.getVisibilityText())
                         .deleted(item.getDeleted())
-                        .reportCount(item.getReportCount())
-                        .pendingReportCount(item.getPendingReportCount())
                         .createTime(item.getCreateTime())
                         .updateTime(item.getUpdateTime())
                         .build())

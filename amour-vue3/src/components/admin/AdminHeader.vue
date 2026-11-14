@@ -27,7 +27,7 @@
         <component :is="pageIcon" class="h-5 w-5" />
       </span>
       <div class="min-w-0">
-        <p class="text-[11px] font-medium tracking-wide text-stone-400">管理后台</p>
+        <p class="whitespace-nowrap text-[11px] font-medium tracking-wide text-stone-400">管理后台</p>
         <h1 class="mt-0.5 truncate text-base font-semibold text-stone-900 sm:text-lg">{{ pageTitle }}</h1>
         <p class="mt-0.5 hidden truncate text-xs text-stone-500 sm:block">{{ pageDescription }}</p>
       </div>
@@ -70,7 +70,7 @@ const pageIcons = {
   '/admin/message': ChatDotRound,
   '/admin/photo': Picture,
   '/admin/anniversary': Calendar,
-  '/admin/report': Document,
+  '/admin/space-review': Document,
   '/admin/audit': Document,
   '/admin/dict': CollectionTag,
   '/admin/user': User,
@@ -83,7 +83,7 @@ const pageIconTones = {
   '/admin/message': 'bg-violet-50 text-violet-600 ring-1 ring-violet-100',
   '/admin/photo': 'bg-sky-50 text-sky-600 ring-1 ring-sky-100',
   '/admin/anniversary': 'bg-amber-50 text-amber-600 ring-1 ring-amber-100',
-  '/admin/report': 'bg-rose-50 text-rose-600 ring-1 ring-rose-100',
+  '/admin/space-review': 'bg-rose-50 text-rose-600 ring-1 ring-rose-100',
   '/admin/audit': 'bg-stone-100 text-stone-600 ring-1 ring-stone-200',
   '/admin/dict': 'bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100',
   '/admin/user': 'bg-sky-50 text-sky-600 ring-1 ring-sky-100',
@@ -99,12 +99,12 @@ const pageIcon = computed(() => pageIcons[route.path] || Collection)
 const pageIconTone = computed(() => pageIconTones[route.path] || 'bg-stone-100 text-stone-500 ring-1 ring-stone-200')
 
 const descriptions = {
-  '/admin/dashboard': '待处理举报、空间状态与平台数据概览',
+  '/admin/dashboard': '空间状态、公开审核待办与平台数据概览',
   '/admin/story': '按空间查看故事并处置违规内容',
   '/admin/message': '按空间查看私密留言并处理违规内容',
   '/admin/photo': '按空间查看照片并处置违规内容',
   '/admin/anniversary': '按空间查看纪念日并处置违规内容',
-  '/admin/report': '处理恋爱广场公开内容的举报',
+  '/admin/space-review': '审核首次公开与公开内容修改',
   '/admin/audit': '查询后台敏感操作与读取记录',
   '/admin/dict': '统一维护平台配置与业务字典',
   '/admin/user': '管理用户账号、状态与平台管理员标识',

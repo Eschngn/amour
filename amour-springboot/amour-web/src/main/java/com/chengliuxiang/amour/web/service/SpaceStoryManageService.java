@@ -1,6 +1,7 @@
 package com.chengliuxiang.amour.web.service;
 
 import com.chengliuxiang.amour.common.utils.Response;
+import com.chengliuxiang.amour.web.model.vo.space.SpaceContentSaveResultVO;
 import com.chengliuxiang.amour.web.model.vo.story.StoryChapterIdReqVO;
 import com.chengliuxiang.amour.web.model.vo.story.StoryChapterManageVO;
 import com.chengliuxiang.amour.web.model.vo.story.StoryChapterSaveReqVO;
@@ -20,7 +21,7 @@ public interface SpaceStoryManageService {
 
     Response<List<StoryNodeManageVO>> listNodes();
 
-    Response<Long> saveNode(StoryNodeSaveReqVO reqVO);
+    Response<SpaceContentSaveResultVO> saveNode(StoryNodeSaveReqVO reqVO);
 
     Response<Void> deleteNode(StoryNodeIdReqVO reqVO);
 }

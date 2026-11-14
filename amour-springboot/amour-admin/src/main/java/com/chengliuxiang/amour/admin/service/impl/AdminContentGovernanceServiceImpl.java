@@ -18,7 +18,6 @@ import com.chengliuxiang.amour.common.constant.AdminPermissionConstants;
 import com.chengliuxiang.amour.common.constant.ContentGovernanceConstants;
 import com.chengliuxiang.amour.common.domain.dos.AdminAuditLogDO;
 import com.chengliuxiang.amour.common.domain.dos.AnniversaryDO;
-import com.chengliuxiang.amour.common.domain.dos.ContentReportDO;
 import com.chengliuxiang.amour.common.domain.dos.CoupleSpaceDO;
 import com.chengliuxiang.amour.common.domain.dos.MessageDO;
 import com.chengliuxiang.amour.common.domain.dos.MessageReplyDO;
@@ -29,7 +28,6 @@ import com.chengliuxiang.amour.common.domain.dos.StoryNodeDO;
 import com.chengliuxiang.amour.common.domain.dos.StoryNodeImageDO;
 import com.chengliuxiang.amour.common.domain.dos.UserDO;
 import com.chengliuxiang.amour.common.domain.mapper.AnniversaryMapper;
-import com.chengliuxiang.amour.common.domain.mapper.ContentReportMapper;
 import com.chengliuxiang.amour.common.domain.mapper.CoupleSpaceMapper;
 import com.chengliuxiang.amour.common.domain.mapper.MessageMapper;
 import com.chengliuxiang.amour.common.domain.mapper.MessageReplyMapper;
@@ -59,6 +57,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -94,8 +93,6 @@ public class AdminContentGovernanceServiceImpl implements AdminContentGovernance
     private CoupleSpaceMapper coupleSpaceMapper;
     @Resource
     private UserMapper userMapper;
-    @Resource
-    private ContentReportMapper contentReportMapper;
     @Resource
     private AdminAuthorizationService adminAuthorizationService;
     @Resource
@@ -331,8 +328,6 @@ public class AdminContentGovernanceServiceImpl implements AdminContentGovernance
                 .map(StoryNodeDO::getCreatedBy).collect(Collectors.toSet()));
         Map<Long, String> chapterNameMap = loadChapterNames(stories.stream()
                 .map(StoryNodeDO::getChapterId).collect(Collectors.toSet()));
-        Map<Long, ReportCount> reportCountMap = loadReportCounts(ContentGovernanceConstants.TYPE_STORY,
-                stories.stream().map(StoryNodeDO::getId).collect(Collectors.toList()));
 
         return stories.stream()
                 .map(story -> {
@@ -342,7 +337,7 @@ public class AdminContentGovernanceServiceImpl implements AdminContentGovernance
                             story.getCreatedBy(), userMap, String.valueOf(story.getChapterId()),
                             chapterNameMap.get(story.getChapterId()), null, null, null, null,
                             format(story.getHappenedTime()), format(story.getCreateTime()),
-                            format(story.getUpdateTime()), reportCountMap.get(story.getId()), null);
+                            format(story.getUpdateTime()), null);
                     vo.setCoverImage(story.getCoverImage());
                     vo.setSortOrder(story.getSortOrder());
                     vo.setLocation(story.getLocation());
@@ -361,8 +356,6 @@ public class AdminContentGovernanceServiceImpl implements AdminContentGovernance
                 .map(PhotoDO::getCreatedBy).collect(Collectors.toSet()));
         Map<Long, String> categoryNameMap = loadCategoryNames(photos.stream()
                 .map(PhotoDO::getPhotoCategoryId).collect(Collectors.toSet()));
-        Map<Long, ReportCount> reportCountMap = loadReportCounts(ContentGovernanceConstants.TYPE_PHOTO,
-                photos.stream().map(PhotoDO::getId).collect(Collectors.toList()));
 
         return photos.stream()
                 .map(photo -> {
@@ -372,7 +365,7 @@ public class AdminContentGovernanceServiceImpl implements AdminContentGovernance
                             photo.getCreatedBy(), userMap, null, null, photo.getPhotoCategoryId(),
                             categoryNameMap.get(photo.getPhotoCategoryId()), null, null,
                             format(photo.getTakenTime()), format(photo.getCreateTime()),
-                            format(photo.getUpdateTime()), reportCountMap.get(photo.getId()), null);
+                            format(photo.getUpdateTime()), null);
                     vo.setUrl(photo.getUrl());
                     vo.setIsCover(photo.getIsCover());
                     vo.setSortOrder(photo.getSortOrder());
@@ -391,8 +384,6 @@ public class AdminContentGovernanceServiceImpl implements AdminContentGovernance
                 .map(AnniversaryDO::getSpaceId).collect(Collectors.toSet()));
         Map<Long, UserDO> userMap = loadUsers(anniversaries.stream()
                 .map(AnniversaryDO::getCreatedBy).collect(Collectors.toSet()));
-        Map<Long, ReportCount> reportCountMap = loadReportCounts(ContentGovernanceConstants.TYPE_ANNIVERSARY,
-                anniversaries.stream().map(AnniversaryDO::getId).collect(Collectors.toList()));
 
         return anniversaries.stream()
                 .map(anniversary -> {
@@ -403,7 +394,7 @@ public class AdminContentGovernanceServiceImpl implements AdminContentGovernance
                             null, null, null, anniversary.getCategory(),
                             anniversary.getAnniversaryDate() == null ? null : anniversary.getAnniversaryDate().toString(),
                             format(anniversary.getCreateTime()), format(anniversary.getUpdateTime()),
-                            reportCountMap.get(anniversary.getId()), null);
+                            null);
                     vo.setRepeatType(anniversary.getRepeatType());
                     vo.setColorCode(anniversary.getColorCode());
                     vo.setSortOrder(anniversary.getSortOrder());
@@ -421,8 +412,6 @@ public class AdminContentGovernanceServiceImpl implements AdminContentGovernance
                 .map(MessageDO::getSpaceId).collect(Collectors.toSet()));
         Map<Long, UserDO> userMap = loadUsers(messages.stream()
                 .map(MessageDO::getUserId).collect(Collectors.toSet()));
-        Map<Long, ReportCount> reportCountMap = loadReportCounts(ContentGovernanceConstants.TYPE_MESSAGE,
-                messages.stream().map(MessageDO::getId).collect(Collectors.toList()));
         Map<Long, Integer> replyCountMap = loadReplyCounts(messages);
 
         return messages.stream()
@@ -432,8 +421,7 @@ public class AdminContentGovernanceServiceImpl implements AdminContentGovernance
                         ContentGovernanceConstants.VISIBILITY_MEMBER_ONLY, message.getIsDeleted(),
                         message.getUserId(), userMap, null, null, null, null, null, null,
                         format(message.getCreateTime()), format(message.getCreateTime()),
-                        format(message.getUpdateTime()), reportCountMap.get(message.getId()),
-                        replyCountMap.getOrDefault(message.getId(), 0)))
+                        format(message.getUpdateTime()), replyCountMap.getOrDefault(message.getId(), 0)))
                 .collect(Collectors.toList());
     }
 
@@ -444,7 +432,7 @@ public class AdminContentGovernanceServiceImpl implements AdminContentGovernance
                                            Long photoCategoryId, String categoryName,
                                            Long ignored, String category, String happenedTime,
                                            String createTime, String updateTime,
-                                           ReportCount reportCount, Integer replyCount) {
+                                           Integer replyCount) {
         UserDO author = authorId == null ? null : userMap.get(authorId);
         String categoryText = categoryName;
         if (StringUtils.isBlank(categoryText) && StringUtils.isNotBlank(category)) {
@@ -473,8 +461,6 @@ public class AdminContentGovernanceServiceImpl implements AdminContentGovernance
                 .happenedTime(happenedTime)
                 .createTime(createTime)
                 .updateTime(updateTime)
-                .reportCount(reportCount == null ? 0L : reportCount.total)
-                .pendingReportCount(reportCount == null ? 0L : reportCount.pending)
                 .replyCount(replyCount)
                 .build();
     }
@@ -650,8 +636,6 @@ public class AdminContentGovernanceServiceImpl implements AdminContentGovernance
             authorName = author == null ? "恋人" : StrUtil.blankToDefault(author.getDisplayName(), "恋人");
         }
 
-        List<AdminContentDetailRspVO.ReportBriefVO> reports = buildReportBriefs(context.contentType, context.contentId);
-
         return AdminContentDetailRspVO.builder()
                 .contentType(contentType)
                 .contentTypeText(ContentGovernanceConstants.contentTypeText(contentType))
@@ -691,34 +675,8 @@ public class AdminContentGovernanceServiceImpl implements AdminContentGovernance
                 .createTime(createTime)
                 .updateTime(updateTime)
                 .replyCount(replyCount)
-                .pendingReportCount(contentReportMapper.countPendingByTarget(context.contentType, context.contentId))
                 .images(images)
-                .reports(reports)
                 .build();
-    }
-
-    private List<AdminContentDetailRspVO.ReportBriefVO> buildReportBriefs(String contentType, Long contentId) {
-        List<ContentReportDO> reports = contentReportMapper.selectByTarget(contentType, contentId, 10);
-        if (CollUtil.isEmpty(reports)) {
-            return Collections.emptyList();
-        }
-        Set<Long> reporterIds = reports.stream().map(ContentReportDO::getReporterUserId)
-                .filter(Objects::nonNull).collect(Collectors.toSet());
-        Map<Long, UserDO> userMap = loadUsers(reporterIds);
-        return reports.stream()
-                .map(report -> {
-                    UserDO reporter = userMap.get(report.getReporterUserId());
-                    return AdminContentDetailRspVO.ReportBriefVO.builder()
-                            .reportId(report.getId())
-                            .reporterAmourId(reporter == null ? "" : StrUtil.blankToDefault(reporter.getAmourId(), ""))
-                            .reporterName(reporter == null ? "用户" : StrUtil.blankToDefault(reporter.getDisplayName(), "用户"))
-                            .reason(report.getReason())
-                            .status(report.getStatus())
-                            .statusText(reportStatusText(report.getStatus()))
-                            .createTime(format(report.getCreateTime()))
-                            .build();
-                })
-                .collect(Collectors.toList());
     }
 
     private Integer requireContentVisibility(String contentType, Long spaceId, Long contentId) {
@@ -774,7 +732,11 @@ public class AdminContentGovernanceServiceImpl implements AdminContentGovernance
 
     private String requireSupportedContentType(String contentType) {
         String normalized = StrUtil.trim(contentType);
-        if (StrUtil.isBlank(normalized) || !ContentGovernanceConstants.isSupportedContentType(normalized)) {
+        if (StrUtil.isBlank(normalized)) {
+            throw new BizException(ResponseCodeEnum.CONTENT_TYPE_NOT_SUPPORTED);
+        }
+        normalized = normalized.toLowerCase(Locale.ROOT);
+        if (!ContentGovernanceConstants.isSupportedContentType(normalized)) {
             throw new BizException(ResponseCodeEnum.CONTENT_TYPE_NOT_SUPPORTED);
         }
         return normalized;
@@ -785,7 +747,10 @@ public class AdminContentGovernanceServiceImpl implements AdminContentGovernance
         if (StrUtil.isBlank(trimmed)) {
             throw new BizException(ResponseCodeEnum.REASON_REQUIRED);
         }
-        return StrUtil.maxLength(trimmed, 1000);
+        if (trimmed.length() > 500) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID);
+        }
+        return trimmed;
     }
 
     private CoupleSpaceDO requireSpace(Long spaceId) {
@@ -831,22 +796,6 @@ public class AdminContentGovernanceServiceImpl implements AdminContentGovernance
         return photoCategoryMapper.selectBatchIds(ids).stream()
                 .collect(Collectors.toMap(PhotoCategoryDO::getId, PhotoCategoryDO::getCategoryName,
                         (left, right) -> left));
-    }
-
-    private Map<Long, ReportCount> loadReportCounts(String contentType, Collection<Long> contentIds) {
-        List<ContentReportDO> reports = contentReportMapper.selectByTargets(contentType, contentIds);
-        if (CollUtil.isEmpty(reports)) {
-            return Collections.emptyMap();
-        }
-        Map<Long, ReportCount> counts = new HashMap<>();
-        for (ContentReportDO report : reports) {
-            ReportCount count = counts.computeIfAbsent(report.getContentId(), key -> new ReportCount());
-            count.total++;
-            if (Objects.equals(report.getStatus(), 0)) {
-                count.pending++;
-            }
-        }
-        return counts;
     }
 
     private Map<Long, Integer> loadReplyCounts(List<MessageDO> messages) {
@@ -914,27 +863,6 @@ public class AdminContentGovernanceServiceImpl implements AdminContentGovernance
 
     private String spaceVisibilityText(Integer visibility) {
         return Objects.equals(visibility, 1) ? "公开" : "私密";
-    }
-
-    private String reportStatusText(Integer status) {
-        if (status == null) {
-            return "";
-        }
-        switch (status) {
-            case 0:
-                return "待处理";
-            case 1:
-                return "已处理";
-            case 2:
-                return "已驳回";
-            default:
-                return "未知状态";
-        }
-    }
-
-    private static final class ReportCount {
-        private long total;
-        private long pending;
     }
 
     private static final class DetailContext {

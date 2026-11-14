@@ -106,7 +106,7 @@ public class AdminAuditServiceImpl implements AdminAuditService {
                 .targetContentType(item.getTargetContentType())
                 .targetContentId(item.getTargetContentId())
                 .targetUserId(item.getTargetUserId())
-                .targetReportId(item.getTargetReportId())
+                .targetReviewId(item.getTargetReviewId())
                 .reason(item.getReason())
                 .result(item.getResult())
                 .detail(item.getDetail())
@@ -133,10 +133,20 @@ public class AdminAuditServiceImpl implements AdminAuditService {
                 return "调整内容可见性";
             case AdminAuditConstants.ACTION_CONTENT_DELETE:
                 return "逻辑删除内容";
-            case AdminAuditConstants.ACTION_REPORT_PROCESS:
-                return "处理举报";
-            case AdminAuditConstants.ACTION_REPORT_VIEW:
-                return "查看举报详情";
+            case AdminAuditConstants.ACTION_SPACE_REVIEW_VIEW:
+                return "查看空间审核详情";
+            case AdminAuditConstants.ACTION_SPACE_REVIEW_APPROVE:
+                return "通过空间审核";
+            case AdminAuditConstants.ACTION_SPACE_REVIEW_REJECT:
+                return "驳回空间审核（全部）";
+            case AdminAuditConstants.ACTION_SPACE_REVIEW_REJECT_ITEM:
+                return "驳回待审核项";
+            case AdminAuditConstants.ACTION_SPACE_REVIEW_WITHDRAW:
+                return "撤回空间审核";
+            case AdminAuditConstants.ACTION_SPACE_REVIEW_UNPUBLISH:
+                return "暂停空间公开";
+            case AdminAuditConstants.ACTION_SPACE_REVIEW_UNPUBLISH_CONTENT:
+                return "下架公开内容";
             case AdminAuditConstants.ACTION_USER_DISABLE:
                 return "停用用户";
             case AdminAuditConstants.ACTION_USER_UPDATE:
@@ -157,8 +167,6 @@ public class AdminAuditServiceImpl implements AdminAuditService {
                 return "内容";
             case AdminAuditConstants.TARGET_USER:
                 return "用户";
-            case AdminAuditConstants.TARGET_REPORT:
-                return "举报";
             case AdminAuditConstants.TARGET_DICT:
                 return "字典/配置";
             case AdminAuditConstants.TARGET_ADMIN:

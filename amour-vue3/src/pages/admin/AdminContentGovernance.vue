@@ -29,7 +29,7 @@
             @change="applyFilters"
           />
           <label class="admin-filter-field admin-filter-field--search">
-            <Search class="admin-search-icon" />
+            <Search class="admin-search-icon" aria-hidden="true" />
             <input
               v-model="filters.keyword"
               type="search"
@@ -70,7 +70,7 @@
             title="刷新内容列表"
             @click="load"
           >
-            <Refresh class="h-3.5 w-3.5" :class="{ 'animate-spin': loading }" />
+            <Refresh class="h-3.5 w-3.5" :class="{ 'animate-spin': loading }" aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -104,7 +104,6 @@
               <th class="px-4 py-3">所属空间</th>
               <th class="px-4 py-3">作者</th>
               <th v-if="contentType !== 'message'" class="px-4 py-3">可见性</th>
-              <th class="px-4 py-3">举报</th>
               <th class="px-5 py-3 admin-table-actions">操作</th>
             </tr>
           </thead>
@@ -145,17 +144,6 @@
                   {{ row.visibilityText || visibilityText(row.visibility) }}
                 </span>
               </td>
-              <td class="px-4 py-4">
-                <button
-                  v-if="row.reportCount"
-                  type="button"
-                  class="whitespace-nowrap text-xs font-semibold text-rose-600 underline-offset-2 hover:underline"
-                  @click="openReports(row)"
-                >
-                  {{ row.pendingReportCount || 0 }} 待处理 / {{ row.reportCount }} 总
-                </button>
-                <span v-else class="text-xs text-slate-400">无</span>
-              </td>
               <td class="whitespace-nowrap px-5 py-4 admin-table-actions">
                 <div class="admin-table-action-group admin-table-action-group--content">
                   <button
@@ -169,31 +157,34 @@
                     v-if="canModerate && !row.deleted && contentType !== 'message' && row.visibility !== 2"
                     type="button"
                     class="admin-table-action text-amber-600 hover:bg-amber-50"
+                    :disabled="processing"
                     @click="moderate(row, 2)"
                   >
-                    <Hide class="h-3.5 w-3.5" aria-hidden="true" />隐藏
+                    <Hide class="h-3.5 w-3.5" aria-hidden="true" />{{ processing ? '处理中…' : '隐藏' }}
                   </button>
                   <button
                     v-if="canModerate && !row.deleted && contentType !== 'message' && row.visibility === 2"
                     type="button"
                     class="admin-table-action text-emerald-600 hover:bg-emerald-50"
+                    :disabled="processing"
                     @click="moderate(row, 0)"
                   >
-                    <RefreshLeft class="h-3.5 w-3.5" aria-hidden="true" />恢复展示
+                    <RefreshLeft class="h-3.5 w-3.5" aria-hidden="true" />{{ processing ? '处理中…' : '恢复展示' }}
                   </button>
                   <button
                     v-if="canDelete && !row.deleted"
                     type="button"
                     class="admin-table-action text-rose-600 hover:bg-rose-50"
+                    :disabled="processing"
                     @click="removeContent(row)"
                   >
-                    <Delete class="h-3.5 w-3.5" aria-hidden="true" />删除
+                    <Delete class="h-3.5 w-3.5" aria-hidden="true" />{{ processing ? '处理中…' : '删除' }}
                   </button>
                 </div>
               </td>
             </tr>
             <tr v-if="!rows.length">
-              <td :colspan="contentType === 'message' ? 6 : 7" class="px-6 py-16 text-center text-sm text-slate-400">
+              <td :colspan="contentType === 'message' ? 4 : 5" class="px-6 py-16 text-center text-sm text-slate-400">
                 {{ canCrossSpace || filters.spaceId ? '暂无符合条件的内容' : '请选择空间后查询' }}
               </td>
             </tr>
@@ -211,7 +202,7 @@
       </div>
     </section>
 
-    <el-drawer v-model="detailVisible" :title="`${contentTypeLabel}详情`" size="min(680px, 94vw)" class="admin-dialog-surface" destroy-on-close>
+    <el-drawer v-model="detailVisible" :title="`${contentTypeLabel}详情`" size="min(680px, calc(100vw - 24px))" class="admin-drawer admin-dialog-surface" modal-class="admin-modal-overlay" append-to-body destroy-on-close>
       <div v-if="detail" class="space-y-5 text-sm">
         <section class="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
           <div class="grid gap-3 sm:grid-cols-2">
@@ -238,21 +229,6 @@
             <img v-for="(image, index) in detail.images" :key="index" :src="image.url" alt="" class="h-16 w-16 rounded-lg object-cover ring-1 ring-slate-100">
           </div>
         </section>
-
-        <section class="rounded-xl border border-slate-200 p-4">
-          <h3 class="text-xs font-semibold text-slate-700">关联举报</h3>
-          <p v-if="!detail.reports?.length" class="mt-2 text-xs text-slate-400">暂无举报记录</p>
-          <ul v-else class="mt-2 space-y-2">
-            <li v-for="report in detail.reports" :key="report.reportId" class="rounded-lg bg-slate-50 px-3 py-2 text-xs">
-              <div class="flex flex-wrap items-center justify-between gap-2">
-                <span class="font-medium text-slate-700">{{ report.reporterName }} · {{ report.reporterAmourId || '-' }}</span>
-                <span class="rounded-full bg-white px-2 py-0.5 font-semibold text-slate-500">{{ report.statusText }}</span>
-              </div>
-              <p class="mt-1 whitespace-pre-wrap break-words text-slate-500">{{ report.reason }}</p>
-              <p class="mt-1 text-[10px] text-slate-400">{{ report.createTime }}</p>
-            </li>
-          </ul>
-        </section>
       </div>
       <div v-else class="py-16 text-center text-sm text-slate-400">详情加载中…</div>
     </el-drawer>
@@ -267,6 +243,12 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { fetchAdminContentDetail, fetchAdminContentPage, deleteAdminContent, moderateAdminContentVisibility } from '@/api/admin/content'
 import { fetchAdminSpacePage } from '@/api/admin/space'
 import { hasAdminPermission, ADMIN_PERMISSIONS } from '@/utils/adminAuth'
+import {
+  ADMIN_DANGER_CONFIRM_BUTTON_CLASS,
+  ADMIN_MODAL_OVERLAY_CLASS,
+  ADMIN_REASON_MAX_LENGTH,
+  validateAdminReason,
+} from '@/utils/adminPrompt'
 import { ADMIN_MESSAGE_BOX_CLASS } from '@/utils/adminRestore'
 
 const route = useRoute()
@@ -300,6 +282,7 @@ const spaceOptions = ref([])
 const spaceOptionsLoaded = ref(false)
 const detailVisible = ref(false)
 const detail = ref(null)
+const processing = ref(false)
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
 
@@ -395,27 +378,38 @@ async function openDetail(row) {
   }
 }
 
-async function moderate(row, visibility) {
-  const actionLabel = visibility === 2 ? '隐藏' : '恢复展示（仅空间成员可见）'
-  let reason
+async function promptReason(message, title, confirmButtonText) {
   try {
-    const result = await ElMessageBox.prompt(
-      visibility === 2
-        ? '隐藏后该内容不会出现在恋爱广场，也不会显示给空间成员。请填写操作原因。'
-        : '恢复后内容仅对空间成员可见；如需再次公开，请由空间成员在用户端编辑。请填写操作原因。',
-      actionLabel,
-      {
-        confirmButtonText: '确认',
-        cancelButtonText: '取消',
-        customClass: ADMIN_MESSAGE_BOX_CLASS,
-        inputPlaceholder: '请填写原因（必填）',
-        inputValidator: value => (String(value || '').trim().length > 0 ? true : '请填写操作原因'),
-      },
-    )
-    reason = result.value
+    const result = await ElMessageBox.prompt(message, title, {
+      confirmButtonText,
+      cancelButtonText: '取消',
+      inputType: 'textarea',
+      inputPlaceholder: `必填，最多 ${ADMIN_REASON_MAX_LENGTH} 字`,
+      inputValidator: validateAdminReason,
+      customClass: ADMIN_MESSAGE_BOX_CLASS,
+      modalClass: ADMIN_MODAL_OVERLAY_CLASS,
+      confirmButtonClass: ADMIN_DANGER_CONFIRM_BUTTON_CLASS,
+      distinguishCancelAndClose: true,
+    })
+    const reason = String(result.value || '').trim()
+    return reason || null
   } catch {
-    return
+    return null
   }
+}
+
+async function moderate(row, visibility) {
+  if (processing.value) return
+  const actionLabel = visibility === 2 ? '隐藏内容' : '恢复展示'
+  const reason = await promptReason(
+    visibility === 2
+      ? '隐藏后该内容不会出现在恋爱广场，也不会显示给空间成员。\n本次操作会写入审计记录，请填写原因。'
+      : '恢复后内容仅对空间成员可见；如需再次公开，请由空间成员在用户端编辑。\n本次操作会写入审计记录，请填写原因。',
+    actionLabel,
+    visibility === 2 ? '确认隐藏' : '确认恢复',
+  )
+  if (!reason) return
+  processing.value = true
   try {
     const { data } = await moderateAdminContentVisibility({
       contentType: row.contentType,
@@ -429,27 +423,20 @@ async function moderate(row, visibility) {
     await load()
   } catch (e) {
     ElMessage.error(e.response?.data?.message || e.message || '操作失败')
+  } finally {
+    processing.value = false
   }
 }
 
 async function removeContent(row) {
-  let reason
-  try {
-    const result = await ElMessageBox.prompt(
-      '删除为逻辑删除，内容仍保留用于审计，但不会再出现在用户端。请填写删除原因。',
-      '删除内容',
-      {
-        confirmButtonText: '确认删除',
-        cancelButtonText: '取消',
-        customClass: ADMIN_MESSAGE_BOX_CLASS,
-        inputPlaceholder: '请填写原因（必填）',
-        inputValidator: value => (String(value || '').trim().length > 0 ? true : '请填写删除原因'),
-      },
-    )
-    reason = result.value
-  } catch {
-    return
-  }
+  if (processing.value) return
+  const reason = await promptReason(
+    '删除为逻辑删除，内容仍保留用于审计，但不会再出现在用户端。\n本次操作会写入审计记录，请填写删除原因。',
+    '删除内容',
+    '确认删除',
+  )
+  if (!reason) return
+  processing.value = true
   try {
     const { data } = await deleteAdminContent({
       contentType: row.contentType,
@@ -462,15 +449,9 @@ async function removeContent(row) {
     await load()
   } catch (e) {
     ElMessage.error(e.response?.data?.message || e.message || '删除失败')
+  } finally {
+    processing.value = false
   }
-}
-
-function openReports(row) {
-  if (!hasAdminPermission(ADMIN_PERMISSIONS.REPORT_QUERY)) return
-  router.push({
-    path: '/admin/report',
-    query: { spaceId: row.spaceId, contentType: row.contentType },
-  })
 }
 
 watch(current, load)

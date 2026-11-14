@@ -68,6 +68,19 @@ public interface StoryNodeMapper extends BaseMapper<StoryNodeDO> {
                 .eq(StoryNodeDO::getIsDeleted, false));
     }
 
+    /**
+     * 审核通过前占用内容版本：版本不一致时返回 0，调用方必须拒绝本次审核。
+     */
+    default int claimRevision(Long spaceId, Long id, int expectedRevision, LocalDateTime now) {
+        return update(null, new LambdaUpdateWrapper<StoryNodeDO>()
+                .eq(StoryNodeDO::getSpaceId, spaceId)
+                .eq(StoryNodeDO::getId, id)
+                .eq(StoryNodeDO::getIsDeleted, false)
+                .eq(StoryNodeDO::getRevision, expectedRevision)
+                .setSql("revision = revision + 1")
+                .set(StoryNodeDO::getUpdateTime, now));
+    }
+
     default int insertStoryNode(StoryNodeDO node) {
         return insert(node);
     }
@@ -102,7 +115,8 @@ public interface StoryNodeMapper extends BaseMapper<StoryNodeDO> {
         return update(node, new LambdaUpdateWrapper<StoryNodeDO>()
                 .eq(StoryNodeDO::getId, node.getId())
                 .eq(StoryNodeDO::getSpaceId, node.getSpaceId())
-                .eq(StoryNodeDO::getIsDeleted, false));
+                .eq(StoryNodeDO::getIsDeleted, false)
+                .setSql("revision = revision + 1"));
     }
 
     default List<StoryNodeDO> selectMilestones(Long spaceId) {

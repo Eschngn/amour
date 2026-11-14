@@ -45,6 +45,26 @@ public class StoryNodeManageVO {
 
     private Integer visibility;
 
+    /**
+     * 公开审核状态：PENDING / REJECTED / PUBLISHED / UNPUBLISHED；不需要审核时为空。
+     */
+    private String reviewStatus;
+
+    /**
+     * 审核未通过时的项级原因。
+     */
+    private String reviewRejectReason;
+
+    /**
+     * 项级审核处理时间。
+     */
+    private LocalDateTime reviewHandledAt;
+
+    /**
+     * 恋爱广场当前是否仍展示该内容上一次通过的版本。
+     */
+    private Boolean reviewHasPublishedVersion;
+
     private List<ImageVO> images;
 
     @Data

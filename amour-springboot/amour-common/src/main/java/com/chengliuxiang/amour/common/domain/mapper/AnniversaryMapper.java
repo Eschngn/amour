@@ -69,6 +69,19 @@ public interface AnniversaryMapper extends BaseMapper<AnniversaryDO> {
                 .eq(AnniversaryDO::getIsDeleted, false));
     }
 
+    /**
+     * 审核通过前占用纪念日版本：版本不一致时返回 0，调用方必须拒绝本次审核。
+     */
+    default int claimRevision(Long spaceId, Long id, int expectedRevision, LocalDateTime now) {
+        return update(null, new LambdaUpdateWrapper<AnniversaryDO>()
+                .eq(AnniversaryDO::getSpaceId, spaceId)
+                .eq(AnniversaryDO::getId, id)
+                .eq(AnniversaryDO::getIsDeleted, false)
+                .eq(AnniversaryDO::getRevision, expectedRevision)
+                .setSql("revision = revision + 1")
+                .set(AnniversaryDO::getUpdateTime, now));
+    }
+
     default int insertAnniversary(AnniversaryDO anniversary) {
         return insert(anniversary);
     }
@@ -76,7 +89,8 @@ public interface AnniversaryMapper extends BaseMapper<AnniversaryDO> {
     default int updateAnniversary(AnniversaryDO anniversary) {
         return update(anniversary, new LambdaUpdateWrapper<AnniversaryDO>()
                 .eq(AnniversaryDO::getId, anniversary.getId())
-                .eq(AnniversaryDO::getSpaceId, anniversary.getSpaceId()));
+                .eq(AnniversaryDO::getSpaceId, anniversary.getSpaceId())
+                .setSql("revision = revision + 1"));
     }
 
     /**

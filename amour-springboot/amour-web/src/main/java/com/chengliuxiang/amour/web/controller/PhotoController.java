@@ -11,6 +11,7 @@ import com.chengliuxiang.amour.web.model.vo.photo.PhotoManageItemVO;
 import com.chengliuxiang.amour.web.model.vo.photo.PhotoManagePageQueryReqVO;
 import com.chengliuxiang.amour.web.model.vo.photo.PhotoPageItemVO;
 import com.chengliuxiang.amour.web.model.vo.photo.PhotoPageQueryReqVO;
+import com.chengliuxiang.amour.web.model.vo.space.SpaceContentSaveResultVO;
 import com.chengliuxiang.amour.web.model.vo.photo.PhotoSaveReqVO;
 import com.chengliuxiang.amour.web.service.PhotoService;
 import com.chengliuxiang.amour.web.service.SpacePhotoManageService;
@@ -81,7 +82,7 @@ public class PhotoController {
 
     @PostMapping("/manage/photo/save")
     @ApiOperationLog(description = "新增或编辑空间相册照片")
-    public Response<Long> savePhoto(@Valid @RequestBody PhotoSaveReqVO reqVO) {
+    public Response<SpaceContentSaveResultVO> savePhoto(@Valid @RequestBody PhotoSaveReqVO reqVO) {
         return spacePhotoManageService.savePhoto(reqVO);
     }
 

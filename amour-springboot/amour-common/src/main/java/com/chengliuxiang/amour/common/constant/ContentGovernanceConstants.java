@@ -21,13 +21,6 @@ public final class ContentGovernanceConstants {
     private ContentGovernanceConstants() {
     }
 
-    public static boolean isSupportedReportType(String contentType) {
-        return TYPE_SPACE.equals(contentType)
-                || TYPE_STORY.equals(contentType)
-                || TYPE_PHOTO.equals(contentType)
-                || TYPE_ANNIVERSARY.equals(contentType);
-    }
-
     public static boolean isSupportedContentType(String contentType) {
         return TYPE_STORY.equals(contentType)
                 || TYPE_PHOTO.equals(contentType)

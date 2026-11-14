@@ -40,7 +40,10 @@ public class AdminAuditLogDO {
 
     private Long targetUserId;
 
-    private Long targetReportId;
+    /**
+     * 空间公开审核提交 ID，仅审核相关动作写入。
+     */
+    private Long targetReviewId;
 
     private String reason;
 

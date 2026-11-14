@@ -28,12 +28,14 @@ import com.chengliuxiang.amour.web.model.vo.space.InvitationTokenReqVO;
 import com.chengliuxiang.amour.web.model.vo.space.InvitationVO;
 import com.chengliuxiang.amour.web.model.vo.space.RestoreConfirmVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceMemberVO;
+import com.chengliuxiang.amour.web.model.vo.space.SpaceReviewStatusVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceStatusVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceUnbindRequesterVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceVisibilityReqVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceVisibilityVO;
 import com.chengliuxiang.amour.web.model.vo.space.UnbindStatusVO;
 import com.chengliuxiang.amour.web.model.vo.space.UpdateSpaceReqVO;
+import com.chengliuxiang.amour.web.service.SpaceReviewService;
 import com.chengliuxiang.amour.web.service.SpaceService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -120,6 +122,8 @@ public class SpaceServiceImpl implements SpaceService {
     @Resource
     private UserMapper userMapper;
     @Resource
+    private SpaceReviewService spaceReviewService;
+    @Resource
     private PlatformTransactionManager transactionManager;
 
     private TransactionTemplate transactionTemplate;
@@ -171,6 +175,7 @@ public class SpaceServiceImpl implements SpaceService {
                 .visibility(0)
                 .loveStartTime(reqVO.getLoveStartTime())
                 .createdBy(userId)
+                .revision(0)
                 .createTime(now)
                 .updateTime(now)
                 .build();
@@ -546,6 +551,8 @@ public class SpaceServiceImpl implements SpaceService {
         restoreConfirmMapper.deleteBySpaceId(spaceId);
         // 生命周期状态变化后，旧的解绑申请失效，只保留历史记录。
         unbindRequestMapper.cancelPendingBySpaceId(spaceId, userId, now);
+        // 冻结后不再处理公开审核，撤回待审核提交，避免管理员审核已冻结空间。
+        spaceReviewService.withdrawPending(spaceId, userId, "空间已冻结");
         return Response.success();
     }
 
@@ -737,6 +744,7 @@ public class SpaceServiceImpl implements SpaceService {
         coupleInvitationMapper.revokePendingBySpaceId(spaceId, now);
         restoreConfirmMapper.deleteBySpaceId(spaceId);
         unbindRequestMapper.cancelPendingBySpaceId(spaceId, userId, now);
+        spaceReviewService.withdrawPending(spaceId, userId, "情侣空间已解绑");
 
         CoupleSpaceUnbindRequestDO latest = unbindRequestMapper.findById(pending.getId());
         return Response.success(buildUnbindStatus(spaceId, latest, userId));
@@ -851,20 +859,16 @@ public class SpaceServiceImpl implements SpaceService {
                 throw new BizException(ResponseCodeEnum.SPACE_NOT_TWO_MEMBERS);
             }
 
-            // 首次公开写入 publicAt；已经公开过的空间只重复设置 visibility=1，保留首次公开时间。
-            int published = coupleSpaceMapper.publishWithFirstPublicAt(spaceId, now);
-            if (published == 0) {
-                int republished = coupleSpaceMapper.updateVisibility(spaceId, SPACE_VISIBILITY_PUBLIC, now);
-                if (republished == 0) {
-                    throw new BizException(ResponseCodeEnum.SPACE_STATUS_NOT_ALLOWED);
-                }
-            }
+            // 首次公开、重新公开都不再直接写 visibility，而是生成完整公开快照等待审核。
+            // 审核通过前空间保持私密，恋爱广场不可见。
+            spaceReviewService.submitSpacePublish(spaceId, userId);
         } else {
-            // 隐藏幂等：冻结/归档本来就强制私密，显式设为 0 也不改变 status/archivedAt。
+            // 取消公开属于缩小公开范围：立即生效，并撤回待审核提交。
             int hidden = coupleSpaceMapper.updateVisibility(spaceId, SPACE_VISIBILITY_PRIVATE, now);
             if (hidden == 0) {
                 throw new BizException(ResponseCodeEnum.SPACE_STATUS_NOT_ALLOWED);
             }
+            spaceReviewService.withdrawPending(spaceId, userId, "用户取消公开");
         }
 
         CoupleSpaceDO latest = coupleSpaceMapper.findById(spaceId);
@@ -1165,6 +1169,7 @@ public class SpaceServiceImpl implements SpaceService {
 
     private SpaceVisibilityVO buildVisibilityVO(CoupleSpaceDO space) {
         Long activeCount = coupleMemberMapper.countActiveBySpaceId(space.getId());
+        SpaceReviewStatusVO review = spaceReviewService.getStatusForSpace(space.getId());
         return SpaceVisibilityVO.builder()
                 .spaceId(space.getId())
                 .status(space.getStatus())
@@ -1172,6 +1177,9 @@ public class SpaceServiceImpl implements SpaceService {
                 .visibility(space.getVisibility())
                 .publicAt(space.getPublicAt())
                 .canSetVisibility(canSetVisibility(space, activeCount == null ? 0 : activeCount.intValue()))
+                .reviewPending(Boolean.TRUE.equals(review.getPending()))
+                .reviewMessage(review.getMessage())
+                .pendingItemCount(review.getPendingItemCount())
                 .build();
     }
 

@@ -31,8 +31,6 @@ public class FindPhotoPageListRspVO {
     private Boolean deleted;
     private String authorAmourId;
     private String authorName;
-    private Long reportCount;
-    private Long pendingReportCount;
     /**
      * @deprecated 请使用 visibility
      */

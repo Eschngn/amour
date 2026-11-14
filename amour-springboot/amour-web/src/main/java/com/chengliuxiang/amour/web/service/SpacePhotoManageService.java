@@ -9,6 +9,7 @@ import com.chengliuxiang.amour.web.model.vo.photo.PhotoIdReqVO;
 import com.chengliuxiang.amour.web.model.vo.photo.PhotoManageItemVO;
 import com.chengliuxiang.amour.web.model.vo.photo.PhotoManagePageQueryReqVO;
 import com.chengliuxiang.amour.web.model.vo.photo.PhotoSaveReqVO;
+import com.chengliuxiang.amour.web.model.vo.space.SpaceContentSaveResultVO;
 
 import java.util.List;
 
@@ -22,7 +23,7 @@ public interface SpacePhotoManageService {
 
     Response<PageResult<PhotoManageItemVO>> pagePhotos(PhotoManagePageQueryReqVO reqVO);
 
-    Response<Long> savePhoto(PhotoSaveReqVO reqVO);
+    Response<SpaceContentSaveResultVO> savePhoto(PhotoSaveReqVO reqVO);
 
     Response<Void> deletePhoto(PhotoIdReqVO reqVO);
 }

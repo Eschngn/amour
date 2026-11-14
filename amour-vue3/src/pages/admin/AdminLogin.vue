@@ -20,7 +20,7 @@
             </div>
             <p class="mt-20 text-xs font-semibold uppercase tracking-[0.24em] text-rose-700">Admin Console</p>
             <h2 class="mt-4 max-w-[22rem] text-3xl font-semibold leading-snug tracking-tight text-stone-900">让每一段被分享的故事，<br>都被认真守护。</h2>
-            <p class="mt-5 max-w-sm text-sm leading-7 text-stone-600">在这里查看情侣空间状态、处理内容举报，并在必要时留痕处置违规内容。</p>
+            <p class="mt-5 max-w-sm text-sm leading-7 text-stone-600">在这里查看情侣空间状态、审核公开内容，并在必要时留痕处置违规内容。</p>
           </div>
           <div class="flex items-center gap-2 text-xs text-stone-500">
             <span class="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true" />
@@ -47,7 +47,7 @@
             <div class="mt-8 lg:mt-5">
               <p class="text-[11px] font-semibold tracking-[0.18em] text-rose-700">管理员登录</p>
               <h1 class="mt-3 text-2xl font-semibold tracking-tight text-stone-900 sm:text-3xl">欢迎回到管理后台</h1>
-              <p class="mt-2 text-sm leading-6 text-stone-500">登录后查看空间状态、内容举报与治理记录。</p>
+              <p class="mt-2 text-sm leading-6 text-stone-500">登录后查看空间状态、公开审核与治理记录。</p>
             </div>
             <p v-if="sessionExpired" class="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-sm text-amber-800" role="alert">
               登录已过期，请重新登录。

@@ -39,6 +39,4 @@ public class AdminSpaceContentItemVO {
     private String createTime;
 
     private String updateTime;
-
-    private Long pendingReportCount;
 }

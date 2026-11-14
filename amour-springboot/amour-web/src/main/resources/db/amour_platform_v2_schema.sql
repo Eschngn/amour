@@ -61,6 +61,8 @@ CREATE TABLE `couple_space` (
     `deleted_at` TEXT DEFAULT NULL,
     -- 空间创建者用户ID
     `created_by` INTEGER NOT NULL,
+    -- 空间工作版本号：空间基础信息/主页配置保存成功后递增，用于审核并发校验
+    `revision` INTEGER NOT NULL DEFAULT 0,
     -- 创建时间
     `create_time` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     -- 最后更新时间，由应用在更新时维护
@@ -193,6 +195,8 @@ CREATE TABLE `couple_space_config` (
     `value_type` TEXT NOT NULL DEFAULT 'text',
     -- 首次创建配置的用户ID
     `created_by` INTEGER NOT NULL,
+    -- 配置工作版本号，每次保存成功后递增
+    `revision` INTEGER NOT NULL DEFAULT 0,
     -- 创建时间
     `create_time` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     -- 最后更新时间，由应用在更新时维护
@@ -260,6 +264,8 @@ CREATE TABLE `story_node` (
     `created_by` INTEGER NOT NULL,
     -- 最后修改者用户ID
     `updated_by` INTEGER DEFAULT NULL,
+    -- 内容工作版本号，每次保存成功后递增，用于审核并发校验
+    `revision` INTEGER NOT NULL DEFAULT 0,
     -- 创建时间
     `create_time` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     -- 最后更新时间，由应用在更新时维护
@@ -344,6 +350,8 @@ CREATE TABLE `photo` (
     `created_by` INTEGER NOT NULL,
     -- 最后修改者用户ID
     `updated_by` INTEGER DEFAULT NULL,
+    -- 内容工作版本号，每次保存成功后递增，用于审核并发校验
+    `revision` INTEGER NOT NULL DEFAULT 0,
     -- 上传时间
     `create_time` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     -- 最后更新时间，由应用在更新时维护
@@ -382,6 +390,8 @@ CREATE TABLE `anniversary` (
     `created_by` INTEGER NOT NULL,
     -- 最后修改者用户ID
     `updated_by` INTEGER DEFAULT NULL,
+    -- 内容工作版本号，每次保存成功后递增，用于审核并发校验
+    `revision` INTEGER NOT NULL DEFAULT 0,
     -- 创建时间
     `create_time` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     -- 最后更新时间，由应用在更新时维护
@@ -436,51 +446,104 @@ CREATE INDEX `idx_message_reply_space_message_time` ON `message_reply` (`space_i
 CREATE INDEX `idx_message_reply_parent` ON `message_reply` (`parent_reply_id`);
 CREATE INDEX `idx_message_reply_from_user` ON `message_reply` (`from_user_id`);
 
-CREATE TABLE `content_report` (
-    -- 内容举报主键ID
+-- 情侣空间公开审核提交。一次保存可以包含多个审核项。
+-- PENDING 时 pending_flag=1；唯一索引保证同一空间最多只有一条待审核提交（其它状态为 NULL）。
+CREATE TABLE `space_review_submission` (
+    -- 审核提交主键ID
     `id` INTEGER PRIMARY KEY AUTOINCREMENT,
-    -- 举报用户ID
-    `reporter_user_id` INTEGER NOT NULL,
-    -- 被举报内容所属情侣空间ID
+    -- 情侣空间ID
     `space_id` INTEGER NOT NULL,
-    -- 被举报类型：space/story/photo/anniversary
-    `content_type` TEXT NOT NULL,
-    -- 被举报内容ID
-    `content_id` INTEGER NOT NULL,
-    -- 举报原因
-    `reason` TEXT NOT NULL,
-    -- 处理状态：0-待处理 1-已处理 2-已驳回
-    `status` INTEGER NOT NULL DEFAULT 0,
-    -- 处理举报的平台管理员用户ID
-    `processed_by` INTEGER DEFAULT NULL,
+    -- 提交人用户ID
+    `submitted_by` INTEGER NOT NULL,
+    -- 审核状态：PENDING/APPROVED/REJECTED/WITHDRAWN/SUPERSEDED
+    `status` TEXT NOT NULL DEFAULT 'PENDING',
+    -- 审核类型：FIRST_PUBLISH/CONTENT_UPDATE/REPUBLISH
+    `review_type` TEXT NOT NULL DEFAULT 'CONTENT_UPDATE',
+    -- 提交时的工作版本号
+    `base_revision` INTEGER NOT NULL DEFAULT 0,
+    -- 待审核标记：PENDING=1，其它状态为 NULL
+    `pending_flag` INTEGER DEFAULT NULL,
+    -- 变更摘要
+    `change_summary` TEXT NOT NULL DEFAULT '',
+    -- 处理管理员用户ID
+    `handled_by` INTEGER DEFAULT NULL,
     -- 处理时间
-    `processed_at` TEXT DEFAULT NULL,
-    -- 举报时间
+    `handled_at` TEXT DEFAULT NULL,
+    -- 驳回原因，会展示给空间成员
+    `reject_reason` TEXT NOT NULL DEFAULT '',
+    -- 提交时间
     `create_time` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    -- 最后更新时间，由应用在更新时维护
+    -- 最后更新时间
     `update_time` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX `idx_content_report_status_time` ON `content_report` (`status`, `create_time`);
-CREATE INDEX `idx_content_report_target` ON `content_report` (`content_type`, `content_id`);
-CREATE INDEX `idx_content_report_reporter` ON `content_report` (`reporter_user_id`, `create_time`);
+CREATE UNIQUE INDEX `uk_space_review_submission_pending` ON `space_review_submission` (`space_id`, `pending_flag`);
+CREATE INDEX `idx_space_review_submission_status_time` ON `space_review_submission` (`status`, `create_time`);
+CREATE INDEX `idx_space_review_submission_space_time` ON `space_review_submission` (`space_id`, `create_time`);
 
--- 举报处理备注；与 content_report 分表保存，避免对既有表做不可重复执行的 ALTER。
-CREATE TABLE `content_report_handle` (
-    -- 举报处理记录主键ID
+-- 审核项：SPACE/HOME_CONFIG 的 item_id 固定为 0，内容项为对应表主键。
+CREATE TABLE `space_review_item` (
+    -- 审核项主键ID
     `id` INTEGER PRIMARY KEY AUTOINCREMENT,
-    -- 被处理的举报ID
-    `report_id` INTEGER NOT NULL,
-    -- 处理管理员用户ID
-    `admin_user_id` INTEGER NOT NULL,
-    -- 处理动作：reject-驳回 confirm-确认违规
-    `action` TEXT NOT NULL,
-    -- 处理备注，必填
-    `note` TEXT NOT NULL,
-    -- 处理时间
-    `create_time` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    -- 所属审核提交ID
+    `submission_id` INTEGER NOT NULL,
+    -- 情侣空间ID
+    `space_id` INTEGER NOT NULL,
+    -- 审核项类型：SPACE/HOME_CONFIG/STORY/PHOTO/ANNIVERSARY
+    `item_type` TEXT NOT NULL,
+    -- 目标内容ID；空间级审核项为 0
+    `item_id` INTEGER NOT NULL DEFAULT 0,
+    -- 动作：FIRST_PUBLISH/CREATE/UPDATE/REPUBLISH
+    `action` TEXT NOT NULL DEFAULT 'CREATE',
+    -- 生成快照时的工作版本号
+    `base_revision` INTEGER NOT NULL DEFAULT 0,
+    -- 完整公开快照 JSON
+    `snapshot_json` TEXT NOT NULL DEFAULT '',
+    -- 审核项状态：PENDING/APPROVED/REJECTED/WITHDRAWN/SUPERSEDED
+    `item_status` TEXT NOT NULL DEFAULT 'PENDING',
+    -- 项级驳回原因，只对该审核项生效
+    `reject_reason` TEXT NOT NULL DEFAULT '',
+    -- 处理该审核项的管理员用户ID
+    `handled_by` INTEGER DEFAULT NULL,
+    -- 项级处理时间
+    `handled_at` TEXT DEFAULT NULL,
+    -- 创建时间
+    `create_time` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- 最后更新时间
+    `update_time` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-CREATE UNIQUE INDEX `uk_content_report_handle_report` ON `content_report_handle` (`report_id`);
-CREATE INDEX `idx_content_report_handle_admin_time` ON `content_report_handle` (`admin_user_id`, `create_time`);
+CREATE UNIQUE INDEX `uk_space_review_item_target` ON `space_review_item` (`submission_id`, `item_type`, `item_id`);
+CREATE INDEX `idx_space_review_item_space_status` ON `space_review_item` (`space_id`, `item_status`);
+CREATE INDEX `idx_space_review_item_submission` ON `space_review_item` (`submission_id`);
+
+-- 已审核并已发布的公开快照，恋爱广场唯一读取来源。
+CREATE TABLE `space_published_item` (
+    -- 已发布快照主键ID
+    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+    -- 情侣空间ID
+    `space_id` INTEGER NOT NULL,
+    -- 快照类型：SPACE/HOME_CONFIG/STORY/PHOTO/ANNIVERSARY
+    `item_type` TEXT NOT NULL,
+    -- 目标内容ID；空间级快照为 0
+    `item_id` INTEGER NOT NULL DEFAULT 0,
+    -- 发布时的工作版本号
+    `revision` INTEGER NOT NULL DEFAULT 0,
+    -- 完整公开快照 JSON
+    `snapshot_json` TEXT NOT NULL DEFAULT '',
+    -- 发布状态：1-已发布（广场可见） 0-已下架
+    `publish_status` INTEGER NOT NULL DEFAULT 1,
+    -- 最近一次发布时间
+    `published_at` TEXT DEFAULT NULL,
+    -- 下架时间
+    `unpublished_at` TEXT DEFAULT NULL,
+    -- 下架原因
+    `unpublish_reason` TEXT NOT NULL DEFAULT '',
+    -- 创建时间
+    `create_time` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- 最后更新时间
+    `update_time` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX `uk_space_published_item_target` ON `space_published_item` (`space_id`, `item_type`, `item_id`);
+CREATE INDEX `idx_space_published_item_space_status` ON `space_published_item` (`space_id`, `publish_status`);
 
 -- 后台管理操作审计。只记录元数据，不记录内容正文、密码、openid 或邀请明文 token。
 CREATE TABLE `admin_audit_log` (
@@ -488,9 +551,9 @@ CREATE TABLE `admin_audit_log` (
     `id` INTEGER PRIMARY KEY AUTOINCREMENT,
     -- 操作管理员用户ID
     `admin_user_id` INTEGER NOT NULL,
-    -- 动作标识，例如 SPACE_RESTORE / CONTENT_VISIBILITY / REPORT_PROCESS
+    -- 动作标识，例如 SPACE_REVIEW_APPROVE / CONTENT_VISIBILITY / SPACE_RESTORE
     `action` TEXT NOT NULL,
-    -- 目标类型：space/content/user/report/dict/admin
+    -- 目标类型：space/content/user/dict/admin
     `target_type` TEXT NOT NULL DEFAULT '',
     -- 目标空间ID
     `target_space_id` INTEGER DEFAULT NULL,
@@ -500,8 +563,8 @@ CREATE TABLE `admin_audit_log` (
     `target_content_id` INTEGER DEFAULT NULL,
     -- 目标用户ID
     `target_user_id` INTEGER DEFAULT NULL,
-    -- 目标举报ID
-    `target_report_id` INTEGER DEFAULT NULL,
+    -- 目标空间审核提交ID
+    `target_review_id` INTEGER DEFAULT NULL,
     -- 操作原因
     `reason` TEXT NOT NULL DEFAULT '',
     -- 执行结果：SUCCESS/FAILURE

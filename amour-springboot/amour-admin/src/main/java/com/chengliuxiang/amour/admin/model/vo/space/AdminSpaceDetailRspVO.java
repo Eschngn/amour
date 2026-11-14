@@ -82,4 +82,9 @@ public class AdminSpaceDetailRspVO {
     private AdminSpaceUnbindSummaryVO unbind;
 
     private AdminSpaceRestoreSummaryVO restore;
+
+    /**
+     * 当前公开审核摘要。
+     */
+    private AdminSpaceReviewSummaryVO review;
 }

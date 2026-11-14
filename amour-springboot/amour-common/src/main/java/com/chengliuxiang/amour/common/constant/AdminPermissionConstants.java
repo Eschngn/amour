@@ -23,8 +23,8 @@ public final class AdminPermissionConstants {
     public static final String CONTENT_MODERATE = "admin:content:moderate";
     public static final String CONTENT_DELETE = "admin:content:delete";
 
-    public static final String REPORT_QUERY = "admin:report:query";
-    public static final String REPORT_PROCESS = "admin:report:process";
+    public static final String SPACE_REVIEW_QUERY = "admin:space-review:query";
+    public static final String SPACE_REVIEW_PROCESS = "admin:space-review:process";
 
     public static final String USER_QUERY = "admin:user:query";
     public static final String USER_UPDATE = "admin:user:update";
@@ -65,7 +65,7 @@ public final class AdminPermissionConstants {
                     "admin:space:menu", SPACE_QUERY, SPACE_RESTORE,
                     "admin:content:menu", CONTENT_QUERY, CONTENT_CROSS_SPACE,
                     CONTENT_MODERATE, CONTENT_DELETE,
-                    "admin:report:menu", REPORT_QUERY, REPORT_PROCESS,
+                    "admin:space-review:menu", SPACE_REVIEW_QUERY, SPACE_REVIEW_PROCESS,
                     "admin:user:menu", USER_QUERY, USER_UPDATE, USER_DISABLE,
                     "admin:audit:menu", AUDIT_QUERY,
                     "admin:dict:menu", DICT_QUERY, DICT_UPDATE, DICT_DELETE,

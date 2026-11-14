@@ -89,11 +89,7 @@ public class AdminContentDetailRspVO {
 
     private Integer replyCount;
 
-    private Long pendingReportCount;
-
     private List<ImageVO> images;
-
-    private List<ReportBriefVO> reports;
 
     @Data
     @Builder
@@ -104,19 +100,5 @@ public class AdminContentDetailRspVO {
         private String url;
         private String altText;
         private Integer sortOrder;
-    }
-
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class ReportBriefVO {
-        private Long reportId;
-        private String reporterAmourId;
-        private String reporterName;
-        private String reason;
-        private Integer status;
-        private String statusText;
-        private String createTime;
     }
 }

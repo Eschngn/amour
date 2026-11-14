@@ -4,7 +4,7 @@
       <div class="admin-filter-bar">
         <div class="admin-filter-fields">
           <label class="admin-filter-field admin-filter-field--search">
-            <Search class="admin-search-icon" />
+            <Search class="admin-search-icon" aria-hidden="true" />
             <input
               v-model="filters.keyword"
               type="search"
@@ -54,7 +54,7 @@
             title="刷新空间列表"
             @click="load"
           >
-            <Refresh class="h-3.5 w-3.5" :class="{ 'animate-spin': loading }" />
+            <Refresh class="h-3.5 w-3.5" :class="{ 'animate-spin': loading }" aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -79,6 +79,7 @@
               <th class="px-4 py-3">成员</th>
               <th class="px-4 py-3">状态</th>
               <th class="px-4 py-3">公开</th>
+              <th class="px-4 py-3">公开审核</th>
               <th class="px-4 py-3">内容</th>
               <th class="px-6 py-3 admin-table-actions">操作</th>
             </tr>
@@ -114,12 +115,30 @@
                 </span>
               </td>
               <td class="whitespace-nowrap px-4 py-4">
+                <div v-if="row.review?.pending" class="space-y-1">
+                  <span class="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                    待审核 {{ row.review.pendingItemCount || 0 }} 项
+                  </span>
+                  <p class="text-[10px] text-slate-400">{{ row.review.reviewTypeText || '公开审核' }}</p>
+                </div>
+                <div v-else-if="row.review?.lastReviewStatus" class="space-y-1" :title="row.review.rejectReason || ''">
+                  <span
+                    class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                    :class="row.review.lastReviewStatus === 'APPROVED' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'"
+                  >
+                    {{ row.review.lastReviewStatusText }}
+                  </span>
+                  <p class="text-[10px] text-slate-400">{{ row.review.lastReviewAt || '-' }}</p>
+                </div>
+                <span v-else class="text-xs text-slate-400">暂无记录</span>
+              </td>
+              <td class="whitespace-nowrap px-4 py-4">
                 <p class="text-xs font-semibold text-slate-700" :title="contentBreakdown(row)">{{ row.contentCount ?? 0 }} 项</p>
               </td>
               <td class="whitespace-nowrap px-6 py-4 admin-table-actions">
                 <div class="admin-table-action-group admin-table-action-group--space">
                   <button type="button" class="admin-table-action text-slate-600 hover:bg-slate-100" @click="openDetail(row)">
-                    <View class="h-3.5 w-3.5" aria-hidden="true" /> 详情
+                    <View class="h-3.5 w-3.5" aria-hidden="true" />详情
                   </button>
                   <button
                     v-if="row.status === 5"
@@ -129,7 +148,7 @@
                     :title="row.restorable ? '' : row.restoreBlockReason"
                     @click="restore(row)"
                   >
-                    <CircleCheck class="h-3.5 w-3.5" aria-hidden="true" /> {{ restoringId === row.spaceId ? '恢复中…' : '人工恢复' }}
+                    <CircleCheck class="h-3.5 w-3.5" aria-hidden="true" />{{ restoringId === row.spaceId ? '恢复中…' : '人工恢复' }}
                   </button>
                 </div>
               </td>
@@ -147,7 +166,7 @@
       </div>
     </section>
 
-    <el-drawer v-model="detailVisible" title="空间详情" size="min(900px, 96vw)" class="admin-dialog-surface" destroy-on-close>
+    <el-drawer v-model="detailVisible" title="空间详情" size="min(900px, calc(100vw - 24px))" class="admin-drawer admin-dialog-surface" modal-class="admin-modal-overlay" append-to-body destroy-on-close>
       <div v-if="detailLoading" class="py-20 text-center text-sm text-slate-400">详情加载中…</div>
       <div v-else-if="detail" class="space-y-4">
         <section class="rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-50/70 to-white p-5">
@@ -168,7 +187,7 @@
               :disabled="restoringId !== null"
               @click="restoreDetail"
             >
-              <CircleCheck class="h-4 w-4" /> {{ restoringId === detail.spaceId ? '恢复中…' : '人工恢复' }}
+              <CircleCheck class="h-4 w-4" aria-hidden="true" />{{ restoringId === detail.spaceId ? '恢复中…' : '人工恢复' }}
             </button>
           </div>
           <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -188,6 +207,27 @@
               <div class="detail-card"><p class="detail-label">首次公开</p><p class="detail-value">{{ detail.publicAt || '-' }}</p></div>
               <div class="detail-card"><p class="detail-label">冻结/归档</p><p class="detail-value">{{ detail.archivedAt || '-' }}</p></div>
               <div class="detail-card"><p class="detail-label">解绑时间</p><p class="detail-value">{{ detail.deletedAt || '-' }}</p></div>
+            </div>
+            <div class="mt-4 rounded-xl border border-slate-200 p-4">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <h4 class="text-xs font-semibold text-slate-700">公开审核</h4>
+                <RouterLink
+                  v-if="hasSpaceReviewPermission"
+                  to="/admin/space-review"
+                  class="text-[11px] font-semibold text-rose-600 underline-offset-2 hover:underline"
+                >
+                  进入空间审核
+                </RouterLink>
+              </div>
+              <div v-if="detail.review?.pending" class="mt-2 text-xs leading-6 text-amber-700">
+                <p>待审核 {{ detail.review.pendingItemCount || 0 }} 项 · {{ detail.review.reviewTypeText }}</p>
+                <p class="text-slate-500">提交时间：{{ detail.review.lastReviewAt || detail.updateTime || '-' }}</p>
+              </div>
+              <div v-else-if="detail.review?.lastReviewStatus" class="mt-2 text-xs leading-6 text-slate-600">
+                <p>最近审核：{{ detail.review.lastReviewStatusText }} · {{ detail.review.lastReviewAt || '-' }}</p>
+                <p v-if="detail.review.rejectReason" class="text-rose-600">驳回原因：{{ detail.review.rejectReason }}</p>
+              </div>
+              <p v-else class="mt-2 text-xs text-slate-400">暂无公开审核记录</p>
             </div>
             <div class="mt-4 rounded-xl border border-slate-200 p-4">
               <h4 class="text-xs font-semibold text-slate-700">生命周期摘要</h4>
@@ -258,7 +298,6 @@
                     <span class="min-w-0 flex-1 truncate text-slate-700">{{ item.title || '未命名' }}</span>
                     <span class="rounded-full px-2 py-0.5 text-[10px]" :class="visibilityClass(item.visibility)">{{ item.visibilityText }}</span>
                     <span v-if="item.deleted" class="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] text-rose-500">已删除</span>
-                    <span v-if="item.pendingReportCount" class="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] text-amber-600">待处理举报 {{ item.pendingReportCount }}</span>
                     <span class="w-28 shrink-0 text-[10px] text-slate-400">{{ item.authorName }} · {{ item.updateTime }}</span>
                   </li>
                 </ul>
@@ -347,6 +386,7 @@ const activeTab = ref('overview')
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
 const hasContentPermission = computed(() => hasAdminPermission(ADMIN_PERMISSIONS.CONTENT_QUERY))
+const hasSpaceReviewPermission = computed(() => hasAdminPermission(ADMIN_PERMISSIONS.SPACE_REVIEW_QUERY))
 const detailCounts = computed(() => {
   if (!detail.value) return []
   return [
@@ -447,6 +487,8 @@ async function promptReason(row) {
       confirmButtonText: '确认恢复',
       cancelButtonText: '取消',
       customClass: ADMIN_RESTORE_MESSAGE_BOX_CLASS,
+      modalClass: 'admin-modal-overlay',
+      inputType: 'textarea',
       inputPlaceholder: '请填写恢复原因（必填）',
       inputValidator: value => (String(value || '').trim().length > 0 ? true : '请填写恢复原因'),
     })

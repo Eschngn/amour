@@ -7,6 +7,7 @@ import {
   buildRestoreSuccessMessage,
   groupRestoreConflicts,
 } from './adminRestore.js'
+import { ADMIN_REASON_MAX_LENGTH, validateAdminReason } from './adminPrompt.js'
 
 test('人工恢复弹窗使用后台专用 class，覆盖 append-to-body 的 MessageBox', () => {
   assert.equal(ADMIN_MESSAGE_BOX_CLASS, 'admin-message-box')
@@ -48,6 +49,15 @@ test('没有自动关闭冲突空间时使用普通成功提示', () => {
     buildRestoreSuccessMessage({ closedConflictSpaces: [] }),
     '情侣空间已恢复为正常且私密状态',
   )
+})
+
+test('后台原因校验与后端保持一致：trim 后必填且最多 500 字', () => {
+  assert.equal(ADMIN_REASON_MAX_LENGTH, 500)
+  assert.equal(validateAdminReason('   '), '请填写操作原因')
+  assert.equal(validateAdminReason('内容需要复核'), true)
+  assert.equal(validateAdminReason(' 内容需要复核 '), true)
+  assert.equal(validateAdminReason('长'.repeat(500)), true)
+  assert.equal(validateAdminReason('长'.repeat(501)), '操作原因不能超过 500 字')
 })
 
 test('冲突空间按是否可自动关闭分组', () => {

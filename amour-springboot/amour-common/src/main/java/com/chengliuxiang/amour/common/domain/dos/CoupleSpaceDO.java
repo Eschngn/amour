@@ -53,6 +53,12 @@ public class CoupleSpaceDO {
 
     private Long createdBy;
 
+    /**
+     * 空间工作版本号，每次空间基础信息或主页配置保存成功后递增。
+     * 审核通过时用于判断待审核快照是否仍是最新版本。
+     */
+    private Integer revision;
+
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;

@@ -74,7 +74,7 @@
           :disabled="loading"
           @click="load()"
         >
-          <Refresh class="h-3.5 w-3.5" :class="{ 'animate-spin': loading }" />
+          <Refresh class="h-3.5 w-3.5" :class="{ 'animate-spin': loading }" aria-hidden="true" />
         </button>
       </div>
     </div>

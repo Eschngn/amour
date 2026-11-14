@@ -197,6 +197,7 @@ public interface PhotoMapper extends BaseMapper<PhotoDO> {
                 .set(PhotoDO::getSortOrder, sortOrder)
                 .set(PhotoDO::getIsCover, cover)
                 .set(PhotoDO::getVisibility, visibility)
+                .setSql("revision = revision + 1")
                 .set(PhotoDO::getUpdateTime, updateTime));
     }
 
@@ -225,6 +226,19 @@ public interface PhotoMapper extends BaseMapper<PhotoDO> {
                 .eq(PhotoDO::getSpaceId, spaceId)
                 .eq(PhotoDO::getId, id)
                 .eq(PhotoDO::getIsDeleted, false));
+    }
+
+    /**
+     * 审核通过前占用照片版本：版本不一致时返回 0，调用方必须拒绝本次审核。
+     */
+    default int claimRevision(Long spaceId, Long id, int expectedRevision, LocalDateTime now) {
+        return update(null, new LambdaUpdateWrapper<PhotoDO>()
+                .eq(PhotoDO::getSpaceId, spaceId)
+                .eq(PhotoDO::getId, id)
+                .eq(PhotoDO::getIsDeleted, false)
+                .eq(PhotoDO::getRevision, expectedRevision)
+                .setSql("revision = revision + 1")
+                .set(PhotoDO::getUpdateTime, now));
     }
 
     default Long countActiveByCategoryId(Long spaceId, Long categoryId) {

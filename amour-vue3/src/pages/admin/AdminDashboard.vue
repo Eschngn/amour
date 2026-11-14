@@ -55,12 +55,15 @@
         <h2 class="text-sm font-semibold text-slate-900">待办与入口</h2>
         <div class="mt-4 space-y-2">
           <RouterLink
-            v-if="canReport"
-            to="/admin/report"
+            v-if="canSpaceReview"
+            to="/admin/space-review"
             class="flex items-center justify-between rounded-xl border border-rose-100 bg-rose-50/60 px-4 py-3 transition hover:bg-rose-50"
           >
             <span class="flex items-center gap-2 text-sm font-medium text-rose-700">
-              <Warning class="h-4 w-4" /> 待处理举报
+              <Document class="h-4 w-4" aria-hidden="true" />空间审核
+              <span v-if="summary.pendingReviewItemCount" class="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-rose-600">
+                {{ summary.pendingReviewItemCount }} 项待处理
+              </span>
             </span>
             <ArrowRight class="h-3.5 w-3.5 text-rose-300" />
           </RouterLink>
@@ -69,7 +72,7 @@
             to="/admin/story"
             class="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/70 px-4 py-3 text-sm text-slate-600 transition hover:bg-slate-100"
           >
-            <span class="flex items-center gap-2"><Files class="h-4 w-4 text-slate-400" /> 内容治理</span>
+            <span class="flex items-center gap-2"><Files class="h-4 w-4 text-slate-400" aria-hidden="true" />内容治理</span>
             <ArrowRight class="h-3.5 w-3.5 text-slate-300" />
           </RouterLink>
           <RouterLink
@@ -77,7 +80,7 @@
             to="/admin/audit"
             class="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/70 px-4 py-3 text-sm text-slate-600 transition hover:bg-slate-100"
           >
-            <span class="flex items-center gap-2"><Document class="h-4 w-4 text-slate-400" /> 操作审计</span>
+            <span class="flex items-center gap-2"><Document class="h-4 w-4 text-slate-400" aria-hidden="true" />操作审计</span>
             <ArrowRight class="h-3.5 w-3.5 text-slate-300" />
           </RouterLink>
         </div>
@@ -103,7 +106,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { ArrowRight, Connection, Document, Files, Lock, User, Warning } from '@element-plus/icons-vue'
+import { ArrowRight, Connection, Document, Files, Lock, User } from '@element-plus/icons-vue'
 import AdminActivityPanel from '@/components/admin/AdminActivityPanel.vue'
 import { fetchAdminDashboardSummary } from '@/api/admin/dashboard'
 import { ADMIN_PERMISSIONS, hasAdminPermission } from '@/utils/adminAuth'
@@ -112,13 +115,17 @@ const loading = ref(false)
 const error = ref('')
 const summary = reactive(defaultSummary())
 const canSpace = computed(() => hasAdminPermission(ADMIN_PERMISSIONS.SPACE_QUERY))
-const canReport = computed(() => hasAdminPermission(ADMIN_PERMISSIONS.REPORT_QUERY))
+const canSpaceReview = computed(() => hasAdminPermission(ADMIN_PERMISSIONS.SPACE_REVIEW_QUERY))
 const canContent = computed(() => hasAdminPermission(ADMIN_PERMISSIONS.CONTENT_QUERY))
 const canAudit = computed(() => hasAdminPermission(ADMIN_PERMISSIONS.AUDIT_QUERY))
 
 function defaultSummary() {
   return {
-    pendingReportCount: 0,
+    pendingSpaceReviewCount: 0,
+    pendingReviewItemCount: 0,
+    pendingContentReviewCount: 0,
+    recentRejectedReviewCount: 0,
+    recentUnpublishedCount: 0,
     totalSpaceCount: 0,
     waitingSpaceCount: 0,
     normalSpaceCount: 0,
@@ -135,10 +142,10 @@ function defaultSummary() {
 }
 
 const headlineCards = computed(() => [
-  { label: '待处理举报', value: summary.pendingReportCount, note: '需要审核队列', icon: Warning, tone: 'text-rose-500' },
+  { label: '待审核空间', value: summary.pendingSpaceReviewCount, note: '等待处理的公开提交', icon: Document, tone: 'text-rose-500' },
+  { label: '待审核内容', value: summary.pendingContentReviewCount, note: '故事、照片与纪念日', icon: Files, tone: 'text-amber-500' },
   { label: '空间总数', value: summary.totalSpaceCount, note: '含等待绑定/解绑历史', icon: Connection, tone: 'text-emerald-500' },
   { label: '公开空间', value: summary.publicSpaceCount, note: '恋爱广场可见', icon: Lock, tone: 'text-sky-500' },
-  { label: '未停用账号', value: summary.activeUserCount, note: '注册账号数，不是活跃访客数', icon: User, tone: 'text-indigo-500' },
 ])
 
 const spaceStatusItems = computed(() => [

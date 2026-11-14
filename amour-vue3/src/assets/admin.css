@@ -198,7 +198,12 @@
   white-space: nowrap;
 }
 
-.admin-main .admin-table-action-group {
+/*
+ * 操作按钮基础类不依赖 .admin-main：
+ * el-drawer / el-dialog 通过 append-to-body 挂到 body 后，按钮仍能保留
+ * inline-flex、图标间距、固定高度、disabled 与键盘焦点样式。
+ */
+.admin-table-action-group {
   display: inline-flex;
   flex-wrap: nowrap;
   align-items: center;
@@ -222,12 +227,12 @@
   min-width: 64px;
 }
 
-.admin-main .admin-table-action {
+.admin-table-action {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 6px;
   height: 30px;
   padding: 0 8px;
   border-radius: 7px;
@@ -239,12 +244,19 @@
   transition: background-color 160ms ease, color 160ms ease;
 }
 
-.admin-main .admin-table-action:disabled {
+.admin-table-action > svg,
+.admin-table-action__icon {
+  flex: 0 0 14px;
+  width: 14px;
+  height: 14px;
+}
+
+.admin-table-action:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
 
-.admin-main .admin-table-action:focus-visible {
+.admin-table-action:focus-visible {
   outline: 2px solid var(--admin-brand);
   outline-offset: 2px;
 }
@@ -334,6 +346,126 @@
   cursor: not-allowed;
   background-color: var(--admin-surface-sunken);
   color: var(--admin-text-muted);
+}
+
+/*
+ * 空间审核专用操作按钮。
+ *
+ * 审核抽屉 append-to-body 后不在 .admin-main 内，因此这里使用独立类，
+ * 不伪装成表格操作按钮，也不依赖 Element Plus 按钮的默认尺寸。
+ * 图标和文字始终是同一个 flex 按钮内的两个固定槽位，间距由 gap 保证。
+ */
+.admin-review-toolbar,
+.admin-review-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.admin-review-toolbar {
+  flex: 0 0 auto;
+}
+
+.admin-review-item-actions {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.admin-review-action {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.admin-review-action__icon {
+  flex: 0 0 14px;
+  width: 14px;
+  height: 14px;
+}
+
+.admin-review-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.admin-review-action:focus-visible {
+  outline: 2px solid var(--admin-brand);
+  outline-offset: 2px;
+}
+
+.admin-review-action--primary {
+  background: var(--admin-brand);
+  box-shadow: 0 8px 18px -14px rgba(190, 18, 60, 0.75);
+  color: #ffffff;
+}
+
+.admin-review-action--primary:hover:not(:disabled) {
+  background: var(--admin-brand-strong);
+}
+
+/* 驳回待审核变更：琥珀色警示，不与会修改公开数据的下架操作混淆。 */
+.admin-review-action--reject {
+  border-color: #fde68a;
+  background: #fffbeb;
+  color: #b45309;
+  min-width: 108px;
+}
+
+.admin-review-action--reject:hover:not(:disabled) {
+  border-color: #fcd34d;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* 暂停整个空间公开：玫瑰色描边，强调影响范围但保留可恢复语义。 */
+.admin-review-action--danger {
+  border-color: var(--admin-brand-soft-border);
+  background: var(--admin-brand-soft);
+  color: var(--admin-brand-strong);
+}
+
+.admin-review-action--danger:hover:not(:disabled) {
+  border-color: #fda4af;
+  background: #ffe4e6;
+  color: var(--admin-brand-deep);
+}
+
+/* 下架已公开内容：实心危险色，和“驳回待审核版本”明确区分。 */
+.admin-review-action--danger-solid {
+  background: var(--admin-brand-strong);
+  box-shadow: 0 10px 22px -16px rgba(159, 18, 57, 0.9);
+  color: #ffffff;
+  min-width: 128px;
+}
+
+.admin-review-action--danger-solid:hover:not(:disabled) {
+  background: var(--admin-brand-deep);
+}
+
+@media (max-width: 639px) {
+  .admin-review-toolbar {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .admin-review-action--danger-solid {
+    min-width: 0;
+  }
 }
 
 /*
@@ -593,23 +725,203 @@
 }
 
 /*
- * 后台 Messagebox（ElMessageBox.prompt / confirm）输入框。
+ * 后台弹层统一样式。
+ *
+ * el-dialog / el-drawer / ElMessageBox 都会挂载到 body，页面 scoped CSS 覆盖不到内部节点；
+ * 统一用 admin-* class 限定作用域，避免影响前台登录页与普通表单。
+ * Element Plus 自带递增 z-index（2000+），后台 header/sidebar 固定在 20/40，
+ * 因此遮罩必须保持完整覆盖，不能通过降低 header 层级来掩盖问题。
+ */
+body .el-overlay.admin-modal-overlay,
+body .el-overlay.admin-modal-overlay.is-message-box {
+  background-color: rgba(28, 25, 23, 0.42);
+  backdrop-filter: blur(6px);
+}
+
+/* Drawer：顶部标题完整、内容区独立滚动、移动端保留安全边距。 */
+.admin-drawer.el-drawer {
+  --el-drawer-padding-primary: 20px;
+  max-width: calc(100vw - 24px);
+  border-radius: 18px 0 0 18px;
+  box-shadow: -24px 0 64px -40px rgba(28, 25, 23, 0.55);
+  overflow: hidden;
+}
+
+.admin-drawer .el-drawer__header {
+  flex: 0 0 auto;
+  min-width: 0;
+  margin-bottom: 0;
+  padding: 18px 20px;
+  padding-top: max(18px, env(safe-area-inset-top));
+  border-bottom: 1px solid var(--admin-border);
+  color: var(--admin-text);
+  overflow: hidden;
+}
+
+.admin-drawer .el-drawer__title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--admin-text);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-drawer .el-drawer__close-btn {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-left: 12px;
+  border-radius: 10px;
+  color: var(--admin-text-muted);
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.admin-drawer .el-drawer__close-btn:hover {
+  background: var(--admin-nav-hover);
+  color: var(--admin-text);
+}
+
+.admin-drawer .el-drawer__close-btn:focus-visible {
+  outline: 2px solid var(--admin-brand);
+  outline-offset: 2px;
+}
+
+.admin-drawer .el-drawer__body {
+  min-height: 0;
+  padding: 20px;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Dialog：宽高不超出视口，正文可滚动，底部操作区固定可见。 */
+.admin-dialog.el-dialog {
+  --el-dialog-padding-primary: 20px;
+  --el-dialog-border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  width: min(640px, calc(100vw - 32px));
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 48px);
+  margin: min(10vh, 96px) auto 24px;
+  overflow: hidden;
+}
+
+.admin-dialog .el-dialog__header {
+  flex: 0 0 auto;
+  min-width: 0;
+  margin-right: 0;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.admin-dialog .el-dialog__title {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--admin-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-dialog .el-dialog__body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.admin-dialog .el-dialog__footer {
+  flex: 0 0 auto;
+  padding-top: 16px;
+  padding-bottom: max(0px, env(safe-area-inset-bottom));
+}
+
+/*
+ * 后台 MessageBox（ElMessageBox.prompt / confirm）。
  *
  * Element Plus 会把 MessageBox 挂载到 body，页面 scoped 样式无法覆盖其内部节点，
  * 因此统一使用专用 class 在全局样式中限定作用域，避免污染前台登录页与其他弹窗。
- * 键盘焦点由 wrapper 的 focus-within 环提供，不使用 outline:none 后无替代焦点的写法。
+ * 键盘焦点由 wrapper / textarea 的品牌焦点环提供，不使用 outline:none 后无替代焦点的写法。
  */
 .el-message-box.admin-message-box {
   width: min(440px, calc(100vw - 32px));
   max-width: calc(100vw - 32px);
+  max-height: calc(100dvh - 32px);
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.admin-message-box {
+  --el-color-primary: var(--admin-brand);
+  --el-color-primary-light-3: #fb7185;
+  --el-color-primary-light-5: #fda4af;
+  --el-color-primary-light-7: #fecdd3;
+  --el-color-primary-light-8: #ffe4e6;
+  --el-color-primary-light-9: #fff1f2;
+  --el-color-primary-dark-2: var(--admin-brand-strong);
+  --el-color-error: #f56c6c;
+  --el-input-focus-border-color: var(--admin-brand);
+  --el-input-hover-border-color: var(--admin-border-hover);
+  --el-input-border-color: var(--admin-border);
+}
+
+.admin-message-box .el-message-box__container {
+  min-width: 0;
 }
 
 .admin-message-box .el-message-box__message {
   white-space: pre-line;
 }
 
+.admin-message-box .el-message-box__content {
+  min-height: 0;
+  overflow-y: auto;
+}
+
 .admin-message-box .el-message-box__input {
   padding-top: 14px;
+}
+
+/*
+ * Flowbite 的全局表单基础样式会给原生 input/textarea 增加蓝色 focus 边框与 ring。
+ * Element Plus 的边框和焦点反馈由 wrapper / textarea 自身承担，
+ * 这里只重置后台作用域内的原生节点，避免蓝色边框穿透品牌主题。
+ */
+.admin-message-box .el-message-box__input .el-input__inner,
+.admin-dialog-surface .el-input__inner,
+.admin-dialog-surface .el-select__input,
+.admin-dialog-surface .el-range-input,
+.admin-shell .el-input__inner,
+.admin-shell .el-select__input,
+.admin-shell .el-range-input {
+  border: 0;
+  outline: none;
+  box-shadow: none;
+}
+
+.admin-message-box .el-message-box__input .el-input__inner:focus,
+.admin-message-box .el-message-box__input .el-input__inner:focus-visible,
+.admin-dialog-surface .el-input__inner:focus,
+.admin-dialog-surface .el-input__inner:focus-visible,
+.admin-dialog-surface .el-select__input:focus,
+.admin-dialog-surface .el-select__input:focus-visible,
+.admin-dialog-surface .el-range-input:focus,
+.admin-dialog-surface .el-range-input:focus-visible,
+.admin-shell .el-input__inner:focus,
+.admin-shell .el-input__inner:focus-visible,
+.admin-shell .el-select__input:focus,
+.admin-shell .el-select__input:focus-visible,
+.admin-shell .el-range-input:focus,
+.admin-shell .el-range-input:focus-visible {
+  border: 0;
+  outline: none;
+  box-shadow: none;
 }
 
 .admin-message-box .el-message-box__input .el-input__wrapper {
@@ -625,18 +937,11 @@
 }
 
 .admin-message-box .el-message-box__input .el-input__wrapper.is-focus,
-.admin-message-box .el-message-box__input .el-input__wrapper:focus-within {
+.admin-message-box .el-message-box__input .el-input__wrapper:focus-within,
+.admin-message-box .el-message-box__input .el-input__wrapper:has(.el-input__inner:focus-visible) {
+  /* 焦点反馈必须立即可见，不依赖动画进度。 */
+  transition: none;
   box-shadow: 0 0 0 1px var(--admin-brand) inset, 0 0 0 3px var(--admin-focus-ring);
-}
-
-.admin-message-box .el-message-box__input .el-input.invalid .el-input__wrapper,
-.admin-message-box .el-message-box__input .el-input.is-error .el-input__wrapper {
-  box-shadow: 0 0 0 1px var(--el-color-error) inset;
-}
-
-.admin-message-box .el-message-box__input .el-input.invalid .el-input__wrapper.is-focus,
-.admin-message-box .el-message-box__input .el-input.is-error .el-input__wrapper:focus-within {
-  box-shadow: 0 0 0 1px var(--el-color-error) inset, 0 0 0 3px rgba(245, 108, 108, 0.16);
 }
 
 .admin-message-box .el-message-box__input .el-input__wrapper.is-disabled {
@@ -645,11 +950,81 @@
   cursor: not-allowed;
 }
 
+/* prompt 使用 textarea 时，由 textarea 自身承担中性边框与品牌焦点环。 */
+.admin-message-box .el-message-box__input .el-textarea__inner {
+  min-height: 88px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: var(--admin-control-radius, 12px);
+  outline: none;
+  background-color: var(--admin-surface);
+  box-shadow: 0 0 0 1px var(--admin-border) inset;
+  color: var(--admin-text);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+  transition: background-color 160ms ease;
+}
+
+.admin-message-box .el-message-box__input .el-textarea__inner:hover {
+  box-shadow: 0 0 0 1px var(--admin-border-hover) inset;
+}
+
+.admin-message-box .el-message-box__input .el-textarea__inner:focus,
+.admin-message-box .el-message-box__input .el-textarea__inner:focus-visible {
+  border: 0;
+  outline: none;
+  transition: none;
+  box-shadow: 0 0 0 1px var(--admin-brand) inset, 0 0 0 3px var(--admin-focus-ring);
+}
+
+/* 错误态声明在普通 focus 之后，使用错误色焦点环，避免被常规 focus 覆盖。 */
+.admin-message-box .el-message-box__input .el-input.invalid .el-input__wrapper,
+.admin-message-box .el-message-box__input .el-input.is-error .el-input__wrapper,
+.admin-message-box .el-message-box__input .el-textarea.invalid .el-textarea__inner,
+.admin-message-box .el-message-box__input .el-textarea.is-error .el-textarea__inner {
+  box-shadow: 0 0 0 1px var(--el-color-error, #f56c6c) inset;
+}
+
+.admin-message-box .el-message-box__input .el-input.invalid .el-input__wrapper.is-focus,
+.admin-message-box .el-message-box__input .el-input.invalid .el-input__wrapper:focus-within,
+.admin-message-box .el-message-box__input .el-input.is-error .el-input__wrapper.is-focus,
+.admin-message-box .el-message-box__input .el-input.is-error .el-input__wrapper:focus-within,
+.admin-message-box .el-message-box__input .el-textarea.invalid .el-textarea__inner:focus,
+.admin-message-box .el-message-box__input .el-textarea.is-error .el-textarea__inner:focus {
+  box-shadow: 0 0 0 1px var(--el-color-error, #f56c6c) inset, 0 0 0 3px rgba(245, 108, 108, 0.2);
+}
+
 .admin-message-box .el-message-box__errormsg {
-  margin-top: 4px;
-  color: var(--el-color-error);
+  margin-top: 6px;
+  color: var(--el-color-error, #f56c6c);
   font-size: 12px;
   line-height: 1.5;
+}
+
+.admin-message-box .el-message-box__btns {
+  flex: 0 0 auto;
+}
+
+.admin-message-box .el-message-box__btns .el-button:focus-visible {
+  outline: 2px solid var(--admin-brand-deep);
+  outline-offset: 2px;
+}
+
+.admin-message-box .el-message-box__btns .el-button--primary.admin-message-box__confirm--danger {
+  border-color: transparent;
+  background-color: var(--admin-brand-strong);
+  background-image: none;
+  color: #ffffff;
+  box-shadow: 0 12px 26px -16px rgba(159, 18, 57, 0.85);
+}
+
+.admin-message-box .el-message-box__btns .el-button--primary.admin-message-box__confirm--danger:hover,
+.admin-message-box .el-message-box__btns .el-button--primary.admin-message-box__confirm--danger:focus-visible {
+  border-color: transparent;
+  background-color: var(--admin-brand-deep);
+  background-image: none;
+  color: #ffffff;
 }
 
 /*
@@ -675,6 +1050,7 @@
 .admin-dialog-surface .el-input__wrapper:focus-within,
 .admin-dialog-surface .el-select__wrapper.is-focused,
 .admin-dialog-surface .el-date-editor.is-active {
+  transition: none;
   box-shadow: 0 0 0 1px var(--admin-brand) inset, 0 0 0 3px var(--admin-focus-ring);
 }
 
@@ -687,7 +1063,9 @@
 }
 
 .admin-dialog-surface .el-textarea__inner {
+  border: 0;
   border-radius: var(--admin-control-radius, 12px);
+  outline: none;
   box-shadow: 0 0 0 1px var(--admin-border) inset;
   transition: box-shadow 160ms ease, background-color 160ms ease;
 }
@@ -696,14 +1074,24 @@
   box-shadow: 0 0 0 1px var(--admin-border-hover) inset;
 }
 
-.admin-dialog-surface .el-textarea__inner:focus {
+.admin-dialog-surface .el-textarea__inner:focus,
+.admin-dialog-surface .el-textarea__inner:focus-visible {
+  border: 0;
+  outline: none;
+  transition: none;
   box-shadow: 0 0 0 1px var(--admin-brand) inset, 0 0 0 3px var(--admin-focus-ring);
 }
 
 .admin-dialog-surface .el-form-item.is-error .el-input__wrapper,
 .admin-dialog-surface .el-form-item.is-error .el-select__wrapper,
 .admin-dialog-surface .el-form-item.is-error .el-textarea__inner {
-  box-shadow: 0 0 0 1px var(--el-color-error) inset;
+  box-shadow: 0 0 0 1px var(--el-color-error, #f56c6c) inset;
+}
+
+.admin-dialog-surface .el-form-item.is-error .el-input__wrapper.is-focus,
+.admin-dialog-surface .el-form-item.is-error .el-input__wrapper:focus-within,
+.admin-dialog-surface .el-form-item.is-error .el-textarea__inner:focus {
+  box-shadow: 0 0 0 1px var(--el-color-error, #f56c6c) inset, 0 0 0 3px rgba(245, 108, 108, 0.2);
 }
 
 .admin-page-enter-active,
@@ -721,15 +1109,23 @@
   transform: translateY(-4px);
 }
 
+/*
+ * 结束帧使用 transform: none。
+ * 若保留 translateY(0)，fill-mode: both 会让页面根节点长期保留 transform，
+ * 从而成为 fixed 定位弹层的包含块，把遮罩限制在页面内容区域内。
+ */
 @keyframes admin-content-in {
   from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  to { opacity: 1; transform: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .admin-shell *,
   .admin-shell *::before,
-  .admin-shell *::after {
+  .admin-shell *::after,
+  .el-overlay.admin-modal-overlay *,
+  .el-overlay.admin-modal-overlay *::before,
+  .el-overlay.admin-modal-overlay *::after {
     scroll-behavior: auto !important;
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;

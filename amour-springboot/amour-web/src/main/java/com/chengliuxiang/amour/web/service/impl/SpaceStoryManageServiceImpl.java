@@ -2,6 +2,7 @@ package com.chengliuxiang.amour.web.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
+import com.chengliuxiang.amour.common.constant.SpaceReviewConstants;
 import com.chengliuxiang.amour.common.domain.dos.StoryChapterDO;
 import com.chengliuxiang.amour.common.domain.dos.StoryNodeDO;
 import com.chengliuxiang.amour.common.domain.dos.StoryNodeImageDO;
@@ -11,6 +12,8 @@ import com.chengliuxiang.amour.common.domain.mapper.StoryNodeMapper;
 import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
 import com.chengliuxiang.amour.common.exception.BizException;
 import com.chengliuxiang.amour.common.utils.Response;
+import com.chengliuxiang.amour.web.model.vo.space.SpaceContentSaveResultVO;
+import com.chengliuxiang.amour.web.model.vo.space.SpaceItemReviewStateVO;
 import com.chengliuxiang.amour.web.model.vo.story.StoryChapterIdReqVO;
 import com.chengliuxiang.amour.web.model.vo.story.StoryChapterManageVO;
 import com.chengliuxiang.amour.web.model.vo.story.StoryChapterSaveReqVO;
@@ -18,6 +21,7 @@ import com.chengliuxiang.amour.web.model.vo.story.StoryNodeIdReqVO;
 import com.chengliuxiang.amour.web.model.vo.story.StoryNodeManageVO;
 import com.chengliuxiang.amour.web.model.vo.story.StoryNodeSaveReqVO;
 import com.chengliuxiang.amour.web.service.SpaceContentAccessService;
+import com.chengliuxiang.amour.web.service.SpaceReviewService;
 import com.chengliuxiang.amour.web.service.SpaceStoryManageService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,6 +57,9 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
 
     @Resource
     private StoryNodeImageMapper storyNodeImageMapper;
+
+    @Resource
+    private SpaceReviewService spaceReviewService;
 
     @Override
     public Response<List<StoryChapterManageVO>> listChapters() {
@@ -154,6 +161,7 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
                         spaceId, nodes.stream().map(StoryNodeDO::getId).collect(Collectors.toList()))
                 .stream()
                 .collect(Collectors.groupingBy(StoryNodeImageDO::getNodeId));
+        Map<String, SpaceItemReviewStateVO> reviewStates = spaceReviewService.loadItemReviewStates(spaceId);
 
         List<StoryNodeManageVO> records = nodes.stream()
                 .map(node -> {
@@ -168,6 +176,8 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
                                     .sortOrder(image.getSortOrder())
                                     .build())
                             .collect(Collectors.toList());
+                    SpaceItemReviewStateVO reviewState = reviewStates.get(
+                            SpaceReviewConstants.ITEM_TYPE_STORY + ":" + node.getId());
                     return StoryNodeManageVO.builder()
                             .id(node.getId())
                             .chapterId(node.getChapterId())
@@ -183,6 +193,13 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
                             .sortOrder(node.getSortOrder())
                             .isMilestone(node.getIsMilestone())
                             .visibility(node.getVisibility())
+                            .reviewStatus(reviewState == null ? null : reviewState.getReviewStatus())
+                            .reviewRejectReason(reviewState == null
+                                    ? null : reviewState.getReviewRejectReason())
+                            .reviewHandledAt(reviewState == null
+                                    ? null : reviewState.getReviewHandledAt())
+                            .reviewHasPublishedVersion(reviewState == null
+                                    ? null : reviewState.getHasPublishedVersion())
                             .images(images)
                             .build();
                 })
@@ -192,9 +209,11 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Response<Long> saveNode(StoryNodeSaveReqVO reqVO) {
+    public Response<SpaceContentSaveResultVO> saveNode(StoryNodeSaveReqVO reqVO) {
         SpaceContentAccessService.SpaceAccess access = spaceContentAccessService.requireEditable();
         Long spaceId = access.getSpaceId();
+        // 历史公开空间先把当前公开数据固化为已发布版本，本次修改只进入待审核快照。
+        spaceReviewService.prepareForPublicEdit(spaceId);
 
         if (reqVO.getChapterId() == null) {
             throw new BizException(ResponseCodeEnum.CHAPTER_NOT_EXIST);
@@ -229,6 +248,7 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
                     .isDeleted(false)
                     .createdBy(access.getUserId())
                     .updatedBy(access.getUserId())
+                    .revision(1)
                     .createTime(now)
                     .updateTime(now)
                     .build();
@@ -262,19 +282,24 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
         }
 
         replaceImages(spaceId, node.getId(), access.getUserId(), reqVO.getImages(), now);
-        return Response.success(node.getId());
+        return Response.success(spaceReviewService.onContentSaved(
+                spaceId, access.getUserId(), SpaceReviewConstants.ITEM_TYPE_STORY, node.getId(), false));
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Response<Void> deleteNode(StoryNodeIdReqVO reqVO) {
         SpaceContentAccessService.SpaceAccess access = spaceContentAccessService.requireEditable();
+        spaceReviewService.prepareForPublicEdit(access.getSpaceId());
         requireNode(access.getSpaceId(), reqVO.getId());
         int deleted = storyNodeMapper.softDelete(access.getSpaceId(), reqVO.getId(),
                 access.getUserId(), LocalDateTime.now());
         if (deleted == 0) {
             throw new BizException(ResponseCodeEnum.STORY_NOT_EXIST);
         }
+        // 删除属于缩小公开范围，立即从广场移除并撤回该项的待审核版本。
+        spaceReviewService.onContentSaved(access.getSpaceId(), access.getUserId(),
+                SpaceReviewConstants.ITEM_TYPE_STORY, reqVO.getId(), true);
         return Response.success();
     }
 

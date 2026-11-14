@@ -4,7 +4,7 @@
       <div class="admin-filter-bar">
         <div class="admin-filter-fields">
           <label class="admin-filter-field admin-filter-field--search">
-            <Search class="admin-search-icon" />
+            <Search class="admin-search-icon" aria-hidden="true" />
             <input
               v-model="keyword"
               type="search"
@@ -31,7 +31,7 @@
             title="刷新配置列表"
             @click="fetchConfigs"
           >
-            <Refresh class="h-3.5 w-3.5" :class="{ 'animate-spin': loading }" />
+            <Refresh class="h-3.5 w-3.5" :class="{ 'animate-spin': loading }" aria-hidden="true" />
           </button>
           <button type="button" class="admin-filter-button admin-filter-button--primary" @click="openEditor()">
             <Plus class="h-3.5 w-3.5" aria-hidden="true" />新增配置
@@ -107,7 +107,8 @@
       v-model="dialog.visible"
       :title="dialog.form.id ? '编辑配置' : '新增配置'"
       width="min(640px, calc(100vw - 32px))"
-      class="dict-editor-dialog admin-dialog-surface"
+      class="dict-editor-dialog admin-dialog admin-dialog-surface"
+      modal-class="admin-modal-overlay"
       append-to-body
       destroy-on-close
     >
@@ -290,7 +291,7 @@ async function saveConfig() {
 
 async function deleteConfig(config) {
   try {
-    await ElMessageBox.confirm(`确定删除配置“${config.configName}”吗？删除后引用该配置的页面可能恢复默认值。`, '删除配置', { confirmButtonText: '确认删除', cancelButtonText: '取消', type: 'warning', customClass: ADMIN_MESSAGE_BOX_CLASS })
+    await ElMessageBox.confirm(`确定删除配置“${config.configName}”吗？删除后引用该配置的页面可能恢复默认值。`, '删除配置', { confirmButtonText: '确认删除', cancelButtonText: '取消', type: 'warning', customClass: ADMIN_MESSAGE_BOX_CLASS, modalClass: 'admin-modal-overlay' })
   } catch { return }
   try {
     const { data: response } = await api.post('/admin/dict/config/delete', { id: config.id })
