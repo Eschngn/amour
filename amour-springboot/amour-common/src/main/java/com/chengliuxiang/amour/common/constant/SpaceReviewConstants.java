@@ -62,6 +62,17 @@ public final class SpaceReviewConstants {
     public static final int PUBLISHED = 1;
     public static final int UNPUBLISHED = 0;
 
+    /* -------------------- 审核详情 diff 状态 -------------------- */
+
+    /** 首次提交，没有可比较的已发布快照。 */
+    public static final String DIFF_STATE_FIRST_SUBMISSION = "FIRST_SUBMISSION";
+    /** 有已发布快照且存在差异。 */
+    public static final String DIFF_STATE_CHANGED = "CHANGED";
+    /** 有已发布快照但规范化后完全一致，可能是重复提交。 */
+    public static final String DIFF_STATE_NO_CHANGE = "NO_CHANGE";
+    /** 操作是更新，但当前没有可比较的已发布快照。 */
+    public static final String DIFF_STATE_NO_BASELINE = "NO_BASELINE";
+
     /* -------------------- 用户端审核状态展示 -------------------- */
 
     public static final String USER_STATE_PUBLISHED = "PUBLISHED";

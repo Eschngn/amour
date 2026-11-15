@@ -57,6 +57,16 @@ public interface StoryChapterMapper extends BaseMapper<StoryChapterDO> {
     }
 
     /**
+     * 批量排序：只更新 sort_order，条件同时包含 space_id，禁止跨空间改写。
+     */
+    default int updateSortOrder(Long spaceId, Long id, Integer sortOrder) {
+        return update(null, new LambdaUpdateWrapper<StoryChapterDO>()
+                .eq(StoryChapterDO::getSpaceId, spaceId)
+                .eq(StoryChapterDO::getId, id)
+                .set(StoryChapterDO::getSortOrder, sortOrder));
+    }
+
+    /**
      * 删除章节：条件同时包含 space_id，禁止跨空间删除。
      */
     default int deleteChapter(Long spaceId, Long id) {

@@ -6,7 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -23,5 +22,4 @@ public class StoryNodeVO {
     private String tagLabel;          // 标签文字
     private String tagColor;          // 标签颜色
     private Boolean isMilestone;      // 是否里程碑
-    private List<StoryNodeImageVO> images;  // 图片列表
 }

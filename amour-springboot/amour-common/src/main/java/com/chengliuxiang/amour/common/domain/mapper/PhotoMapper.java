@@ -15,12 +15,14 @@ public interface PhotoMapper extends BaseMapper<PhotoDO> {
      * 查询空间内对成员可见的照片（排除隐藏内容）。
      */
     default IPage<PhotoDO> selectSpacePage(long current, long size, Long spaceId, Long categoryId) {
+        // 全部照片使用全局顺序，分类筛选使用分类内顺序。
         return selectPage(new Page<>(current, size), new LambdaQueryWrapper<PhotoDO>()
                 .eq(PhotoDO::getSpaceId, spaceId)
                 .eq(PhotoDO::getIsDeleted, false)
                 .ne(PhotoDO::getVisibility, 2)
                 .eq(categoryId != null, PhotoDO::getPhotoCategoryId, categoryId)
-                .orderByAsc(PhotoDO::getSortOrder)
+                .orderByAsc(categoryId == null, PhotoDO::getGlobalSortOrder)
+                .orderByAsc(categoryId != null, PhotoDO::getSortOrder)
                 .orderByDesc(PhotoDO::getTakenTime)
                 .orderByDesc(PhotoDO::getId));
     }
@@ -29,12 +31,14 @@ public interface PhotoMapper extends BaseMapper<PhotoDO> {
      * 查询空间内公开到恋爱广场的照片。
      */
     default IPage<PhotoDO> selectPublicPage(long current, long size, Long spaceId, Long categoryId) {
+        // 全部照片使用全局顺序，分类筛选使用分类内顺序。
         return selectPage(new Page<>(current, size), new LambdaQueryWrapper<PhotoDO>()
                 .eq(PhotoDO::getSpaceId, spaceId)
                 .eq(PhotoDO::getIsDeleted, false)
                 .eq(PhotoDO::getVisibility, 1)
                 .eq(categoryId != null, PhotoDO::getPhotoCategoryId, categoryId)
-                .orderByAsc(PhotoDO::getSortOrder)
+                .orderByAsc(categoryId == null, PhotoDO::getGlobalSortOrder)
+                .orderByAsc(categoryId != null, PhotoDO::getSortOrder)
                 .orderByDesc(PhotoDO::getTakenTime)
                 .orderByDesc(PhotoDO::getId));
     }
@@ -96,13 +100,71 @@ public interface PhotoMapper extends BaseMapper<PhotoDO> {
      * 用户端相册管理分页：包含隐藏照片，但只返回当前空间的数据。
      */
     default IPage<PhotoDO> selectManagePage(long current, long size, Long spaceId, Long categoryId) {
+        // 不筛选分类时按全局排序，筛选分类时按分类内排序，两套顺序互不影响。
         return selectPage(new Page<>(current, size), new LambdaQueryWrapper<PhotoDO>()
                 .eq(PhotoDO::getSpaceId, spaceId)
                 .eq(PhotoDO::getIsDeleted, false)
                 .eq(categoryId != null, PhotoDO::getPhotoCategoryId, categoryId)
+                .orderByAsc(categoryId == null, PhotoDO::getGlobalSortOrder)
+                .orderByAsc(categoryId != null, PhotoDO::getSortOrder)
+                .orderByDesc(PhotoDO::getTakenTime)
+                .orderByDesc(PhotoDO::getId));
+    }
+
+    /** 查询空间内全部有效照片，按全局排序值展示，供全局排序模式使用。 */
+    default List<PhotoDO> selectActiveBySpaceId(Long spaceId) {
+        return selectList(new LambdaQueryWrapper<PhotoDO>()
+                .eq(PhotoDO::getSpaceId, spaceId)
+                .eq(PhotoDO::getIsDeleted, false)
+                .orderByAsc(PhotoDO::getGlobalSortOrder)
+                .orderByDesc(PhotoDO::getTakenTime)
+                .orderByDesc(PhotoDO::getId));
+    }
+
+    /** 查询空间内最大的全局排序值，用于把新照片追加到全部照片末尾。 */
+    default Integer findMaxGlobalSortOrder(Long spaceId) {
+        PhotoDO last = selectOne(new LambdaQueryWrapper<PhotoDO>()
+                .eq(PhotoDO::getSpaceId, spaceId)
+                .eq(PhotoDO::getIsDeleted, false)
+                .orderByDesc(PhotoDO::getGlobalSortOrder)
+                .orderByDesc(PhotoDO::getId)
+                .last("LIMIT 1"));
+        return last == null || last.getGlobalSortOrder() == null ? 0 : last.getGlobalSortOrder();
+    }
+
+    /** 全局排序：只更新 global_sort_order，不触碰分类内排序。 */
+    default int updateGlobalSortOrder(Long spaceId, Long id, Integer globalSortOrder) {
+        return update(null, new LambdaUpdateWrapper<PhotoDO>()
+                .eq(PhotoDO::getSpaceId, spaceId)
+                .eq(PhotoDO::getId, id)
+                .eq(PhotoDO::getIsDeleted, false)
+                .set(PhotoDO::getGlobalSortOrder, globalSortOrder));
+    }
+
+    /**
+     * 查询指定分类内的有效照片，排序规则与管理分页保持一致。
+     * 用于分类内排序的范围校验、全量排序列表与“追加到末尾”的排序值计算。
+     */
+    default List<PhotoDO> selectActiveByCategoryId(Long spaceId, Long categoryId) {
+        return selectList(new LambdaQueryWrapper<PhotoDO>()
+                .eq(PhotoDO::getSpaceId, spaceId)
+                .eq(PhotoDO::getPhotoCategoryId, categoryId)
+                .eq(PhotoDO::getIsDeleted, false)
                 .orderByAsc(PhotoDO::getSortOrder)
                 .orderByDesc(PhotoDO::getTakenTime)
                 .orderByDesc(PhotoDO::getId));
+    }
+
+    /**
+     * 批量排序：只更新 sort_order，并同时限制空间与分类，禁止借排序跨分类移动照片。
+     */
+    default int updateSortOrder(Long spaceId, Long categoryId, Long id, Integer sortOrder) {
+        return update(null, new LambdaUpdateWrapper<PhotoDO>()
+                .eq(PhotoDO::getSpaceId, spaceId)
+                .eq(PhotoDO::getPhotoCategoryId, categoryId)
+                .eq(PhotoDO::getId, id)
+                .eq(PhotoDO::getIsDeleted, false)
+                .set(PhotoDO::getSortOrder, sortOrder));
     }
 
     default IPage<PhotoDO> findAdminPage(long current, long size, Long spaceId, String title,

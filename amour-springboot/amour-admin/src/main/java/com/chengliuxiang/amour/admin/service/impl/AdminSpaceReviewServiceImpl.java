@@ -28,7 +28,6 @@ import com.chengliuxiang.amour.common.domain.dos.SpacePublishedItemDO;
 import com.chengliuxiang.amour.common.domain.dos.SpaceReviewItemDO;
 import com.chengliuxiang.amour.common.domain.dos.SpaceReviewSubmissionDO;
 import com.chengliuxiang.amour.common.domain.dos.StoryNodeDO;
-import com.chengliuxiang.amour.common.domain.dos.StoryNodeImageDO;
 import com.chengliuxiang.amour.common.domain.dos.UserDO;
 import com.chengliuxiang.amour.common.domain.mapper.AnniversaryMapper;import com.chengliuxiang.amour.common.domain.mapper.CoupleMemberMapper;
 import com.chengliuxiang.amour.common.domain.mapper.CoupleSpaceMapper;
@@ -36,7 +35,6 @@ import com.chengliuxiang.amour.common.domain.mapper.PhotoMapper;
 import com.chengliuxiang.amour.common.domain.mapper.SpacePublishedItemMapper;
 import com.chengliuxiang.amour.common.domain.mapper.SpaceReviewItemMapper;
 import com.chengliuxiang.amour.common.domain.mapper.SpaceReviewSubmissionMapper;
-import com.chengliuxiang.amour.common.domain.mapper.StoryNodeImageMapper;
 import com.chengliuxiang.amour.common.domain.mapper.StoryNodeMapper;
 import com.chengliuxiang.amour.common.domain.mapper.UserMapper;
 import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
@@ -118,8 +116,6 @@ public class AdminSpaceReviewServiceImpl implements AdminSpaceReviewService {
     private UserMapper userMapper;
     @Resource
     private StoryNodeMapper storyNodeMapper;
-    @Resource
-    private StoryNodeImageMapper storyNodeImageMapper;
     @Resource
     private PhotoMapper photoMapper;
     @Resource
@@ -897,7 +893,7 @@ public class AdminSpaceReviewServiceImpl implements AdminSpaceReviewService {
         result.add(liveSpaceItem(space));
         result.add(liveHomeConfigItem(space));
         for (StoryNodeDO story : storyNodeMapper.selectPublicList(space.getId())) {
-            result.add(liveStoryItem(space.getId(), story));
+            result.add(liveStoryItem(story));
         }
         for (PhotoDO photo : photoMapper.selectPublicList(space.getId())) {
             result.add(livePhotoItem(photo));
@@ -930,8 +926,10 @@ public class AdminSpaceReviewServiceImpl implements AdminSpaceReviewService {
                                                          SpacePublishedItemDO published) {
         String itemType = item.getItemType();
         String beforeJson = published == null ? null : published.getSnapshotJson();
+        boolean hasPublishedBaseline = StrUtil.isNotBlank(beforeJson);
         List<AdminSpaceReviewDetailRspVO.DiffFieldVO> diffs =
                 buildDiffs(itemType, beforeJson, item.getSnapshotJson());
+        String diffState = resolveDiffState(hasPublishedBaseline, item.getAction(), diffs);
         return AdminSpaceReviewDetailRspVO.ItemVO.builder()
                 .itemType(itemType)
                 .itemTypeText(SpaceReviewConstants.itemTypeText(itemType))
@@ -946,12 +944,59 @@ public class AdminSpaceReviewServiceImpl implements AdminSpaceReviewService {
                 .baseRevision(item.getBaseRevision())
                 .currentRevision(currentRevision(item.getSpaceId(), itemType, item.getItemId()))
                 .title(resolveSnapshotTitle(itemType, item.getSnapshotJson()))
+                .hasPublishedBaseline(hasPublishedBaseline)
+                .diffState(diffState)
+                .diffSummary(resolveDiffSummary(diffState, diffs))
                 .changedFields(diffs)
                 .beforeImages(imagesOf(itemType, beforeJson))
                 .afterImages(imagesOf(itemType, item.getSnapshotJson()))
                 .beforeSummary(summaryOf(itemType, beforeJson))
                 .afterSummary(summaryOf(itemType, item.getSnapshotJson()))
                 .build();
+    }
+
+    private String resolveDiffState(boolean hasPublishedBaseline, String action,
+                                    List<AdminSpaceReviewDetailRspVO.DiffFieldVO> diffs) {
+        if (!hasPublishedBaseline) {
+            // 只有明确不是更新动作时才称为首次提交，避免把缺失基线误报成首次提交。
+            boolean updateAction = SpaceReviewConstants.ACTION_UPDATE.equals(action)
+                    || SpaceReviewConstants.ACTION_REPUBLISH.equals(action);
+            return updateAction
+                    ? SpaceReviewConstants.DIFF_STATE_NO_BASELINE
+                    : SpaceReviewConstants.DIFF_STATE_FIRST_SUBMISSION;
+        }
+        return CollUtil.isEmpty(diffs)
+                ? SpaceReviewConstants.DIFF_STATE_NO_CHANGE
+                : SpaceReviewConstants.DIFF_STATE_CHANGED;
+    }
+
+    private String resolveDiffSummary(String diffState,
+                                      List<AdminSpaceReviewDetailRspVO.DiffFieldVO> diffs) {
+        if (SpaceReviewConstants.DIFF_STATE_FIRST_SUBMISSION.equals(diffState)) {
+            return "首次提交，暂无已发布版本可对比";
+        }
+        if (SpaceReviewConstants.DIFF_STATE_NO_BASELINE.equals(diffState)) {
+            return "暂无已发布版本可对比";
+        }
+        if (SpaceReviewConstants.DIFF_STATE_NO_CHANGE.equals(diffState)) {
+            return "待审核版本与当前已发布版本一致，可能是重复提交";
+        }
+        if (CollUtil.isEmpty(diffs)) {
+            return "";
+        }
+        if (diffs.size() == 1 && "章节内排序".equals(diffs.get(0).getLabel())) {
+            return "仅调整章节内排序（" + diffValueText(diffs.get(0).getBefore())
+                    + " → " + diffValueText(diffs.get(0).getAfter()) + "）";
+        }
+        List<String> labels = new ArrayList<>();
+        for (AdminSpaceReviewDetailRspVO.DiffFieldVO diff : diffs) {
+            labels.add(diff.getLabel());
+        }
+        return "共变更 " + diffs.size() + " 项：" + String.join("、", labels);
+    }
+
+    private String diffValueText(String value) {
+        return StrUtil.isBlank(value) ? "（空）" : value;
     }
 
     private List<AdminSpaceReviewDetailRspVO.DiffFieldVO> buildDiffs(String itemType,
@@ -985,22 +1030,7 @@ public class AdminSpaceReviewServiceImpl implements AdminSpaceReviewService {
         if (SpaceReviewConstants.ITEM_TYPE_STORY.equals(itemType)) {
             StoryPublicSnapshot before = JsonUtil.parseObject(beforeJson, StoryPublicSnapshot.class);
             StoryPublicSnapshot after = JsonUtil.parseObject(afterJson, StoryPublicSnapshot.class);
-            addDiff(diffs, "标题", before == null ? null : before.getTitle(),
-                    after == null ? null : after.getTitle());
-            addDiff(diffs, "摘要", before == null ? null : before.getSummary(),
-                    after == null ? null : after.getSummary());
-            addDiff(diffs, "正文", truncate(before == null ? null : before.getContent()),
-                    truncate(after == null ? null : after.getContent()));
-            addDiff(diffs, "发生时间", before == null ? null : before.getHappenedTime(),
-                    after == null ? null : after.getHappenedTime());
-            addDiff(diffs, "地点", before == null ? null : before.getLocation(),
-                    after == null ? null : after.getLocation());
-            addDiff(diffs, "封面", before == null ? null : before.getCoverImage(),
-                    after == null ? null : after.getCoverImage());
-            addDiff(diffs, "标签", before == null ? null : before.getTagLabel(),
-                    after == null ? null : after.getTagLabel());
-            addDiff(diffs, "排序", before == null ? null : String.valueOf(before.getSortOrder()),
-                    after == null ? null : String.valueOf(after.getSortOrder()));
+            addStoryDiffs(diffs, before, after);
             return diffs;
         }
         if (SpaceReviewConstants.ITEM_TYPE_PHOTO.equals(itemType)) {
@@ -1016,8 +1046,8 @@ public class AdminSpaceReviewServiceImpl implements AdminSpaceReviewService {
                     after == null ? null : after.getTakenTime());
             addDiff(diffs, "地点", before == null ? null : before.getLocation(),
                     after == null ? null : after.getLocation());
-            addDiff(diffs, "排序", before == null ? null : String.valueOf(before.getSortOrder()),
-                    after == null ? null : String.valueOf(after.getSortOrder()));
+            addDiff(diffs, "排序", numberText(before == null ? null : before.getSortOrder()),
+                    numberText(after == null ? null : after.getSortOrder()));
             return diffs;
         }
         if (SpaceReviewConstants.ITEM_TYPE_ANNIVERSARY.equals(itemType)) {
@@ -1038,8 +1068,85 @@ public class AdminSpaceReviewServiceImpl implements AdminSpaceReviewService {
         return diffs;
     }
 
+    /**
+     * 故事差异必须覆盖影响公开广场展示的全部字段。
+     * 章节名与章节 ID 同时展示，排序使用「章节内排序」并保留旧值/新值。
+     */
+    private void addStoryDiffs(List<AdminSpaceReviewDetailRspVO.DiffFieldVO> diffs,
+                               StoryPublicSnapshot before, StoryPublicSnapshot after) {
+        addDiff(diffs, "所属章节", chapterText(before), chapterText(after));
+        addDiff(diffs, "标题",
+                text(before == null ? null : before.getTitle()),
+                text(after == null ? null : after.getTitle()));
+        addDiff(diffs, "摘要",
+                text(before == null ? null : before.getSummary()),
+                text(after == null ? null : after.getSummary()));
+        addDiff(diffs, "正文",
+                text(before == null ? null : before.getContent()),
+                text(after == null ? null : after.getContent()),
+                DIFF_TEXT_LIMIT);
+        addDiff(diffs, "发生时间",
+                text(before == null ? null : before.getHappenedTime()),
+                text(after == null ? null : after.getHappenedTime()));
+        addDiff(diffs, "地点",
+                text(before == null ? null : before.getLocation()),
+                text(after == null ? null : after.getLocation()));
+        addDiff(diffs, "封面",
+                text(before == null ? null : before.getCoverImage()),
+                text(after == null ? null : after.getCoverImage()));
+        addDiff(diffs, "标签",
+                text(before == null ? null : before.getTagLabel()),
+                text(after == null ? null : after.getTagLabel()));
+        addDiff(diffs, "标签颜色", storyTagColor(before), storyTagColor(after));
+        addDiff(diffs, "章节内排序",
+                numberText(before == null ? null : before.getSortOrder()),
+                numberText(after == null ? null : after.getSortOrder()));
+        addDiff(diffs, "里程碑",
+                milestoneText(before == null ? null : before.getMilestone()),
+                milestoneText(after == null ? null : after.getMilestone()));
+    }
+
+    private String chapterText(StoryPublicSnapshot story) {
+        if (story == null) {
+            return "";
+        }
+        String name = text(story.getChapterName());
+        if (story.getChapterId() == null) {
+            return name;
+        }
+        return (name.isEmpty() ? "未分章" : name) + "（#" + story.getChapterId() + "）";
+    }
+
+    /** 标签为空时颜色不展示；统一大小写避免序列化差异造成误报。 */
+    private String storyTagColor(StoryPublicSnapshot story) {
+        if (story == null || StrUtil.isBlank(story.getTagLabel())) {
+            return "";
+        }
+        return text(story.getTagColor()).toUpperCase(Locale.ROOT);
+    }
+
+    private String milestoneText(Boolean milestone) {
+        return Boolean.TRUE.equals(milestone) ? "是" : "否";
+    }
+
+    private String numberText(Integer value) {
+        return String.valueOf(value == null ? 0 : value);
+    }
+
+    private String text(String value) {
+        return StrUtil.nullToEmpty(StrUtil.trim(value));
+    }
+
     private void addDiff(List<AdminSpaceReviewDetailRspVO.DiffFieldVO> diffs, String label,
                          String before, String after) {
+        addDiff(diffs, label, before, after, 0);
+    }
+
+    /**
+     * 先比较完整值，再按展示上限截断，避免长正文只在 500 字之后不同而被误判为无变化。
+     */
+    private void addDiff(List<AdminSpaceReviewDetailRspVO.DiffFieldVO> diffs, String label,
+                         String before, String after, int displayLimit) {
         String normalizedBefore = StrUtil.nullToEmpty(before);
         String normalizedAfter = StrUtil.nullToEmpty(after);
         if (Objects.equals(normalizedBefore, normalizedAfter)) {
@@ -1047,8 +1154,8 @@ public class AdminSpaceReviewServiceImpl implements AdminSpaceReviewService {
         }
         diffs.add(AdminSpaceReviewDetailRspVO.DiffFieldVO.builder()
                 .label(label)
-                .before(normalizedBefore)
-                .after(normalizedAfter)
+                .before(displayLimit > 0 ? StrUtil.maxLength(normalizedBefore, displayLimit) : normalizedBefore)
+                .after(displayLimit > 0 ? StrUtil.maxLength(normalizedAfter, displayLimit) : normalizedAfter)
                 .build());
     }
 
@@ -1063,11 +1170,6 @@ public class AdminSpaceReviewServiceImpl implements AdminSpaceReviewService {
                 return images;
             }
             addImage(images, story.getCoverImage());
-            if (CollUtil.isNotEmpty(story.getImages())) {
-                for (StoryPublicSnapshot.ImagePublicSnapshot image : story.getImages()) {
-                    addImage(images, image.getUrl());
-                }
-            }
             return images;
         }
         if (SpaceReviewConstants.ITEM_TYPE_PHOTO.equals(itemType)) {
@@ -1188,16 +1290,9 @@ public class AdminSpaceReviewServiceImpl implements AdminSpaceReviewService {
                 .build();
     }
 
-    private AdminSpaceReviewDetailRspVO.ItemVO liveStoryItem(Long spaceId, StoryNodeDO story) {
-        List<StoryNodeImageDO> images = storyNodeImageMapper.selectByNodeIds(
-                spaceId, Collections.singletonList(story.getId()));
+    private AdminSpaceReviewDetailRspVO.ItemVO liveStoryItem(StoryNodeDO story) {
         List<String> imageUrls = new ArrayList<>();
         addImage(imageUrls, story.getCoverImage());
-        if (CollUtil.isNotEmpty(images)) {
-            for (StoryNodeImageDO image : images) {
-                addImage(imageUrls, image.getUrl());
-            }
-        }
         return AdminSpaceReviewDetailRspVO.ItemVO.builder()
                 .itemType(SpaceReviewConstants.ITEM_TYPE_STORY)
                 .itemTypeText(SpaceReviewConstants.itemTypeText(SpaceReviewConstants.ITEM_TYPE_STORY))
@@ -1351,13 +1446,6 @@ public class AdminSpaceReviewServiceImpl implements AdminSpaceReviewService {
         if (StrUtil.isNotBlank(url)) {
             images.add(url.trim());
         }
-    }
-
-    private String truncate(String value) {
-        if (value == null) {
-            return "";
-        }
-        return StrUtil.maxLength(value, DIFF_TEXT_LIMIT);
     }
 
     private int currentRevision(Long spaceId, String itemType, Long itemId) {

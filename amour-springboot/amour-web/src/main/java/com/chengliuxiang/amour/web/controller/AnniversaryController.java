@@ -3,6 +3,7 @@ package com.chengliuxiang.amour.web.controller;
 import com.chengliuxiang.amour.common.aspect.ApiOperationLog;
 import com.chengliuxiang.amour.common.utils.Response;
 import com.chengliuxiang.amour.web.model.vo.anniversary.AnniversaryIdReqVO;
+import com.chengliuxiang.amour.web.model.vo.anniversary.AnniversaryOrderReqVO;
 import com.chengliuxiang.amour.web.model.vo.anniversary.AnniversarySaveReqVO;
 import com.chengliuxiang.amour.web.model.vo.anniversary.AnniversaryVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceContentSaveResultVO;
@@ -45,6 +46,12 @@ public class AnniversaryController {
     @ApiOperationLog(description = "新增或编辑空间纪念日")
     public Response<SpaceContentSaveResultVO> saveAnniversary(@Valid @RequestBody AnniversarySaveReqVO reqVO) {
         return spaceAnniversaryManageService.saveAnniversary(reqVO);
+    }
+
+    @PostMapping("/manage/order")
+    @ApiOperationLog(description = "批量调整空间纪念日顺序")
+    public Response<Void> saveAnniversaryOrder(@Valid @RequestBody AnniversaryOrderReqVO reqVO) {
+        return spaceAnniversaryManageService.saveAnniversaryOrder(reqVO);
     }
 
     @PostMapping("/manage/delete")

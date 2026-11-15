@@ -107,6 +107,27 @@ public interface AnniversaryMapper extends BaseMapper<AnniversaryDO> {
     }
 
     /**
+     * 按 ID 批量读取当前空间内的有效纪念日，用于排序范围校验。
+     */
+    default List<AnniversaryDO> selectActiveByIds(Long spaceId, List<Long> ids) {
+        return selectList(new LambdaQueryWrapper<AnniversaryDO>()
+                .eq(AnniversaryDO::getSpaceId, spaceId)
+                .in(AnniversaryDO::getId, ids)
+                .eq(AnniversaryDO::getIsDeleted, false));
+    }
+
+    /**
+     * 批量排序：只更新 sort_order，条件同时包含 space_id，禁止跨空间改写。
+     */
+    default int updateSortOrder(Long spaceId, Long id, Integer sortOrder) {
+        return update(null, new LambdaUpdateWrapper<AnniversaryDO>()
+                .eq(AnniversaryDO::getSpaceId, spaceId)
+                .eq(AnniversaryDO::getId, id)
+                .eq(AnniversaryDO::getIsDeleted, false)
+                .set(AnniversaryDO::getSortOrder, sortOrder));
+    }
+
+    /**
      * 用户端管理列表：包含隐藏内容。
      */
     default List<AnniversaryDO> selectManageList(Long spaceId) {

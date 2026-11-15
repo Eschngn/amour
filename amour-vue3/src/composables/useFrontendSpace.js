@@ -1,6 +1,6 @@
 import { computed, ref, watch } from 'vue'
 import { fetchSpaceStatus } from '@/api/space'
-import { frontendLoggedIn } from '@/utils/auth'
+import { frontendLoggedIn, isFrontendAuthTabScoped } from '@/utils/auth'
 import { createSpaceRequestGate } from '@/utils/spaceRequestGate'
 import {
   SPACE_STATUS,
@@ -223,9 +223,10 @@ stopAuthWatcher = watch(
 )
 
 /**
- * 跨窗口同步：auth.js 只同步 frontendLoggedIn 的布尔值，
- * 当两个窗口切换不同账号时，token 变了但布尔值可能仍为 true。
- * 因此这里额外监听 amour_token，先清空旧空间，再按新 token 刷新。
+ * 跨窗口同步：仅用于 localStorage 共享登录态的生产模式。
+ *
+ * 开发环境登录态按标签页隔离（sessionStorage），每个标签页有独立的模块状态，
+ * 不能监听其他标签页的 localStorage token 变化，否则会把不同账号串在一起。
  */
 function handleStorageTokenChange(event) {
   // key=null 代表其他窗口执行了 localStorage.clear()，也要清掉空间上下文。
@@ -236,7 +237,9 @@ function handleStorageTokenChange(event) {
   }
 }
 
-if (typeof window !== 'undefined') {
+const shouldSyncAuthAcrossWindows = typeof window !== 'undefined' && !isFrontendAuthTabScoped
+
+if (shouldSyncAuthAcrossWindows) {
   window.addEventListener('storage', handleStorageTokenChange)
 }
 
@@ -244,7 +247,7 @@ if (import.meta.hot) {
   import.meta.hot.dispose(() => {
     stopAuthWatcher?.()
     stopAuthWatcher = null
-    if (typeof window !== 'undefined') {
+    if (shouldSyncAuthAcrossWindows && typeof window !== 'undefined') {
       window.removeEventListener('storage', handleStorageTokenChange)
     }
   })

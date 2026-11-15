@@ -1,5 +1,10 @@
 <template>
-  <div class="theme-date-picker">
+  <div
+    ref="rootRef"
+    class="theme-date-picker"
+    @click="syncMenuPlacement"
+    @keydown="syncMenuPlacement"
+  >
     <VueDatePicker
       :model-value="pickerValue"
       :locale="zhCN"
@@ -9,7 +14,8 @@
       :enable-time-picker="mode === 'datetime'"
       :input-attrs="{ id: inputId, clearable }"
       :dark="false"
-      :teleport="false"
+      :teleport="inDialog"
+      :floating="floatingConfig"
       :placeholder="placeholder"
       model-type="format"
       @update:model-value="onUpdate"
@@ -28,10 +34,70 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { VueDatePicker } from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
 import { zhCN } from 'date-fns/locale'
+
+const rootRef = ref(null)
+/**
+ * 弹窗 body 会垂直滚动，absolute 定位的日历面板会被 overflow 裁剪。
+ * 只有身处前台编辑弹窗时才 teleport 到 body，其它页面保持原有内联定位。
+ */
+const inDialog = ref(false)
+const menuPlacement = ref('bottom-start')
+const menuMaxHeight = ref('')
+
+const MENU_ESTIMATED_HEIGHT = 420
+const VIEWPORT_GAP = 16
+
+const floatingConfig = computed(() => (
+  inDialog.value
+    ? { placement: menuPlacement.value, strategy: 'fixed', flip: false, shift: false }
+    : undefined
+))
+
+/** 弹窗内按输入框上下剩余空间选择展开方向，并为小屏限制面板高度。 */
+function syncMenuPlacement() {
+  if (!inDialog.value || typeof window === 'undefined') return
+  const trigger = rootRef.value?.querySelector('.dp--main')
+  if (!trigger) return
+  const rect = trigger.getBoundingClientRect()
+  const spaceBelow = window.innerHeight - rect.bottom - VIEWPORT_GAP
+  const spaceAbove = rect.top - VIEWPORT_GAP
+  const openUp = spaceBelow < MENU_ESTIMATED_HEIGHT && spaceAbove > spaceBelow
+  menuPlacement.value = openUp ? 'top-start' : 'bottom-start'
+  const available = openUp ? spaceAbove : spaceBelow
+  menuMaxHeight.value = available < MENU_ESTIMATED_HEIGHT
+    ? `${Math.max(180, available)}px`
+    : ''
+  applyMenuMaxHeight()
+}
+
+function applyMenuMaxHeight() {
+  if (typeof document === 'undefined') return
+  const style = document.documentElement.style
+  if (menuMaxHeight.value) style.setProperty('--space-dp-menu-max-height', menuMaxHeight.value)
+  else style.removeProperty('--space-dp-menu-max-height')
+}
+
+function handleViewportChange() {
+  syncMenuPlacement()
+}
+
+onMounted(() => {
+  inDialog.value = Boolean(rootRef.value?.closest('.space-studio-dialog'))
+  if (!inDialog.value) return
+  window.addEventListener('scroll', handleViewportChange, true)
+  window.addEventListener('resize', handleViewportChange)
+})
+
+onUnmounted(() => {
+  if (!inDialog.value) return
+  window.removeEventListener('scroll', handleViewportChange, true)
+  window.removeEventListener('resize', handleViewportChange)
+  document.documentElement.style.removeProperty('--space-dp-menu-max-height')
+})
 
 const props = defineProps({
   modelValue: { type: String, default: '' },

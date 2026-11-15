@@ -47,6 +47,10 @@ export function deleteStoryManageChapter(id) {
   return api.post('/story/manage/chapter/delete', { id })
 }
 
+export function saveStoryChapterOrder(payload) {
+  return api.post('/story/manage/chapter/order', payload)
+}
+
 export function fetchStoryManageNodes() {
   return api.post('/story/manage/nodes')
 }
@@ -57,6 +61,16 @@ export function saveStoryManageNode(payload) {
 
 export function deleteStoryManageNode(id) {
   return api.post('/story/manage/node/delete', { id })
+}
+
+/** 章节内排序：只更新当前章节的局部顺序。 */
+export function saveStoryNodeOrder(payload) {
+  return api.post('/story/manage/node/order', payload)
+}
+
+/** 全局排序：未筛选章节时使用，只更新跨章节的全局顺序。 */
+export function saveStoryNodeGlobalOrder(payload) {
+  return api.post('/story/manage/node/global-order', payload)
 }
 
 /* -------------------- 相册 -------------------- */
@@ -73,6 +87,10 @@ export function deletePhotoManageCategory(id) {
   return api.post('/photo/manage/category/delete', { id })
 }
 
+export function savePhotoCategoryOrder(payload) {
+  return api.post('/photo/manage/category/order', payload)
+}
+
 export function fetchPhotoManagePage(payload = {}) {
   return api.post('/photo/manage/page', payload)
 }
@@ -83,6 +101,24 @@ export function savePhotoManagePhoto(payload) {
 
 export function deletePhotoManagePhoto(id) {
   return api.post('/photo/manage/photo/delete', { id })
+}
+
+/**
+ * 排序模式使用：一次取回完整照片列表，避免只对当前分页排序。
+ * categoryId 为空时返回全部照片（全局排序），否则返回该分类的照片（分类内排序）。
+ */
+export function fetchPhotoManageSortList(categoryId = null) {
+  return api.post('/photo/manage/photo/sort-list', { categoryId })
+}
+
+/** 分类内排序：只更新当前分类的局部顺序。 */
+export function savePhotoOrder(payload) {
+  return api.post('/photo/manage/photo/order', payload)
+}
+
+/** 全局排序：未筛选分类时使用，只更新跨分类的全局顺序。 */
+export function savePhotoGlobalOrder(payload) {
+  return api.post('/photo/manage/photo/global-order', payload)
 }
 
 /* -------------------- 纪念日 -------------------- */
@@ -97,6 +133,10 @@ export function saveAnniversaryManage(payload) {
 
 export function deleteAnniversaryManage(id) {
   return api.post('/anniversary/manage/delete', { id })
+}
+
+export function saveAnniversaryOrder(payload) {
+  return api.post('/anniversary/manage/order', payload)
 }
 
 /* -------------------- 留言（复用现有用户端接口） -------------------- */

@@ -30,4 +30,10 @@ public class SpaceContentSaveResultVO {
      * 该内容当前是否已在恋爱广场展示。
      */
     private Boolean published;
+
+    /**
+     * 本次保存是否真正改变了内容。false 表示服务端识别为重复保存，
+     * 未递增版本号、未创建或更新待审核项。
+     */
+    private Boolean changed;
 }

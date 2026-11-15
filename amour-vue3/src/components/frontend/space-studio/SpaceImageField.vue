@@ -1,67 +1,82 @@
 <template>
   <div>
     <label v-if="label" :for="inputId" class="field-label">{{ label }}</label>
-    <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-start">
-      <div class="min-w-0 flex-1">
-        <input
-          :id="inputId"
-          :value="modelValue"
-          type="url"
-          inputmode="url"
-          maxlength="500"
-          class="field-input !mt-0 w-full font-mono text-xs"
-          :placeholder="placeholder"
-          :disabled="disabled"
-          @input="$emit('update:modelValue', $event.target.value)"
+
+    <!-- 文件选择器是唯一入口；上传接口返回的 URL 只在内部保存，不展示给用户。 -->
+    <input
+      :id="inputId"
+      ref="fileInputRef"
+      type="file"
+      accept="image/jpeg,image/png,image/webp,image/gif"
+      class="sr-only"
+      tabindex="-1"
+      :disabled="disabled || uploading"
+      @change="onFileChange"
+    >
+
+    <div v-if="previewUrl" class="mt-2 flex flex-col gap-3 sm:flex-row sm:items-start">
+      <button
+        type="button"
+        class="group relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-stone-200 bg-stone-50 transition hover:border-rose-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300"
+        :aria-label="previewAriaLabel"
+        @click="openPreview"
+      >
+        <img
+          v-if="!thumbnailFailed"
+          :src="previewUrl"
+          :alt="thumbnailAlt"
+          class="h-full w-full object-cover"
+          @error="thumbnailFailed = true"
         >
-      </div>
-      <div class="flex shrink-0 items-center gap-2">
-        <input
-          ref="fileInputRef"
-          type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif"
-          class="sr-only"
-          tabindex="-1"
-          @change="onFileChange"
-        >
-        <button
-          type="button"
-          class="btn-secondary"
-          :disabled="disabled || uploading"
-          @click="fileInputRef?.click()"
-        >
-          {{ uploading ? '上传中…' : '上传图片' }}
+        <span v-else class="flex h-full w-full items-center justify-center px-2 text-center text-[10px] leading-4 text-stone-400">
+          图片无法加载
+        </span>
+        <span class="pointer-events-none absolute inset-x-0 bottom-0 bg-stone-950/55 py-1 text-center text-[10px] font-semibold text-white opacity-0 transition group-hover:opacity-100">
+          点击放大
+        </span>
+      </button>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <button type="button" class="btn-secondary" :disabled="disabled || uploading" @click="openPreview">
+          预览
         </button>
-        <button
-          v-if="modelValue"
-          type="button"
-          class="btn-ghost"
-          :disabled="disabled || uploading"
-          @click="$emit('update:modelValue', '')"
-        >
+        <button type="button" class="btn-secondary" :disabled="disabled || uploading" @click="fileInputRef?.click()">
+          {{ uploading ? '上传中…' : '重新上传' }}
+        </button>
+        <button type="button" class="btn-ghost" :disabled="disabled || uploading" @click="clearImage">
           清除
         </button>
       </div>
     </div>
+
+    <div v-else class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+      <button type="button" class="btn-secondary w-fit" :disabled="disabled || uploading" @click="fileInputRef?.click()">
+        {{ uploading ? '上传中…' : '上传图片' }}
+      </button>
+      <span class="text-[11px] text-stone-400">从本地选择图片</span>
+    </div>
+
     <p v-if="hint" class="field-hint">{{ hint }}</p>
+    <p v-else class="field-hint">支持 JPG、PNG、WebP、GIF，最大 5MB。</p>
     <p v-if="error" class="mt-2 rounded-lg border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs leading-5 text-rose-700" role="alert">
       {{ error }}
     </p>
     <p v-else-if="justUploaded" class="mt-2 text-[11px] leading-5 text-emerald-600" role="status">
       图片已上传，记得保存当前内容。
     </p>
-    <img
-      v-if="previewUrl"
+
+    <SpaceImagePreview
+      :open="previewOpen"
       :src="previewUrl"
-      alt=""
-      class="mt-2 h-16 w-16 rounded-lg border border-stone-200 object-cover"
-      @error="$event.currentTarget.style.display = 'none'"
-    >
+      :alt="thumbnailAlt"
+      @close="closePreview"
+    />
   </div>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import SpaceImagePreview from '@/components/frontend/space-studio/SpaceImagePreview.vue'
 import { uploadSpaceImage } from '@/api/spaceContent'
 import { ensureSuccess, isSafeImageUrl, readContentErrorMessage } from '@/utils/spaceContent'
 
@@ -70,7 +85,6 @@ const props = defineProps({
   label: { type: String, default: '' },
   inputId: { type: String, required: true },
   hint: { type: String, default: '' },
-  placeholder: { type: String, default: 'https://… 或上传一张图片' },
   disabled: { type: Boolean, default: false },
 })
 
@@ -80,13 +94,39 @@ const fileInputRef = ref(null)
 const uploading = ref(false)
 const error = ref('')
 const justUploaded = ref(false)
+const thumbnailFailed = ref(false)
+const previewOpen = ref(false)
 
 const previewUrl = computed(() => (
   props.modelValue && isSafeImageUrl(props.modelValue) ? props.modelValue.trim() : ''
 ))
+const thumbnailAlt = computed(() => `${props.label || '已上传图片'}预览`)
+const previewAriaLabel = computed(() => `放大预览${props.label || '图片'}`)
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 const MAX_SIZE = 5 * 1024 * 1024
+
+watch(previewUrl, () => {
+  thumbnailFailed.value = false
+  if (!previewUrl.value) previewOpen.value = false
+})
+
+function openPreview() {
+  if (!previewUrl.value) return
+  thumbnailFailed.value = false
+  previewOpen.value = true
+}
+
+function closePreview() {
+  previewOpen.value = false
+}
+
+function clearImage() {
+  error.value = ''
+  justUploaded.value = false
+  previewOpen.value = false
+  emit('update:modelValue', '')
+}
 
 async function onFileChange(event) {
   const file = event.target.files?.[0]

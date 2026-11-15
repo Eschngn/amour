@@ -7,12 +7,16 @@ import com.chengliuxiang.amour.web.model.vo.story.MilestoneStoryNodeVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceContentSaveResultVO;
 import com.chengliuxiang.amour.web.model.vo.story.StoryChapterIdReqVO;
 import com.chengliuxiang.amour.web.model.vo.story.StoryChapterManageVO;
+import com.chengliuxiang.amour.web.model.vo.story.StoryChapterOrderReqVO;
 import com.chengliuxiang.amour.web.model.vo.story.StoryChapterSaveReqVO;
 import com.chengliuxiang.amour.web.model.vo.story.StoryDetailReqVO;
 import com.chengliuxiang.amour.web.model.vo.story.StoryDetailRspVO;
+import com.chengliuxiang.amour.web.model.vo.story.StoryNodeGlobalOrderReqVO;
 import com.chengliuxiang.amour.web.model.vo.story.StoryNodeIdReqVO;
 import com.chengliuxiang.amour.web.model.vo.story.StoryNodeManageVO;
+import com.chengliuxiang.amour.web.model.vo.story.StoryNodeOrderReqVO;
 import com.chengliuxiang.amour.web.model.vo.story.StoryNodeSaveReqVO;
+import com.chengliuxiang.amour.web.model.vo.story.StoryNodeSortItemVO;
 import com.chengliuxiang.amour.web.model.vo.story.StoryNodeVO;
 import com.chengliuxiang.amour.web.model.vo.story.StoryOverviewVO;
 import com.chengliuxiang.amour.web.service.SpaceStoryManageService;
@@ -82,6 +86,12 @@ public class StoryController {
         return spaceStoryManageService.saveChapter(reqVO);
     }
 
+    @PostMapping("/manage/chapter/order")
+    @ApiOperationLog(description = "批量调整空间故事章节顺序")
+    public Response<Void> saveChapterOrder(@RequestBody @Valid StoryChapterOrderReqVO reqVO) {
+        return spaceStoryManageService.saveChapterOrder(reqVO);
+    }
+
     @PostMapping("/manage/chapter/delete")
     @ApiOperationLog(description = "删除空间故事章节")
     public Response<Void> deleteChapter(@RequestBody @Valid StoryChapterIdReqVO reqVO) {
@@ -98,6 +108,19 @@ public class StoryController {
     @ApiOperationLog(description = "新增或编辑空间故事节点")
     public Response<SpaceContentSaveResultVO> saveNode(@RequestBody @Valid StoryNodeSaveReqVO reqVO) {
         return spaceStoryManageService.saveNode(reqVO);
+    }
+
+    @PostMapping("/manage/node/order")
+    @ApiOperationLog(description = "批量调整章节内故事顺序")
+    public Response<List<StoryNodeSortItemVO>> saveNodeOrder(@RequestBody @Valid StoryNodeOrderReqVO reqVO) {
+        return spaceStoryManageService.saveNodeOrder(reqVO);
+    }
+
+    @PostMapping("/manage/node/global-order")
+    @ApiOperationLog(description = "批量调整全部故事全局顺序")
+    public Response<List<StoryNodeSortItemVO>> saveNodeGlobalOrder(
+            @RequestBody @Valid StoryNodeGlobalOrderReqVO reqVO) {
+        return spaceStoryManageService.saveNodeGlobalOrder(reqVO);
     }
 
     @PostMapping("/manage/node/delete")

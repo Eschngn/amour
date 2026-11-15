@@ -32,55 +32,92 @@
 
         <ul v-else class="divide-y divide-stone-100" aria-label="空间留言列表">
           <li v-for="message in messages" :key="message.messageId" class="px-5 py-4">
-            <div class="flex items-start justify-between gap-3">
-              <div class="min-w-0">
-                <p class="text-sm font-semibold text-stone-900">{{ message.userName || '匿名' }}</p>
-                <p class="mt-0.5 text-[11px] text-stone-400">{{ message.createTime }}</p>
-              </div>
-              <button
-                v-if="message.canDelete === true"
-                type="button"
-                class="shrink-0 rounded px-2 py-1 text-[11px] font-semibold text-stone-400 transition hover:bg-rose-50 hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 disabled:opacity-50"
-                :disabled="deletingMessageId === message.messageId"
-                :aria-label="`删除 ${message.userName || '匿名'} 的留言`"
-                @click="removeMessage(message)"
+            <div class="flex items-start gap-3">
+              <span
+                class="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-rose-400 to-pink-500 text-[11px] font-bold text-white"
+                aria-hidden="true"
               >
-                {{ deletingMessageId === message.messageId ? '删除中…' : '删除' }}
-              </button>
-            </div>
+                {{ initials(message.userName) }}
+                <img
+                  v-if="message.userAvatar"
+                  :src="message.userAvatar"
+                  alt=""
+                  class="absolute inset-0 h-full w-full object-cover"
+                  @error="$event.currentTarget.style.display = 'none'"
+                >
+              </span>
 
-            <p class="mt-2 whitespace-pre-wrap break-words text-sm leading-7 text-stone-700">{{ message.content }}</p>
-
-            <div v-if="message.replies?.length" class="mt-3 space-y-2 border-l-2 border-stone-100 pl-3">
-              <div v-for="reply in message.replies" :key="reply.replyId">
-                <div class="flex items-start justify-between gap-2">
-                  <p class="min-w-0 whitespace-pre-wrap break-words text-xs leading-6 text-stone-600">
-                    <span class="font-semibold text-stone-800">{{ reply.fromUserName }}</span>
-                    <span v-if="reply.toUserName" class="text-rose-600"> 回复 {{ reply.toUserName }}</span>
-                    ：{{ reply.content }}
+              <div class="min-w-0 flex-1">
+                <div class="flex items-start justify-between gap-3">
+                  <p class="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+                    <span class="break-words text-sm font-bold text-rose-800">{{ message.userName || '匿名' }}</span>
+                    <time class="text-[11px] font-normal text-stone-400">{{ message.createTime }}</time>
                   </p>
                   <button
-                    v-if="reply.canDelete === true"
+                    v-if="message.canDelete === true"
                     type="button"
-                    class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold text-stone-400 transition hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 disabled:opacity-50"
-                    :disabled="deletingReplyId === reply.replyId"
-                    :aria-label="`删除 ${reply.fromUserName} 的回复`"
-                    @click="removeReply(reply)"
+                    class="shrink-0 rounded px-2 py-1 text-[11px] font-semibold text-stone-400 transition hover:bg-rose-50 hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 disabled:opacity-50"
+                    :disabled="deletingMessageId === message.messageId"
+                    :aria-label="`删除 ${message.userName || '匿名'} 的留言`"
+                    @click="removeMessage(message)"
                   >
-                    {{ deletingReplyId === reply.replyId ? '删除中…' : '删除' }}
+                    {{ deletingMessageId === message.messageId ? '删除中…' : '删除' }}
+                  </button>
+                </div>
+
+                <p class="mt-2 whitespace-pre-wrap break-words text-sm leading-7 text-stone-800">{{ message.content }}</p>
+
+                <div v-if="message.replies?.length" class="mt-3 space-y-2 border-l-2 border-rose-100 pl-3">
+                  <div v-for="reply in message.replies" :key="reply.replyId">
+                    <div class="flex items-start justify-between gap-2">
+                      <p class="min-w-0 whitespace-pre-wrap break-words text-xs leading-6">
+                        <span class="font-semibold text-rose-700">{{ reply.fromUserName }}</span>
+                        <span v-if="reply.toUserName" class="text-rose-600"> 回复 {{ reply.toUserName }}</span>
+                        <span class="text-stone-400">：</span>
+                        <span class="text-stone-700">{{ reply.content }}</span>
+                      </p>
+                      <button
+                        v-if="reply.canDelete === true"
+                        type="button"
+                        class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold text-stone-400 transition hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 disabled:opacity-50"
+                        :disabled="deletingReplyId === reply.replyId"
+                        :aria-label="`删除 ${reply.fromUserName} 的回复`"
+                        @click="removeReply(reply)"
+                      >
+                        {{ deletingReplyId === reply.replyId ? '删除中…' : '删除' }}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-3">
+                  <button
+                    type="button"
+                    class="inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-55"
+                    :class="replyTarget?.messageId === message.messageId
+                      ? 'border-rose-300 bg-rose-50 text-rose-700'
+                      : 'border-rose-200 bg-white text-rose-700 hover:border-rose-300 hover:bg-rose-50'"
+                    :disabled="replying && replyTarget?.messageId === message.messageId"
+                    :aria-expanded="replyTarget?.messageId === message.messageId"
+                    :aria-controls="`studio-reply-form-${message.messageId}`"
+                    @click="toggleReply(message)"
+                  >
+                    <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <path d="M21 11.5a8.3 8.3 0 0 1-8.7 8.3 8.8 8.8 0 0 1-3.6-.8L3 20l1.3-4.7a8.1 8.1 0 0 1-.9-3.8A8.3 8.3 0 0 1 12 3.2a8.3 8.3 0 0 1 9 8.3Z" />
+                    </svg>
+                    <span class="whitespace-nowrap">{{ replyTarget?.messageId === message.messageId ? '取消回复' : '回复这条留言' }}</span>
                   </button>
                 </div>
               </div>
             </div>
 
-            <div class="mt-3">
-              <button type="button" class="btn-ghost !px-2 !py-1 !text-[11px]" @click="startReply(message)">
-                回复这条留言
-              </button>
-            </div>
-
-            <form v-if="replyTarget?.messageId === message.messageId" class="mt-3 rounded-lg border border-stone-200 bg-stone-50/70 p-3" @submit.prevent="submitReply">
-              <label :for="`studio-reply-${message.messageId}`" class="text-[11px] font-semibold text-stone-700">
+            <form
+              v-if="replyTarget?.messageId === message.messageId"
+              :id="`studio-reply-form-${message.messageId}`"
+              class="mt-3 rounded-lg border border-rose-100 bg-rose-50/40 p-3"
+              @submit.prevent="submitReply"
+            >
+              <label :for="`studio-reply-${message.messageId}`" class="text-[11px] font-semibold text-rose-800">
                 回复 {{ replyTarget.userName }}
               </label>
               <textarea
@@ -237,9 +274,24 @@ async function publish() {
   }
 }
 
+/** 头像缺失时用名字前两个字兜底，避免列表出现空白占位。 */
+function initials(name) {
+  const value = String(name || '匿名').trim()
+  return value.slice(0, 2).toUpperCase()
+}
+
 function startReply(message) {
   replyTarget.value = { messageId: message.messageId, userName: message.userName || 'Ta' }
   replyDraft.value = ''
+}
+
+/** 再次点击同一留言的回复按钮时收起输入框，保持按钮状态与表单一致。 */
+function toggleReply(message) {
+  if (replyTarget.value?.messageId === message.messageId) {
+    cancelReply()
+    return
+  }
+  startReply(message)
 }
 
 function cancelReply() {

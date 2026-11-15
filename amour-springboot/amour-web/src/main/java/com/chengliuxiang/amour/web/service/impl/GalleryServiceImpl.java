@@ -9,14 +9,12 @@ import com.chengliuxiang.amour.common.domain.dos.CoupleSpaceDO;
 import com.chengliuxiang.amour.common.domain.dos.PhotoDO;
 import com.chengliuxiang.amour.common.domain.dos.SpacePublishedItemDO;
 import com.chengliuxiang.amour.common.domain.dos.StoryNodeDO;
-import com.chengliuxiang.amour.common.domain.dos.StoryNodeImageDO;
 import com.chengliuxiang.amour.common.domain.dos.UserDO;
 import com.chengliuxiang.amour.common.domain.mapper.AnniversaryMapper;
 import com.chengliuxiang.amour.common.domain.mapper.CoupleMemberMapper;
 import com.chengliuxiang.amour.common.domain.mapper.CoupleSpaceMapper;
 import com.chengliuxiang.amour.common.domain.mapper.PhotoMapper;
 import com.chengliuxiang.amour.common.domain.mapper.SpacePublishedItemMapper;
-import com.chengliuxiang.amour.common.domain.mapper.StoryNodeImageMapper;
 import com.chengliuxiang.amour.common.domain.mapper.StoryNodeMapper;
 import com.chengliuxiang.amour.common.domain.mapper.UserMapper;
 import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
@@ -31,15 +29,17 @@ import com.chengliuxiang.amour.common.utils.Response;
 import com.chengliuxiang.amour.common.constant.SpaceReviewConstants;
 import com.chengliuxiang.amour.web.model.vo.gallery.GalleryAnniversaryVO;
 import com.chengliuxiang.amour.web.model.vo.gallery.GalleryPhotoVO;
+import com.chengliuxiang.amour.web.model.vo.gallery.GalleryPublicStoryDetailReqVO;
 import com.chengliuxiang.amour.web.model.vo.gallery.GallerySpaceCardVO;
 import com.chengliuxiang.amour.web.model.vo.gallery.GallerySpaceDetailReqVO;
 import com.chengliuxiang.amour.web.model.vo.gallery.GallerySpaceDetailVO;
 import com.chengliuxiang.amour.web.model.vo.gallery.GallerySpaceMemberVO;
 import com.chengliuxiang.amour.web.model.vo.gallery.GallerySpacePageQueryReqVO;
 import com.chengliuxiang.amour.web.model.vo.gallery.GalleryStoryDetailVO;
-import com.chengliuxiang.amour.web.model.vo.gallery.GalleryStoryImageVO;
+import com.chengliuxiang.amour.web.model.vo.gallery.GalleryStoryListItemVO;
 import com.chengliuxiang.amour.web.model.vo.gallery.GalleryStorySummaryVO;
 import com.chengliuxiang.amour.web.service.GalleryService;
+import com.chengliuxiang.amour.web.utils.GalleryStoryPreviewUtil;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -92,8 +92,6 @@ public class GalleryServiceImpl implements GalleryService {
     private UserMapper userMapper;
     @Resource
     private StoryNodeMapper storyNodeMapper;
-    @Resource
-    private StoryNodeImageMapper storyNodeImageMapper;
     @Resource
     private PhotoMapper photoMapper;
     @Resource
@@ -168,7 +166,7 @@ public class GalleryServiceImpl implements GalleryService {
         List<GallerySpaceMemberVO> members = buildMemberVOs(memberDOs, loadUserMap(userIds));
 
         GallerySnapshotData data = loadSnapshotData(space);
-        List<GalleryStoryDetailVO> stories = toStoryDetailVOs(data.stories);
+        List<GalleryStoryListItemVO> stories = toStoryListItemVOs(data.stories);
         List<GalleryPhotoVO> photos = toPhotoVOs(data.photos);
         List<GalleryAnniversaryVO> anniversaries = toAnniversaryVOs(data.anniversaries);
 
@@ -196,6 +194,23 @@ public class GalleryServiceImpl implements GalleryService {
                 .photos(photos)
                 .anniversaries(anniversaries)
                 .build());
+    }
+
+    @Override
+    public Response<GalleryStoryDetailVO> getPublicStoryDetail(GalleryPublicStoryDetailReqVO reqVO) {
+        if (reqVO == null || reqVO.getSpaceId() == null || reqVO.getStoryId() == null) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID);
+        }
+
+        // 先校验空间当前仍然公开且状态正常，空间下架后旧链接立即失效。
+        CoupleSpaceDO space = requirePublicSpace(reqVO.getSpaceId());
+        // 只从已发布快照（或历史公开空间的公开查询结果）中查找，禁止按 storyId 直查当前故事表。
+        StoryPublicSnapshot story = loadSnapshotData(space).stories.stream()
+                .filter(item -> reqVO.getStoryId().equals(item.getStoryId()))
+                .findFirst()
+                .orElseThrow(() -> new BizException(ResponseCodeEnum.STORY_NOT_EXIST));
+
+        return Response.success(toStoryDetailVO(story));
     }
 
     private GallerySpaceCardVO buildCard(CoupleSpaceDO space,
@@ -267,9 +282,8 @@ public class GalleryServiceImpl implements GalleryService {
     private GallerySnapshotData loadLiveSnapshotData(CoupleSpaceDO space) {
         Long spaceId = space.getId();
         List<StoryNodeDO> storyDOs = storyNodeMapper.selectPublicList(spaceId);
-        Map<Long, List<StoryNodeImageDO>> imageMap = loadStoryImages(spaceId, storyDOs);
         List<StoryPublicSnapshot> stories = storyDOs.stream()
-                .map(story -> toStorySnapshot(story, imageMap.get(story.getId())))
+                .map(this::toStorySnapshot)
                 .collect(Collectors.toList());
         List<PhotoPublicSnapshot> photos = photoMapper.selectPublicList(spaceId).stream()
                 .map(this::toPhotoSnapshot)
@@ -281,26 +295,6 @@ public class GalleryServiceImpl implements GalleryService {
         sortPhotos(photos);
         sortAnniversaries(anniversaries);
         return new GallerySnapshotData(toSpaceSnapshot(space), stories, photos, anniversaries);
-    }
-
-    private Map<Long, List<StoryNodeImageDO>> loadStoryImages(Long spaceId, List<StoryNodeDO> stories) {
-        if (CollUtil.isEmpty(stories)) {
-            return Collections.emptyMap();
-        }
-        List<Long> nodeIds = stories.stream()
-                .map(StoryNodeDO::getId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-        if (nodeIds.isEmpty()) {
-            return Collections.emptyMap();
-        }
-        List<StoryNodeImageDO> images = storyNodeImageMapper.selectByNodeIds(spaceId, nodeIds);
-        if (CollUtil.isEmpty(images)) {
-            return Collections.emptyMap();
-        }
-        return images.stream()
-                .filter(image -> image.getNodeId() != null && StrUtil.isNotBlank(image.getUrl()))
-                .collect(Collectors.groupingBy(StoryNodeImageDO::getNodeId));
     }
 
     private SpacePublicSnapshot toSpaceSnapshot(CoupleSpaceDO space) {
@@ -315,7 +309,7 @@ public class GalleryServiceImpl implements GalleryService {
                 .build();
     }
 
-    private StoryPublicSnapshot toStorySnapshot(StoryNodeDO story, List<StoryNodeImageDO> images) {
+    private StoryPublicSnapshot toStorySnapshot(StoryNodeDO story) {
         return StoryPublicSnapshot.builder()
                 .storyId(story.getId())
                 .chapterId(story.getChapterId())
@@ -329,13 +323,6 @@ public class GalleryServiceImpl implements GalleryService {
                 .tagColor(story.getTagColor())
                 .sortOrder(story.getSortOrder())
                 .milestone(Boolean.TRUE.equals(story.getIsMilestone()))
-                .images(CollUtil.isEmpty(images) ? Collections.emptyList() : images.stream()
-                        .map(image -> StoryPublicSnapshot.ImagePublicSnapshot.builder()
-                                .url(image.getUrl())
-                                .altText(StrUtil.nullToEmpty(image.getAltText()))
-                                .sortOrder(image.getSortOrder())
-                                .build())
-                        .collect(Collectors.toList()))
                 .build();
     }
 
@@ -367,36 +354,50 @@ public class GalleryServiceImpl implements GalleryService {
                 .build();
     }
 
-    private List<GalleryStoryDetailVO> toStoryDetailVOs(List<StoryPublicSnapshot> stories) {
+    /**
+     * 公开空间列表只输出摘要：完整正文不进入响应，预览最多 160 个字符。
+     */
+    private List<GalleryStoryListItemVO> toStoryListItemVOs(List<StoryPublicSnapshot> stories) {
+        if (CollUtil.isEmpty(stories)) {
+            return Collections.emptyList();
+        }
         return stories.stream()
-                .map(story -> GalleryStoryDetailVO.builder()
-                        .storyId(story.getStoryId())
-                        .title(story.getTitle())
-                        .summary(story.getSummary())
-                        .content(story.getContent())
-                        .happenedTime(parseDateTime(story.getHappenedTime()))
-                        .location(story.getLocation())
-                        .coverImage(story.getCoverImage())
-                        .tagLabel(story.getTagLabel())
-                        .tagColor(story.getTagColor())
-                        .isMilestone(story.getMilestone())
-                        .images(toStoryImageVOs(story.getImages()))
-                        .build())
+                .map(story -> {
+                    int contentLength = GalleryStoryPreviewUtil.countContentLength(story.getContent());
+                    return GalleryStoryListItemVO.builder()
+                            .storyId(story.getStoryId())
+                            .title(story.getTitle())
+                            .summary(story.getSummary())
+                            .contentPreview(GalleryStoryPreviewUtil.buildPreview(story.getContent()))
+                            .contentLength(contentLength)
+                            .hasContent(contentLength > 0)
+                            .happenedTime(parseDateTime(story.getHappenedTime()))
+                            .location(story.getLocation())
+                            .coverImage(story.getCoverImage())
+                            .tagLabel(story.getTagLabel())
+                            .tagColor(story.getTagColor())
+                            .isMilestone(story.getMilestone())
+                            .build();
+                })
                 .collect(Collectors.toList());
     }
 
-    private List<GalleryStoryImageVO> toStoryImageVOs(
-            List<StoryPublicSnapshot.ImagePublicSnapshot> images) {
-        if (CollUtil.isEmpty(images)) {
-            return Collections.emptyList();
-        }
-        return images.stream()
-                .filter(image -> StrUtil.isNotBlank(image.getUrl()))
-                .map(image -> GalleryStoryImageVO.builder()
-                        .url(image.getUrl())
-                        .altText(StrUtil.nullToEmpty(image.getAltText()))
-                        .build())
-                .collect(Collectors.toList());
+    /**
+     * 公开故事详情只保留阅读所需字段，不返回成员、审核、留言等私密信息。
+     */
+    private GalleryStoryDetailVO toStoryDetailVO(StoryPublicSnapshot story) {
+        return GalleryStoryDetailVO.builder()
+                .storyId(story.getStoryId())
+                .title(story.getTitle())
+                .summary(story.getSummary())
+                .content(story.getContent())
+                .happenedTime(parseDateTime(story.getHappenedTime()))
+                .location(story.getLocation())
+                .coverImage(story.getCoverImage())
+                .tagLabel(story.getTagLabel())
+                .tagColor(story.getTagColor())
+                .isMilestone(story.getMilestone())
+                .build();
     }
 
     private List<GalleryPhotoVO> toPhotoVOs(List<PhotoPublicSnapshot> photos) {

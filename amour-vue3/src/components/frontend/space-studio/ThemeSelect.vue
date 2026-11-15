@@ -5,7 +5,12 @@
     :disabled="disabled"
     @update:model-value="onSelect"
   >
-    <div class="relative">
+    <div
+      ref="rootRef"
+      class="relative"
+      @click="syncMenuPosition"
+      @keydown="syncMenuPosition"
+    >
       <ListboxButton
         :id="inputId"
         type="button"
@@ -30,46 +35,60 @@
         </svg>
       </ListboxButton>
 
-      <Transition
-        enter-active-class="transition duration-150 ease-out"
-        enter-from-class="opacity-0 -translate-y-1"
-        enter-to-class="opacity-100 translate-y-0"
-        leave-active-class="transition duration-100 ease-in"
-        leave-from-class="opacity-100 translate-y-0"
-        leave-to-class="opacity-0 -translate-y-1"
-      >
-        <ListboxOptions class="absolute z-[80] mt-1.5 max-h-64 w-full overflow-auto rounded-lg border border-stone-200 bg-white p-1.5 shadow-sm focus:outline-none">
-          <ListboxOption
-            v-for="option in options"
-            :key="String(option.value)"
-            :value="option.value"
-            :disabled="Boolean(option.disabled)"
-            as="template"
-            v-slot="{ active, selected, disabled: optionDisabled }"
+      <!-- 弹窗内 body 会滚动，选项面板改为 fixed 定位并挂到 body，避免被 overflow 裁剪。 -->
+      <Teleport to="body" :disabled="!inDialog">
+        <Transition
+          enter-active-class="transition duration-150 ease-out"
+          enter-from-class="opacity-0 -translate-y-1"
+          enter-to-class="opacity-100 translate-y-0"
+          leave-active-class="transition duration-100 ease-in"
+          leave-from-class="opacity-100 translate-y-0"
+          leave-to-class="opacity-0 -translate-y-1"
+          @before-enter="updateMenuPosition"
+          @after-leave="menuVisible = false"
+        >
+          <div
+            v-if="open"
+            :class="inDialog ? 'fixed z-[3000]' : 'absolute inset-x-0 z-[80] mt-1.5'"
+            :style="inDialog ? menuStyle : undefined"
           >
-            <li
-              class="flex items-center gap-2 rounded-md px-3 py-2 text-sm transition"
-              :class="[
-                active && !optionDisabled ? 'bg-stone-100 text-stone-900' : 'text-stone-700',
-                selected ? 'bg-rose-50 font-semibold text-rose-700' : '',
-                optionDisabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer',
-              ]"
+            <ListboxOptions
+              class="max-h-64 w-full overflow-auto rounded-lg border border-stone-200 bg-white p-1.5 shadow-sm focus:outline-none"
+              :style="inDialog ? { maxHeight: menuStyle.maxHeight } : undefined"
             >
-              <span class="min-w-0 flex-1 truncate">{{ option.label }}</span>
-              <svg v-if="selected" class="h-4 w-4 shrink-0 text-rose-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
-                <path d="m5 12 4.5 4.5L19 6.5" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </li>
-          </ListboxOption>
-          <li v-if="!options.length" class="px-3 py-3 text-center text-xs text-stone-400">暂无可选项</li>
-        </ListboxOptions>
-      </Transition>
+              <ListboxOption
+                v-for="option in options"
+                :key="String(option.value)"
+                :value="option.value"
+                :disabled="Boolean(option.disabled)"
+                as="template"
+                v-slot="{ active, selected, disabled: optionDisabled }"
+              >
+                <li
+                  class="flex items-center gap-2 rounded-md px-3 py-2 text-sm transition"
+                  :class="[
+                    active && !optionDisabled ? 'bg-stone-100 text-stone-900' : 'text-stone-700',
+                    selected ? 'bg-rose-50 font-semibold text-rose-700' : '',
+                    optionDisabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer',
+                  ]"
+                >
+                  <span class="min-w-0 flex-1 truncate">{{ option.label }}</span>
+                  <svg v-if="selected" class="h-4 w-4 shrink-0 text-rose-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                    <path d="m5 12 4.5 4.5L19 6.5" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </li>
+              </ListboxOption>
+              <li v-if="!options.length" class="px-3 py-3 text-center text-xs text-stone-400">暂无可选项</li>
+            </ListboxOptions>
+          </div>
+        </Transition>
+      </Teleport>
     </div>
   </Listbox>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import {
   Listbox,
   ListboxButton,
@@ -87,6 +106,60 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue'])
+
+const rootRef = ref(null)
+const inDialog = ref(false)
+const menuVisible = ref(false)
+const menuStyle = ref({})
+
+const MENU_GAP = 6
+const MENU_EDGE = 8
+const MENU_MIN_HEIGHT = 120
+const MENU_MAX_HEIGHT = 256
+
+onMounted(() => {
+  inDialog.value = Boolean(rootRef.value?.closest('.space-studio-dialog'))
+  if (!inDialog.value) return
+  window.addEventListener('scroll', handleViewportChange, true)
+  window.addEventListener('resize', handleViewportChange)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleViewportChange, true)
+  window.removeEventListener('resize', handleViewportChange)
+})
+
+/** 弹窗内用固定定位跟随触发按钮，空间不足时向上展开。 */
+function updateMenuPosition() {
+  if (!inDialog.value) return
+  menuVisible.value = true
+  const el = rootRef.value
+  if (!el) return
+  const rect = el.getBoundingClientRect()
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+  const width = Math.min(rect.width, viewportWidth - MENU_EDGE * 2)
+  const left = Math.min(Math.max(rect.left, MENU_EDGE), viewportWidth - width - MENU_EDGE)
+  const spaceBelow = viewportHeight - rect.bottom - MENU_GAP - MENU_EDGE
+  const spaceAbove = rect.top - MENU_GAP - MENU_EDGE
+  const openUp = spaceBelow < MENU_MIN_HEIGHT && spaceAbove > spaceBelow
+  menuStyle.value = {
+    left: `${left}px`,
+    width: `${width}px`,
+    maxHeight: `${Math.max(MENU_MIN_HEIGHT, Math.min(MENU_MAX_HEIGHT, openUp ? spaceAbove : spaceBelow))}px`,
+    ...(openUp
+      ? { bottom: `${viewportHeight - rect.top + MENU_GAP}px` }
+      : { top: `${rect.bottom + MENU_GAP}px` }),
+  }
+}
+
+function syncMenuPosition() {
+  if (inDialog.value) updateMenuPosition()
+}
+
+function handleViewportChange() {
+  if (menuVisible.value) updateMenuPosition()
+}
 
 const selectedOption = computed(() => (
   props.options.find(option => option.value === props.modelValue)

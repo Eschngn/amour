@@ -254,6 +254,8 @@ CREATE TABLE `story_node` (
     `tag_color` TEXT NOT NULL DEFAULT '',
     -- 同章节内排序值
     `sort_order` INTEGER NOT NULL DEFAULT 0,
+    -- 跨章节的全局排序值（全部故事视图使用，与章节内排序互不影响）
+    `global_sort_order` INTEGER NOT NULL DEFAULT 0,
     -- 是否为里程碑：1-是 0-否
     `is_milestone` INTEGER NOT NULL DEFAULT 0,
     -- 可见性：0-仅空间成员 1-公开到恋爱广场 2-隐藏
@@ -272,6 +274,7 @@ CREATE TABLE `story_node` (
     `update_time` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX `idx_story_node_space_chapter_sort` ON `story_node` (`space_id`, `chapter_id`, `is_deleted`, `sort_order`);
+CREATE INDEX `idx_story_node_space_global_sort` ON `story_node` (`space_id`, `is_deleted`, `global_sort_order`);
 CREATE INDEX `idx_story_node_space_visibility` ON `story_node` (`space_id`, `visibility`, `is_deleted`);
 CREATE INDEX `idx_story_node_space_happened` ON `story_node` (`space_id`, `happened_time`);
 CREATE INDEX `idx_story_node_creator` ON `story_node` (`created_by`);
@@ -338,8 +341,10 @@ CREATE TABLE `photo` (
     `taken_time` TEXT DEFAULT NULL,
     -- 拍摄地点
     `location` TEXT NOT NULL DEFAULT '',
-    -- 照片排序值
+    -- 分类内排序值
     `sort_order` INTEGER NOT NULL DEFAULT 0,
+    -- 跨分类的全局排序值（全部照片视图使用，与分类内排序互不影响）
+    `global_sort_order` INTEGER NOT NULL DEFAULT 0,
     -- 是否为空间封面候选照片：1-是 0-否
     `is_cover` INTEGER NOT NULL DEFAULT 0,
     -- 可见性：0-仅空间成员 1-公开到恋爱广场 2-隐藏
@@ -358,6 +363,7 @@ CREATE TABLE `photo` (
     `update_time` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX `idx_photo_space_list` ON `photo` (`space_id`, `is_deleted`, `visibility`, `sort_order`, `taken_time`);
+CREATE INDEX `idx_photo_space_global_sort` ON `photo` (`space_id`, `is_deleted`, `global_sort_order`);
 CREATE INDEX `idx_photo_space_category` ON `photo` (`space_id`, `photo_category_id`);
 CREATE INDEX `idx_photo_creator` ON `photo` (`created_by`);
 

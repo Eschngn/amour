@@ -13,6 +13,7 @@ import LovePlazaPage from '@/pages/frontend/LovePlazaPage.vue'
 import MessageBoardPage from '@/pages/frontend/MessageBoardPage.vue'
 import OurStoryPage from '@/pages/frontend/OurStoryPage.vue'
 import PublicSpaceDetailPage from '@/pages/frontend/PublicSpaceDetailPage.vue'
+import PublicStoryDetailPage from '@/pages/frontend/PublicStoryDetailPage.vue'
 import SpaceSetupPage from '@/pages/frontend/SpaceSetupPage.vue'
 import SpaceStudioPage from '@/pages/frontend/SpaceStudioPage.vue'
 import StoryDetail from '@/pages/frontend/StoryDetail.vue'
@@ -47,6 +48,14 @@ const routes = [
     name: 'plaza',
     component: LovePlazaPage,
     meta: { title: '恋爱广场 · 恋语间' },
+  },
+  {
+    // 公开故事详情放在公开空间详情之前声明，确保不会被 /plaza/:spaceId 抢先匹配。
+    // 匿名可访问，不要求登录与情侣空间权限。
+    path: '/plaza/:spaceId/story/:storyId',
+    name: 'public-story-detail',
+    component: PublicStoryDetailPage,
+    meta: { title: '公开故事详情 · 恋语间' },
   },
   {
     path: '/plaza/:spaceId',

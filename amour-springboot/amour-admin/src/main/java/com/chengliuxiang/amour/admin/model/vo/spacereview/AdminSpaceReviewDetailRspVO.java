@@ -169,12 +169,28 @@ public class AdminSpaceReviewDetailRspVO {
         private String title;
 
         /**
+         * 是否存在当前可比较的已发布快照。
+         */
+        private Boolean hasPublishedBaseline;
+
+        /**
+         * FIRST_SUBMISSION / CHANGED / NO_CHANGE / NO_BASELINE；
+         * 已发布版本条目为空。
+         */
+        private String diffState;
+
+        /**
+         * 面向管理员的差异摘要，例如「仅调整章节内排序（10 → 20）」。
+         */
+        private String diffSummary;
+
+        /**
          * 文本字段差异，只展示发生变化的字段。
          */
         private List<DiffFieldVO> changedFields;
 
         /**
-         * 图片前后对比（故事图片、封面、头像等）。
+         * 图片前后对比（故事封面、照片、空间封面、头像等）。
          */
         private List<String> beforeImages;
 

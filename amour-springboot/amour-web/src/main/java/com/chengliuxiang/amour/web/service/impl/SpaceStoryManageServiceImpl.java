@@ -5,9 +5,7 @@ import cn.hutool.core.util.StrUtil;
 import com.chengliuxiang.amour.common.constant.SpaceReviewConstants;
 import com.chengliuxiang.amour.common.domain.dos.StoryChapterDO;
 import com.chengliuxiang.amour.common.domain.dos.StoryNodeDO;
-import com.chengliuxiang.amour.common.domain.dos.StoryNodeImageDO;
 import com.chengliuxiang.amour.common.domain.mapper.StoryChapterMapper;
-import com.chengliuxiang.amour.common.domain.mapper.StoryNodeImageMapper;
 import com.chengliuxiang.amour.common.domain.mapper.StoryNodeMapper;
 import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
 import com.chengliuxiang.amour.common.exception.BizException;
@@ -16,21 +14,32 @@ import com.chengliuxiang.amour.web.model.vo.space.SpaceContentSaveResultVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceItemReviewStateVO;
 import com.chengliuxiang.amour.web.model.vo.story.StoryChapterIdReqVO;
 import com.chengliuxiang.amour.web.model.vo.story.StoryChapterManageVO;
+import com.chengliuxiang.amour.web.model.vo.story.StoryChapterOrderReqVO;
 import com.chengliuxiang.amour.web.model.vo.story.StoryChapterSaveReqVO;
+import com.chengliuxiang.amour.web.model.vo.story.StoryNodeGlobalOrderReqVO;
 import com.chengliuxiang.amour.web.model.vo.story.StoryNodeIdReqVO;
 import com.chengliuxiang.amour.web.model.vo.story.StoryNodeManageVO;
+import com.chengliuxiang.amour.web.model.vo.story.StoryNodeOrderReqVO;
 import com.chengliuxiang.amour.web.model.vo.story.StoryNodeSaveReqVO;
+import com.chengliuxiang.amour.web.model.vo.story.StoryNodeSortItemVO;
+import com.chengliuxiang.amour.web.model.vo.space.SortOrderItemVO;
 import com.chengliuxiang.amour.web.service.SpaceContentAccessService;
 import com.chengliuxiang.amour.web.service.SpaceReviewService;
 import com.chengliuxiang.amour.web.service.SpaceStoryManageService;
+import com.chengliuxiang.amour.web.utils.SpaceSortOrderUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -43,8 +52,6 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
     private static final int VISIBILITY_HIDDEN = 2;
 
     private static final Pattern HEX_COLOR = Pattern.compile("^#[0-9a-fA-F]{6}$");
-    private static final Pattern SAFE_IMAGE_URL = Pattern.compile("^(https?://|/)[^\\s]*$",
-            Pattern.CASE_INSENSITIVE);
 
     @Resource
     private SpaceContentAccessService spaceContentAccessService;
@@ -54,9 +61,6 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
 
     @Resource
     private StoryNodeMapper storyNodeMapper;
-
-    @Resource
-    private StoryNodeImageMapper storyNodeImageMapper;
 
     @Resource
     private SpaceReviewService spaceReviewService;
@@ -149,6 +153,25 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Response<Void> saveChapterOrder(StoryChapterOrderReqVO reqVO) {
+        Long spaceId = spaceContentAccessService.requireEditableSpaceId();
+        List<Long> orderedIds = SpaceSortOrderUtils.orderedDistinctIds(reqVO.getItems());
+        List<StoryChapterDO> chapters = storyChapterMapper.selectChaptersByIds(spaceId, orderedIds);
+        if (chapters.size() != orderedIds.size()) {
+            throw new BizException(ResponseCodeEnum.SPACE_CONTENT_NOT_IN_SPACE);
+        }
+        for (int index = 0; index < orderedIds.size(); index++) {
+            int updated = storyChapterMapper.updateSortOrder(
+                    spaceId, orderedIds.get(index), SpaceSortOrderUtils.sortOrderAt(index));
+            if (updated == 0) {
+                throw new BizException(ResponseCodeEnum.SPACE_CONTENT_NOT_IN_SPACE);
+            }
+        }
+        return Response.success();
+    }
+
+    @Override
     public Response<List<StoryNodeManageVO>> listNodes() {
         Long spaceId = spaceContentAccessService.requireReadableSpaceId();
         List<StoryNodeDO> nodes = storyNodeMapper.selectManageList(spaceId);
@@ -157,25 +180,11 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
         }
         Map<Long, StoryChapterDO> chapterMap = storyChapterMapper.selectBySpaceId(spaceId).stream()
                 .collect(Collectors.toMap(StoryChapterDO::getId, Function.identity(), (left, right) -> left));
-        Map<Long, List<StoryNodeImageDO>> imageMap = storyNodeImageMapper.selectByNodeIds(
-                        spaceId, nodes.stream().map(StoryNodeDO::getId).collect(Collectors.toList()))
-                .stream()
-                .collect(Collectors.groupingBy(StoryNodeImageDO::getNodeId));
         Map<String, SpaceItemReviewStateVO> reviewStates = spaceReviewService.loadItemReviewStates(spaceId);
 
         List<StoryNodeManageVO> records = nodes.stream()
                 .map(node -> {
                     StoryChapterDO chapter = chapterMap.get(node.getChapterId());
-                    List<StoryNodeManageVO.ImageVO> images = imageMap
-                            .getOrDefault(node.getId(), Collections.emptyList())
-                            .stream()
-                            .map(image -> StoryNodeManageVO.ImageVO.builder()
-                                    .id(image.getId())
-                                    .url(image.getUrl())
-                                    .altText(image.getAltText())
-                                    .sortOrder(image.getSortOrder())
-                                    .build())
-                            .collect(Collectors.toList());
                     SpaceItemReviewStateVO reviewState = reviewStates.get(
                             SpaceReviewConstants.ITEM_TYPE_STORY + ":" + node.getId());
                     return StoryNodeManageVO.builder()
@@ -191,6 +200,7 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
                             .tagLabel(node.getTagLabel())
                             .tagColor(node.getTagColor())
                             .sortOrder(node.getSortOrder())
+                            .globalSortOrder(node.getGlobalSortOrder())
                             .isMilestone(node.getIsMilestone())
                             .visibility(node.getVisibility())
                             .reviewStatus(reviewState == null ? null : reviewState.getReviewStatus())
@@ -200,7 +210,6 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
                                     ? null : reviewState.getReviewHandledAt())
                             .reviewHasPublishedVersion(reviewState == null
                                     ? null : reviewState.getHasPublishedVersion())
-                            .images(images)
                             .build();
                 })
                 .collect(Collectors.toList());
@@ -212,8 +221,6 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
     public Response<SpaceContentSaveResultVO> saveNode(StoryNodeSaveReqVO reqVO) {
         SpaceContentAccessService.SpaceAccess access = spaceContentAccessService.requireEditable();
         Long spaceId = access.getSpaceId();
-        // 历史公开空间先把当前公开数据固化为已发布版本，本次修改只进入待审核快照。
-        spaceReviewService.prepareForPublicEdit(spaceId);
 
         if (reqVO.getChapterId() == null) {
             throw new BizException(ResponseCodeEnum.CHAPTER_NOT_EXIST);
@@ -226,11 +233,12 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
             throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID);
         }
         Integer visibility = resolveVisibility(reqVO.getVisibility(), access);
-        validateImages(reqVO.getImages());
 
         LocalDateTime now = LocalDateTime.now();
         StoryNodeDO node;
         if (reqVO.getId() == null) {
+            // 历史公开空间先把当前公开数据固化为已发布版本，本次修改只进入待审核快照。
+            spaceReviewService.prepareForPublicEdit(spaceId);
             node = StoryNodeDO.builder()
                     .spaceId(spaceId)
                     .chapterId(reqVO.getChapterId())
@@ -242,7 +250,9 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
                     .coverImage(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getCoverImage())))
                     .tagLabel(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getTagLabel())))
                     .tagColor(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getTagColor())))
-                    .sortOrder(reqVO.getSortOrder() == null ? 0 : reqVO.getSortOrder())
+                    .sortOrder(resolveNewNodeSortOrder(spaceId, reqVO.getChapterId(), reqVO.getSortOrder()))
+                    // 新故事追加到全部故事末尾，章节内排序仍由 sortOrder 单独维护。
+                    .globalSortOrder(nextNodeGlobalSortOrder(spaceId))
                     .isMilestone(Boolean.TRUE.equals(reqVO.getIsMilestone()))
                     .visibility(visibility)
                     .isDeleted(false)
@@ -255,6 +265,13 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
             storyNodeMapper.insertStoryNode(node);
         } else {
             StoryNodeDO current = requireNode(spaceId, reqVO.getId());
+            // 重复保存相同内容不递增版本，也不产生无意义的待审核项。
+            if (!isStoryChanged(current, reqVO, visibility)) {
+                return Response.success(spaceReviewService.onContentUnchanged(
+                        spaceId, SpaceReviewConstants.ITEM_TYPE_STORY, current.getId()));
+            }
+            // 历史公开空间先把当前公开数据固化为已发布版本，本次修改只进入待审核快照。
+            spaceReviewService.prepareForPublicEdit(spaceId);
             node = StoryNodeDO.builder()
                     .id(current.getId())
                     .spaceId(spaceId)
@@ -267,9 +284,8 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
                     .coverImage(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getCoverImage())))
                     .tagLabel(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getTagLabel())))
                     .tagColor(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getTagColor())))
-                    .sortOrder(reqVO.getSortOrder() == null
-                            ? (current.getSortOrder() == null ? 0 : current.getSortOrder())
-                            : reqVO.getSortOrder())
+                    // 改章节时追加到目标章节末尾；未改章节时保留原章节内顺序。
+                    .sortOrder(resolveUpdatedNodeSortOrder(spaceId, current, reqVO))
                     .isMilestone(Boolean.TRUE.equals(reqVO.getIsMilestone()))
                     .visibility(visibility)
                     .updatedBy(access.getUserId())
@@ -281,9 +297,46 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
             }
         }
 
-        replaceImages(spaceId, node.getId(), access.getUserId(), reqVO.getImages(), now);
         return Response.success(spaceReviewService.onContentSaved(
                 spaceId, access.getUserId(), SpaceReviewConstants.ITEM_TYPE_STORY, node.getId(), false));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Response<List<StoryNodeSortItemVO>> saveNodeOrder(StoryNodeOrderReqVO reqVO) {
+        Long spaceId = spaceContentAccessService.requireEditableSpaceId();
+        Long chapterId = reqVO.getChapterId();
+        requireChapter(spaceId, chapterId);
+        List<StoryNodeDO> chapterNodes = storyNodeMapper.selectActiveByChapterId(spaceId, chapterId);
+
+        // 章节内排序只写 sort_order；global_sort_order 完全不动，全部故事视图保持原顺序。
+        List<StoryNodeDO> ordered = resolveScopedOrder(chapterNodes, reqVO.getItems());
+        for (int index = 0; index < ordered.size(); index++) {
+            int updated = storyNodeMapper.updateSortOrder(
+                    spaceId, chapterId, ordered.get(index).getId(), SpaceSortOrderUtils.sortOrderAt(index));
+            if (updated == 0) {
+                throw new BizException(ResponseCodeEnum.SPACE_CONTENT_NOT_IN_SPACE);
+            }
+        }
+        return Response.success(toSortItems(storyNodeMapper.selectActiveByChapterId(spaceId, chapterId)));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Response<List<StoryNodeSortItemVO>> saveNodeGlobalOrder(StoryNodeGlobalOrderReqVO reqVO) {
+        Long spaceId = spaceContentAccessService.requireEditableSpaceId();
+        List<StoryNodeDO> allNodes = storyNodeMapper.selectManageList(spaceId);
+
+        // 全局排序只写 global_sort_order；各章节的 sort_order 保持不变。
+        List<StoryNodeDO> ordered = resolveScopedOrder(allNodes, reqVO.getItems());
+        for (int index = 0; index < ordered.size(); index++) {
+            int updated = storyNodeMapper.updateGlobalSortOrder(
+                    spaceId, ordered.get(index).getId(), SpaceSortOrderUtils.sortOrderAt(index));
+            if (updated == 0) {
+                throw new BizException(ResponseCodeEnum.SPACE_CONTENT_NOT_IN_SPACE);
+            }
+        }
+        return Response.success(toSortItems(storyNodeMapper.selectManageList(spaceId)));
     }
 
     @Override
@@ -314,44 +367,52 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
         return visibility;
     }
 
-    private void validateImages(List<StoryNodeSaveReqVO.ImageReqVO> images) {
-        if (CollUtil.isEmpty(images)) {
-            return;
-        }
-        for (StoryNodeSaveReqVO.ImageReqVO image : images) {
-            String url = StrUtil.trim(image.getUrl());
-            if (StrUtil.isBlank(url)) {
-                continue;
-            }
-            if (url.length() > 500 || !SAFE_IMAGE_URL.matcher(url).matches()) {
-                throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID);
-            }
-        }
+    /**
+     * 判断本次保存是否真正改变了工作数据。
+     *
+     * <p>只比较保存接口会写入的字段，忽略数据库自增 ID 与对象序列化差异；
+     * 排序值也属于真实变更，因为会改变恋爱广场的故事顺序。
+     * 历史故事附图不再参与保存，也不会影响变化判定。</p>
+     */
+    private boolean isStoryChanged(StoryNodeDO current, StoryNodeSaveReqVO reqVO, int visibility) {
+        String requestedTagLabel = StrUtil.nullToEmpty(StrUtil.trim(reqVO.getTagLabel()));
+        return !Objects.equals(current.getChapterId(), reqVO.getChapterId())
+                || !sameText(current.getTitle(), reqVO.getTitle())
+                || !sameText(current.getSummary(), reqVO.getSummary())
+                || !sameText(current.getContent(), reqVO.getContent())
+                || !Objects.equals(current.getHappenedTime(), reqVO.getHappenedTime())
+                || !sameText(current.getLocation(), reqVO.getLocation())
+                || !sameText(current.getCoverImage(), reqVO.getCoverImage())
+                || !sameText(current.getTagLabel(), requestedTagLabel)
+                || !Objects.equals(effectiveTagColor(current.getTagLabel(), current.getTagColor()),
+                        effectiveTagColor(requestedTagLabel, reqVO.getTagColor()))
+                || !Objects.equals(currentSortOrder(current), requestedSortOrder(reqVO, current))
+                || !Objects.equals(Boolean.TRUE.equals(current.getIsMilestone()),
+                        Boolean.TRUE.equals(reqVO.getIsMilestone()))
+                || !Objects.equals(current.getVisibility() == null ? 0 : current.getVisibility(),
+                        visibility);
     }
 
-    private void replaceImages(Long spaceId, Long nodeId, Long userId,
-                               List<StoryNodeSaveReqVO.ImageReqVO> images, LocalDateTime now) {
-        storyNodeImageMapper.deleteByNodeId(spaceId, nodeId);
-        if (CollUtil.isEmpty(images)) {
-            return;
+    private boolean sameText(String left, String right) {
+        return Objects.equals(
+                StrUtil.nullToEmpty(StrUtil.trim(left)),
+                StrUtil.nullToEmpty(StrUtil.trim(right)));
+    }
+
+    /** 标签为空时颜色不参与展示，也不应因为历史残留颜色而误判为修改。 */
+    private String effectiveTagColor(String tagLabel, String tagColor) {
+        if (StrUtil.isBlank(tagLabel)) {
+            return "";
         }
-        int index = 0;
-        for (StoryNodeSaveReqVO.ImageReqVO image : images) {
-            String url = StrUtil.trim(image.getUrl());
-            if (StrUtil.isBlank(url)) {
-                continue;
-            }
-            storyNodeImageMapper.insert(StoryNodeImageDO.builder()
-                    .spaceId(spaceId)
-                    .nodeId(nodeId)
-                    .url(url)
-                    .altText(StrUtil.nullToEmpty(StrUtil.trim(image.getAltText())))
-                    .sortOrder(image.getSortOrder() == null ? index * 10 : image.getSortOrder())
-                    .createdBy(userId)
-                    .createTime(now)
-                    .build());
-            index++;
-        }
+        return StrUtil.nullToEmpty(StrUtil.trim(tagColor)).toUpperCase(Locale.ROOT);
+    }
+
+    private int currentSortOrder(StoryNodeDO current) {
+        return current.getSortOrder() == null ? 0 : current.getSortOrder();
+    }
+
+    private int requestedSortOrder(StoryNodeSaveReqVO reqVO, StoryNodeDO current) {
+        return reqVO.getSortOrder() == null ? currentSortOrder(current) : reqVO.getSortOrder();
     }
 
     private int nextChapterSortOrder(Long spaceId) {
@@ -363,6 +424,81 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
             }
         }
         return max + 10;
+    }
+
+    /**
+     * 未显式传 sortOrder 时追加到当前章节末尾，避免新故事插到已有顺序最前面。
+     */
+    private int resolveNewNodeSortOrder(Long spaceId, Long chapterId, Integer requested) {
+        return requested != null ? requested : nextNodeSortOrder(spaceId, chapterId);
+    }
+
+    /**
+     * 编辑故事时的章节内排序：
+     * 章节未变时保留调用方显式值或原值；章节变更时追加到目标章节末尾。
+     */
+    private int resolveUpdatedNodeSortOrder(Long spaceId, StoryNodeDO current, StoryNodeSaveReqVO reqVO) {
+        if (!Objects.equals(current.getChapterId(), reqVO.getChapterId())) {
+            return nextNodeSortOrder(spaceId, reqVO.getChapterId());
+        }
+        return reqVO.getSortOrder() == null ? currentSortOrder(current) : reqVO.getSortOrder();
+    }
+
+    /** 当前章节内的下一个排序值，保证新内容追加到末尾。 */
+    private int nextNodeSortOrder(Long spaceId, Long chapterId) {
+        int max = 0;
+        for (StoryNodeDO node : storyNodeMapper.selectActiveByChapterId(spaceId, chapterId)) {
+            if (node.getSortOrder() != null && node.getSortOrder() > max) {
+                max = node.getSortOrder();
+            }
+        }
+        return max + 10;
+    }
+
+    /** 全部故事的下一个全局排序值。 */
+    private int nextNodeGlobalSortOrder(Long spaceId) {
+        return storyNodeMapper.findMaxGlobalSortOrder(spaceId) + 10;
+    }
+
+    /**
+     * 把排序请求合并为完整的范围顺序。
+     *
+     * <p>请求中的 ID 必须全部属于当前范围（章节或全部故事）；未提交的范围内条目
+     * 保持原相对顺序追加在末尾，避免部分提交造成排序值重复。</p>
+     */
+    private List<StoryNodeDO> resolveScopedOrder(List<StoryNodeDO> scopeNodes, List<SortOrderItemVO> items) {
+        if (CollUtil.isEmpty(items)) {
+            return scopeNodes;
+        }
+        List<Long> orderedIds = SpaceSortOrderUtils.orderedDistinctIds(items);
+        Map<Long, StoryNodeDO> nodeMap = scopeNodes.stream()
+                .collect(Collectors.toMap(StoryNodeDO::getId, Function.identity(), (left, right) -> left));
+        if (!nodeMap.keySet().containsAll(orderedIds)) {
+            throw new BizException(ResponseCodeEnum.SPACE_CONTENT_NOT_IN_SPACE);
+        }
+        List<StoryNodeDO> ordered = new ArrayList<>();
+        Set<Long> submitted = new HashSet<>(orderedIds);
+        for (Long id : orderedIds) {
+            ordered.add(nodeMap.get(id));
+        }
+        for (StoryNodeDO node : scopeNodes) {
+            if (!submitted.contains(node.getId())) {
+                ordered.add(node);
+            }
+        }
+        return ordered;
+    }
+
+    private List<StoryNodeSortItemVO> toSortItems(List<StoryNodeDO> nodes) {
+        return nodes.stream()
+                .map(node -> StoryNodeSortItemVO.builder()
+                        .id(node.getId())
+                        .chapterId(node.getChapterId())
+                        .title(node.getTitle())
+                        .sortOrder(node.getSortOrder())
+                        .globalSortOrder(node.getGlobalSortOrder())
+                        .build())
+                .collect(Collectors.toList());
     }
 
     private StoryChapterDO requireChapter(Long spaceId, Long chapterId) {

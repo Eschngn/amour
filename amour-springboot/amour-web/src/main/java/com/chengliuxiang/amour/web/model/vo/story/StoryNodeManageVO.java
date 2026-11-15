@@ -6,10 +6,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 /**
- * 用户端故事节点管理数据（包含隐藏内容与图片）。
+ * 用户端故事节点管理数据（包含隐藏内容与审核状态）。
+ * 故事只保留封面，不再返回历史故事附图。
  */
 @Data
 @Builder
@@ -39,7 +39,11 @@ public class StoryNodeManageVO {
 
     private String tagColor;
 
+    /** 章节内排序值。 */
     private Integer sortOrder;
+
+    /** 跨章节的全局排序值。 */
+    private Integer globalSortOrder;
 
     private Boolean isMilestone;
 
@@ -64,21 +68,4 @@ public class StoryNodeManageVO {
      * 恋爱广场当前是否仍展示该内容上一次通过的版本。
      */
     private Boolean reviewHasPublishedVersion;
-
-    private List<ImageVO> images;
-
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class ImageVO {
-
-        private Long id;
-
-        private String url;
-
-        private String altText;
-
-        private Integer sortOrder;
-    }
 }

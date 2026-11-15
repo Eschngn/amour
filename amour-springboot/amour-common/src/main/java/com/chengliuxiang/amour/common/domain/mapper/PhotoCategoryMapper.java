@@ -58,6 +58,16 @@ public interface PhotoCategoryMapper extends BaseMapper<PhotoCategoryDO> {
                 .ne(excludedId != null, PhotoCategoryDO::getId, excludedId));
     }
 
+    /**
+     * 批量排序：只更新 sort_order，条件同时包含 space_id，禁止跨空间改写。
+     */
+    default int updateSortOrder(Long spaceId, Long id, Integer sortOrder) {
+        return update(null, new LambdaUpdateWrapper<PhotoCategoryDO>()
+                .eq(PhotoCategoryDO::getSpaceId, spaceId)
+                .eq(PhotoCategoryDO::getId, id)
+                .set(PhotoCategoryDO::getSortOrder, sortOrder));
+    }
+
     default PhotoCategoryDO findLastBySortOrder(Long spaceId) {
         return selectOne(new LambdaQueryWrapper<PhotoCategoryDO>()
                 .eq(PhotoCategoryDO::getSpaceId, spaceId)

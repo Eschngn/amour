@@ -86,16 +86,37 @@ public interface StoryNodeMapper extends BaseMapper<StoryNodeDO> {
     }
 
     /**
-     * 用户端管理列表：包含隐藏内容，按章节与排序值展示。
+     * 用户端管理列表：包含隐藏内容，按全局排序值展示。
+     *
+     * <p>章节筛选后的列表由前端按 sort_order（章节内排序）重新排列，
+     * 因此同一份数据可以同时支撑全局视图与章节视图。</p>
      */
     default List<StoryNodeDO> selectManageList(Long spaceId) {
         return selectList(new LambdaQueryWrapper<StoryNodeDO>()
                 .eq(StoryNodeDO::getSpaceId, spaceId)
                 .eq(StoryNodeDO::getIsDeleted, false)
-                .orderByAsc(StoryNodeDO::getChapterId)
-                .orderByAsc(StoryNodeDO::getSortOrder)
-                .orderByAsc(StoryNodeDO::getHappenedTime)
+                .orderByAsc(StoryNodeDO::getGlobalSortOrder)
                 .orderByAsc(StoryNodeDO::getId));
+    }
+
+    /** 查询空间内最大的全局排序值，用于把新故事追加到全部故事末尾。 */
+    default Integer findMaxGlobalSortOrder(Long spaceId) {
+        StoryNodeDO last = selectOne(new LambdaQueryWrapper<StoryNodeDO>()
+                .eq(StoryNodeDO::getSpaceId, spaceId)
+                .eq(StoryNodeDO::getIsDeleted, false)
+                .orderByDesc(StoryNodeDO::getGlobalSortOrder)
+                .orderByDesc(StoryNodeDO::getId)
+                .last("LIMIT 1"));
+        return last == null || last.getGlobalSortOrder() == null ? 0 : last.getGlobalSortOrder();
+    }
+
+    /** 全局排序：只更新 global_sort_order，不触碰章节内排序。 */
+    default int updateGlobalSortOrder(Long spaceId, Long id, Integer globalSortOrder) {
+        return update(null, new LambdaUpdateWrapper<StoryNodeDO>()
+                .eq(StoryNodeDO::getSpaceId, spaceId)
+                .eq(StoryNodeDO::getId, id)
+                .eq(StoryNodeDO::getIsDeleted, false)
+                .set(StoryNodeDO::getGlobalSortOrder, globalSortOrder));
     }
 
     /**
@@ -117,6 +138,32 @@ public interface StoryNodeMapper extends BaseMapper<StoryNodeDO> {
                 .eq(StoryNodeDO::getSpaceId, node.getSpaceId())
                 .eq(StoryNodeDO::getIsDeleted, false)
                 .setSql("revision = revision + 1"));
+    }
+
+    /**
+     * 查询指定章节内的有效故事，排序规则与管理列表保持一致。
+     * 用于章节内排序的范围校验与“追加到末尾”的排序值计算。
+     */
+    default List<StoryNodeDO> selectActiveByChapterId(Long spaceId, Long chapterId) {
+        return selectList(new LambdaQueryWrapper<StoryNodeDO>()
+                .eq(StoryNodeDO::getSpaceId, spaceId)
+                .eq(StoryNodeDO::getChapterId, chapterId)
+                .eq(StoryNodeDO::getIsDeleted, false)
+                .orderByAsc(StoryNodeDO::getSortOrder)
+                .orderByAsc(StoryNodeDO::getHappenedTime)
+                .orderByAsc(StoryNodeDO::getId));
+    }
+
+    /**
+     * 批量排序：只更新 sort_order，并同时限制空间与章节，禁止借排序跨章节移动故事。
+     */
+    default int updateSortOrder(Long spaceId, Long chapterId, Long id, Integer sortOrder) {
+        return update(null, new LambdaUpdateWrapper<StoryNodeDO>()
+                .eq(StoryNodeDO::getSpaceId, spaceId)
+                .eq(StoryNodeDO::getChapterId, chapterId)
+                .eq(StoryNodeDO::getId, id)
+                .eq(StoryNodeDO::getIsDeleted, false)
+                .set(StoryNodeDO::getSortOrder, sortOrder));
     }
 
     default List<StoryNodeDO> selectMilestones(Long spaceId) {

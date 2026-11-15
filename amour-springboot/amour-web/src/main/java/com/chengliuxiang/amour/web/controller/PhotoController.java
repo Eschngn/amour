@@ -4,13 +4,18 @@ import com.chengliuxiang.amour.common.aspect.ApiOperationLog;
 import com.chengliuxiang.amour.common.model.PageResult;
 import com.chengliuxiang.amour.common.utils.Response;
 import com.chengliuxiang.amour.web.model.vo.photo.PhotoCategoryIdReqVO;
+import com.chengliuxiang.amour.web.model.vo.photo.PhotoCategoryOrderReqVO;
 import com.chengliuxiang.amour.web.model.vo.photo.PhotoCategorySaveReqVO;
 import com.chengliuxiang.amour.web.model.vo.photo.PhotoCategoryVO;
+import com.chengliuxiang.amour.web.model.vo.photo.PhotoGlobalOrderReqVO;
 import com.chengliuxiang.amour.web.model.vo.photo.PhotoIdReqVO;
 import com.chengliuxiang.amour.web.model.vo.photo.PhotoManageItemVO;
 import com.chengliuxiang.amour.web.model.vo.photo.PhotoManagePageQueryReqVO;
+import com.chengliuxiang.amour.web.model.vo.photo.PhotoOrderReqVO;
 import com.chengliuxiang.amour.web.model.vo.photo.PhotoPageItemVO;
 import com.chengliuxiang.amour.web.model.vo.photo.PhotoPageQueryReqVO;
+import com.chengliuxiang.amour.web.model.vo.photo.PhotoSortItemVO;
+import com.chengliuxiang.amour.web.model.vo.photo.PhotoSortListReqVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceContentSaveResultVO;
 import com.chengliuxiang.amour.web.model.vo.photo.PhotoSaveReqVO;
 import com.chengliuxiang.amour.web.service.PhotoService;
@@ -67,6 +72,12 @@ public class PhotoController {
         return spacePhotoManageService.saveCategory(reqVO);
     }
 
+    @PostMapping("/manage/category/order")
+    @ApiOperationLog(description = "批量调整空间相册分类顺序")
+    public Response<Void> saveCategoryOrder(@Valid @RequestBody PhotoCategoryOrderReqVO reqVO) {
+        return spacePhotoManageService.saveCategoryOrder(reqVO);
+    }
+
     @PostMapping("/manage/category/delete")
     @ApiOperationLog(description = "删除空间相册分类")
     public Response<Void> deleteCategory(@Valid @RequestBody PhotoCategoryIdReqVO reqVO) {
@@ -84,6 +95,25 @@ public class PhotoController {
     @ApiOperationLog(description = "新增或编辑空间相册照片")
     public Response<SpaceContentSaveResultVO> savePhoto(@Valid @RequestBody PhotoSaveReqVO reqVO) {
         return spacePhotoManageService.savePhoto(reqVO);
+    }
+
+    @PostMapping("/manage/photo/sort-list")
+    @ApiOperationLog(description = "查询指定分类的完整照片排序列表")
+    public Response<List<PhotoSortItemVO>> listPhotosForSort(@Valid @RequestBody PhotoSortListReqVO reqVO) {
+        return spacePhotoManageService.listPhotosForSort(reqVO);
+    }
+
+    @PostMapping("/manage/photo/order")
+    @ApiOperationLog(description = "批量调整分类内照片顺序")
+    public Response<List<PhotoSortItemVO>> savePhotoOrder(@Valid @RequestBody PhotoOrderReqVO reqVO) {
+        return spacePhotoManageService.savePhotoOrder(reqVO);
+    }
+
+    @PostMapping("/manage/photo/global-order")
+    @ApiOperationLog(description = "批量调整全部照片全局顺序")
+    public Response<List<PhotoSortItemVO>> savePhotoGlobalOrder(
+            @Valid @RequestBody PhotoGlobalOrderReqVO reqVO) {
+        return spacePhotoManageService.savePhotoGlobalOrder(reqVO);
     }
 
     @PostMapping("/manage/photo/delete")

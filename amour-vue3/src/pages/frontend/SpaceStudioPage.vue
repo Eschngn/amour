@@ -80,116 +80,88 @@
           <SpaceReviewStatusCard @submitted="onReviewSubmitted" />
         </div>
 
-        <div class="mt-6 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start lg:gap-8">
-          <aside class="hidden lg:sticky lg:top-24 lg:block">
-            <div class="rounded-2xl border border-stone-200/80 bg-white p-2">
-              <p class="px-3 pb-2 pt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-stone-400">
-                编辑栏目
+        <SpaceSaveFeedback class="mt-3" :notice="saveFeedback" @close="saveFeedback = null" />
+
+        <div class="mt-6 space-y-5">
+          <!-- 栏目导航：全宽横排，位于审核状态卡与编辑内容之间 -->
+          <div class="rounded-2xl border border-stone-200/80 bg-white p-2">
+            <div class="flex flex-wrap items-center justify-between gap-2 px-3 pb-1.5 pt-1">
+              <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-stone-400">编辑栏目</p>
+              <p v-if="dirty" class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-700" role="status">
+                <span class="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true" />
+                有未保存的修改
               </p>
-              <nav aria-label="空间编辑栏目">
-                <button
-                  v-for="tab in visibleTabs"
-                  :key="tab.key"
-                  type="button"
-                  class="group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition"
-                  :class="activeTab === tab.key
-                    ? 'bg-rose-50 text-rose-800'
-                    : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'"
-                  :aria-current="activeTab === tab.key ? 'page' : undefined"
-                  @click="switchTab(tab.key)"
-                >
-                  <span
-                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition"
-                    :class="activeTab === tab.key
-                      ? 'border-rose-200 bg-white text-rose-600'
-                      : 'border-stone-200 bg-white text-stone-400 group-hover:text-rose-500'"
-                    aria-hidden="true"
-                  >
-                    <component :is="tab.icon" class="h-4 w-4" />
-                  </span>
-                  <span class="min-w-0 flex-1">
-                    <span class="block text-sm font-semibold">{{ tab.label }}</span>
-                    <span class="mt-0.5 block truncate text-[11px] text-stone-400">{{ tab.hint }}</span>
-                  </span>
-                </button>
-              </nav>
-
-              <div class="mt-2 border-t border-stone-100 px-3 pb-2 pt-3">
-                <p v-if="dirty" class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-700" role="status">
-                  <span class="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true" />
-                  有未保存的修改
-                </p>
-                <p v-else class="text-[11px] leading-5 text-stone-400">
-                  切换栏目时会先确认未保存的修改。
-                </p>
-              </div>
+              <p v-else class="hidden text-[11px] text-stone-400 sm:block">切换栏目时会先确认未保存的修改。</p>
             </div>
-          </aside>
 
-          <div class="min-w-0">
             <nav
-              class="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-2 lg:hidden"
+              class="flex gap-1.5 overflow-x-auto px-1 py-1 sm:flex-wrap sm:overflow-visible"
               aria-label="空间编辑栏目"
             >
               <button
                 v-for="tab in visibleTabs"
                 :key="tab.key"
                 type="button"
-                class="flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition"
+                class="group flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300"
                 :class="activeTab === tab.key
-                  ? 'border-rose-200 bg-rose-50 text-rose-700'
-                  : 'border-stone-200 bg-white text-stone-600'"
+                  ? 'bg-rose-50 text-rose-800 ring-1 ring-inset ring-rose-200'
+                  : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'"
                 :aria-current="activeTab === tab.key ? 'page' : undefined"
                 @click="switchTab(tab.key)"
               >
-                <component :is="tab.icon" class="h-3.5 w-3.5" aria-hidden="true" />
-                {{ tab.label }}
+                <span
+                  class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition"
+                  :class="activeTab === tab.key
+                    ? 'border-rose-200 bg-white text-rose-600'
+                    : 'border-stone-200 bg-white text-stone-400 group-hover:text-rose-500'"
+                  aria-hidden="true"
+                >
+                  <component :is="tab.icon" class="h-4 w-4" />
+                </span>
+                <span class="min-w-0">
+                  <span class="block text-sm font-semibold">{{ tab.label }}</span>
+                  <span class="mt-0.5 hidden truncate text-[11px] text-stone-400 xl:block">{{ tab.hint }}</span>
+                </span>
               </button>
             </nav>
+          </div>
 
-            <p
-              v-if="dirty"
-              class="mb-2 inline-flex items-center gap-1.5 rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-1.5 text-[11px] font-semibold text-amber-800 lg:hidden"
-              role="status"
-            >
-              <span class="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true" />
-              有未保存的修改
-            </p>
+          <section v-if="!visibleTabs.length" class="studio-empty">
+            <p class="text-sm font-semibold text-stone-800">当前账号没有可用的内容管理权限</p>
+            <p class="mt-1 text-xs leading-5 text-stone-500">请联系管理员开通故事、相册、留言或纪念日的查询权限。</p>
+          </section>
 
-            <section v-if="!visibleTabs.length" class="studio-empty mt-4">
-              <p class="text-sm font-semibold text-stone-800">当前账号没有可用的内容管理权限</p>
-              <p class="mt-1 text-xs leading-5 text-stone-500">请联系管理员开通故事、相册、留言或纪念日的查询权限。</p>
-            </section>
-
-            <div v-else class="mt-4 lg:mt-0">
-              <SpaceHomeEditor
-                v-if="activeTab === 'home'"
-                @update:dirty="setDirty"
-                @saved="onHomeSaved"
-              />
-              <SpaceStoryEditor
-                v-else-if="activeTab === 'story'"
-                :can-publish="canPublish"
-                :refresh-key="reviewRefreshKey"
-                @update:dirty="setDirty"
-              />
-              <SpaceMessageEditor
-                v-else-if="activeTab === 'message'"
-                @update:dirty="setDirty"
-              />
-              <SpacePhotoEditor
-                v-else-if="activeTab === 'photo'"
-                :can-publish="canPublish"
-                :refresh-key="reviewRefreshKey"
-                @update:dirty="setDirty"
-              />
-              <SpaceAnniversaryEditor
-                v-else-if="activeTab === 'anniversary'"
-                :can-publish="canPublish"
-                :refresh-key="reviewRefreshKey"
-                @update:dirty="setDirty"
-              />
-            </div>
+          <div v-else class="min-w-0">
+            <SpaceHomeEditor
+              v-if="activeTab === 'home'"
+              @update:dirty="setDirty"
+              @saved="onContentSaved"
+            />
+            <SpaceStoryEditor
+              v-else-if="activeTab === 'story'"
+              :can-publish="canPublish"
+              :refresh-key="reviewRefreshKey"
+              @update:dirty="setDirty"
+              @saved="onContentSaved"
+            />
+            <SpaceMessageEditor
+              v-else-if="activeTab === 'message'"
+              @update:dirty="setDirty"
+            />
+            <SpacePhotoEditor
+              v-else-if="activeTab === 'photo'"
+              :can-publish="canPublish"
+              :refresh-key="reviewRefreshKey"
+              @update:dirty="setDirty"
+              @saved="onContentSaved"
+            />
+            <SpaceAnniversaryEditor
+              v-else-if="activeTab === 'anniversary'"
+              :can-publish="canPublish"
+              :refresh-key="reviewRefreshKey"
+              @update:dirty="setDirty"
+              @saved="onContentSaved"
+            />
           </div>
         </div>
       </template>
@@ -200,8 +172,6 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
-import { ElMessageBox } from 'element-plus'
-import 'element-plus/es/components/message-box/style/css'
 import { Calendar, ChatDotRound, House, Notebook, Picture } from '@element-plus/icons-vue'
 import CouplePageScaffold from '@/components/frontend/CouplePageScaffold.vue'
 import FrontendPageHeader from '@/components/frontend/FrontendPageHeader.vue'
@@ -211,9 +181,11 @@ import SpaceMessageEditor from '@/components/frontend/space-studio/SpaceMessageE
 import SpacePhotoEditor from '@/components/frontend/space-studio/SpacePhotoEditor.vue'
 import SpaceAnniversaryEditor from '@/components/frontend/space-studio/SpaceAnniversaryEditor.vue'
 import SpaceReviewStatusCard from '@/components/frontend/space-studio/SpaceReviewStatusCard.vue'
+import SpaceSaveFeedback from '@/components/frontend/space-studio/SpaceSaveFeedback.vue'
 import { useFrontendSpace } from '@/composables/useFrontendSpace'
 import { hasFrontendQueryPermission } from '@/utils/auth'
 import { canEditSpaceContent, SPACE_STATUS } from '@/utils/spaceState'
+import { confirmDiscardChanges } from '@/utils/unsavedChanges'
 
 const route = useRoute()
 const router = useRouter()
@@ -259,9 +231,33 @@ const statusBadge = computed(() => (
 
 const activeTab = ref('home')
 const dirty = ref(false)
+const saveFeedback = ref(null)
+let saveFeedbackSeq = 0
 
 function setDirty(value) {
   dirty.value = Boolean(value)
+}
+
+/**
+ * 编辑器保存成功后统一在这里展示页面级反馈。
+ *
+ * 反馈区域处于正常文档流，不抢焦点也不覆盖栏目导航；
+ * dirty 使用编辑器重建基线后的结果，避免同栏目其他表单的修改被误清。
+ */
+function onContentSaved(payload) {
+  // 编辑器在重建被保存表单的基线后会带上整体 dirty；同栏目其他表单仍有修改时不能误清。
+  if (typeof payload?.dirtyAfterSave === 'boolean') {
+    dirty.value = payload.dirtyAfterSave
+  }
+  const message = typeof payload?.message === 'string' ? payload.message.trim() : ''
+  if (!message) return
+  saveFeedback.value = {
+    id: ++saveFeedbackSeq,
+    message,
+    kind: payload?.kind || 'success',
+    reviewStatus: payload?.reviewStatus || '',
+    published: typeof payload?.published === 'boolean' ? payload.published : null,
+  }
 }
 
 function isTabAllowed(key) {
@@ -275,31 +271,27 @@ function resolveInitialTab() {
 }
 
 async function confirmDiscard(message) {
-  try {
-    await ElMessageBox.confirm(message, '有未保存的内容', {
-      confirmButtonText: '放弃修改',
-      cancelButtonText: '继续编辑',
-      type: 'warning',
-      distinguishCancelAndClose: true,
-    })
-    return true
-  } catch {
-    return false
-  }
+  return confirmDiscardChanges(message)
 }
+
+let switchingTab = false
 
 async function switchTab(key) {
-  if (key === activeTab.value || !isTabAllowed(key)) return
-  if (dirty.value && !(await confirmDiscard('切换栏目会丢失当前未保存的修改，确定继续吗？'))) {
-    return
+  if (key === activeTab.value || !isTabAllowed(key) || switchingTab) return
+  switchingTab = true
+  try {
+    if (dirty.value && !(await confirmDiscard('切换栏目会丢失当前未保存的修改，确定继续吗？'))) {
+      return
+    }
+    activeTab.value = key
+    // 旧编辑器随栏目切换卸载，新编辑器加载后会重新建立 clean 基线。
+    dirty.value = false
+    // 旧栏目的保存提示不再适用于新栏目，随切换一起收起。
+    saveFeedback.value = null
+    await router.replace({ query: { ...route.query, tab: key } })
+  } finally {
+    switchingTab = false
   }
-  dirty.value = false
-  activeTab.value = key
-  await router.replace({ query: { ...route.query, tab: key } })
-}
-
-function onHomeSaved() {
-  dirty.value = false
 }
 
 function handleBeforeUnload(event) {
@@ -318,6 +310,8 @@ onBeforeRouteLeave(async () => {
 watch(visibleTabs, () => {
   if (!isTabAllowed(activeTab.value)) {
     activeTab.value = resolveInitialTab()
+    // 权限变化导致栏目被移除时，旧编辑器已卸载，避免残留的 dirty 影响后续切换。
+    dirty.value = false
   }
 })
 

@@ -320,6 +320,13 @@
               </p>
 
               <template v-if="item.itemStatus === 'PENDING'">
+                <p
+                  v-if="item.diffSummary"
+                  class="mt-3 rounded-lg px-2.5 py-1.5 text-[11px] font-medium leading-5"
+                  :class="diffSummaryClass(item.diffState)"
+                >
+                  {{ item.diffSummary }}
+                </p>
                 <div v-if="item.changedFields?.length" class="mt-3 overflow-x-auto">
                   <table class="w-full min-w-[560px] text-left text-xs">
                     <thead class="text-slate-400">
@@ -342,7 +349,7 @@
                     </tbody>
                   </table>
                 </div>
-                <p v-else class="mt-3 text-xs text-slate-400">内容未发生变化或为首次提交。</p>
+                <p v-else class="mt-3 text-xs text-slate-400">{{ diffEmptyText(item) }}</p>
 
                 <div v-if="item.beforeImages?.length || item.afterImages?.length" class="mt-3 grid gap-3 sm:grid-cols-2">
                   <div>
@@ -542,6 +549,35 @@ function itemStatusClass(status) {
       return 'bg-slate-100 text-slate-500'
     default:
       return 'bg-slate-100 text-slate-500'
+  }
+}
+
+function diffSummaryClass(state) {
+  switch (state) {
+    case 'CHANGED':
+      return 'bg-amber-50 text-amber-800'
+    case 'NO_BASELINE':
+      return 'bg-sky-50 text-sky-700'
+    case 'NO_CHANGE':
+    case 'FIRST_SUBMISSION':
+    default:
+      return 'bg-slate-100 text-slate-600'
+  }
+}
+
+/**
+ * 没有字段差异时按后端明确状态区分原因，不再使用无法定位问题的统一文案。
+ */
+function diffEmptyText(item) {
+  switch (item?.diffState) {
+    case 'FIRST_SUBMISSION':
+      return '首次提交，暂无已发布版本可对比。'
+    case 'NO_BASELINE':
+      return '暂无已发布版本可对比。'
+    case 'NO_CHANGE':
+      return '待审核版本与当前已发布版本一致，可能是重复提交。'
+    default:
+      return '暂无可展示的字段差异。'
   }
 }
 

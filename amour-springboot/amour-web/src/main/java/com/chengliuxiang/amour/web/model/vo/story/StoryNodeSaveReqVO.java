@@ -5,15 +5,14 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import javax.validation.Valid;
 import javax.validation.constraints.Size;
 import java.time.LocalDateTime;
-import java.util.List;
 
 /**
  * 用户端新增/编辑故事节点。
  *
  * <p>visibility 不传时默认仅空间成员可见；显式传 1 需要空间已完成两人绑定。</p>
+ * <p>故事只保留封面图片，不再接收故事附图；旧客户端多传的 images 字段会被忽略。</p>
  */
 @Data
 @Builder
@@ -56,23 +55,4 @@ public class StoryNodeSaveReqVO {
      * 可见性：0-仅空间成员 1-公开到恋爱广场 2-隐藏。
      */
     private Integer visibility;
-
-    @Valid
-    @Size(max = 20, message = "故事图片不能超过 20 张")
-    private List<ImageReqVO> images;
-
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class ImageReqVO {
-
-        @Size(max = 500, message = "图片地址不能超过 500 个字符")
-        private String url;
-
-        @Size(max = 100, message = "图片描述不能超过 100 个字符")
-        private String altText;
-
-        private Integer sortOrder;
-    }
 }

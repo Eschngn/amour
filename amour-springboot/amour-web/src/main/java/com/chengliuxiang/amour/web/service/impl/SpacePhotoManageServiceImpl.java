@@ -12,26 +12,36 @@ import com.chengliuxiang.amour.common.exception.BizException;
 import com.chengliuxiang.amour.common.model.PageResult;
 import com.chengliuxiang.amour.common.utils.Response;
 import com.chengliuxiang.amour.web.model.vo.photo.PhotoCategoryIdReqVO;
+import com.chengliuxiang.amour.web.model.vo.photo.PhotoCategoryOrderReqVO;
 import com.chengliuxiang.amour.web.model.vo.photo.PhotoCategorySaveReqVO;
 import com.chengliuxiang.amour.web.model.vo.photo.PhotoCategoryVO;
+import com.chengliuxiang.amour.web.model.vo.photo.PhotoGlobalOrderReqVO;
 import com.chengliuxiang.amour.web.model.vo.photo.PhotoIdReqVO;
 import com.chengliuxiang.amour.web.model.vo.photo.PhotoManageItemVO;
 import com.chengliuxiang.amour.web.model.vo.photo.PhotoManagePageQueryReqVO;
+import com.chengliuxiang.amour.web.model.vo.photo.PhotoOrderReqVO;
 import com.chengliuxiang.amour.web.model.vo.photo.PhotoSaveReqVO;
+import com.chengliuxiang.amour.web.model.vo.photo.PhotoSortItemVO;
+import com.chengliuxiang.amour.web.model.vo.photo.PhotoSortListReqVO;
+import com.chengliuxiang.amour.web.model.vo.space.SortOrderItemVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceContentSaveResultVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceItemReviewStateVO;
 import com.chengliuxiang.amour.web.service.SpaceContentAccessService;
 import com.chengliuxiang.amour.web.service.SpacePhotoManageService;
 import com.chengliuxiang.amour.web.service.SpaceReviewService;
+import com.chengliuxiang.amour.web.utils.SpaceSortOrderUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -134,6 +144,25 @@ public class SpacePhotoManageServiceImpl implements SpacePhotoManageService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public Response<Void> saveCategoryOrder(PhotoCategoryOrderReqVO reqVO) {
+        Long spaceId = spaceContentAccessService.requireEditableSpaceId();
+        List<Long> orderedIds = SpaceSortOrderUtils.orderedDistinctIds(reqVO.getItems());
+        List<PhotoCategoryDO> categories = photoCategoryMapper.findByIds(spaceId, orderedIds);
+        if (categories.size() != orderedIds.size()) {
+            throw new BizException(ResponseCodeEnum.SPACE_CONTENT_NOT_IN_SPACE);
+        }
+        for (int index = 0; index < orderedIds.size(); index++) {
+            int updated = photoCategoryMapper.updateSortOrder(
+                    spaceId, orderedIds.get(index), SpaceSortOrderUtils.sortOrderAt(index));
+            if (updated == 0) {
+                throw new BizException(ResponseCodeEnum.SPACE_CONTENT_NOT_IN_SPACE);
+            }
+        }
+        return Response.success();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public Response<Void> deleteCategory(PhotoCategoryIdReqVO reqVO) {
         Long spaceId = spaceContentAccessService.requireEditableSpaceId();
         PhotoCategoryDO category = requireCategory(spaceId, reqVO.getId());
@@ -173,6 +202,7 @@ public class SpacePhotoManageServiceImpl implements SpacePhotoManageService {
                             .takenTime(photo.getTakenTime())
                             .location(photo.getLocation())
                             .sortOrder(photo.getSortOrder())
+                            .globalSortOrder(photo.getGlobalSortOrder())
                             .isCover(photo.getIsCover())
                             .visibility(photo.getVisibility())
                             .reviewStatus(reviewState == null ? null : reviewState.getReviewStatus())
@@ -193,6 +223,20 @@ public class SpacePhotoManageServiceImpl implements SpacePhotoManageService {
                 .total(page.getTotal())
                 .records(records)
                 .build());
+    }
+
+    @Override
+    public Response<List<PhotoSortItemVO>> listPhotosForSort(PhotoSortListReqVO reqVO) {
+        Long spaceId = spaceContentAccessService.requireReadableSpaceId();
+        // categoryId 为空表示全局排序，返回全部照片；否则只返回指定分类。
+        List<PhotoDO> photos;
+        if (reqVO.getCategoryId() == null) {
+            photos = photoMapper.selectActiveBySpaceId(spaceId);
+        } else {
+            requireCategory(spaceId, reqVO.getCategoryId());
+            photos = photoMapper.selectActiveByCategoryId(spaceId, reqVO.getCategoryId());
+        }
+        return Response.success(toSortItems(photos));
     }
 
     @Override
@@ -229,7 +273,9 @@ public class SpacePhotoManageServiceImpl implements SpacePhotoManageService {
                     .url(url)
                     .takenTime(reqVO.getTakenTime())
                     .location(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getLocation())))
-                    .sortOrder(reqVO.getSortOrder() == null ? 0 : reqVO.getSortOrder())
+                    .sortOrder(resolveNewPhotoSortOrder(spaceId, reqVO.getPhotoCategoryId(), reqVO.getSortOrder()))
+                    // 新照片追加到全部照片末尾，分类内排序仍由 sortOrder 单独维护。
+                    .globalSortOrder(nextPhotoGlobalSortOrder(spaceId))
                     .isCover(isCover)
                     .visibility(visibility)
                     .isDeleted(false)
@@ -253,15 +299,52 @@ public class SpacePhotoManageServiceImpl implements SpacePhotoManageService {
                 StrUtil.nullToEmpty(StrUtil.trim(reqVO.getDescription())),
                 reqVO.getPhotoCategoryId(), url, reqVO.getTakenTime(),
                 StrUtil.nullToEmpty(StrUtil.trim(reqVO.getLocation())),
-                reqVO.getSortOrder() == null
-                        ? (current.getSortOrder() == null ? 0 : current.getSortOrder())
-                        : reqVO.getSortOrder(),
+                // 改分类时追加到目标分类末尾；未改分类时保留原分类内顺序。
+                resolveUpdatedPhotoSortOrder(spaceId, current, reqVO),
                 isCover, visibility, now);
         if (updated == 0) {
             throw new BizException(ResponseCodeEnum.PHOTO_NOT_EXIST);
         }
         return Response.success(spaceReviewService.onContentSaved(
                 spaceId, access.getUserId(), SpaceReviewConstants.ITEM_TYPE_PHOTO, current.getId(), false));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Response<List<PhotoSortItemVO>> savePhotoOrder(PhotoOrderReqVO reqVO) {
+        Long spaceId = spaceContentAccessService.requireEditableSpaceId();
+        Long categoryId = reqVO.getCategoryId();
+        requireCategory(spaceId, categoryId);
+        List<PhotoDO> categoryPhotos = photoMapper.selectActiveByCategoryId(spaceId, categoryId);
+
+        // 分类内排序只写 sort_order；global_sort_order 完全不动，全部照片视图保持原顺序。
+        List<PhotoDO> ordered = resolveScopedOrder(categoryPhotos, reqVO.getItems());
+        for (int index = 0; index < ordered.size(); index++) {
+            int updated = photoMapper.updateSortOrder(
+                    spaceId, categoryId, ordered.get(index).getId(), SpaceSortOrderUtils.sortOrderAt(index));
+            if (updated == 0) {
+                throw new BizException(ResponseCodeEnum.SPACE_CONTENT_NOT_IN_SPACE);
+            }
+        }
+        return Response.success(toSortItems(photoMapper.selectActiveByCategoryId(spaceId, categoryId)));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Response<List<PhotoSortItemVO>> savePhotoGlobalOrder(PhotoGlobalOrderReqVO reqVO) {
+        Long spaceId = spaceContentAccessService.requireEditableSpaceId();
+        List<PhotoDO> allPhotos = photoMapper.selectActiveBySpaceId(spaceId);
+
+        // 全局排序只写 global_sort_order；各分类的 sort_order 保持不变。
+        List<PhotoDO> ordered = resolveScopedOrder(allPhotos, reqVO.getItems());
+        for (int index = 0; index < ordered.size(); index++) {
+            int updated = photoMapper.updateGlobalSortOrder(
+                    spaceId, ordered.get(index).getId(), SpaceSortOrderUtils.sortOrderAt(index));
+            if (updated == 0) {
+                throw new BizException(ResponseCodeEnum.SPACE_CONTENT_NOT_IN_SPACE);
+            }
+        }
+        return Response.success(toSortItems(photoMapper.selectActiveBySpaceId(spaceId)));
     }
 
     @Override
@@ -310,6 +393,85 @@ public class SpacePhotoManageServiceImpl implements SpacePhotoManageService {
             throw new BizException(ResponseCodeEnum.PHOTO_CATEGORY_NOT_EXIST);
         }
         return category;
+    }
+
+    /**
+     * 未显式传 sortOrder 时追加到当前分类末尾，避免新照片插到已有顺序最前面。
+     */
+    private int resolveNewPhotoSortOrder(Long spaceId, Long categoryId, Integer requested) {
+        return requested != null ? requested : nextPhotoSortOrder(spaceId, categoryId);
+    }
+
+    /**
+     * 编辑照片时的分类内排序：
+     * 分类未变时保留调用方显式值或原值；分类变更时追加到目标分类末尾。
+     */
+    private int resolveUpdatedPhotoSortOrder(Long spaceId, PhotoDO current, PhotoSaveReqVO reqVO) {
+        if (!Objects.equals(current.getPhotoCategoryId(), reqVO.getPhotoCategoryId())) {
+            return nextPhotoSortOrder(spaceId, reqVO.getPhotoCategoryId());
+        }
+        return reqVO.getSortOrder() == null
+                ? (current.getSortOrder() == null ? 0 : current.getSortOrder())
+                : reqVO.getSortOrder();
+    }
+
+    /** 当前分类内的下一个排序值，保证新内容追加到末尾。 */
+    private int nextPhotoSortOrder(Long spaceId, Long categoryId) {
+        int max = 0;
+        for (PhotoDO photo : photoMapper.selectActiveByCategoryId(spaceId, categoryId)) {
+            if (photo.getSortOrder() != null && photo.getSortOrder() > max) {
+                max = photo.getSortOrder();
+            }
+        }
+        return max + 10;
+    }
+
+    /** 全部照片的下一个全局排序值。 */
+    private int nextPhotoGlobalSortOrder(Long spaceId) {
+        return photoMapper.findMaxGlobalSortOrder(spaceId) + 10;
+    }
+
+    /**
+     * 把排序请求合并为完整的范围顺序。
+     *
+     * <p>请求中的 ID 必须全部属于当前范围（分类或全部照片）；未提交的范围内条目
+     * 保持原相对顺序追加在末尾，避免部分提交造成排序值重复。</p>
+     */
+    private List<PhotoDO> resolveScopedOrder(List<PhotoDO> scopePhotos, List<SortOrderItemVO> items) {
+        if (items == null || items.isEmpty()) {
+            return scopePhotos;
+        }
+        List<Long> orderedIds = SpaceSortOrderUtils.orderedDistinctIds(items);
+        Map<Long, PhotoDO> photoMap = scopePhotos.stream()
+                .collect(Collectors.toMap(PhotoDO::getId, Function.identity(), (left, right) -> left));
+        if (!photoMap.keySet().containsAll(orderedIds)) {
+            throw new BizException(ResponseCodeEnum.SPACE_CONTENT_NOT_IN_SPACE);
+        }
+        List<PhotoDO> ordered = new ArrayList<>();
+        Set<Long> submitted = new HashSet<>(orderedIds);
+        for (Long id : orderedIds) {
+            ordered.add(photoMap.get(id));
+        }
+        for (PhotoDO photo : scopePhotos) {
+            if (!submitted.contains(photo.getId())) {
+                ordered.add(photo);
+            }
+        }
+        return ordered;
+    }
+
+    private List<PhotoSortItemVO> toSortItems(List<PhotoDO> photos) {
+        return photos.stream()
+                .map(photo -> PhotoSortItemVO.builder()
+                        .id(photo.getId())
+                        .photoCategoryId(photo.getPhotoCategoryId())
+                        .title(photo.getTitle())
+                        .url(photo.getUrl())
+                        .takenTime(photo.getTakenTime())
+                        .sortOrder(photo.getSortOrder())
+                        .globalSortOrder(photo.getGlobalSortOrder())
+                        .build())
+                .collect(Collectors.toList());
     }
 
     private PhotoDO requirePhoto(Long spaceId, Long photoId) {

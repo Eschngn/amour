@@ -58,6 +58,13 @@ public interface SpaceReviewService {
                                             Long itemId, boolean deleted);
 
     /**
+     * 内容保存请求与工作数据完全一致时的结果。
+     *
+     * <p>只读取当前审核状态，不递增版本号，也不创建或更新待审核项。</p>
+     */
+    SpaceContentSaveResultVO onContentUnchanged(Long spaceId, String itemType, Long itemId);
+
+    /**
      * 空间首页（名称、简介、恋爱开始时间、主页配置）保存成功后同步审核状态。
      */
     SpaceContentSaveResultVO onHomeSaved(Long spaceId, Long userId, String changeSummary);

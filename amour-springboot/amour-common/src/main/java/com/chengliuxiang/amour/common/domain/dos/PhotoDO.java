@@ -34,7 +34,17 @@ public class PhotoDO {
 
     private String location;
 
+    /**
+     * 分类内排序值：只在所属相册分类内生效。
+     */
     private Integer sortOrder;
+
+    /**
+     * 全局排序值：跨分类生效，仅在未筛选分类时使用。
+     *
+     * <p>与 sortOrder 分离后，分类内拖拽不会改变照片在全部照片视图中的位置。</p>
+     */
+    private Integer globalSortOrder;
 
     private Boolean isCover;
 

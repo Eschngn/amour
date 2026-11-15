@@ -13,7 +13,6 @@ import com.chengliuxiang.amour.common.domain.dos.SpaceReviewItemDO;
 import com.chengliuxiang.amour.common.domain.dos.SpaceReviewSubmissionDO;
 import com.chengliuxiang.amour.common.domain.dos.StoryChapterDO;
 import com.chengliuxiang.amour.common.domain.dos.StoryNodeDO;
-import com.chengliuxiang.amour.common.domain.dos.StoryNodeImageDO;
 import com.chengliuxiang.amour.common.domain.mapper.AnniversaryMapper;
 import com.chengliuxiang.amour.common.domain.mapper.CoupleMemberMapper;
 import com.chengliuxiang.amour.common.domain.mapper.CoupleSpaceConfigMapper;
@@ -24,7 +23,6 @@ import com.chengliuxiang.amour.common.domain.mapper.SpacePublishedItemMapper;
 import com.chengliuxiang.amour.common.domain.mapper.SpaceReviewItemMapper;
 import com.chengliuxiang.amour.common.domain.mapper.SpaceReviewSubmissionMapper;
 import com.chengliuxiang.amour.common.domain.mapper.StoryChapterMapper;
-import com.chengliuxiang.amour.common.domain.mapper.StoryNodeImageMapper;
 import com.chengliuxiang.amour.common.domain.mapper.StoryNodeMapper;
 import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
 import com.chengliuxiang.amour.common.exception.BizException;
@@ -57,7 +55,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 /**
  * 情侣空间公开审核实现。
@@ -103,8 +100,6 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
     private StoryNodeMapper storyNodeMapper;
     @Resource
     private StoryChapterMapper storyChapterMapper;
-    @Resource
-    private StoryNodeImageMapper storyNodeImageMapper;
     @Resource
     private PhotoMapper photoMapper;
     @Resource
@@ -318,6 +313,7 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
                     .reviewStatus(currentlyPublished && (deleted || visibility != VISIBILITY_PUBLIC)
                             ? SpaceReviewConstants.USER_STATE_UNPUBLISHED
                             : (currentlyPublished ? SpaceReviewConstants.USER_STATE_PUBLISHED : null))
+                    .changed(true)
                     .build();
         }
 
@@ -336,6 +332,7 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
                     .reviewStatus(currentlyPublished
                             ? SpaceReviewConstants.USER_STATE_UNPUBLISHED : null)
                     .reviewMessage(currentlyPublished ? "已从恋爱广场移除" : null)
+                    .changed(true)
                     .build();
         }
 
@@ -348,6 +345,7 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
                     .published(false)
                     .reviewStatus(currentlyPublished
                             ? SpaceReviewConstants.USER_STATE_UNPUBLISHED : null)
+                    .changed(true)
                     .build();
         }
         int baseRevision = resolveContentRevision(spaceId, itemType, itemId);
@@ -363,6 +361,37 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
                 .published(currentlyPublished)
                 .reviewStatus(SpaceReviewConstants.USER_STATE_PENDING)
                 .reviewMessage(message)
+                .changed(true)
+                .build();
+    }
+
+    @Override
+    public SpaceContentSaveResultVO onContentUnchanged(Long spaceId, String itemType, Long itemId) {
+        requireSpace(spaceId);
+        SpacePublishedItemDO published = publishedItemMapper.selectBySpaceAndItem(
+                spaceId, itemType, itemId);
+        boolean currentlyPublished = published != null
+                && Objects.equals(published.getPublishStatus(), SpaceReviewConstants.PUBLISHED);
+
+        String reviewStatus = null;
+        SpaceReviewSubmissionDO pending = submissionMapper.selectPendingBySpaceId(spaceId);
+        if (pending != null) {
+            SpaceReviewItemDO pendingItem = itemMapper.selectBySubmissionAndTarget(
+                    pending.getId(), itemType, itemId);
+            if (pendingItem != null
+                    && SpaceReviewConstants.ITEM_STATUS_PENDING.equals(pendingItem.getItemStatus())) {
+                reviewStatus = SpaceReviewConstants.USER_STATE_PENDING;
+            }
+        }
+        if (reviewStatus == null && currentlyPublished) {
+            reviewStatus = SpaceReviewConstants.USER_STATE_PUBLISHED;
+        }
+        return SpaceContentSaveResultVO.builder()
+                .id(itemId)
+                .published(currentlyPublished)
+                .reviewStatus(reviewStatus)
+                .reviewMessage("未检测到内容变化，未提交审核")
+                .changed(false)
                 .build();
     }
 
@@ -380,6 +409,7 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
             return SpaceContentSaveResultVO.builder()
                     .id(spaceId)
                     .published(false)
+                    .changed(true)
                     .build();
         }
 
@@ -400,6 +430,7 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
                         && Objects.equals(publishedSpace.getPublishStatus(), SpaceReviewConstants.PUBLISHED))
                 .reviewStatus(SpaceReviewConstants.USER_STATE_PENDING)
                 .reviewMessage("修改已保存，当前广场仍展示旧版本")
+                .changed(true)
                 .build();
     }
 
@@ -608,8 +639,6 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
 
     private StoryPublicSnapshot buildStorySnapshot(Long spaceId, StoryNodeDO story) {
         StoryChapterDO chapter = storyChapterMapper.selectChapterById(spaceId, story.getChapterId());
-        List<StoryNodeImageDO> images = storyNodeImageMapper.selectByNodeIds(
-                spaceId, Collections.singletonList(story.getId()));
         return StoryPublicSnapshot.builder()
                 .storyId(story.getId())
                 .chapterId(story.getChapterId())
@@ -624,13 +653,6 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
                 .tagColor(story.getTagColor())
                 .sortOrder(story.getSortOrder())
                 .milestone(Boolean.TRUE.equals(story.getIsMilestone()))
-                .images(images == null ? Collections.emptyList() : images.stream()
-                        .map(image -> StoryPublicSnapshot.ImagePublicSnapshot.builder()
-                                .url(image.getUrl())
-                                .altText(StrUtil.nullToEmpty(image.getAltText()))
-                                .sortOrder(image.getSortOrder())
-                                .build())
-                        .collect(Collectors.toList()))
                 .build();
     }
 

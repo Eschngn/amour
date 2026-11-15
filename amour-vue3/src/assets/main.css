@@ -276,6 +276,271 @@ body .el-message-box__btns .el-button--primary:active {
   }
 }
 
+/* ------------------------------------------------------------------
+   前台空间编辑弹窗
+   Element Plus 弹窗会挂到 body，样式必须放在全局层而不是 scoped CSS。
+   ------------------------------------------------------------------ */
+.el-dialog.space-studio-dialog {
+  max-width: calc(100vw - 24px);
+  overflow: hidden;
+  border-radius: 1rem;
+  box-shadow: 0 24px 60px -28px rgba(41, 37, 36, 0.28);
+}
+
+.space-studio-dialog .el-dialog__header {
+  margin-right: 0;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #f5f5f4;
+}
+
+.space-studio-dialog .el-dialog__title {
+  color: #292524;
+  font-family: 'Nunito', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.space-studio-dialog .el-dialog__headerbtn {
+  top: 0.85rem;
+  right: 0.85rem;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+}
+
+.space-studio-dialog .el-dialog__headerbtn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px #fda4af;
+}
+
+.space-studio-dialog .el-dialog__body {
+  max-height: calc(100vh - 180px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1.25rem;
+  color: #44403c;
+}
+
+.space-studio-dialog .el-dialog__footer {
+  padding: 0.9rem 1.25rem;
+  border-top: 1px solid #f5f5f4;
+  background-color: #fafaf9;
+}
+
+.el-overlay.space-studio-dialog-overlay {
+  background-color: rgb(28 25 23 / 0.45);
+}
+
+/* 全屏编辑页：标题栏与底部操作栏固定，只有中间表单区域滚动。 */
+.el-dialog.space-studio-dialog.is-fullscreen {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  max-width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.space-studio-dialog.is-fullscreen .el-dialog__header {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0.9rem 1.25rem;
+  border-bottom: 1px solid #f5f5f4;
+  background-color: #ffffff;
+}
+
+.space-studio-dialog.is-fullscreen .el-dialog__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1.15rem 1.25rem 1.5rem;
+}
+
+.space-studio-dialog.is-fullscreen .el-dialog__footer {
+  flex: 0 0 auto;
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid #f5f5f4;
+  background-color: #fafaf9;
+}
+
+@media (max-width: 640px) {
+  .space-studio-dialog .el-dialog__header {
+    padding: 0.9rem 1rem;
+  }
+
+  .space-studio-dialog .el-dialog__body {
+    max-height: calc(100vh - 160px);
+    padding: 1rem;
+  }
+
+  .space-studio-dialog .el-dialog__footer {
+    padding: 0.75rem 1rem;
+  }
+
+  .space-studio-dialog.is-fullscreen .el-dialog__header {
+    padding: 0.75rem 1rem;
+  }
+
+  .space-studio-dialog.is-fullscreen .el-dialog__body {
+    max-height: none;
+    padding: 0.9rem 1rem 1.25rem;
+  }
+
+  .space-studio-dialog.is-fullscreen .el-dialog__footer {
+    padding: 0.7rem 1rem;
+  }
+}
+
+/* 弹窗内使用 teleport 的日期面板：沿用站点玫瑰主题并置于弹窗之上。 */
+body.space-studio-dialog-open .dp--menu {
+  max-height: var(--space-dp-menu-max-height, none);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  --dp-font-family: 'Nunito', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --dp-font-size: 0.875rem;
+  --dp-border-radius: 0.5rem;
+  --dp-cell-border-radius: 0.45rem;
+  --dp-background-color: #ffffff;
+  --dp-text-color: #292524;
+  --dp-primary-color: #e11d48;
+  --dp-primary-disabled-color: #fda4af;
+  --dp-primary-text-color: #ffffff;
+  --dp-secondary-color: #d6d3d1;
+  --dp-border-color: #e7e5e4;
+  --dp-border-color-hover: #d6d3d1;
+  --dp-border-color-focus: #fb7185;
+  --dp-menu-border-color: #e7e5e4;
+  --dp-hover-color: #f5f5f4;
+  --dp-hover-text-color: #be123c;
+  --dp-hover-icon-color: #e11d48;
+  --dp-icon-color: #a8a29e;
+  --dp-highlight-color: rgb(244 63 94 / 0.12);
+  --dp-menu-min-width: 21rem;
+  --dp-cell-size: 2.2rem;
+  --dp-menu-padding: 0.65rem 0.7rem;
+  --dp-action-buttons-padding: 0.25rem 0.6rem;
+  --dp-preview-font-size: 0.75rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 16px 40px rgb(41 37 36 / 0.12);
+  font-family: 'Nunito', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+body.space-studio-dialog-open .dp--menu .dp--calendar-header-cell {
+  border-bottom-color: #f5f5f4;
+  color: #57534e;
+  font-weight: 600;
+}
+
+body.space-studio-dialog-open .dp--menu .dp--today {
+  border-color: #fb7185;
+  font-weight: 700;
+}
+
+body.space-studio-dialog-open .dp--menu .dp--active {
+  background: #e11d48;
+  box-shadow: none;
+}
+
+body.space-studio-dialog-open .dp--menu .dp--action-select {
+  border-radius: 0.55rem;
+  font-weight: 600;
+}
+
+body.space-studio-dialog-open .dp--menu .dp--action-cancel {
+  border-radius: 0.55rem;
+  color: #9f1239;
+}
+
+/* 直接拖拽排序期间禁止选中文字，并统一显示抓取光标；不影响按钮点击。 */
+body.space-sort-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+body.space-sort-dragging * {
+  cursor: grabbing !important;
+  user-select: none;
+}
+
+/* ------------------------------------------------------------------
+   故事 / 相册直接拖拽排序
+   动画只作用于 transform、opacity、颜色和阴影，避免布局重排。
+   ------------------------------------------------------------------ */
+:root {
+  --studio-sort-duration: 160ms;
+  --studio-sort-ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.studio-sortable-item {
+  transition:
+    background-color var(--studio-sort-duration) ease,
+    border-color var(--studio-sort-duration) ease,
+    box-shadow var(--studio-sort-duration) ease,
+    opacity var(--studio-sort-duration) ease;
+}
+
+/* TransitionGroup 自动为位置变化的记录添加，使用 transform 实现平滑位移。 */
+.studio-sort-list-move {
+  transition: transform var(--studio-sort-duration) var(--studio-sort-ease);
+}
+
+/* 拖拽源保留原高度，作为目标位置的稳定占位，不改变列表结构。 */
+.studio-sort-placeholder {
+  background-color: #fff1f2 !important;
+  outline: 2px dashed #fda4af;
+  outline-offset: -2px;
+  box-shadow: inset 0 0 0 1px rgb(244 63 94 / 0.08);
+}
+
+.studio-sort-placeholder > * {
+  opacity: 0.38;
+  transition: opacity 120ms ease;
+}
+
+/* 跟随指针的预览层：固定尺寸、轻微抬升，不参与列表布局。 */
+.studio-sort-ghost {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  z-index: 80;
+  margin: 0 !important;
+  pointer-events: none !important;
+  overflow: hidden;
+  /* 半透明预览，保证仍能看清下方被替换位置的记录。 */
+  opacity: 0.66;
+  box-shadow:
+    0 18px 36px -18px rgb(41 37 36 / 0.38),
+    0 0 0 1px rgb(244 63 94 / 0.18);
+  will-change: transform;
+  transform-origin: center;
+  background-color: #ffffff;
+}
+
+.studio-sort-ghost * {
+  pointer-events: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-sortable-item,
+  .studio-sort-list-move,
+  .studio-sort-placeholder > * {
+    transition: none !important;
+  }
+
+  .studio-sort-ghost {
+    display: none !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

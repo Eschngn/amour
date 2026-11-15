@@ -8,6 +8,7 @@ import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
 import com.chengliuxiang.amour.common.exception.BizException;
 import com.chengliuxiang.amour.common.utils.Response;
 import com.chengliuxiang.amour.web.model.vo.anniversary.AnniversaryIdReqVO;
+import com.chengliuxiang.amour.web.model.vo.anniversary.AnniversaryOrderReqVO;
 import com.chengliuxiang.amour.web.model.vo.anniversary.AnniversarySaveReqVO;
 import com.chengliuxiang.amour.web.model.vo.anniversary.AnniversaryVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceContentSaveResultVO;
@@ -15,6 +16,7 @@ import com.chengliuxiang.amour.web.model.vo.space.SpaceItemReviewStateVO;
 import com.chengliuxiang.amour.web.service.SpaceAnniversaryManageService;
 import com.chengliuxiang.amour.web.service.SpaceContentAccessService;
 import com.chengliuxiang.amour.web.service.SpaceReviewService;
+import com.chengliuxiang.amour.web.utils.SpaceSortOrderUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -107,7 +109,7 @@ public class SpaceAnniversaryManageServiceImpl implements SpaceAnniversaryManage
                     .category(category)
                     .colorCode(colorCode)
                     .location(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getLocation())))
-                    .sortOrder(reqVO.getSortOrder() == null ? 0 : reqVO.getSortOrder())
+                    .sortOrder(resolveNewAnniversarySortOrder(spaceId, reqVO.getSortOrder()))
                     .visibility(visibility)
                     .isDeleted(false)
                     .createdBy(access.getUserId())
@@ -151,6 +153,25 @@ public class SpaceAnniversaryManageServiceImpl implements SpaceAnniversaryManage
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public Response<Void> saveAnniversaryOrder(AnniversaryOrderReqVO reqVO) {
+        Long spaceId = spaceContentAccessService.requireEditableSpaceId();
+        List<Long> orderedIds = SpaceSortOrderUtils.orderedDistinctIds(reqVO.getItems());
+        List<AnniversaryDO> anniversaries = anniversaryMapper.selectActiveByIds(spaceId, orderedIds);
+        if (anniversaries.size() != orderedIds.size()) {
+            throw new BizException(ResponseCodeEnum.SPACE_CONTENT_NOT_IN_SPACE);
+        }
+        for (int index = 0; index < orderedIds.size(); index++) {
+            int updated = anniversaryMapper.updateSortOrder(
+                    spaceId, orderedIds.get(index), SpaceSortOrderUtils.sortOrderAt(index));
+            if (updated == 0) {
+                throw new BizException(ResponseCodeEnum.SPACE_CONTENT_NOT_IN_SPACE);
+            }
+        }
+        return Response.success();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public Response<Void> deleteAnniversary(AnniversaryIdReqVO reqVO) {
         SpaceContentAccessService.SpaceAccess access = spaceContentAccessService.requireEditable();
         spaceReviewService.prepareForPublicEdit(access.getSpaceId());
@@ -182,6 +203,22 @@ public class SpaceAnniversaryManageServiceImpl implements SpaceAnniversaryManage
             throw new BizException(ResponseCodeEnum.ANNIVERSARY_NOT_EXIST);
         }
         return anniversary;
+    }
+
+    /**
+     * 未显式传 sortOrder 时追加到当前空间末尾，避免新纪念日插到已有顺序最前面。
+     */
+    private int resolveNewAnniversarySortOrder(Long spaceId, Integer requested) {
+        if (requested != null) {
+            return requested;
+        }
+        int max = 0;
+        for (AnniversaryDO anniversary : anniversaryMapper.selectManageList(spaceId)) {
+            if (anniversary.getSortOrder() != null && anniversary.getSortOrder() > max) {
+                max = anniversary.getSortOrder();
+            }
+        }
+        return max + 10;
     }
 
     private AnniversaryVO toVO(AnniversaryDO anniversary) {

@@ -6,10 +6,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 /**
- * 恋爱广场公开故事详情，只包含 visibility=1 的故事。
+ * 恋爱广场公开故事详情，只由公开快照返回。
+ * 故事只保留封面图片，不返回故事附图、创建人、审核字段等私密信息。
  */
 @Data
 @Builder
@@ -36,6 +36,4 @@ public class GalleryStoryDetailVO {
     private String tagColor;
 
     private Boolean isMilestone;
-
-    private List<GalleryStoryImageVO> images;
 }

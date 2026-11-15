@@ -32,7 +32,11 @@ public class PhotoManageItemVO {
 
     private String location;
 
+    /** 分类内排序值。 */
     private Integer sortOrder;
+
+    /** 跨分类的全局排序值。 */
+    private Integer globalSortOrder;
 
     private Boolean isCover;
 

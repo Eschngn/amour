@@ -23,3 +23,14 @@ export function fetchPublicSpaces(params = {}) {
 export function fetchPublicSpaceDetail(spaceId) {
   return api.post('/gallery/space/detail', { spaceId })
 }
+
+/**
+ * 恋爱广场公开故事详情，按需加载完整正文。
+ *
+ * @param {number|string} spaceId
+ * @param {number|string} storyId
+ * @returns {Promise<import('axios').AxiosResponse>}
+ */
+export function fetchPublicStoryDetail(spaceId, storyId) {
+  return api.post('/gallery/space/story/detail', { spaceId, storyId })
+}

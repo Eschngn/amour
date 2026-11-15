@@ -1,20 +1,19 @@
 package com.chengliuxiang.amour.common.model.snapshot;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
- * 故事公开快照。图片随故事合并保存，保证一次审核通过即可整体替换。
+ * 故事公开快照。故事只保留封面，历史快照中的 images 字段在读取时忽略。
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class StoryPublicSnapshot {
 
     private Long storyId;
@@ -42,20 +41,4 @@ public class StoryPublicSnapshot {
     private Integer sortOrder;
 
     private Boolean milestone;
-
-    @Builder.Default
-    private List<ImagePublicSnapshot> images = new ArrayList<>();
-
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class ImagePublicSnapshot {
-
-        private String url;
-
-        private String altText;
-
-        private Integer sortOrder;
-    }
 }

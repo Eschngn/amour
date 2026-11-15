@@ -20,7 +20,7 @@
         </div>
         <div class="flex flex-wrap items-center gap-2">
           <span v-if="dirty" class="text-[11px] font-medium text-amber-700" role="status">有未保存的修改</span>
-          <button type="button" class="btn-secondary" :disabled="saving || !dirty" @click="reset">
+          <button type="button" class="btn-secondary" :disabled="saving || !dirty" @click="handleReset">
             重置
           </button>
           <button type="submit" class="btn-primary" :disabled="saving || uploading">
@@ -154,17 +154,12 @@
       <div v-if="saveError" class="border-t border-rose-200 bg-rose-50/70 px-5 py-3 text-xs leading-5 text-rose-700" role="alert">
         {{ saveError }}
       </div>
-      <div v-else-if="saveHint" class="border-t border-emerald-200 bg-emerald-50/60 px-5 py-3 text-xs leading-5 text-emerald-700" role="status">
-        {{ saveHint }}
-      </div>
     </form>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
-import 'element-plus/es/components/message/style/css'
 import SpaceImageField from '@/components/frontend/space-studio/SpaceImageField.vue'
 import ThemeDatePicker from '@/components/frontend/space-studio/ThemeDatePicker.vue'
 import { querySpaceHome, saveSpaceHome } from '@/api/spaceContent'
@@ -175,6 +170,8 @@ import {
   toBackendDateTime,
   toDateTimeLocalInput,
 } from '@/utils/spaceContent'
+import { confirmDiscardChanges } from '@/utils/unsavedChanges'
+import { SAVE_FEEDBACK_KIND, resolveSaveFeedback } from '@/utils/saveFeedback'
 
 const emit = defineEmits(['update:dirty', 'saved'])
 
@@ -185,7 +182,6 @@ const loadError = ref('')
 const saving = ref(false)
 const uploading = ref(false)
 const saveError = ref('')
-const saveHint = ref('')
 const snapshot = ref('')
 
 const form = reactive({
@@ -228,7 +224,6 @@ async function load() {
   loading.value = true
   loadError.value = ''
   saveError.value = ''
-  saveHint.value = ''
   try {
     const data = ensureSuccess(await querySpaceHome(), '空间首页加载失败')
     applyHome(data)
@@ -244,8 +239,14 @@ function reset() {
   const data = JSON.parse(snapshot.value || '{}')
   Object.assign(form, data)
   saveError.value = ''
-  saveHint.value = ''
   emitDirty()
+}
+
+/** 重置会覆盖当前编辑内容，先让用户确认。 */
+async function handleReset() {
+  if (!dirty.value) return
+  if (!(await confirmDiscardChanges('重置会恢复到上次保存的内容，确定放弃当前修改吗？'))) return
+  reset()
 }
 
 function validate() {
@@ -261,7 +262,6 @@ function validate() {
 async function save() {
   if (saving.value || uploading.value) return
   saveError.value = ''
-  saveHint.value = ''
   const validationError = validate()
   if (validationError) {
     saveError.value = validationError
@@ -286,9 +286,18 @@ async function save() {
 
     applyHome(data)
     captureSnapshot()
-    saveHint.value = data.reviewMessage || '首页已保存，刷新页面后仍会保留。'
-    ElMessage.success(data.reviewMessage || '空间首页已保存')
-    emit('saved', data)
+    // 公开空间的首页修改会进入审核，反馈需要说明广场仍展示旧版本。
+    emit('saved', {
+      ...(data.reviewPending
+        ? {
+            message: data.reviewMessage || '修改已保存，当前广场仍展示旧版本',
+            kind: SAVE_FEEDBACK_KIND.STALE,
+            reviewStatus: 'PENDING',
+            published: true,
+          }
+        : resolveSaveFeedback(data, '空间首页已保存')),
+      dirtyAfterSave: dirty.value,
+    })
     // 空间名/简介/恋爱开始时间也会影响全局空间上下文，保存后静默刷新。
     refreshSpaceStatusAfterLifecycleAction().catch(() => {})
   } catch (error) {

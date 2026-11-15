@@ -40,7 +40,17 @@ public class StoryNodeDO {
 
     private String tagColor;
 
+    /**
+     * 章节内排序值：只在所属章节内生效。
+     */
     private Integer sortOrder;
+
+    /**
+     * 全局排序值：跨章节生效，仅在未筛选章节时使用。
+     *
+     * <p>与 sortOrder 分离后，章节内拖拽不会改变故事在全部故事视图中的位置。</p>
+     */
+    private Integer globalSortOrder;
 
     private Boolean isMilestone;
 

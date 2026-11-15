@@ -3,10 +3,12 @@ package com.chengliuxiang.amour.web.controller;
 import com.chengliuxiang.amour.common.aspect.ApiOperationLog;
 import com.chengliuxiang.amour.common.model.PageResult;
 import com.chengliuxiang.amour.common.utils.Response;
+import com.chengliuxiang.amour.web.model.vo.gallery.GalleryPublicStoryDetailReqVO;
 import com.chengliuxiang.amour.web.model.vo.gallery.GallerySpaceCardVO;
 import com.chengliuxiang.amour.web.model.vo.gallery.GallerySpaceDetailReqVO;
 import com.chengliuxiang.amour.web.model.vo.gallery.GallerySpaceDetailVO;
 import com.chengliuxiang.amour.web.model.vo.gallery.GallerySpacePageQueryReqVO;
+import com.chengliuxiang.amour.web.model.vo.gallery.GalleryStoryDetailVO;
 import com.chengliuxiang.amour.web.service.GalleryService;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -41,5 +43,15 @@ public class GalleryController {
     public Response<GallerySpaceDetailVO> getPublicSpaceDetail(
             @Valid @RequestBody GallerySpaceDetailReqVO reqVO) {
         return galleryService.getPublicSpaceDetail(reqVO);
+    }
+
+    /**
+     * 公开故事正文详情：匿名可访问，只返回空间公开快照中的故事。
+     */
+    @PostMapping("/space/story/detail")
+    @ApiOperationLog(description = "恋爱广场公开故事详情")
+    public Response<GalleryStoryDetailVO> getPublicStoryDetail(
+            @Valid @RequestBody GalleryPublicStoryDetailReqVO reqVO) {
+        return galleryService.getPublicStoryDetail(reqVO);
     }
 }

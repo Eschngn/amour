@@ -160,9 +160,17 @@
                 </div>
 
                 <ol v-else class="mt-5 space-y-4">
-                  <li v-for="story in stories" :key="story.storyId" class="overflow-hidden rounded-2xl border border-rose-100/80 bg-rose-50/25 p-4 sm:p-5">
-                    <div class="grid gap-4" :class="story.coverImage ? 'sm:grid-cols-[10rem_minmax(0,1fr)]' : ''">
-                      <div v-if="story.coverImage" class="relative aspect-[4/3] overflow-hidden rounded-xl bg-rose-100/60 sm:aspect-auto sm:min-h-28">
+                  <li
+                    v-for="story in stories"
+                    :key="story.storyId"
+                    class="overflow-hidden rounded-2xl border border-rose-100/80 bg-rose-50/25 p-4 sm:p-5"
+                  >
+                    <!-- items-start + 固定封面高度：封面不会被长标题或长摘要拉伸 -->
+                    <div
+                      class="grid items-start gap-4"
+                      :class="story.coverImage ? 'sm:grid-cols-[11rem_minmax(0,1fr)]' : ''"
+                    >
+                      <div v-if="story.coverImage" class="relative h-44 w-full overflow-hidden rounded-xl bg-rose-100/60 sm:h-36">
                         <img
                           v-if="!failedImages[`story-cover-${story.storyId}`]"
                           :src="story.coverImage"
@@ -173,6 +181,7 @@
                         >
                         <div v-else class="absolute inset-0 flex items-center justify-center text-2xl text-rose-300" aria-hidden="true">♥</div>
                       </div>
+
                       <div class="min-w-0">
                         <div class="flex flex-wrap items-center gap-2 text-[11px] text-rose-600/50">
                           <time>{{ formatSpaceDate(story.happenedTime) }}</time>
@@ -186,26 +195,42 @@
                           </span>
                           <span v-if="story.tagLabel" class="rounded-full border px-2 py-0.5 text-[10px] font-semibold" :style="storyTagStyle(story)">{{ story.tagLabel }}</span>
                         </div>
-                        <h3 class="mt-2 break-words font-display text-lg font-bold text-rose-950">{{ story.title || '未命名故事' }}</h3>
-                        <p v-if="story.summary" class="mt-2 line-clamp-2 break-words text-sm leading-6 text-rose-800/65">{{ story.summary }}</p>
-                        <p v-if="story.content" class="mt-2 line-clamp-4 whitespace-pre-line break-words text-sm leading-7 text-rose-800/60">{{ story.content }}</p>
 
-                        <div v-if="story.images?.length" class="mt-3 flex flex-wrap gap-2">
-                          <div
-                            v-for="(image, index) in story.images.slice(0, 4)"
-                            :key="`${story.storyId}-${index}`"
-                            class="relative h-12 w-12 overflow-hidden rounded-lg bg-rose-100/70"
+                        <h3 class="mt-2 break-words font-display text-lg font-bold text-rose-950">{{ story.title || '未命名故事' }}</h3>
+                        <p
+                          v-if="storySummary(story)"
+                          class="mt-2 line-clamp-3 break-words text-sm leading-6 text-rose-800/65"
+                        >
+                          {{ storySummary(story) }}
+                        </p>
+
+                        <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+                          <span
+                            v-if="story.hasContent"
+                            class="inline-flex items-center rounded-full bg-white/70 px-2.5 py-1 text-[11px] font-semibold text-rose-700/50"
                           >
-                            <img
-                              v-if="image.url && !failedImages[`story-image-${story.storyId}-${index}`]"
-                              :src="image.url"
-                              :alt="image.altText || '故事图片'"
-                              class="h-full w-full object-cover"
-                              loading="lazy"
-                              @error="markImageFailed(`story-image-${story.storyId}-${index}`)"
+                            {{ storyWordCount(story) }}
+                          </span>
+                          <!-- 列表只展示摘要，完整正文进入独立公开详情页按需加载 -->
+                          <RouterLink
+                            v-if="story.hasContent"
+                            :to="`/plaza/${spaceId}/story/${story.storyId}`"
+                            class="group inline-flex items-center gap-1.5 rounded-full bg-rose-500 px-4 py-2 text-xs font-semibold text-white shadow-sm shadow-rose-200 transition hover:bg-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
+                            :aria-label="`阅读全文：${story.title || '未命名故事'}`"
+                          >
+                            阅读全文
+                            <svg
+                              class="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              aria-hidden="true"
                             >
-                            <div v-else class="flex h-full w-full items-center justify-center text-rose-300" aria-hidden="true">♡</div>
-                          </div>
+                              <path d="M5 12h14m-6-6 6 6-6 6" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                          </RouterLink>
+                          <span v-else class="text-xs text-rose-700/45">这篇故事还没有正文</span>
                         </div>
                       </div>
                     </div>
@@ -371,6 +396,21 @@ function storyAccent(story) {
   return normalizeHexColor(story?.tagColor, DEFAULT_THEME_COLOR)
 }
 
+/**
+ * 列表展示文案：优先用户摘要，摘要为空时回退到后端生成的纯文本预览。
+ * 两者都没有时返回空字符串，由“还没有正文”提示兜底。
+ */
+function storySummary(story) {
+  const summary = typeof story?.summary === 'string' ? story.summary.trim() : ''
+  if (summary) return summary
+  return typeof story?.contentPreview === 'string' ? story.contentPreview.trim() : ''
+}
+
+function storyWordCount(story) {
+  const count = Number(story?.contentLength)
+  return Number.isFinite(count) && count > 0 ? `约 ${count.toLocaleString('zh-CN')} 字` : ''
+}
+
 function storyTagStyle(story) {
   const accent = storyAccent(story)
   return {
@@ -486,3 +526,4 @@ watch(
   { immediate: true },
 )
 </script>
+
