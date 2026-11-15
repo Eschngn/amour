@@ -351,31 +351,53 @@
                 </div>
                 <p v-else class="mt-3 text-xs text-slate-400">{{ diffEmptyText(item) }}</p>
 
-                <div v-if="item.beforeImages?.length || item.afterImages?.length" class="mt-3 grid gap-3 sm:grid-cols-2">
+                <div v-if="hasReviewImages(item)" class="mt-3 grid gap-3 sm:grid-cols-2">
                   <div>
                     <p class="text-[10px] font-semibold text-slate-400">当前图片</p>
                     <div class="mt-2 flex flex-wrap gap-2">
-                      <img
-                        v-for="(url, index) in item.beforeImages"
-                        :key="`before-${index}`"
-                        :src="url"
-                        alt=""
-                        class="h-20 w-20 rounded-lg object-cover ring-1 ring-slate-100"
+                      <button
+                        v-for="(image, index) in buildReviewImagePreviews(item, 'before')"
+                        :key="`before-${image.src}-${index}`"
+                        type="button"
+                        class="group relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-slate-100 ring-1 ring-slate-200 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+                        :aria-label="`放大预览 ${image.alt}`"
+                        @click="openReviewPreview(item, 'before', index, $event)"
                       >
-                      <span v-if="!item.beforeImages?.length" class="text-xs text-slate-400">无</span>
+                        <img
+                          :src="image.src"
+                          :alt="image.alt"
+                          class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                          loading="lazy"
+                        >
+                        <span class="pointer-events-none absolute inset-x-0 bottom-0 bg-slate-950/65 py-0.5 text-center text-[9px] font-semibold text-white opacity-0 transition group-hover:opacity-100">
+                          放大
+                        </span>
+                      </button>
+                      <span v-if="!buildReviewImagePreviews(item, 'before').length" class="text-xs text-slate-400">无</span>
                     </div>
                   </div>
                   <div>
                     <p class="text-[10px] font-semibold text-slate-400">待审核图片</p>
                     <div class="mt-2 flex flex-wrap gap-2">
-                      <img
-                        v-for="(url, index) in item.afterImages"
-                        :key="`after-${index}`"
-                        :src="url"
-                        alt=""
-                        class="h-20 w-20 rounded-lg object-cover ring-1 ring-rose-100"
+                      <button
+                        v-for="(image, index) in buildReviewImagePreviews(item, 'after')"
+                        :key="`after-${image.src}-${index}`"
+                        type="button"
+                        class="group relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-slate-100 ring-1 ring-rose-200 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+                        :aria-label="`放大预览 ${image.alt}`"
+                        @click="openReviewPreview(item, 'after', index, $event)"
                       >
-                      <span v-if="!item.afterImages?.length" class="text-xs text-slate-400">无</span>
+                        <img
+                          :src="image.src"
+                          :alt="image.alt"
+                          class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                          loading="lazy"
+                        >
+                        <span class="pointer-events-none absolute inset-x-0 bottom-0 bg-slate-950/65 py-0.5 text-center text-[9px] font-semibold text-white opacity-0 transition group-hover:opacity-100">
+                          放大
+                        </span>
+                      </button>
+                      <span v-if="!buildReviewImagePreviews(item, 'after').length" class="text-xs text-slate-400">无</span>
                     </div>
                   </div>
                 </div>
@@ -454,6 +476,14 @@
         </section>
       </div>
     </el-drawer>
+
+    <SpaceImagePreview
+      :open="previewOpen"
+      :images="previewImages"
+      :initial-index="previewIndex"
+      variant="admin"
+      @close="previewOpen = false"
+    />
   </div>
 </template>
 
@@ -470,6 +500,8 @@ import {
   rejectAdminSpaceReviewItem,
   unpublishAdminSpaceContent,
 } from '@/api/admin/spaceReview'
+import SpaceImagePreview from '@/components/frontend/space-studio/SpaceImagePreview.vue'
+import { buildReviewImagePreviews } from '@/utils/imagePreview'
 import { ADMIN_PERMISSIONS, hasAdminPermission } from '@/utils/adminAuth'
 import {
   ADMIN_DANGER_CONFIRM_BUTTON_CLASS,
@@ -517,6 +549,11 @@ const detailError = ref('')
 const detail = ref(null)
 const processingKey = ref('')
 const isProcessing = computed(() => Boolean(processingKey.value))
+
+// 审核详情图片预览：同一分组内支持上一张 / 下一张，图片地址在工具层统一过滤。
+const previewOpen = ref(false)
+const previewImages = ref([])
+const previewIndex = ref(0)
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / PAGE_SIZE)))
 
@@ -636,6 +673,7 @@ function applyFilters() {
 }
 
 async function openDetail(row) {
+  previewOpen.value = false
   detailVisible.value = true
   detailError.value = ''
   detail.value = null
@@ -649,6 +687,28 @@ async function openDetail(row) {
   } finally {
     detailLoading.value = false
   }
+}
+
+function hasReviewImages(item) {
+  return buildReviewImagePreviews(item, 'before').length > 0
+    || buildReviewImagePreviews(item, 'after').length > 0
+}
+
+/**
+ * 打开审核详情图片预览。
+ *
+ * 同一审核项的“当前图片 / 待审核图片”分别成组，避免前后版本混排导致审核误判；
+ * 先聚焦触发按钮，预览关闭后焦点会回到原始图片。
+ */
+function openReviewPreview(item, group, index, event) {
+  const images = buildReviewImagePreviews(item, group)
+  if (!images.length) return
+  if (event?.currentTarget instanceof HTMLElement) {
+    event.currentTarget.focus({ preventScroll: true })
+  }
+  previewImages.value = images
+  previewIndex.value = Number.isInteger(index) ? index : 0
+  previewOpen.value = true
 }
 
 async function reloadDetail() {

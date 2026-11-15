@@ -227,8 +227,8 @@
               v-if="photo.url"
               type="button"
               class="group relative block w-full overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-rose-300"
-              :aria-label="`放大预览照片 ${photo.title || '未命名照片'}`"
-              @click="openPhotoPreview(photo)"
+              :aria-label="`查看照片详情 ${photo.title || '未命名照片'}`"
+              @click="openPhotoPreview(photo, $event)"
             >
               <img :src="photo.url" :alt="photo.title || '相册照片'" class="h-32 w-full object-cover" @error="$event.currentTarget.style.display = 'none'">
               <span class="pointer-events-none absolute inset-x-0 bottom-0 bg-stone-950/55 py-1 text-center text-[10px] font-semibold text-white opacity-0 transition group-hover:opacity-100">
@@ -288,8 +288,8 @@
                   type="button"
                   class="btn-ghost !px-2 !py-1 !text-[11px]"
                   :disabled="!photo.url"
-                  :aria-label="`放大预览照片 ${photo.title || '未命名照片'}`"
-                  @click="openPhotoPreview(photo)"
+                  :aria-label="`查看照片详情 ${photo.title || '未命名照片'}`"
+                  @click="openPhotoPreview(photo, $event)"
                 >
                   预览
                 </button>
@@ -489,11 +489,35 @@
     </SpaceStudioDialog>
 
     <SpaceImagePreview
-      :open="Boolean(previewPhoto)"
-      :src="previewPhoto?.url || ''"
-      :alt="previewPhoto?.title || '相册照片'"
-      @close="previewPhoto = null"
-    />
+      :open="previewIndex >= 0"
+      :images="previewItems"
+      :initial-index="previewIndex"
+      variant="editor"
+      @close="previewIndex = -1"
+    >
+      <template #actions="{ item }">
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            class="btn-secondary !px-3 !py-1.5 !text-xs"
+            :aria-label="`编辑照片 ${item.title || '未命名照片'}`"
+            title="编辑照片"
+            @click="editPhotoFromPreview(item)"
+          >
+            编辑照片
+          </button>
+          <button
+            type="button"
+            class="btn-ghost !px-3 !py-1.5 !text-xs !text-rose-600 hover:!bg-rose-50"
+            :aria-label="`删除照片 ${item.title || '未命名照片'}`"
+            title="删除照片"
+            @click="deletePhotoFromPreview(item)"
+          >
+            删除照片
+          </button>
+        </div>
+      </template>
+    </SpaceImagePreview>
   </div>
 </template>
 
@@ -533,6 +557,8 @@ import {
   VISIBILITY_OPTIONS,
 } from '@/utils/spaceContent'
 import { createFormSnapshot, isFormDirty } from '@/utils/formBaseline'
+import { isPreviewableImageSrc } from '@/utils/imagePreview'
+import { formatSpaceDate } from '@/utils/spaceFormat'
 import { confirmDiscardChanges } from '@/utils/unsavedChanges'
 import {
   hasSelectedContentScope,
@@ -579,9 +605,29 @@ const photoDialogOpen = ref(false)
 const photoTitleInputRef = ref(null)
 const newPhotoButtonRef = ref(null)
 let photoDialogTrigger = null
-const previewPhoto = ref(null)
+const previewIndex = ref(-1)
 const categoryBaseline = ref('')
 const photoBaseline = ref('')
+
+/**
+ * 编辑相册详情数据：与恋爱广场共用预览层，但额外提供分类、可见性、审核状态等管理元信息。
+ * 预览项过滤空地址，索引与过滤后的列表保持一致，避免空 URL 照片导致切图错位。
+ */
+const previewItems = computed(() => photos.value
+  .filter(photo => isPreviewableImageSrc(photo.url))
+  .map(photo => {
+    const title = String(photo.title || '').trim()
+    const description = String(photo.description || '').trim()
+    const alt = title || (description ? `照片描述：${description.slice(0, 80)}` : '相册照片')
+    return {
+      id: photo.id,
+      src: String(photo.url).trim(),
+      alt,
+      title: title || '未命名照片',
+      description,
+      meta: buildPhotoPreviewMeta(photo),
+    }
+  }))
 
 /** 分类卡片直接拖拽：分类属于空间级全局排序，松手即保存。 */
 const categorySortError = ref('')
@@ -820,6 +866,19 @@ function visibilityLabel(value) {
   return VISIBILITY_OPTIONS.find(option => option.value === Number(value))?.label || '仅空间成员可见'
 }
 
+/** 编辑模式元信息：分类、拍摄日期、地点、可见性与审核状态，不包含后台内部字段。 */
+function buildPhotoPreviewMeta(photo) {
+  const date = photo?.takenTime ? formatSpaceDate(photo.takenTime, '') : ''
+  return [
+    String(photo?.categoryName || '').trim() || '未分类',
+    date ? `拍摄于 ${date}` : '',
+    String(photo?.location || '').trim(),
+    visibilityLabel(photo?.visibility),
+    reviewStatusLabel(photo?.reviewStatus),
+    photo?.isCover ? '封面照片' : '',
+  ].filter(Boolean).join(' · ')
+}
+
 function reviewStatusClass(status) {
   if (status === 'PENDING') return 'bg-amber-100 text-amber-700'
   if (status === 'REJECTED') return 'bg-rose-100 text-rose-700'
@@ -946,9 +1005,50 @@ function handlePhotoDialogClosed() {
   restoreDialogFocus(trigger, newPhotoButtonRef)
 }
 
-function openPhotoPreview(photo) {
-  if (!photo?.url) return
-  previewPhoto.value = photo
+function openPhotoPreview(photo, event) {
+  if (!isPreviewableImageSrc(photo?.url)) return
+  const index = previewItems.value.findIndex(item => String(item.id) === String(photo?.id))
+  if (index < 0) return
+  if (event?.currentTarget instanceof HTMLElement) {
+    event.currentTarget.focus({ preventScroll: true })
+  }
+  previewIndex.value = index
+}
+
+/**
+ * 从详情弹窗进入编辑：先关闭预览，避免预览层（z-3000）盖住编辑弹窗，
+ * 再复用现有 editPhoto，确保照片 ID 和 dirty 校验逻辑不变。
+ */
+async function editPhotoFromPreview(item) {
+  const photo = photos.value.find(photoItem => String(photoItem.id) === String(item?.id))
+  if (!photo) return
+  previewIndex.value = -1
+  await nextTick()
+  await editPhoto(photo, null)
+}
+
+/**
+ * 从详情弹窗删除：删除后若仍有照片，打开原索引位置（或最后一张）；
+ * 若无照片则保持关闭并展示列表空状态；取消或失败时回到原照片。
+ */
+async function deletePhotoFromPreview(item) {
+  const photo = photos.value.find(photoItem => String(photoItem.id) === String(item?.id))
+  if (!photo) return
+  const previousIndex = previewIndex.value
+  previewIndex.value = -1
+  await nextTick()
+
+  const result = await removePhoto(photo)
+  if (result === 'deleted') {
+    if (previewItems.value.length) {
+      previewIndex.value = Math.min(Math.max(previousIndex, 0), previewItems.value.length - 1)
+    }
+    return
+  }
+
+  if (photos.value.some(photoItem => String(photoItem.id) === String(photo.id))) {
+    openPhotoPreview(photo)
+  }
 }
 
 async function editPhoto(photo, event) {
@@ -1013,6 +1113,7 @@ async function load({ resetForms = true } = {}) {
       photoDrag.cancelDrag()
       categoryDialogOpen.value = false
       photoDialogOpen.value = false
+      previewIndex.value = -1
       resetCategoryForm()
       resetPhotoForm()
     } else {
@@ -1037,6 +1138,7 @@ async function loadPhotos() {
 
 async function goToPage(page) {
   if (pageLoading.value || photoSort.busy || page < 1 || page > totalPages.value) return
+  previewIndex.value = -1
   current.value = page
   pageLoading.value = true
   try {
@@ -1143,8 +1245,19 @@ async function savePhoto() {
   }
 }
 
+/**
+ * 删除当前页最后一张照片时回退一页，避免列表停留在空页而实际仍有其他照片。
+ * 仅在存在其他照片时生效，不改变排序规则。
+ */
+async function ensureCurrentPageHasPhotos() {
+  if (photos.value.length || total.value <= 0 || current.value <= 1) return
+  current.value = Math.max(1, Math.min(current.value - 1, totalPages.value))
+  await loadPhotos()
+  refreshSortBuffer({ force: true })
+}
+
 async function removePhoto(photo) {
-  if (photoSort.busy) return
+  if (photoSort.busy) return 'busy'
   try {
     await ElMessageBox.confirm(`确定删除照片「${photo.title || '未命名照片'}」吗？`, '删除照片', {
       confirmButtonText: '删除',
@@ -1153,15 +1266,18 @@ async function removePhoto(photo) {
       distinguishCancelAndClose: true,
     })
   } catch {
-    return
+    return 'cancelled'
   }
   try {
     ensureSuccess(await deletePhotoManagePhoto(photo.id), '删除照片失败')
     ElMessage.success('照片已删除')
     await load({ resetForms: false })
+    await ensureCurrentPageHasPhotos()
     if (String(photoForm.id) === String(photo.id)) resetPhotoForm()
+    return 'deleted'
   } catch (error) {
     ElMessage.error(readContentErrorMessage(error, '删除照片失败，请稍后重试'))
+    return 'failed'
   }
 }
 
@@ -1173,6 +1289,7 @@ watch(filterCategoryId, async () => {
     return
   }
   if (photoSort.busy) return
+  previewIndex.value = -1
   photoDrag.cancelDrag()
   photoSortError.value = ''
   sortBufferSeq += 1
@@ -1195,6 +1312,7 @@ onMounted(load)
 /** 审核状态刷新只同步列表；用户正在编辑或保存顺序时保留当前状态。 */
 watch(() => props.refreshKey, () => {
   if (photoSort.saving) return
+  previewIndex.value = -1
   load({ resetForms: !dirty.value })
 })
 

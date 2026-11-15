@@ -11,7 +11,8 @@
     "test:space-api": "node --test src/utils/spaceInvitation.test.mjs src/utils/safeRedirect.test.mjs",
     "test:space-settings": "node --test src/utils/spaceLifecycle.test.mjs src/utils/spaceRequestGate.test.mjs",
     "test:admin-activity": "node --test src/utils/activityRange.test.mjs src/utils/pageViewTracker.test.mjs",
-    "test": "node --test src/composables/useFrontendSpace.test.mjs src/utils/spaceInvitation.test.mjs src/utils/safeRedirect.test.mjs src/utils/spaceLifecycle.test.mjs src/utils/spaceRequestGate.test.mjs src/utils/spaceUnbind.test.mjs src/utils/activityRange.test.mjs src/utils/pageViewTracker.test.mjs src/utils/adminRestore.test.mjs src/utils/adminRestoreSource.test.mjs src/utils/formBaseline.test.mjs src/utils/saveFeedback.test.mjs src/utils/storyEditor.test.mjs src/utils/spaceStudioLayout.test.mjs src/utils/authStorage.test.mjs src/utils/reorderList.test.mjs src/utils/spaceContentSort.test.mjs src/utils/spaceContentOrder.test.mjs src/utils/spaceMessageVisual.test.mjs"
+    "test:comment-time": "node --test src/utils/commentTime.test.mjs src/composables/useCommentClock.test.mjs",
+    "test": "node --test src/composables/useFrontendSpace.test.mjs src/composables/useCommentClock.test.mjs src/utils/commentTime.test.mjs src/utils/spaceInvitation.test.mjs src/utils/safeRedirect.test.mjs src/utils/spaceLifecycle.test.mjs src/utils/spaceRequestGate.test.mjs src/utils/spaceUnbind.test.mjs src/utils/activityRange.test.mjs src/utils/pageViewTracker.test.mjs src/utils/adminRestore.test.mjs src/utils/adminRestoreSource.test.mjs src/utils/formBaseline.test.mjs src/utils/saveFeedback.test.mjs src/utils/storyEditor.test.mjs src/utils/spaceStudioLayout.test.mjs src/utils/authStorage.test.mjs src/utils/reorderList.test.mjs src/utils/spaceContentSort.test.mjs src/utils/spaceContentOrder.test.mjs src/utils/spaceMessageVisual.test.mjs src/utils/imagePreview.test.mjs"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",

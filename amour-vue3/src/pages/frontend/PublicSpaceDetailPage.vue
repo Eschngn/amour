@@ -269,12 +269,21 @@
                       <span class="font-display text-3xl" aria-hidden="true">◫</span>
                       <span class="text-[10px] text-rose-400/70">暂无图片</span>
                     </div>
-                    <div class="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-rose-950/65 to-transparent p-3 pt-8">
-                      <figcaption class="min-w-0">
+                    <!-- 透明按钮覆盖图片区域：保持原有卡片结构，同时提供键盘可访问的大图与描述入口。 -->
+                    <button
+                      v-if="photo.url && !failedImages[`photo-${photo.photoId}`]"
+                      type="button"
+                      class="absolute inset-0 z-10 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-rose-300"
+                      :aria-label="`查看照片大图和描述：${photo.title || '公开照片'}`"
+                      @click="openPhotoPreview(photo, $event)"
+                    />
+                    <figcaption class="pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-rose-950/80 via-rose-950/35 to-transparent p-3 pt-10">
+                      <div class="min-w-0">
                         <p class="truncate text-xs font-semibold text-white">{{ photo.title || '未命名照片' }}</p>
+                        <p v-if="photoDescription(photo)" class="mt-0.5 line-clamp-2 break-words text-[10px] leading-4 text-white/80">{{ photoDescription(photo) }}</p>
                         <p v-if="photo.location" class="mt-0.5 truncate text-[10px] text-white/65">{{ photo.location }}</p>
-                      </figcaption>
-                    </div>
+                      </div>
+                    </figcaption>
                   </figure>
                 </div>
               </section>
@@ -338,6 +347,14 @@
         </section>
       </div>
     </main>
+
+    <SpaceImagePreview
+      :open="photoPreviewOpen"
+      :images="publicPhotoPreviews"
+      :initial-index="photoPreviewIndex"
+      variant="plaza"
+      @close="photoPreviewOpen = false"
+    />
   </CouplePageScaffold>
 </template>
 
@@ -345,9 +362,11 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import CouplePageScaffold from '@/components/frontend/CouplePageScaffold.vue'
+import SpaceImagePreview from '@/components/frontend/space-studio/SpaceImagePreview.vue'
 import defaultBoyAvatar from '@/assets/boy.jpeg'
 import defaultGirlAvatar from '@/assets/girl.jpeg'
 import { fetchPublicSpaceDetail } from '@/api/gallery'
+import { buildPublicPhotoPreviews } from '@/utils/imagePreview'
 import { useFrontendSpace } from '@/composables/useFrontendSpace'
 import {
   formatCount,
@@ -374,6 +393,8 @@ const space = ref(null)
 const loading = ref(true)
 const loadError = ref('')
 const failedImages = ref({})
+const photoPreviewOpen = ref(false)
+const photoPreviewIndex = ref(0)
 let detailRequestId = 0
 
 const spaceId = computed(() => {
@@ -388,6 +409,12 @@ const description = computed(() => (
 const members = computed(() => (Array.isArray(space.value?.members) ? space.value.members : []))
 const stories = computed(() => (Array.isArray(space.value?.stories) ? space.value.stories : []))
 const photos = computed(() => (Array.isArray(space.value?.photos) ? space.value.photos : []))
+// 只把允许公开展示的字段交给预览层，描述为空时组件不会渲染空白说明区。
+const publicPhotoPreviews = computed(() => buildPublicPhotoPreviews(photos.value))
+// 列表刷新、空间切换或照片被删除时关闭详情，避免旧照片描述残留。
+watch(publicPhotoPreviews, () => {
+  photoPreviewOpen.value = false
+})
 const anniversaries = computed(() => (
   Array.isArray(space.value?.anniversaries) ? space.value.anniversaries : []
 ))
@@ -466,6 +493,23 @@ function markImageFailed(key) {
   failedImages.value = { ...failedImages.value, [key]: true }
 }
 
+/** 照片描述为空或仅空白时不渲染说明区域，避免卡片出现空白间距。 */
+function photoDescription(photo) {
+  const value = photo?.description
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+/** 打开公开照片大图：图片下方展示标题、描述与拍摄信息。 */
+function openPhotoPreview(photo, event) {
+  const index = publicPhotoPreviews.value.findIndex(item => String(item.id) === String(photo?.photoId))
+  if (index < 0) return
+  if (event?.currentTarget instanceof HTMLElement) {
+    event.currentTarget.focus({ preventScroll: true })
+  }
+  photoPreviewIndex.value = index
+  photoPreviewOpen.value = true
+}
+
 function monthDay(value) {
   const date = parseSpaceDateTime(value)
   if (!date) return '—'
@@ -478,6 +522,7 @@ async function loadDetail() {
 
   space.value = null
   failedImages.value = {}
+  photoPreviewOpen.value = false
   loadError.value = ''
 
   if (!id) {

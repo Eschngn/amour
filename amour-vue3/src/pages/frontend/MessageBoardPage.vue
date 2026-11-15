@@ -57,8 +57,8 @@
             </div>
 
             <!-- 留言列表 -->
-            <ul v-else-if="messages.length" class="space-y-4" aria-label="留言列表">
-              <li v-for="m in messages" :key="m.messageId"
+            <ul v-else-if="displayMessages.length" class="space-y-4" aria-label="留言列表">
+              <li v-for="m in displayMessages" :key="m.messageId"
                 class="group rounded-2xl border border-rose-100/90 bg-white/85 p-4 shadow-sm shadow-rose-100/30 transition duration-300 hover:-translate-y-0.5 hover:border-rose-200 hover:shadow-md sm:p-5">
                 <div class="flex items-start gap-3">
                   <div
@@ -70,7 +70,8 @@
                     <div class="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
                       <p class="text-sm font-semibold text-rose-950">{{ m.userName || '匿名' }}</p>
                       <div class="flex shrink-0 items-center gap-1.5">
-                        <time class="text-[11px] text-rose-700/45">{{ m.createTime }}</time>
+                        <time class="whitespace-nowrap text-[11px] text-rose-700/80" :datetime="m.timeMeta.dateTime"
+                          :title="m.timeMeta.title">{{ m.timeMeta.text }}</time>
                         <button v-if="m.canDelete === true" type="button" aria-label="删除这条留言" title="删除这条留言"
                           class="inline-flex items-center gap-1 rounded-full border border-rose-100 bg-rose-50/70 px-2.5 py-1 text-xs font-semibold text-rose-500 transition hover:border-rose-200 hover:bg-rose-100 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
                           :disabled="deletingId === m.messageId" @click="deleteMessage(m)">
@@ -156,8 +157,10 @@
                             </button>
                           </div>
                         </div>
-                        <p class="mt-2 text-[11px] text-rose-600/50">
-                          <span class="font-semibold text-rose-700/65">{{ r.fromUserName }}</span> 回复 {{ r.toUserName }} · {{ r.createTime }}
+                        <p class="mt-2 text-[11px] text-rose-600/60">
+                          <span class="font-semibold text-rose-700/65">{{ r.fromUserName }}</span> 回复 {{ r.toUserName }} ·
+                          <time class="whitespace-nowrap text-rose-700/80" :datetime="r.timeMeta.dateTime"
+                            :title="r.timeMeta.title">{{ r.timeMeta.text }}</time>
                         </p>
                       </div>
                     </div>
@@ -274,6 +277,8 @@ import api from '@/axios'
 import CouplePageScaffold from '@/components/frontend/CouplePageScaffold.vue'
 import FrontendPageHeader from '@/components/frontend/FrontendPageHeader.vue'
 import { frontendLoggedIn, isFrontendAuthenticated } from '@/utils/auth'
+import { describeCommentTime } from '@/utils/commentTime'
+import { useCommentClock } from '@/composables/useCommentClock'
 
 const SIZE = 10
 const route = useRoute()
@@ -291,6 +296,20 @@ const replyDraft = ref('')
 const replying = ref(false)
 const deletingId = ref(null)
 const deletingReplyId = ref(null)
+const now = useCommentClock()
+
+/**
+ * 主留言与回复共用同一个格式化入口；
+ * now 由共享时钟驱动，页面停留期间文本会自动更新。
+ */
+const displayMessages = computed(() => messages.value.map(message => ({
+  ...message,
+  timeMeta: describeCommentTime(message.createTime, { now: now.value }),
+  replies: (Array.isArray(message.replies) ? message.replies : []).map(reply => ({
+    ...reply,
+    timeMeta: describeCommentTime(reply.createTime, { now: now.value }),
+  })),
+})))
 
 function initials(name) {
   const value = String(name || '匿名').trim()
