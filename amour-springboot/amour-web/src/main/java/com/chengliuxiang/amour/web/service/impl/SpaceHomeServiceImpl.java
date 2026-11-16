@@ -2,13 +2,17 @@ package com.chengliuxiang.amour.web.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
+import com.chengliuxiang.amour.common.constant.FrontendSiteConfigConstants;
+import com.chengliuxiang.amour.common.constant.SpaceReviewConstants;
 import com.chengliuxiang.amour.common.domain.dos.CoupleMemberDO;
 import com.chengliuxiang.amour.common.domain.dos.CoupleSpaceConfigDO;
 import com.chengliuxiang.amour.common.domain.dos.CoupleSpaceDO;
+import com.chengliuxiang.amour.common.domain.dos.PlatformConfigDO;
 import com.chengliuxiang.amour.common.domain.dos.UserDO;
 import com.chengliuxiang.amour.common.domain.mapper.CoupleMemberMapper;
 import com.chengliuxiang.amour.common.domain.mapper.CoupleSpaceConfigMapper;
 import com.chengliuxiang.amour.common.domain.mapper.CoupleSpaceMapper;
+import com.chengliuxiang.amour.common.domain.mapper.PlatformConfigMapper;
 import com.chengliuxiang.amour.common.domain.mapper.UserMapper;
 import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
 import com.chengliuxiang.amour.common.exception.BizException;
@@ -19,6 +23,7 @@ import com.chengliuxiang.amour.web.model.vo.space.SpaceHomeVO;
 import com.chengliuxiang.amour.web.service.SpaceContentAccessService;
 import com.chengliuxiang.amour.web.service.SpaceHomeService;
 import com.chengliuxiang.amour.web.service.SpaceReviewService;
+import com.chengliuxiang.amour.web.utils.SafeImageUrlValidator;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,12 +32,12 @@ import javax.annotation.Resource;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -52,6 +57,8 @@ public class SpaceHomeServiceImpl implements SpaceHomeService {
     private static final String DEFAULT_GIRL_NAME = "SHE";
     private static final String SOURCE_CONFIG = "config";
     private static final String SOURCE_MEMBER = "member";
+    private static final String SOURCE_PLATFORM = "platform";
+    private static final String SOURCE_PLACEHOLDER = "placeholder";
     private static final String SOURCE_DEFAULT = "default";
 
     private static final int MEMBER_ROLE_CREATOR = 1;
@@ -74,8 +81,8 @@ public class SpaceHomeServiceImpl implements SpaceHomeService {
         CONFIG_RULES = Collections.unmodifiableMap(rules);
     }
 
-    private static final Pattern SAFE_IMAGE_URL = Pattern.compile("^(https?://|/)[^\\s]*$",
-            Pattern.CASE_INSENSITIVE);
+    @Resource
+    private PlatformConfigMapper platformConfigMapper;
 
     @Resource
     private SpaceContentAccessService spaceContentAccessService;
@@ -138,7 +145,9 @@ public class SpaceHomeServiceImpl implements SpaceHomeService {
         SpaceHomeVO homeVO = buildHomeVO(latestAccess);
         SpaceContentSaveResultVO reviewResult = spaceReviewService.onHomeSaved(
                 latest.getId(), access.getUserId(), "编辑空间首页信息与主页配置");
-        homeVO.setReviewPending(reviewResult.getReviewStatus() != null);
+        homeVO.setReviewPending(SpaceReviewConstants.USER_STATE_PENDING.equals(
+                reviewResult.getReviewStatus()));
+        homeVO.setReviewRestored(Boolean.TRUE.equals(reviewResult.getRestoredToPublished()));
         homeVO.setReviewMessage(reviewResult.getReviewMessage());
         return Response.success(homeVO);
     }
@@ -152,7 +161,7 @@ public class SpaceHomeServiceImpl implements SpaceHomeService {
         if (value.length() > rule.maxLength) {
             throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID);
         }
-        if (rule.image && value.length() > 0 && !SAFE_IMAGE_URL.matcher(value).matches()) {
+        if (rule.image && value.length() > 0 && !SafeImageUrlValidator.isValid(value)) {
             throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID);
         }
 
@@ -195,15 +204,24 @@ public class SpaceHomeServiceImpl implements SpaceHomeService {
         Map<Long, UserDO> userMap = loadUserMap(members);
 
         Map<String, String> configMap = loadConfigMap(space.getId());
+        Map<String, String> platformImages = loadPlatformDefaultImages();
 
         ResolvedValue boyName = resolveText(configMap.get(CONFIG_BOY_NAME),
                 displayName(userMap, creatorMember), DEFAULT_BOY_NAME);
         ResolvedValue girlName = resolveText(configMap.get(CONFIG_GIRL_NAME),
                 displayName(userMap, partnerMember), DEFAULT_GIRL_NAME);
-        ResolvedValue boyAvatar = resolveText(configMap.get(CONFIG_BOY_AVATAR),
-                avatar(userMap, creatorMember), "");
-        ResolvedValue girlAvatar = resolveText(configMap.get(CONFIG_GIRL_AVATAR),
-                avatar(userMap, partnerMember), "");
+        // 头像按「空间配置 → 成员资料 → 管理控制台默认图 → 前端占位样式」解析。
+        ResolvedValue boyAvatar = resolveAvatar(configMap.get(CONFIG_BOY_AVATAR),
+                avatar(userMap, creatorMember),
+                platformImages.get(FrontendSiteConfigConstants.DEFAULT_COUPLE_AVATAR_BOY));
+        ResolvedValue girlAvatar = resolveAvatar(configMap.get(CONFIG_GIRL_AVATAR),
+                avatar(userMap, partnerMember),
+                platformImages.get(FrontendSiteConfigConstants.DEFAULT_COUPLE_AVATAR_GIRL));
+        // 主视觉照片只在用户配置或管理员默认图存在时返回地址，否则由前端展示“尚未上传”占位。
+        ResolvedValue heroPhoto1 = resolveImage(configMap.get(CONFIG_HERO_PHOTO_1),
+                platformImages.get(FrontendSiteConfigConstants.DEFAULT_COUPLE_HERO_PHOTO_1));
+        ResolvedValue heroPhoto2 = resolveImage(configMap.get(CONFIG_HERO_PHOTO_2),
+                platformImages.get(FrontendSiteConfigConstants.DEFAULT_COUPLE_HERO_PHOTO_2));
 
         return SpaceHomeVO.builder()
                 .spaceId(space.getId())
@@ -215,12 +233,14 @@ public class SpaceHomeServiceImpl implements SpaceHomeService {
                 .girlName(girlName.value)
                 .boyAvatar(boyAvatar.value)
                 .girlAvatar(girlAvatar.value)
-                .heroPhoto1(StrUtil.nullToEmpty(configMap.get(CONFIG_HERO_PHOTO_1)))
-                .heroPhoto2(StrUtil.nullToEmpty(configMap.get(CONFIG_HERO_PHOTO_2)))
+                .heroPhoto1(heroPhoto1.value)
+                .heroPhoto2(heroPhoto2.value)
                 .boyNameSource(boyName.source)
                 .girlNameSource(girlName.source)
                 .boyAvatarSource(boyAvatar.source)
                 .girlAvatarSource(girlAvatar.source)
+                .heroPhoto1Source(heroPhoto1.source)
+                .heroPhoto2Source(heroPhoto2.source)
                 .canEdit(canEdit(access))
                 .build();
     }
@@ -259,6 +279,46 @@ public class SpaceHomeServiceImpl implements SpaceHomeService {
             return new ResolvedValue(memberValue.trim(), SOURCE_MEMBER);
         }
         return new ResolvedValue(fallback, SOURCE_DEFAULT);
+    }
+
+    private ResolvedValue resolveAvatar(String configured, String memberValue, String platformValue) {
+        if (StrUtil.isNotBlank(configured)) {
+            return new ResolvedValue(configured.trim(), SOURCE_CONFIG);
+        }
+        if (StrUtil.isNotBlank(memberValue)) {
+            return new ResolvedValue(memberValue.trim(), SOURCE_MEMBER);
+        }
+        if (StrUtil.isNotBlank(platformValue)) {
+            return new ResolvedValue(platformValue, SOURCE_PLATFORM);
+        }
+        return new ResolvedValue("", SOURCE_PLACEHOLDER);
+    }
+
+    private ResolvedValue resolveImage(String configured, String platformValue) {
+        if (StrUtil.isNotBlank(configured)) {
+            return new ResolvedValue(configured.trim(), SOURCE_CONFIG);
+        }
+        if (StrUtil.isNotBlank(platformValue)) {
+            return new ResolvedValue(platformValue, SOURCE_PLATFORM);
+        }
+        return new ResolvedValue("", SOURCE_PLACEHOLDER);
+    }
+
+    /** 读取管理控制台配置的全站默认图片；空值与非法地址视为未配置。 */
+    private Map<String, String> loadPlatformDefaultImages() {
+        List<PlatformConfigDO> configs = platformConfigMapper.selectByConfigKeys(
+                FrontendSiteConfigConstants.DEFAULT_IMAGE_KEYS);
+        if (CollUtil.isEmpty(configs)) {
+            return Collections.emptyMap();
+        }
+        Map<String, String> images = new HashMap<>();
+        for (PlatformConfigDO config : configs) {
+            String value = StrUtil.trimToEmpty(config.getConfigValue());
+            if (value.length() <= 500 && SafeImageUrlValidator.isValid(value)) {
+                images.put(config.getConfigKey(), value);
+            }
+        }
+        return images;
     }
 
     private CoupleMemberDO findMemberByRole(List<CoupleMemberDO> members, int role) {

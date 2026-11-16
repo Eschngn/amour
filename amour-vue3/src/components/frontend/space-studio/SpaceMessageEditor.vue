@@ -201,8 +201,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import 'element-plus/es/components/message/style/css'
+import { ElMessageBox } from 'element-plus'
 import 'element-plus/es/components/message-box/style/css'
 import {
   deleteSpaceMessage,
@@ -212,11 +211,12 @@ import {
   replySpaceMessage,
 } from '@/api/spaceContent'
 import { ensureSuccess, readContentErrorMessage } from '@/utils/spaceContent'
+import { resolveSaveFeedback } from '@/utils/saveFeedback'
 import { frontendDisplayName } from '@/utils/auth'
 
 const PAGE_SIZE = 10
 
-const emit = defineEmits(['update:dirty'])
+const emit = defineEmits(['update:dirty', 'saved'])
 
 const loading = ref(true)
 const loadError = ref('')
@@ -240,6 +240,14 @@ const totalPages = computed(() => Math.max(1, Math.ceil(total.value / PAGE_SIZE)
 const dirty = computed(() => Boolean(draft.value.trim() || replyDraft.value.trim()))
 
 watch(dirty, value => emit('update:dirty', value))
+
+/** 留言相关操作也走编辑页统一的保存反馈，避免再叠加一层全局成功提示。 */
+function emitSaved(message) {
+  emit('saved', {
+    ...resolveSaveFeedback(null, message),
+    dirtyAfterSave: dirty.value,
+  })
+}
 
 async function load() {
   loading.value = true
@@ -265,7 +273,7 @@ async function publish() {
     draft.value = ''
     current.value = 1
     emit('update:dirty', false)
-    ElMessage.success('留言已发布')
+    emitSaved('留言已发布')
     await load()
   } catch (error) {
     publishError.value = readContentErrorMessage(error, '留言发布失败，请稍后重试')
@@ -308,8 +316,8 @@ async function submitReply() {
       messageId: replyTarget.value.messageId,
       content: replyDraft.value.trim(),
     }), '回复失败')
-    ElMessage.success('回复已发送')
     cancelReply()
+    emitSaved('回复已发送')
     await load()
   } catch (error) {
     actionError.value = readContentErrorMessage(error, '回复失败，请稍后重试')
@@ -334,7 +342,7 @@ async function removeMessage(message) {
   actionError.value = ''
   try {
     ensureSuccess(await deleteSpaceMessage(message.messageId), '删除留言失败')
-    ElMessage.success('留言已删除')
+    emitSaved('留言已删除')
     await load()
   } catch (error) {
     actionError.value = readContentErrorMessage(error, '删除留言失败，请稍后重试')
@@ -349,7 +357,7 @@ async function removeReply(reply) {
   actionError.value = ''
   try {
     ensureSuccess(await deleteSpaceMessageReply(reply.replyId), '删除回复失败')
-    ElMessage.success('回复已删除')
+    emitSaved('回复已删除')
     await load()
   } catch (error) {
     actionError.value = readContentErrorMessage(error, '删除回复失败，请稍后重试')

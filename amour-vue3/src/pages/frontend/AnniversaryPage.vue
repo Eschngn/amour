@@ -18,8 +18,8 @@
 
             <div class="mt-7 flex items-center gap-4">
               <div class="flex -space-x-2" aria-label="我们的头像">
-                <img :src="boyAvatar" alt="他的头像" class="h-10 w-10 rounded-full border-2 border-white object-cover shadow-sm">
-                <img :src="girlAvatar" alt="她的头像" class="h-10 w-10 rounded-full border-2 border-white object-cover shadow-sm">
+                <CoupleAvatar name="HE" fallback="HE" label="发起人的头像" class="h-10 w-10 border-2 border-white text-[11px] shadow-sm" />
+                <CoupleAvatar name="SHE" fallback="SHE" label="另一半的头像" class="h-10 w-10 border-2 border-white text-[11px] shadow-sm" />
               </div>
               <div class="min-w-0 text-sm">
                 <p class="font-semibold text-rose-900">相伴第 {{ togetherDays }} 天</p>
@@ -205,9 +205,8 @@ import {
   Location,
   Timer,
 } from '@element-plus/icons-vue'
-import boyAvatar from '@/assets/boy.jpeg'
-import girlAvatar from '@/assets/girl.jpeg'
 import CouplePageScaffold from '@/components/frontend/CouplePageScaffold.vue'
+import CoupleAvatar from '@/components/frontend/CoupleAvatar.vue'
 import {
   DEFAULT_THEME_COLOR,
   accentTextColor,

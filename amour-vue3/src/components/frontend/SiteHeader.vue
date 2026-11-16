@@ -300,6 +300,7 @@ import {
 } from '@/utils/auth'
 import { useFrontendSpace } from '@/composables/useFrontendSpace'
 import { canEditSpaceContent, isUnboundSpace } from '@/utils/spaceState'
+import { resolveSiteNavState } from '@/utils/siteNav'
 
 const router = useRouter()
 const route = useRoute()
@@ -314,9 +315,6 @@ function isSection(prefix) {
   return path === prefix || path.startsWith(`${prefix}/`)
 }
 
-const isPlazaSection = computed(() => isSection('/plaza'))
-// 首页同时承载“我的情侣空间”和广场兜底，只有停留在根路径时才高亮这一项。
-const isHomeSection = computed(() => route.path === '/')
 const {
   isSpaceReady,
   hasCoupleSpace,
@@ -324,8 +322,14 @@ const {
   spaceLoading,
   spaceError,
   isSpaceStatusUnknown,
+  viewMode,
   clearSpaceStatus,
 } = useFrontendSpace()
+
+const navState = computed(() => resolveSiteNavState(route.path, viewMode.value))
+const isPlazaSection = computed(() => navState.value.plazaActive)
+// 首页同时承载“我的情侣空间”和广场兜底：只有根路径且不是广场视图时才高亮这一项。
+const isHomeSection = computed(() => navState.value.homeActive)
 
 /**
  * 空间状态与空间设置已合并到 /space/setup：

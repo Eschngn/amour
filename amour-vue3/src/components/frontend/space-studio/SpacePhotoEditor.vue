@@ -556,7 +556,7 @@ import {
   toDateTimeLocalInput,
   VISIBILITY_OPTIONS,
 } from '@/utils/spaceContent'
-import { createFormSnapshot, isFormDirty } from '@/utils/formBaseline'
+import { createFormSnapshot, isFormDirty, shouldSkipUnchangedSave } from '@/utils/formBaseline'
 import { isPreviewableImageSrc } from '@/utils/imagePreview'
 import { formatSpaceDate } from '@/utils/spaceFormat'
 import { confirmDiscardChanges } from '@/utils/unsavedChanges'
@@ -565,7 +565,7 @@ import {
   mergePageOrderIntoFullOrder,
   resolvePhotoSortScope,
 } from '@/utils/spaceContentOrder'
-import { resolveSaveFeedback } from '@/utils/saveFeedback'
+import { resolveSaveFeedback, resolveUnchangedFeedback } from '@/utils/saveFeedback'
 
 const PAGE_SIZE = 8
 
@@ -641,7 +641,7 @@ const categoryDrag = useDragSort({
     orderedCategories.forEach((category, index) => {
       category.sortOrder = (index + 1) * 10
     })
-    ElMessage.success('分类顺序已保存')
+    emitSimpleSaved('分类顺序已保存')
   },
   onError: (error) => {
     categorySortError.value = readContentErrorMessage(error, '分类排序未保存，已恢复原顺序，请重试')
@@ -695,7 +695,7 @@ const photoDrag = useDragSort({
       : ensureSuccess(await savePhotoOrder({ categoryId: scope.categoryId, items }), '照片排序保存失败')
     sortBuffer.value = Array.isArray(serverItems) ? serverItems : merged
     applyPhotoServerOrder(serverItems)
-    ElMessage.success('顺序已保存')
+    emitSimpleSaved('顺序已保存')
   },
   onError: (error) => {
     photoSortError.value = readContentErrorMessage(error, '照片排序未保存，已恢复原顺序，请重试')
@@ -842,6 +842,14 @@ const dirty = computed(() => (
 
 function emitDirty() {
   emit('update:dirty', dirty.value)
+}
+
+/** 排序、删除等无审核语义的成功操作统一走页面级保存反馈。 */
+function emitSimpleSaved(message) {
+  emit('saved', {
+    ...resolveSaveFeedback(null, message),
+    dirtyAfterSave: dirty.value,
+  })
 }
 
 function captureCategoryBaseline() {
@@ -1157,6 +1165,18 @@ async function saveCategory() {
     categoryError.value = '分类名称不能为空'
     return
   }
+  // 编辑已有分类但没有任何改动：不调用保存接口。
+  if (shouldSkipUnchangedSave({
+    editing: Boolean(categoryForm.id),
+    baseline: categoryBaseline.value,
+    snapshot: categoryFormSnapshot(),
+    busy: categorySaving.value || categorySort.busy,
+  })) {
+    categoryDialogOpen.value = false
+    resetCategoryForm()
+    emit('saved', { ...resolveUnchangedFeedback(), dirtyAfterSave: dirty.value })
+    return
+  }
   categorySaving.value = true
   categoryError.value = ''
   try {
@@ -1192,7 +1212,7 @@ async function removeCategory(category) {
   }
   try {
     ensureSuccess(await deletePhotoManageCategory(category.id), '删除分类失败')
-    ElMessage.success('分类已删除')
+    emitSimpleSaved('分类已删除')
     await load({ resetForms: false })
     if (String(categoryForm.id) === String(category.id)) {
       categoryDialogOpen.value = false
@@ -1216,6 +1236,18 @@ async function savePhoto() {
   }
   if (photoForm.isCover && Number(photoForm.visibility) === 2) {
     photoError.value = '封面照片不能设置为隐藏'
+    return
+  }
+  // 编辑已有照片但没有任何改动：不调用保存接口，也不创建或提交审核。
+  if (shouldSkipUnchangedSave({
+    editing: Boolean(photoForm.id),
+    baseline: photoBaseline.value,
+    snapshot: photoFormSnapshot(),
+    busy: photoSaving.value || uploading.value,
+  })) {
+    photoDialogOpen.value = false
+    resetPhotoForm()
+    emit('saved', { ...resolveUnchangedFeedback(), dirtyAfterSave: dirty.value })
     return
   }
 
@@ -1270,7 +1302,7 @@ async function removePhoto(photo) {
   }
   try {
     ensureSuccess(await deletePhotoManagePhoto(photo.id), '删除照片失败')
-    ElMessage.success('照片已删除')
+    emitSimpleSaved('照片已删除')
     await load({ resetForms: false })
     await ensureCurrentPageHasPhotos()
     if (String(photoForm.id) === String(photo.id)) resetPhotoForm()

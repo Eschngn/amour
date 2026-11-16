@@ -30,6 +30,7 @@ import com.chengliuxiang.amour.common.model.snapshot.AnniversaryPublicSnapshot;
 import com.chengliuxiang.amour.common.model.snapshot.HomeConfigPublicSnapshot;
 import com.chengliuxiang.amour.common.model.snapshot.PhotoPublicSnapshot;
 import com.chengliuxiang.amour.common.model.snapshot.SpacePublicSnapshot;
+import com.chengliuxiang.amour.common.model.review.SpaceReviewItemStatusSummary;
 import com.chengliuxiang.amour.common.model.snapshot.StoryPublicSnapshot;
 import com.chengliuxiang.amour.common.utils.JsonUtil;
 import com.chengliuxiang.amour.common.utils.Response;
@@ -38,6 +39,7 @@ import com.chengliuxiang.amour.web.model.vo.space.SpaceItemReviewStateVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceReviewStatusVO;
 import com.chengliuxiang.amour.web.service.SpaceContentAccessService;
 import com.chengliuxiang.amour.web.service.SpaceReviewService;
+import com.chengliuxiang.amour.web.utils.SpaceSnapshotComparator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -81,6 +83,12 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
     private static final List<String> HOME_CONFIG_KEYS = Collections.unmodifiableList(Arrays.asList(
             "boy_name", "girl_name", "boy_avatar", "girl_avatar",
             "home.hero_photo_1", "home.hero_photo_2"));
+
+    /** 工作数据已与当前公开版本一致：不创建审核项，并撤回该目标旧的待审核项。 */
+    private static final String RESTORED_TO_PUBLISHED_MESSAGE =
+            "已恢复为当前公开版本，本次未产生新的审核项";
+    private static final String RESTORED_PENDING_REASON =
+            "内容已恢复为当前公开版本，待审核项已撤回";
 
     @Resource
     private SpaceContentAccessService spaceContentAccessService;
@@ -126,7 +134,7 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
                 ? Collections.emptyList()
                 : (pending == null ? itemMapper.selectBySubmissionId(activeSubmission.getId())
                 : pendingItems);
-        ItemStatusCounts itemCounts = countItemStatuses(activeItems);
+        SpaceReviewItemStatusSummary itemCounts = SpaceReviewItemStatusSummary.of(activeItems);
         boolean activeHasRejected = activeItems.stream()
                 .anyMatch(item -> SpaceReviewConstants.ITEM_STATUS_REJECTED.equals(item.getItemStatus()));
         List<SpaceReviewItemDO> rejectedSource = activeHasRejected || latestHandled == null
@@ -152,6 +160,15 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
                 && (SpaceReviewConstants.STATUS_REJECTED.equals(lastStatus)
                 || SpaceReviewConstants.STATUS_PARTIALLY_APPROVED.equals(lastStatus)
                 || SpaceReviewConstants.STATUS_WITHDRAWN.equals(lastStatus));
+        // 前端据此在重新提交前直接给出“无改动”提示，不必先发起一次无意义的请求。
+        boolean unchangedSinceLastSubmission = canResubmit
+                && isSameAsLastSubmission(space, latestHandled);
+        // 最近一次提交因所有内容恢复为公开版本而结束：没有当前审核项，不应继续展示「已撤回」。
+        boolean restoredToPublished = pending == null
+                && latestHandled != null
+                && SpaceReviewConstants.STATUS_WITHDRAWN.equals(latestHandled.getStatus())
+                && itemCounts.getTotal() == 0
+                && RESTORED_PENDING_REASON.equals(StrUtil.nullToEmpty(latestHandled.getRejectReason()));
 
         return SpaceReviewStatusVO.builder()
                 .spaceId(spaceId)
@@ -167,11 +184,11 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
                 .reviewType(pending == null ? null : pending.getReviewType())
                 .reviewTypeText(pending == null ? null
                         : SpaceReviewConstants.reviewTypeText(pending.getReviewType()))
-                .itemCount(itemCounts.total)
-                .pendingItemCount(itemCounts.pending)
-                .approvedItemCount(itemCounts.approved)
-                .rejectedItemCount(itemCounts.rejected)
-                .withdrawnItemCount(itemCounts.withdrawn)
+                .itemCount(itemCounts.getTotal())
+                .pendingItemCount(itemCounts.getPending())
+                .approvedItemCount(itemCounts.getApproved())
+                .rejectedItemCount(itemCounts.getRejected())
+                .withdrawnItemCount(itemCounts.getWithdrawn())
                 .pendingContentItemCount((int) pendingItems.stream()
                         .filter(item -> SpaceReviewConstants.ITEM_STATUS_PENDING.equals(item.getItemStatus()))
                         .filter(item -> SpaceReviewConstants.isContentItemType(item.getItemType()))
@@ -186,7 +203,10 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
                 .unpublished(unpublished)
                 .canSubmit(canSubmit)
                 .canResubmit(canResubmit)
-                .message(resolveStatusMessage(space, pending, itemCounts, latestHandled, unpublished))
+                .unchangedSinceLastSubmission(unchangedSinceLastSubmission)
+                .restoredToPublished(restoredToPublished)
+                .message(resolveStatusMessage(space, pending, itemCounts, latestHandled, unpublished,
+                        restoredToPublished))
                 .build();
     }
 
@@ -200,10 +220,93 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
 
         // 已有待审核提交时不重复创建，直接返回当前状态，重复点击也不会产生重复审核项。
         if (submissionMapper.selectPendingBySpaceId(spaceId) != null) {
-            return Response.success(getStatusForSpace(spaceId));
+            SpaceReviewStatusVO pendingStatus = getStatusForSpace(spaceId);
+            pendingStatus.setChanged(true);
+            return Response.success(pendingStatus);
+        }
+        // 被驳回或部分通过后，若工作数据与上一次提交完全一致，不再创建新的审核记录。
+        if (isSameAsLastSubmission(spaceId, space)) {
+            SpaceReviewStatusVO unchanged = getStatusForSpace(spaceId);
+            unchanged.setChanged(false);
+            unchanged.setReviewMessage("未检测到内容变化，未提交审核");
+            return Response.success(unchanged);
         }
         submitSpacePublish(spaceId, access.getUserId());
-        return Response.success(getStatusForSpace(spaceId));
+        SpaceReviewStatusVO status = getStatusForSpace(spaceId);
+        // 所有内容都已与公开版本一致时 submitSpacePublish 不会创建提交，不能提示为一次新的审核。
+        boolean submitted = submissionMapper.selectPendingBySpaceId(spaceId) != null;
+        status.setChanged(submitted);
+        if (!submitted) {
+            status.setReviewMessage("未检测到内容变化，未提交审核");
+        }
+        return Response.success(status);
+    }
+
+    /**
+     * 比较当前公开内容与上一次被驳回 / 部分通过的提交快照。
+     *
+     * <p>只有状态为 REJECTED 或 PARTIALLY_APPROVED 时才存在“修改后重新提交”的语义；
+     * 撤回后的重新提交没有可比较的上次内容，仍按正常流程处理。</p>
+     */
+    private boolean isSameAsLastSubmission(Long spaceId, CoupleSpaceDO space) {
+        return isSameAsLastSubmission(space, findLatestHandled(spaceId));
+    }
+
+    private boolean isSameAsLastSubmission(CoupleSpaceDO space, SpaceReviewSubmissionDO latest) {
+        if (latest == null) {
+            return false;
+        }
+        String status = latest.getStatus();
+        if (!SpaceReviewConstants.STATUS_REJECTED.equals(status)
+                && !SpaceReviewConstants.STATUS_PARTIALLY_APPROVED.equals(status)) {
+            return false;
+        }
+
+        Map<String, String> current = buildCurrentItemSnapshots(space);
+        Map<String, String> previous = new HashMap<>();
+        for (SpaceReviewItemDO item : itemMapper.selectBySubmissionId(latest.getId())) {
+            previous.put(itemKey(item.getItemType(), item.getItemId()),
+                    StrUtil.nullToEmpty(item.getSnapshotJson()));
+        }
+        if (!current.keySet().equals(previous.keySet())) {
+            return false;
+        }
+        for (Map.Entry<String, String> entry : current.entrySet()) {
+            String key = entry.getKey();
+            String currentJson = entry.getValue();
+            String previousJson = previous.get(key);
+            boolean same = key.startsWith(SpaceReviewConstants.ITEM_TYPE_SPACE + ":")
+                    ? SpaceSnapshotComparator.isSameSpace(currentJson, previousJson)
+                    : SpaceSnapshotComparator.isSame(currentJson, previousJson);
+            if (!same) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** 当前工作数据对应的完整审核项快照，与提交时生成的快照保持同样的字段与顺序。 */
+    private Map<String, String> buildCurrentItemSnapshots(CoupleSpaceDO space) {
+        Long spaceId = space.getId();
+        Map<String, String> snapshots = new LinkedHashMap<>();
+        snapshots.put(itemKey(SpaceReviewConstants.ITEM_TYPE_SPACE, SpaceReviewConstants.SINGLE_ITEM_ID),
+                JsonUtil.toJsonString(buildSpaceSnapshot(space)));
+        snapshots.put(itemKey(SpaceReviewConstants.ITEM_TYPE_HOME_CONFIG,
+                        SpaceReviewConstants.SINGLE_ITEM_ID),
+                JsonUtil.toJsonString(buildHomeConfigSnapshot(spaceId)));
+        for (StoryNodeDO story : storyNodeMapper.selectPublicList(spaceId)) {
+            snapshots.put(itemKey(SpaceReviewConstants.ITEM_TYPE_STORY, story.getId()),
+                    JsonUtil.toJsonString(buildStorySnapshot(spaceId, story)));
+        }
+        for (PhotoDO photo : photoMapper.selectPublicList(spaceId)) {
+            snapshots.put(itemKey(SpaceReviewConstants.ITEM_TYPE_PHOTO, photo.getId()),
+                    JsonUtil.toJsonString(buildPhotoSnapshot(spaceId, photo)));
+        }
+        for (AnniversaryDO anniversary : anniversaryMapper.selectPublicList(spaceId)) {
+            snapshots.put(itemKey(SpaceReviewConstants.ITEM_TYPE_ANNIVERSARY, anniversary.getId()),
+                    JsonUtil.toJsonString(buildAnniversarySnapshot(anniversary)));
+        }
+        return snapshots;
     }
 
     @Override
@@ -234,6 +337,25 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
                 : SpaceReviewConstants.REVIEW_TYPE_REPUBLISH;
 
         SpaceReviewSubmissionDO pending = submissionMapper.selectPendingBySpaceId(spaceId);
+        // 空间已公开时再次申请公开，只保留真正变化的内容；与公开版本一致的项不再重复送审。
+        // 空间尚未公开时，SPACE / HOME_CONFIG 是「公开申请」本身，必须保留整笔审核才能切换可见性。
+        boolean skipUnchangedSpaceLevel =
+                Objects.equals(space.getVisibility(), SPACE_VISIBILITY_PUBLIC);
+        List<SpaceReviewItemDO> items = buildFullSnapshotItems(space, skipUnchangedSpaceLevel, now);
+        if (items.isEmpty()) {
+            // 当前工作数据与公开版本完全一致：不创建空的待审核提交，旧的重复项按撤回处理。
+            if (pending != null) {
+                itemMapper.resolveBySubmissionId(pending.getId(),
+                        SpaceReviewConstants.ITEM_STATUS_WITHDRAWN, now);
+                SpaceReviewItemStatusSummary counts = SpaceReviewItemStatusSummary.of(
+                        itemMapper.selectBySubmissionId(pending.getId()));
+                submissionMapper.resolve(pending.getId(), spaceId,
+                        SpaceReviewConstants.STATUS_PENDING, counts.resolveSubmissionStatus(),
+                        userId, now, RESTORED_PENDING_REASON, now);
+            }
+            return;
+        }
+
         Long submissionId;
         if (pending == null) {
             SpaceReviewSubmissionDO submission = SpaceReviewSubmissionDO.builder()
@@ -266,7 +388,7 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
 
         // 再次申请时以当前工作数据为准，整体重建待审核项，避免旧快照残留。
         itemMapper.deleteBySubmissionId(submissionId);
-        int itemCount = insertFullSnapshotItems(submissionId, space, userId, now);
+        int itemCount = insertItems(items, submissionId);
         submissionMapper.touch(submissionId, spaceId, reviewType, revisionOf(space),
                 "申请公开空间及 " + itemCount + " 项内容", now);
     }
@@ -288,6 +410,7 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public SpaceContentSaveResultVO onContentSaved(Long spaceId, Long userId, String itemType,
                                                    Long itemId, boolean deleted) {
         CoupleSpaceDO space = coupleSpaceMapper.findById(spaceId);
@@ -349,6 +472,19 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
                     .build();
         }
         int baseRevision = resolveContentRevision(spaceId, itemType, itemId);
+        // 修改后又恢复为已发布版本：撤回该目标的待审核项，本次保存不产生新的审核内容。
+        if (currentlyPublished
+                && SpaceSnapshotComparator.isSame(snapshotJson, published.getSnapshotJson())) {
+            removePendingItem(spaceId, itemType, itemId, RESTORED_PENDING_REASON);
+            return SpaceContentSaveResultVO.builder()
+                    .id(itemId)
+                    .published(true)
+                    .reviewStatus(SpaceReviewConstants.USER_STATE_PUBLISHED)
+                    .reviewMessage(RESTORED_TO_PUBLISHED_MESSAGE)
+                    .changed(true)
+                    .restoredToPublished(true)
+                    .build();
+        }
         String action = currentlyPublished
                 ? SpaceReviewConstants.ACTION_UPDATE : SpaceReviewConstants.ACTION_CREATE;
         upsertPendingItem(spaceId, userId, itemType, itemId, action, baseRevision, snapshotJson,
@@ -366,12 +502,27 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public SpaceContentSaveResultVO onContentUnchanged(Long spaceId, String itemType, Long itemId) {
         requireSpace(spaceId);
         SpacePublishedItemDO published = publishedItemMapper.selectBySpaceAndItem(
                 spaceId, itemType, itemId);
         boolean currentlyPublished = published != null
                 && Objects.equals(published.getPublishStatus(), SpaceReviewConstants.PUBLISHED);
+
+        // 工作数据已与公开版本一致时顺手清理历史遗留的重复待审核项，重复保存保持幂等。
+        String snapshotJson = buildContentSnapshot(spaceId, itemType, itemId);
+        if (currentlyPublished && snapshotJson != null
+                && SpaceSnapshotComparator.isSame(snapshotJson, published.getSnapshotJson())) {
+            removePendingItem(spaceId, itemType, itemId, RESTORED_PENDING_REASON);
+            return SpaceContentSaveResultVO.builder()
+                    .id(itemId)
+                    .published(true)
+                    .reviewStatus(SpaceReviewConstants.USER_STATE_PUBLISHED)
+                    .reviewMessage("未检测到内容变化，未提交审核")
+                    .changed(false)
+                    .build();
+        }
 
         String reviewStatus = null;
         SpaceReviewSubmissionDO pending = submissionMapper.selectPendingBySpaceId(spaceId);
@@ -396,6 +547,7 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public SpaceContentSaveResultVO onHomeSaved(Long spaceId, Long userId, String changeSummary) {
         CoupleSpaceDO space = coupleSpaceMapper.findById(spaceId);
         if (space == null) {
@@ -413,24 +565,50 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
                     .build();
         }
 
-        LocalDateTime now = LocalDateTime.now();
         SpacePublishedItemDO publishedSpace = publishedItemMapper.selectBySpaceAndItem(
                 spaceId, SpaceReviewConstants.ITEM_TYPE_SPACE, SpaceReviewConstants.SINGLE_ITEM_ID);
-        String action = publishedSpace == null
-                ? SpaceReviewConstants.ACTION_CREATE : SpaceReviewConstants.ACTION_UPDATE;
-        upsertPendingItem(spaceId, userId, SpaceReviewConstants.ITEM_TYPE_SPACE,
-                SpaceReviewConstants.SINGLE_ITEM_ID, action, revisionOf(space),
-                JsonUtil.toJsonString(buildSpaceSnapshot(space)), changeSummary);
-        upsertPendingItem(spaceId, userId, SpaceReviewConstants.ITEM_TYPE_HOME_CONFIG,
-                SpaceReviewConstants.SINGLE_ITEM_ID, action, revisionOf(space),
-                JsonUtil.toJsonString(buildHomeConfigSnapshot(spaceId)), changeSummary);
+        String spaceSnapshot = JsonUtil.toJsonString(buildSpaceSnapshot(space));
+        String homeConfigSnapshot = JsonUtil.toJsonString(buildHomeConfigSnapshot(spaceId));
+        boolean spaceRestored = isSameAsPublished(spaceId, SpaceReviewConstants.ITEM_TYPE_SPACE,
+                SpaceReviewConstants.SINGLE_ITEM_ID, spaceSnapshot);
+        boolean homeConfigRestored = isSameAsPublished(spaceId, SpaceReviewConstants.ITEM_TYPE_HOME_CONFIG,
+                SpaceReviewConstants.SINGLE_ITEM_ID, homeConfigSnapshot);
+
+        // 空间信息与主页配置分别比较：只撤回已经恢复为公开版本的那一项，其他待审核项继续保留。
+        if (spaceRestored) {
+            removePendingItem(spaceId, SpaceReviewConstants.ITEM_TYPE_SPACE,
+                    SpaceReviewConstants.SINGLE_ITEM_ID, RESTORED_PENDING_REASON);
+        } else {
+            String action = publishedSpace == null
+                    ? SpaceReviewConstants.ACTION_CREATE : SpaceReviewConstants.ACTION_UPDATE;
+            upsertPendingItem(spaceId, userId, SpaceReviewConstants.ITEM_TYPE_SPACE,
+                    SpaceReviewConstants.SINGLE_ITEM_ID, action, revisionOf(space),
+                    spaceSnapshot, changeSummary);
+        }
+        if (homeConfigRestored) {
+            removePendingItem(spaceId, SpaceReviewConstants.ITEM_TYPE_HOME_CONFIG,
+                    SpaceReviewConstants.SINGLE_ITEM_ID, RESTORED_PENDING_REASON);
+        } else {
+            String action = publishedSpace == null
+                    ? SpaceReviewConstants.ACTION_CREATE : SpaceReviewConstants.ACTION_UPDATE;
+            upsertPendingItem(spaceId, userId, SpaceReviewConstants.ITEM_TYPE_HOME_CONFIG,
+                    SpaceReviewConstants.SINGLE_ITEM_ID, action, revisionOf(space),
+                    homeConfigSnapshot, changeSummary);
+        }
+
+        boolean restored = spaceRestored && homeConfigRestored;
         return SpaceContentSaveResultVO.builder()
                 .id(spaceId)
                 .published(publishedSpace != null
                         && Objects.equals(publishedSpace.getPublishStatus(), SpaceReviewConstants.PUBLISHED))
-                .reviewStatus(SpaceReviewConstants.USER_STATE_PENDING)
-                .reviewMessage("修改已保存，当前广场仍展示旧版本")
+                .reviewStatus(restored
+                        ? SpaceReviewConstants.USER_STATE_PUBLISHED
+                        : SpaceReviewConstants.USER_STATE_PENDING)
+                .reviewMessage(restored
+                        ? RESTORED_TO_PUBLISHED_MESSAGE
+                        : "修改已保存，当前广场仍展示旧版本")
                 .changed(true)
+                .restoredToPublished(restored)
                 .build();
     }
 
@@ -526,87 +704,135 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
         return null;
     }
 
-    private int insertFullSnapshotItems(Long submissionId, CoupleSpaceDO space, Long userId,
-                                        LocalDateTime now) {
+    /**
+     * 生成整笔公开审核项。
+     *
+     * <p>内容项与已发布快照一致时直接跳过：审核后台不应出现「待审核版本与当前已发布版本一致」的
+     * 重复项。空间级项是否跳取决于本次申请是否只是「已公开空间再次申请公开」。</p>
+     */
+    private List<SpaceReviewItemDO> buildFullSnapshotItems(CoupleSpaceDO space,
+                                                           boolean skipUnchangedSpaceLevel,
+                                                           LocalDateTime now) {
         Long spaceId = space.getId();
-        int count = 0;
+        List<SpaceReviewItemDO> items = new ArrayList<>();
         String spaceAction = space.getPublicAt() == null
                 ? SpaceReviewConstants.ACTION_FIRST_PUBLISH : SpaceReviewConstants.ACTION_REPUBLISH;
-        insertItem(SpaceReviewItemDO.builder()
-                .submissionId(submissionId)
-                .spaceId(spaceId)
-                .itemType(SpaceReviewConstants.ITEM_TYPE_SPACE)
-                .itemId(SpaceReviewConstants.SINGLE_ITEM_ID)
-                .action(spaceAction)
-                .baseRevision(revisionOf(space))
-                .snapshotJson(JsonUtil.toJsonString(buildSpaceSnapshot(space)))
-                .itemStatus(SpaceReviewConstants.ITEM_STATUS_PENDING)
-                .createTime(now)
-                .updateTime(now)
-                .build());
-        count++;
 
-        insertItem(SpaceReviewItemDO.builder()
-                .submissionId(submissionId)
-                .spaceId(spaceId)
-                .itemType(SpaceReviewConstants.ITEM_TYPE_HOME_CONFIG)
-                .itemId(SpaceReviewConstants.SINGLE_ITEM_ID)
-                .action(spaceAction)
-                .baseRevision(revisionOf(space))
-                .snapshotJson(JsonUtil.toJsonString(buildHomeConfigSnapshot(spaceId)))
-                .itemStatus(SpaceReviewConstants.ITEM_STATUS_PENDING)
-                .createTime(now)
-                .updateTime(now)
-                .build());
-        count++;
+        String spaceSnapshot = JsonUtil.toJsonString(buildSpaceSnapshot(space));
+        if (!skipUnchangedSpaceLevel
+                || !isSameAsPublished(spaceId, SpaceReviewConstants.ITEM_TYPE_SPACE,
+                SpaceReviewConstants.SINGLE_ITEM_ID, spaceSnapshot)) {
+            items.add(SpaceReviewItemDO.builder()
+                    .spaceId(spaceId)
+                    .itemType(SpaceReviewConstants.ITEM_TYPE_SPACE)
+                    .itemId(SpaceReviewConstants.SINGLE_ITEM_ID)
+                    .action(spaceAction)
+                    .baseRevision(revisionOf(space))
+                    .snapshotJson(spaceSnapshot)
+                    .itemStatus(SpaceReviewConstants.ITEM_STATUS_PENDING)
+                    .createTime(now)
+                    .updateTime(now)
+                    .build());
+        }
+
+        String homeConfigSnapshot = JsonUtil.toJsonString(buildHomeConfigSnapshot(spaceId));
+        if (!skipUnchangedSpaceLevel
+                || !isSameAsPublished(spaceId, SpaceReviewConstants.ITEM_TYPE_HOME_CONFIG,
+                SpaceReviewConstants.SINGLE_ITEM_ID, homeConfigSnapshot)) {
+            items.add(SpaceReviewItemDO.builder()
+                    .spaceId(spaceId)
+                    .itemType(SpaceReviewConstants.ITEM_TYPE_HOME_CONFIG)
+                    .itemId(SpaceReviewConstants.SINGLE_ITEM_ID)
+                    .action(spaceAction)
+                    .baseRevision(revisionOf(space))
+                    .snapshotJson(homeConfigSnapshot)
+                    .itemStatus(SpaceReviewConstants.ITEM_STATUS_PENDING)
+                    .createTime(now)
+                    .updateTime(now)
+                    .build());
+        }
 
         for (StoryNodeDO story : storyNodeMapper.selectPublicList(spaceId)) {
-            insertItem(SpaceReviewItemDO.builder()
-                    .submissionId(submissionId)
+            String snapshot = JsonUtil.toJsonString(buildStorySnapshot(spaceId, story));
+            if (isSameAsPublished(spaceId, SpaceReviewConstants.ITEM_TYPE_STORY, story.getId(), snapshot)) {
+                continue;
+            }
+            items.add(SpaceReviewItemDO.builder()
                     .spaceId(spaceId)
                     .itemType(SpaceReviewConstants.ITEM_TYPE_STORY)
                     .itemId(story.getId())
                     .action(resolveContentAction(spaceId, SpaceReviewConstants.ITEM_TYPE_STORY, story.getId()))
                     .baseRevision(revisionOf(story))
-                    .snapshotJson(JsonUtil.toJsonString(buildStorySnapshot(spaceId, story)))
+                    .snapshotJson(snapshot)
                     .itemStatus(SpaceReviewConstants.ITEM_STATUS_PENDING)
                     .createTime(now)
                     .updateTime(now)
                     .build());
-            count++;
         }
         for (PhotoDO photo : photoMapper.selectPublicList(spaceId)) {
-            insertItem(SpaceReviewItemDO.builder()
-                    .submissionId(submissionId)
+            String snapshot = JsonUtil.toJsonString(buildPhotoSnapshot(spaceId, photo));
+            if (isSameAsPublished(spaceId, SpaceReviewConstants.ITEM_TYPE_PHOTO, photo.getId(), snapshot)) {
+                continue;
+            }
+            items.add(SpaceReviewItemDO.builder()
                     .spaceId(spaceId)
                     .itemType(SpaceReviewConstants.ITEM_TYPE_PHOTO)
                     .itemId(photo.getId())
                     .action(resolveContentAction(spaceId, SpaceReviewConstants.ITEM_TYPE_PHOTO, photo.getId()))
                     .baseRevision(revisionOf(photo))
-                    .snapshotJson(JsonUtil.toJsonString(buildPhotoSnapshot(spaceId, photo)))
+                    .snapshotJson(snapshot)
                     .itemStatus(SpaceReviewConstants.ITEM_STATUS_PENDING)
                     .createTime(now)
                     .updateTime(now)
                     .build());
-            count++;
         }
         for (AnniversaryDO anniversary : anniversaryMapper.selectPublicList(spaceId)) {
-            insertItem(SpaceReviewItemDO.builder()
-                    .submissionId(submissionId)
+            String snapshot = JsonUtil.toJsonString(buildAnniversarySnapshot(anniversary));
+            if (isSameAsPublished(spaceId, SpaceReviewConstants.ITEM_TYPE_ANNIVERSARY,
+                    anniversary.getId(), snapshot)) {
+                continue;
+            }
+            items.add(SpaceReviewItemDO.builder()
                     .spaceId(spaceId)
                     .itemType(SpaceReviewConstants.ITEM_TYPE_ANNIVERSARY)
                     .itemId(anniversary.getId())
                     .action(resolveContentAction(spaceId,
                             SpaceReviewConstants.ITEM_TYPE_ANNIVERSARY, anniversary.getId()))
                     .baseRevision(revisionOf(anniversary))
-                    .snapshotJson(JsonUtil.toJsonString(buildAnniversarySnapshot(anniversary)))
+                    .snapshotJson(snapshot)
                     .itemStatus(SpaceReviewConstants.ITEM_STATUS_PENDING)
                     .createTime(now)
                     .updateTime(now)
                     .build());
-            count++;
         }
-        return count;
+        return items;
+    }
+
+    private int insertItems(List<SpaceReviewItemDO> items, Long submissionId) {
+        for (SpaceReviewItemDO item : items) {
+            item.setSubmissionId(submissionId);
+            insertItem(item);
+        }
+        return items.size();
+    }
+
+    /**
+     * 当前工作快照是否与已发布快照一致。
+     *
+     * <p>只有「已发布」状态且存在快照时才比较；已下架或从未发布仍按首次/重新公开处理。</p>
+     */
+    private boolean isSameAsPublished(Long spaceId, String itemType, Long itemId,
+                                      String currentSnapshotJson) {
+        SpacePublishedItemDO published = publishedItemMapper.selectBySpaceAndItem(
+                spaceId, itemType, itemId);
+        if (published == null
+                || !Objects.equals(published.getPublishStatus(), SpaceReviewConstants.PUBLISHED)
+                || StrUtil.isBlank(published.getSnapshotJson())) {
+            return false;
+        }
+        return SpaceReviewConstants.ITEM_TYPE_SPACE.equals(itemType)
+                ? SpaceSnapshotComparator.isSameSpace(currentSnapshotJson, published.getSnapshotJson())
+                : SpaceSnapshotComparator.isSame(currentSnapshotJson, published.getSnapshotJson());
     }
 
     private String resolveContentAction(Long spaceId, String itemType, Long itemId) {
@@ -752,6 +978,16 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
     }
 
     private void removePendingItem(Long spaceId, String itemType, Long itemId) {
+        removePendingItem(spaceId, itemType, itemId, "公开范围缩小，待审核项已全部处理");
+    }
+
+    /**
+     * 撤回单个目标的待审核项；提交内没有待审核项时按现有状态机结束提交。
+     *
+     * <p>只把待审核项置为 WITHDRAWN，不物理删除历史记录；提交级状态与 pending_flag
+     * 通过条件更新落库，重复调用保持幂等。</p>
+     */
+    private void removePendingItem(Long spaceId, String itemType, Long itemId, String reason) {
         SpaceReviewSubmissionDO pending = submissionMapper.selectPendingBySpaceId(spaceId);
         if (pending == null) {
             return;
@@ -760,24 +996,14 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
         itemMapper.resolveItem(pending.getId(), itemType, itemId,
                 SpaceReviewConstants.ITEM_STATUS_WITHDRAWN, now);
         List<SpaceReviewItemDO> items = itemMapper.selectBySubmissionId(pending.getId());
-        ItemStatusCounts counts = countItemStatuses(items);
-        if (counts.pending > 0) {
+        SpaceReviewItemStatusSummary counts = SpaceReviewItemStatusSummary.of(items);
+        if (counts.getPending() > 0) {
             submissionMapper.touchPending(pending.getId(), spaceId, null, now);
             return;
         }
-        String finalStatus;
-        if (counts.total > 0 && counts.approved == counts.total) {
-            finalStatus = SpaceReviewConstants.STATUS_APPROVED;
-        } else if (counts.approved == 0 && counts.rejected == 0) {
-            finalStatus = SpaceReviewConstants.STATUS_WITHDRAWN;
-        } else if (counts.approved == 0) {
-            finalStatus = SpaceReviewConstants.STATUS_REJECTED;
-        } else {
-            finalStatus = SpaceReviewConstants.STATUS_PARTIALLY_APPROVED;
-        }
         submissionMapper.resolve(pending.getId(), spaceId,
-                SpaceReviewConstants.STATUS_PENDING, finalStatus,
-                null, now, "公开范围缩小，待审核项已全部处理", now);
+                SpaceReviewConstants.STATUS_PENDING, counts.resolveSubmissionStatus(),
+                null, now, reason, now);
     }
 
     private long zero(Long value) {
@@ -814,24 +1040,6 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
             }
         }
         return null;
-    }
-
-    private ItemStatusCounts countItemStatuses(List<SpaceReviewItemDO> items) {
-        ItemStatusCounts counts = new ItemStatusCounts();
-        counts.total = items.size();
-        for (SpaceReviewItemDO item : items) {
-            String status = item.getItemStatus();
-            if (SpaceReviewConstants.ITEM_STATUS_PENDING.equals(status)) {
-                counts.pending++;
-            } else if (SpaceReviewConstants.ITEM_STATUS_APPROVED.equals(status)) {
-                counts.approved++;
-            } else if (SpaceReviewConstants.ITEM_STATUS_REJECTED.equals(status)) {
-                counts.rejected++;
-            } else if (SpaceReviewConstants.ITEM_STATUS_WITHDRAWN.equals(status)) {
-                counts.withdrawn++;
-            }
-        }
-        return counts;
     }
 
     private String firstRejectReason(List<SpaceReviewItemDO> items) {
@@ -889,14 +1097,6 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
                     ? SpaceReviewConstants.itemTypeText(itemType) : space.getSpaceName();
         }
         return SpaceReviewConstants.itemTypeText(itemType);
-    }
-
-    private static final class ItemStatusCounts {
-        private int total;
-        private int pending;
-        private int approved;
-        private int rejected;
-        private int withdrawn;
     }
 
     private void validatePublishable(CoupleSpaceDO space) {
@@ -967,11 +1167,15 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
     }
 
     private String resolveStatusMessage(CoupleSpaceDO space, SpaceReviewSubmissionDO pending,
-                                        ItemStatusCounts counts, SpaceReviewSubmissionDO latestHandled,
-                                        boolean unpublished) {
+                                        SpaceReviewItemStatusSummary counts,
+                                        SpaceReviewSubmissionDO latestHandled,
+                                        boolean unpublished, boolean restoredToPublished) {
         if (pending != null) {
-            return "已提交审核，本次共 " + counts.total + " 项，其中 " + counts.pending
+            return "已提交审核，本次共 " + counts.getTotal() + " 项，其中 " + counts.getPending()
                     + " 项待处理；审核期间恋爱广场仍展示上一次通过的内容。";
+        }
+        if (restoredToPublished) {
+            return "没有新的审核项，内容已恢复为当前公开版本。";
         }
         if (unpublished) {
             return "公开内容已被管理员下架，恋爱广场不再展示。修改后可重新提交审核。";
@@ -983,11 +1187,15 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
         }
         if (latestHandled != null
                 && SpaceReviewConstants.STATUS_PARTIALLY_APPROVED.equals(latestHandled.getStatus())) {
-            return "上次审核部分通过：已通过 " + counts.approved + " 项，未通过 "
-                    + counts.rejected + " 项。修改被驳回的内容后可以重新提交审核。";
+            return "上次审核部分通过：已通过 " + counts.getApproved() + " 项，未通过 "
+                    + counts.getRejected() + " 项。修改被驳回的内容后可以重新提交审核。";
         }
         if (latestHandled != null
                 && SpaceReviewConstants.STATUS_WITHDRAWN.equals(latestHandled.getStatus())) {
+            // 空间仍公开时的撤回只表示某项修改被恢复或取消，并非整个公开申请被撤回。
+            if (Objects.equals(space.getVisibility(), SPACE_VISIBILITY_PUBLIC)) {
+                return "空间已公开。修改公开内容会进入审核，审核期间广场继续展示旧版本。";
+            }
             return "上次公开申请已撤回，可修改后重新提交审核。";
         }
         if (Objects.equals(space.getVisibility(), SPACE_VISIBILITY_PUBLIC)) {

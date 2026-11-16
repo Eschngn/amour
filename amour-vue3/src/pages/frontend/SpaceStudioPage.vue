@@ -77,7 +77,7 @@
         </FrontendPageHeader>
 
         <div class="mt-4">
-          <SpaceReviewStatusCard @submitted="onReviewSubmitted" />
+          <SpaceReviewStatusCard :refresh-key="reviewRefreshKey" @submitted="onReviewSubmitted" />
         </div>
 
         <SpaceSaveFeedback class="mt-3" :notice="saveFeedback" @close="saveFeedback = null" />
@@ -147,6 +147,7 @@
             <SpaceMessageEditor
               v-else-if="activeTab === 'message'"
               @update:dirty="setDirty"
+              @saved="onContentSaved"
             />
             <SpacePhotoEditor
               v-else-if="activeTab === 'photo'"
@@ -186,6 +187,7 @@ import { useFrontendSpace } from '@/composables/useFrontendSpace'
 import { hasFrontendQueryPermission } from '@/utils/auth'
 import { canEditSpaceContent, SPACE_STATUS } from '@/utils/spaceState'
 import { confirmDiscardChanges } from '@/utils/unsavedChanges'
+import { SAVE_FEEDBACK_KIND } from '@/utils/saveFeedback'
 
 const route = useRoute()
 const router = useRouter()
@@ -211,10 +213,11 @@ const isWaiting = computed(() => Number(spaceStatus.value?.status) === SPACE_STA
 const canPublish = computed(() => Number(spaceStatus.value?.status) === SPACE_STATUS.NORMAL)
 const reviewRefreshKey = ref(0)
 
-/** 重新提交公开审核成功后，同步刷新空间状态与三个内容编辑器的审核标记。 */
-function onReviewSubmitted() {
+/** 重新提交公开审核后，同步刷新空间状态与内容编辑器的审核标记。 */
+function onReviewSubmitted(payload) {
   reviewRefreshKey.value += 1
   refreshSpaceStatus()
+  showSaveFeedback(payload)
 }
 
 // 首页编辑属于空间基础能力，沿用现有首页的准入方式（有效成员即可）；
@@ -249,6 +252,15 @@ function onContentSaved(payload) {
   if (typeof payload?.dirtyAfterSave === 'boolean') {
     dirty.value = payload.dirtyAfterSave
   }
+  // 保存可能新增或撤回待审核项（例如改回公开版本），刷新状态卡展示真实审核状态。
+  if (payload?.reviewStatus || payload?.kind === SAVE_FEEDBACK_KIND.RESTORED) {
+    reviewRefreshKey.value += 1
+  }
+  showSaveFeedback(payload)
+}
+
+/** 页面级保存反馈：编辑器保存与重新提交审核共用同一条提示通道。 */
+function showSaveFeedback(payload) {
   const message = typeof payload?.message === 'string' ? payload.message.trim() : ''
   if (!message) return
   saveFeedback.value = {

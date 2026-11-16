@@ -2,10 +2,6 @@ import { post } from '../../utils/request'
 import { hasFrontendQueryPermission } from '../../utils/auth'
 
 const DEFAULT_LOVE_START = '2024-05-20 18:30:00'
-const DEFAULT_AVATAR = 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0'
-const OSS_BASE = 'https://chengliuxiang.oss-cn-hangzhou.aliyuncs.com/amour'
-const DEFAULT_HERO_PHOTO_ONE = `${OSS_BASE}/example-photo1.png`
-const DEFAULT_HERO_PHOTO_TWO = `${OSS_BASE}/example-photo2.png`
 
 const HOME_CONFIG_ITEMS = [
   { configKey: 'boy_name', field: 'boyName' },
@@ -16,6 +12,14 @@ const HOME_CONFIG_ITEMS = [
   { configKey: 'home.hero_photo_1', field: 'heroPhotoOne' },
   { configKey: 'home.hero_photo_2', field: 'heroPhotoTwo' },
 ]
+
+// 管理控制台可选配置的全站默认图；未配置时首页展示首字母 / “尚未上传照片”占位。
+const DEFAULT_IMAGE_KEYS = {
+  boyAvatar: 'frontend.default_couple_avatar_boy',
+  girlAvatar: 'frontend.default_couple_avatar_girl',
+  heroPhotoOne: 'frontend.default_couple_hero_photo_1',
+  heroPhotoTwo: 'frontend.default_couple_hero_photo_2',
+}
 
 interface MilestoneStory {
   id: number
@@ -29,6 +33,17 @@ function parseLoveStart(value: string) {
   const timestamp = new Date(value.trim().replace(/-/g, '/').replace('T', ' ')).getTime()
   if (Number.isFinite(timestamp)) return timestamp
   return new Date(DEFAULT_LOVE_START.replace(/-/g, '/')).getTime()
+}
+
+/** 头像占位文字：优先昵称首字母，没有昵称时使用 HE / SHE。 */
+function initialOf(name: string, fallback: string) {
+  const text = String(name || '').trim()
+  if (!text) return fallback
+  const words = text.split(/\s+/).filter(Boolean)
+  if (words.length >= 2 && /^[a-z]/i.test(words[0])) {
+    return (words[0][0] + words[1][0]).toUpperCase()
+  }
+  return text.slice(0, /^[a-z]/i.test(text) ? 2 : 1).toUpperCase()
 }
 
 function formatLoveStartDate(value: string) {
@@ -45,10 +60,13 @@ Component({
   data: {
     boyName: 'HE',
     girlName: 'SHE',
-    heroPhotoOne: DEFAULT_HERO_PHOTO_ONE,
-    heroPhotoTwo: DEFAULT_HERO_PHOTO_TWO,
-    boyAvatar: DEFAULT_AVATAR,
-    girlAvatar: DEFAULT_AVATAR,
+    // 空字符串表示没有真实图片，由 WXML 展示占位，不再使用示例头像 / 示例照片。
+    heroPhotoOne: '',
+    heroPhotoTwo: '',
+    boyAvatar: '',
+    girlAvatar: '',
+    boyInitial: 'HE',
+    girlInitial: 'SHE',
     loveStartTime: DEFAULT_LOVE_START,
     loveStartDate: '2024 · 05 · 20',
     togetherDays: 0,
@@ -124,11 +142,37 @@ Component({
         }
       }))
 
+      await this.loadDefaultImages(updates)
       const loveStartTime = typeof updates.loveStartTime === 'string'
         ? updates.loveStartTime
         : this.data.loveStartTime
       updates.loveStartDate = formatLoveStartDate(loveStartTime)
+      updates.boyInitial = initialOf(
+        typeof updates.boyName === 'string' ? updates.boyName : this.data.boyName,
+        'HE',
+      )
+      updates.girlInitial = initialOf(
+        typeof updates.girlName === 'string' ? updates.girlName : this.data.girlName,
+        'SHE',
+      )
       this.setData(updates, () => this.updateTime())
+    },
+
+    /** 一次批量读取全站默认图片，只填补当前仍为空的字段，避免覆盖已有配置。 */
+    async loadDefaultImages(updates: WechatMiniprogram.IAnyObject) {
+      try {
+        const defaults = await post<Record<string, string>>('/site-config/query-batch', {
+          configKeys: Object.values(DEFAULT_IMAGE_KEYS),
+        })
+        if (!defaults || typeof defaults !== 'object') return
+        Object.keys(DEFAULT_IMAGE_KEYS).forEach((field) => {
+          if (updates[field]) return
+          const value = defaults[DEFAULT_IMAGE_KEYS[field as keyof typeof DEFAULT_IMAGE_KEYS]]
+          if (typeof value === 'string' && value.trim()) updates[field] = value.trim()
+        })
+      } catch (error) {
+        console.warn('全站默认图片读取失败，使用占位样式', error)
+      }
     },
 
     async loadMilestones() {
@@ -182,15 +226,23 @@ Component({
 
     onPhotoError(event: WechatMiniprogram.BaseEvent) {
       const source = event.currentTarget.dataset.source
+      // 图片加载失败直接回到占位样式，不再切换到示例照片。
       if (source === 'secondary') {
-        this.setData({
-          heroPhotoTwo: this.data.heroPhotoTwo === DEFAULT_HERO_PHOTO_TWO ? '' : DEFAULT_HERO_PHOTO_TWO,
-        })
+        this.setData({ heroPhotoTwo: '' })
         return
       }
-      this.setData({
-        heroPhotoOne: this.data.heroPhotoOne === DEFAULT_HERO_PHOTO_ONE ? '' : DEFAULT_HERO_PHOTO_ONE,
-      })
+      this.setData({ heroPhotoOne: '' })
+    },
+
+    onAvatarError(event: WechatMiniprogram.BaseEvent) {
+      const source = event.currentTarget.dataset.source
+      if (source === 'boy') {
+        this.setData({ boyAvatar: '' })
+        return
+      }
+      if (source === 'girl') {
+        this.setData({ girlAvatar: '' })
+      }
     },
   },
 })

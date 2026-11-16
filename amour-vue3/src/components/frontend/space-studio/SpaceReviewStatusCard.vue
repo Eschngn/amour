@@ -11,16 +11,10 @@
           <span class="h-1.5 w-1.5 rounded-full" :class="dotClass" aria-hidden="true" />
           {{ title }}
           <span
-            v-if="status.pending"
+            v-if="badgeText"
             class="rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-semibold"
           >
-            {{ status.pendingItemCount || 0 }} 项待审核
-          </span>
-          <span
-            v-else-if="status.lastReviewStatus"
-            class="rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-semibold"
-          >
-            {{ status.lastReviewStatusText }}
+            {{ badgeText }}
           </span>
         </p>
         <p v-if="status.message" class="mt-1 break-words">{{ status.message }}</p>
@@ -94,6 +88,12 @@ import { ElMessage } from 'element-plus'
 import 'element-plus/es/components/message/style/css'
 import { fetchSpaceReviewStatus, resubmitSpaceReview } from '@/api/spaceReview'
 import { formatSpaceDateTime } from '@/utils/spaceFormat'
+import {
+  resolveReviewBadgeText,
+  resolveReviewCardTitle,
+  resolveReviewStateText,
+} from '@/utils/spaceReviewDisplay'
+import { resolveSaveFeedback, resolveUnchangedFeedback } from '@/utils/saveFeedback'
 
 const props = defineProps({
   /** 空间状态变化后由父组件触发刷新。 */
@@ -108,11 +108,8 @@ const resubmitting = ref(false)
 
 const hasStats = computed(() => Number(status.value?.itemCount) > 0)
 
-const reviewStateText = computed(() => {
-  if (!status.value) return '暂无审核记录'
-  if (status.value.pending) return '待审核'
-  return status.value.lastReviewStatusText || '暂无审核记录'
-})
+const reviewStateText = computed(() => resolveReviewStateText(status.value))
+const badgeText = computed(() => resolveReviewBadgeText(status.value))
 
 const cardClass = computed(() => {
   if (!status.value) return 'border-stone-200 bg-stone-50 text-stone-600'
@@ -134,15 +131,7 @@ const dotClass = computed(() => {
   return 'bg-stone-400'
 })
 
-const title = computed(() => {
-  if (!status.value) return '公开审核'
-  if (status.value.pending) return '已提交审核'
-  if (status.value.unpublished) return '已下架'
-  if (status.value.lastReviewStatus === 'REJECTED') return '审核未通过'
-  if (status.value.lastReviewStatus === 'PARTIALLY_APPROVED') return '部分通过'
-  if (status.value.visibility === 1) return '已公开'
-  return '尚未公开'
-})
+const title = computed(() => resolveReviewCardTitle(status.value))
 
 function formatTime(value) {
   return value ? formatSpaceDateTime(value) : '-'
@@ -163,13 +152,23 @@ async function load() {
 
 async function resubmit() {
   if (resubmitting.value || loading.value) return
+  // 状态卡会带上与上一次提交的内容比较结果，无改动时不发起重复审核请求。
+  if (status.value?.unchangedSinceLastSubmission) {
+    emit('submitted', resolveUnchangedFeedback())
+    return
+  }
   resubmitting.value = true
   try {
     const { data } = await resubmitSpaceReview()
     if (!data?.success) throw new Error(data?.message || '重新提交失败')
-    if (data.data) status.value = data.data
-    ElMessage.success('已重新提交公开审核')
-    emit('submitted', status.value)
+    const result = data.data || null
+    if (result) status.value = result
+    // 后端幂等保护同样返回 changed=false；此时没有创建新的审核记录。
+    const feedback = result?.changed === false
+      ? resolveUnchangedFeedback()
+      : resolveSaveFeedback(result, '已重新提交公开审核')
+    emit('submitted', feedback)
+    // 无论是否产生新提交，都刷新审核状态展示。
     await load()
   } catch (error) {
     ElMessage.error(error.response?.data?.message || error.message || '重新提交失败，请稍后重试')

@@ -102,6 +102,28 @@ public class SpaceReviewStatusVO {
      */
     private String message;
 
+    /**
+     * 本次操作是否真正产生了内容变化或新的审核记录；null 表示不适用。
+     */
+    private Boolean changed;
+
+    /**
+     * 重新提交审核时的结果说明；无变化时为“未检测到内容变化，未提交审核”。
+     */
+    private String reviewMessage;
+
+    /**
+     * 当前工作数据是否与上一次被驳回 / 部分通过的提交完全一致。
+     * 为 true 时前端不应调用重新提交接口。
+     */
+    private Boolean unchangedSinceLastSubmission;
+
+    /**
+     * 最近一次提交因所有内容恢复为当前公开版本而结束，没有当前审核项。
+     * 前端据此展示「已恢复公开版本 / 无待审核项」，而不是「已撤回」。
+     */
+    private Boolean restoredToPublished;
+
     @Data
     @Builder
     @NoArgsConstructor

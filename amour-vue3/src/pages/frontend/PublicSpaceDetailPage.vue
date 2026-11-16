@@ -124,12 +124,16 @@
                     :key="member.amourId || member.displayName || index"
                     class="flex items-center gap-2 rounded-full border border-rose-100/80 bg-white/75 py-1 pl-1 pr-3"
                   >
-                    <span class="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-rose-300 to-pink-400 text-[10px] font-bold text-white">
+                    <span
+                      class="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-rose-300 to-pink-400 text-[10px] font-bold text-white"
+                      role="img"
+                      :aria-label="`${member.displayName || '成员'}的头像`"
+                    >
                       {{ initials(member.displayName) }}
                       <img
-                        v-if="memberAvatar(member, index)"
-                        :src="memberAvatar(member, index)"
-                        :alt="`${member.displayName || '成员'}的头像`"
+                        v-if="member.avatar"
+                        :src="member.avatar"
+                        :alt="member.displayName || '成员'"
                         class="absolute inset-0 h-full w-full object-cover"
                         @load="$event.currentTarget.style.display = ''"
                         @error="$event.currentTarget.style.display = 'none'"
@@ -363,8 +367,6 @@ import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import CouplePageScaffold from '@/components/frontend/CouplePageScaffold.vue'
 import SpaceImagePreview from '@/components/frontend/space-studio/SpaceImagePreview.vue'
-import defaultBoyAvatar from '@/assets/boy.jpeg'
-import defaultGirlAvatar from '@/assets/girl.jpeg'
 import { fetchPublicSpaceDetail } from '@/api/gallery'
 import { buildPublicPhotoPreviews } from '@/utils/imagePreview'
 import { useFrontendSpace } from '@/composables/useFrontendSpace'
@@ -483,10 +485,6 @@ const isOwnPublicSpace = computed(() => (
 ))
 function initials(name) {
   return String(name || '恋人').trim().slice(0, 2).toUpperCase()
-}
-
-function memberAvatar(member, index) {
-  return member?.avatar || (index === 0 ? defaultBoyAvatar : defaultGirlAvatar)
 }
 
 function markImageFailed(key) {

@@ -105,6 +105,17 @@ public final class SpaceReviewConstants {
                 || ITEM_TYPE_ANNIVERSARY.equals(itemType);
     }
 
+    /**
+     * 历史审核项：已撤回或已被新版本替代。
+     *
+     * <p>这些项必须保留在数据库中用于审计，但不得出现在当前审核列表、
+     * 参与提交统计或作为可审核项处理。</p>
+     */
+    public static boolean isHistoricalItemStatus(String itemStatus) {
+        return ITEM_STATUS_WITHDRAWN.equals(itemStatus)
+                || ITEM_STATUS_SUPERSEDED.equals(itemStatus);
+    }
+
     public static String statusText(String status) {
         if (status == null) {
             return "";

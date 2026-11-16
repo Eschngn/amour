@@ -78,14 +78,12 @@
           <figure class="photo-card photo-card-main absolute left-[8%] top-[8%] w-[67%] -rotate-[5deg] overflow-hidden rounded-[2rem] border-[7px] border-white bg-white shadow-2xl shadow-rose-300/35">
             <RouterLink to="/photo" class="group block" aria-label="查看恋爱相册" @click="guardNavigation($event, 'photo')">
               <div class="relative overflow-hidden">
-                <img
-                  v-if="heroPhotosReady && albumPreview1"
+                <CoupleHeroPhoto
                   :src="albumPreview1"
                   alt="我们的相册照片"
-                  class="aspect-[4/5] w-full object-cover transition duration-700 group-hover:scale-[1.035]"
-                  fetchpriority="high"
-                >
-                <div v-else class="hero-photo-placeholder aspect-[4/5] w-full" aria-hidden="true" />
+                  ratio-class="aspect-[4/5]"
+                  class="transition duration-700 group-hover:scale-[1.035]"
+                />
                 <span class="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-rose-950/20 to-transparent opacity-0 transition group-hover:opacity-100" aria-hidden="true" />
               </div>
               <figcaption class="flex min-h-[62px] items-center justify-between gap-3 px-4 py-2.5 text-rose-900/70">
@@ -99,19 +97,29 @@
           </figure>
 
           <figure class="photo-card photo-card-small absolute bottom-[6%] right-[2%] w-[48%] rotate-[7deg] overflow-hidden rounded-[1.6rem] border-[6px] border-white bg-white shadow-2xl shadow-rose-300/30">
-            <img
-              v-if="heroPhotosReady && albumPreview2"
+            <CoupleHeroPhoto
               :src="albumPreview2"
               alt="我们一起旅行的照片"
-              class="aspect-square w-full object-cover"
-            >
-            <div v-else class="hero-photo-placeholder aspect-square w-full" aria-hidden="true" />
+              ratio-class="aspect-square"
+            />
           </figure>
 
           <div class="avatar-badge absolute right-[4%] top-[5%] flex items-center rounded-full border border-white/80 bg-white/85 p-2 pr-4 shadow-xl shadow-rose-200/40 backdrop-blur-md">
             <div class="flex -space-x-3">
-              <img :src="homeConfig.boyAvatar" :alt="`${homeConfig.boyName}的头像`" class="h-11 w-11 rounded-full border-2 border-white object-cover">
-              <img :src="homeConfig.girlAvatar" :alt="`${homeConfig.girlName}的头像`" class="h-11 w-11 rounded-full border-2 border-white object-cover">
+              <CoupleAvatar
+                :src="homeConfig.boyAvatar"
+                :name="homeConfig.boyName"
+                fallback="HE"
+                :label="`${homeConfig.boyName}的头像`"
+                class="h-11 w-11 border-2 border-white text-xs"
+              />
+              <CoupleAvatar
+                :src="homeConfig.girlAvatar"
+                :name="homeConfig.girlName"
+                fallback="SHE"
+                :label="`${homeConfig.girlName}的头像`"
+                class="h-11 w-11 border-2 border-white text-xs"
+              />
             </div>
             <div class="ml-3 text-left">
               <p class="text-[10px] font-bold uppercase tracking-wider text-rose-400">Together</p>
@@ -197,20 +205,20 @@
             <button
               type="button"
               class="mt-4 rounded-full border border-rose-200 bg-white px-4 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50"
-              @click="loadStoryMilestones"
+              @click="loadHomeStories"
             >
               重新加载故事
             </button>
           </div>
 
-          <div v-else-if="storyMilestones.length === 0" class="mt-12 rounded-3xl border border-dashed border-rose-200 bg-rose-50/60 px-6 py-16 text-center">
+          <div v-else-if="homeStories.length === 0" class="mt-12 rounded-3xl border border-dashed border-rose-200 bg-rose-50/60 px-6 py-16 text-center">
             <span class="text-3xl" aria-hidden="true">✦</span>
             <h3 class="mt-3 font-display text-lg font-bold text-rose-900">故事正等待被写下</h3>
             <p class="mt-2 text-sm text-rose-800/50">未来的每一个瞬间，都会成为这里的新章节。</p>
           </div>
 
           <ol v-else class="mt-12 grid gap-5 md:grid-cols-2">
-            <li v-for="(item, i) in storyMilestones.slice(0, 4)" :key="item.id">
+            <li v-for="(item, i) in homeStories.slice(0, HOME_STORY_LIMIT)" :key="item.id">
               <RouterLink
                 :to="'/story/' + item.id"
                 @click="guardNavigation($event, 'story')"
@@ -393,14 +401,15 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import 'element-plus/es/components/message/style/css'
 import CouplePageScaffold from '@/components/frontend/CouplePageScaffold.vue'
-import defaultBoyAvatar from '@/assets/boy.jpeg'
-import defaultGirlAvatar from '@/assets/girl.jpeg'
+import CoupleAvatar from '@/components/frontend/CoupleAvatar.vue'
+import CoupleHeroPhoto from '@/components/frontend/CoupleHeroPhoto.vue'
 import api from '@/axios'
 import { hasFrontendQueryPermission } from '@/utils/auth'
 import { useFrontendSpace } from '@/composables/useFrontendSpace'
 import { formatSpaceDateTime } from '@/utils/spaceFormat'
 import { SPACE_STATUS, isUnbindPendingForPartner, isUnboundSpace } from '@/utils/spaceState'
 import { dismissUnbindPrompt, isUnbindPromptDismissed } from '@/utils/spaceUnbindPrompt'
+import { HOME_STORY_LIMIT, loadSpaceHomeStories } from '@/utils/spaceHomeStories'
 
 const router = useRouter()
 const { spaceStatus, isSpaceReady, refreshSpaceStatus } = useFrontendSpace()
@@ -533,10 +542,7 @@ const statusView = computed(() => {
   }
 })
 
-const OSS_AMOUR_BASE = 'https://chengliuxiang.oss-cn-hangzhou.aliyuncs.com/amour'
 const DEFAULT_LOVE_START_TIME = '2024-05-20 18:30:00'
-const DEFAULT_HERO_PHOTO_1 = `${OSS_AMOUR_BASE}/example-photo1.png`
-const DEFAULT_HERO_PHOTO_2 = `${OSS_AMOUR_BASE}/example-photo2.png`
 
 const MODULE_LABELS = { story: '故事', photo: '相册', anniversary: '纪念日', message: '留言' }
 
@@ -550,15 +556,15 @@ const homeConfig = reactive({
   boyName: 'HE',
   girlName: 'SHE',
   loveStartTime: DEFAULT_LOVE_START_TIME,
-  boyAvatar: defaultBoyAvatar,
-  girlAvatar: defaultGirlAvatar,
+  // 空字符串表示没有真实头像 / 照片，由占位组件展示首字母或“尚未上传照片”。
+  boyAvatar: '',
+  girlAvatar: '',
   heroPhoto1: '',
   heroPhoto2: '',
 })
 
 const albumPreview1 = computed(() => homeConfig.heroPhoto1)
 const albumPreview2 = computed(() => homeConfig.heroPhoto2)
-const heroPhotosReady = ref(false)
 
 const nowMs = ref(Date.now())
 let tickId = null
@@ -611,13 +617,13 @@ const elapsedUnits = computed(() => [
 ])
 
 const exploreCards = computed(() => [
-  { module: 'story', to: '/story', icon: '✦', title: '我们的故事', description: '沿着时间线，重温一路走来的重要章节。', stat: storyMilestones.value.length ? `已收藏 ${storyMilestones.value.length} 个瞬间` : '等待新的章节', iconBg: 'bg-rose-100 text-rose-500', glow: 'bg-rose-100/80' },
+  { module: 'story', to: '/story', icon: '✦', title: '我们的故事', description: '沿着时间线，重温一路走来的重要章节。', stat: homeStories.value.length ? `已收藏 ${homeStories.value.length} 个瞬间` : '等待新的章节', iconBg: 'bg-rose-100 text-rose-500', glow: 'bg-rose-100/80' },
   { module: 'photo', to: '/photo', icon: '◫', title: '恋爱相册', description: '把旅行、日常和彼此的笑容装进同一本相册。', stat: '定格每一次心动', iconBg: 'bg-pink-100 text-pink-500', glow: 'bg-pink-100/80' },
   { module: 'anniversary', to: '/anniversary', icon: '⌁', title: '纪念日', description: '记住那些值得期待，也值得庆祝的特殊日期。', stat: `相伴第 ${togetherTotalDays.value} 天`, iconBg: 'bg-orange-100 text-orange-500', glow: 'bg-orange-100/70' },
   { module: 'message', to: '/message', icon: '♡', title: '悄悄话', description: '写下此刻想说的话，让温柔一直有迹可循。', stat: '给 Ta 留一句话', iconBg: 'bg-fuchsia-100 text-fuchsia-500', glow: 'bg-fuchsia-100/70' },
 ].filter(card => hasFrontendQueryPermission(card.module)))
 
-const storyMilestones = ref([])
+const homeStories = ref([])
 const storyLoading = ref(true)
 const storyError = ref('')
 
@@ -643,8 +649,11 @@ async function loadHomeConfig() {
     if (homeData.boyName?.trim()) homeConfig.boyName = homeData.boyName.trim()
     if (homeData.girlName?.trim()) homeConfig.girlName = homeData.girlName.trim()
     if (homeData.loveStartTime) homeConfig.loveStartTime = homeData.loveStartTime
-    if (homeData.boyAvatar?.trim()) homeConfig.boyAvatar = homeData.boyAvatar.trim()
-    if (homeData.girlAvatar?.trim()) homeConfig.girlAvatar = homeData.girlAvatar.trim()
+    // 后端按「空间配置 → 成员资料 → 管理员默认图 → 占位」解析，空字符串表示没有真实图片。
+    homeConfig.boyAvatar = homeData.boyAvatar?.trim() || ''
+    homeConfig.girlAvatar = homeData.girlAvatar?.trim() || ''
+    homeConfig.heroPhoto1 = homeData.heroPhoto1?.trim() || ''
+    homeConfig.heroPhoto2 = homeData.heroPhoto2?.trim() || ''
   } else {
     // 接口失败时退回到成员资料，仍然不读取平台全局配置。
     if (creatorMember.value?.displayName?.trim()) homeConfig.boyName = creatorMember.value.displayName.trim()
@@ -652,48 +661,6 @@ async function loadHomeConfig() {
     if (creatorMember.value?.avatar?.trim()) homeConfig.boyAvatar = creatorMember.value.avatar.trim()
     if (partnerMember.value?.avatar?.trim()) homeConfig.girlAvatar = partnerMember.value.avatar.trim()
     if (spaceStatus.value?.loveStartTime) homeConfig.loveStartTime = spaceStatus.value.loveStartTime
-  }
-
-  const [heroPhoto1, heroPhoto2] = await Promise.all([
-    resolveDisplayableImage(homeData?.heroPhoto1, DEFAULT_HERO_PHOTO_1),
-    resolveDisplayableImage(homeData?.heroPhoto2, DEFAULT_HERO_PHOTO_2),
-  ])
-  homeConfig.heroPhoto1 = heroPhoto1
-  homeConfig.heroPhoto2 = heroPhoto2
-  heroPhotosReady.value = true
-}
-
-function preloadImage(url) {
-  if (!url) return Promise.reject(new Error('图片地址为空'))
-  return new Promise((resolve, reject) => {
-    const image = new Image()
-    image.decoding = 'async'
-    image.onload = async () => {
-      try {
-        if (typeof image.decode === 'function') await image.decode()
-      } catch {
-        // 图片已触发 load，decode 失败不影响使用浏览器缓存后的资源。
-      }
-      resolve(url)
-    }
-    image.onerror = () => reject(new Error(`图片加载失败：${url}`))
-    image.src = url
-  })
-}
-
-async function resolveDisplayableImage(configuredUrl, fallbackUrl) {
-  try {
-    return await preloadImage(configuredUrl || fallbackUrl)
-  } catch (error) {
-    console.warn(error.message)
-    if (configuredUrl && configuredUrl !== fallbackUrl) {
-      try {
-        return await preloadImage(fallbackUrl)
-      } catch (fallbackError) {
-        console.warn(fallbackError.message)
-      }
-    }
-    return ''
   }
 }
 
@@ -706,17 +673,26 @@ function formatTime(iso) {
   return `${y}.${m}.${day}`
 }
 
-async function loadStoryMilestones() {
+/**
+ * 首页展示当前空间已有的全部可见故事，而不是只看勾选里程碑的故事。
+ *
+ * 里程碑接口只返回 isMilestone=true 的内容，未勾选里程碑的故事会被漏掉，
+ * 因此改为组合故事概览与章节故事接口：
+ * 章节顺序、章节内发生时间顺序都沿用现有阅读顺序，权限仍由后端按登录态与空间校验。
+ */
+async function loadHomeStories() {
   storyLoading.value = true
   storyError.value = ''
   try {
-    const { data } = await api.post('/story/milestones')
-    if (!data?.success) {
-      throw new Error(data?.message || '故事加载失败')
-    }
-    storyMilestones.value = Array.isArray(data.data) ? data.data : []
+    homeStories.value = await loadSpaceHomeStories({
+      fetchOverview: () => api.post('/story/overview'),
+      fetchChapterStories: chapterId => api.post('/story/getStoryByChapterId', {
+        chapterId: String(chapterId),
+      }),
+    })
   } catch (error) {
-    storyMilestones.value = []
+    // 保留错误状态，不能把接口失败当成“还没有故事”。
+    homeStories.value = []
     storyError.value = error?.response?.data?.message || error?.message || '故事加载失败，请稍后重试'
   } finally {
     storyLoading.value = false
@@ -730,7 +706,7 @@ onMounted(async () => {
     return
   }
   loadHomeConfig()
-  await loadStoryMilestones()
+  await loadHomeStories()
 })
 </script>
 
@@ -744,12 +720,6 @@ onMounted(async () => {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-}
-
-.hero-photo-placeholder {
-  background:
-    radial-gradient(circle at 28% 24%, rgba(255, 255, 255, 0.9), transparent 24%),
-    linear-gradient(135deg, #fff1f2 0%, #fce7f3 48%, #ffe4e6 100%);
 }
 
 .time-unit {

@@ -210,7 +210,7 @@ test('MdEditor 开启左右预览并接入图片上传回调', () => {
   assert.doesNotMatch(source, /base64|blob:/)
 })
 
-test('保存成功后提示、刷新列表、关闭弹窗并触发 saved 事件', () => {
+test('保存成功后刷新列表、关闭弹窗并统一触发 saved 反馈', () => {
   const source = readSource('components/frontend/space-studio/SpaceStoryEditor.vue')
   const saveBlock = source.slice(
     source.indexOf('async function saveNode()'),
@@ -221,7 +221,8 @@ test('保存成功后提示、刷新列表、关闭弹窗并触发 saved 事件'
     saveBlock.indexOf('} catch (error) {'),
   )
 
-  assert.match(successBlock, /ElMessage\.success\(successMessage\)/)
+  // 成功提示统一由编辑页的 SpaceSaveFeedback 承接，避免同时再弹全局 success toast。
+  assert.doesNotMatch(successBlock, /ElMessage\.success/)
   assert.match(successBlock, /await load\(\{ resetForms: false \}\)/)
   assert.match(successBlock, /nodeDialogOpen\.value = false/)
   assert.match(successBlock, /captureNodeBaseline\(\)/)

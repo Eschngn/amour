@@ -463,10 +463,16 @@ async function refreshStatus() {
   await refreshSpaceStatus()
 }
 
-/** 重新提交公开审核后同步刷新空间状态与审核卡片。 */
-function onReviewSubmitted() {
+/** 重新提交公开审核后同步刷新空间状态与审核卡片；无改动时使用中性提示。 */
+function onReviewSubmitted(payload) {
   reviewRefreshKey.value += 1
   refreshSpaceStatus()
+  const message = typeof payload?.message === 'string' ? payload.message.trim() : ''
+  if (!message) return
+  ElMessage({
+    message,
+    type: payload?.kind === 'unchanged' ? 'info' : 'success',
+  })
 }
 
 const memberCount = computed(() => activeSpaceMemberCount(spaceStatus.value))

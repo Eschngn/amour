@@ -43,8 +43,9 @@ public class SpaceHomeVO {
     private String heroPhoto2;
 
     /**
-     * 服务端解析出的实际展示值来源：config-空间配置 member-成员资料 default-默认值。
-     * 前端据此提示“未单独设置时将使用个人资料”。
+     * 服务端解析出的实际展示值来源：
+     * config-空间配置 member-成员资料 platform-管理员配置的全站默认资源 placeholder-前端占位样式。
+     * 前端据此区分真实上传内容与默认占位，避免把示例图误认为用户内容。
      */
     private String boyNameSource;
 
@@ -55,6 +56,13 @@ public class SpaceHomeVO {
     private String girlAvatarSource;
 
     /**
+     * 首页主视觉照片来源：config-空间配置 platform-管理员默认资源 placeholder-尚未上传。
+     */
+    private String heroPhoto1Source;
+
+    private String heroPhoto2Source;
+
+    /**
      * 当前登录用户是否可以编辑该空间首页。
      */
     private Boolean canEdit;
@@ -63,6 +71,11 @@ public class SpaceHomeVO {
      * 本次保存是否进入公开审核。
      */
     private Boolean reviewPending;
+
+    /**
+     * 本次保存后工作数据是否已恢复为当前公开版本（未产生新的审核项）。
+     */
+    private Boolean reviewRestored;
 
     /**
      * 保存后的审核提示：已保存 / 等待审核 / 广场仍展示旧版本。

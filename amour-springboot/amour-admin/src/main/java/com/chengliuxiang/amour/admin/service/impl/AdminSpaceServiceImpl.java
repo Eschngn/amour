@@ -1021,7 +1021,10 @@ public class AdminSpaceServiceImpl implements AdminSpaceService {
                     .map(SpaceReviewSubmissionDO::getId)
                     .collect(Collectors.toList());
             for (SpaceReviewItemDO item : spaceReviewItemMapper.selectBySubmissionIds(submissionIds)) {
-                pendingItemCounts.merge(item.getSubmissionId(), 1, Integer::sum);
+                // 待审核数量只统计真正 PENDING 的项，已撤回 / 已被替代的历史项不计入。
+                if (SpaceReviewConstants.ITEM_STATUS_PENDING.equals(item.getItemStatus())) {
+                    pendingItemCounts.merge(item.getSubmissionId(), 1, Integer::sum);
+                }
             }
         }
         Map<Long, SpaceReviewSubmissionDO> handledBySpace = new HashMap<>();

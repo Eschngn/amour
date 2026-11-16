@@ -27,13 +27,14 @@
               v-for="(member, index) in memberSlots"
               :key="index"
               class="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-gradient-to-br from-rose-300 to-pink-400 text-[10px] font-bold text-white shadow-md"
-              :title="member.name"
+              role="img"
+              :aria-label="`${member.name}的头像`"
             >
               {{ initials(member.name) }}
               <img
                 v-if="member.avatar"
                 :src="member.avatar"
-                :alt="`${member.name}的头像`"
+                :alt="member.name"
                 class="absolute inset-0 h-full w-full object-cover"
                 @load="$event.currentTarget.style.display = ''"
                 @error="$event.currentTarget.style.display = 'none'"
@@ -111,8 +112,6 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
-import defaultBoyAvatar from '@/assets/boy.jpeg'
-import defaultGirlAvatar from '@/assets/girl.jpeg'
 import {
   formatCount,
   formatSpaceDate,
@@ -168,7 +167,8 @@ const memberSlots = computed(() => {
     const member = members[index]
     return {
       name: member?.displayName || (index === 0 ? 'Ta' : '另一半'),
-      avatar: member?.avatar || (index === 0 ? defaultBoyAvatar : defaultGirlAvatar),
+      // 只展示成员真实上传的头像；为空或加载失败时保留首字母占位。
+      avatar: String(member?.avatar || '').trim(),
     }
   })
 })

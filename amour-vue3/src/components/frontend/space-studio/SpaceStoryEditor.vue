@@ -624,7 +624,7 @@ import {
   resolveStorySortScope,
   sortStoryNodesForFilter,
 } from '@/utils/spaceContentOrder'
-import { createFormSnapshot, isFormDirty } from '@/utils/formBaseline'
+import { createFormSnapshot, isFormDirty, shouldSkipUnchangedSave } from '@/utils/formBaseline'
 import {
   STORY_CONTENT_MAX_LENGTH,
   STORY_EDITOR_FOOTERS,
@@ -634,7 +634,7 @@ import {
   uploadStoryImages,
 } from '@/utils/storyEditor'
 import { confirmDiscardChanges } from '@/utils/unsavedChanges'
-import { resolveSaveFeedback } from '@/utils/saveFeedback'
+import { resolveSaveFeedback, resolveUnchangedFeedback } from '@/utils/saveFeedback'
 import {
   buildVisibilityOptions,
   ensureSuccess,
@@ -695,7 +695,7 @@ const chapterDrag = useDragSort({
     orderedChapters.forEach((chapter, index) => {
       chapter.sortOrder = (index + 1) * 10
     })
-    ElMessage.success('章节顺序已保存')
+    emitSimpleSaved('章节顺序已保存')
   },
   onError: (error) => {
     chapterSortError.value = readContentErrorMessage(error, '章节排序未保存，已恢复原顺序，请重试')
@@ -735,7 +735,7 @@ const nodeDrag = useDragSort({
       ? ensureSuccess(await saveStoryNodeGlobalOrder({ items }), '故事全局排序保存失败')
       : ensureSuccess(await saveStoryNodeOrder({ chapterId: scope.chapterId, items }), '故事排序保存失败')
     applyNodeServerOrder(serverItems)
-    ElMessage.success('顺序已保存')
+    emitSimpleSaved('顺序已保存')
   },
   onError: (error) => {
     nodeSortError.value = readContentErrorMessage(error, '故事排序未保存，已恢复原顺序，请重试')
@@ -904,6 +904,14 @@ const dirty = computed(() => (
 
 function emitDirty() {
   emit('update:dirty', dirty.value)
+}
+
+/** 排序、删除等无审核语义的成功操作统一走页面级保存反馈。 */
+function emitSimpleSaved(message) {
+  emit('saved', {
+    ...resolveSaveFeedback(null, message),
+    dirtyAfterSave: dirty.value,
+  })
 }
 
 function captureChapterBaseline() {
@@ -1181,6 +1189,18 @@ async function saveChapter() {
     chapterError.value = '请选择章节主题色'
     return
   }
+  // 编辑已有章节但没有任何改动：不调用保存接口，直接结束编辑状态。
+  if (shouldSkipUnchangedSave({
+    editing: Boolean(chapterForm.id),
+    baseline: chapterBaseline.value,
+    snapshot: chapterFormSnapshot(),
+    busy: chapterSaving.value || chapterSort.busy,
+  })) {
+    chapterDialogOpen.value = false
+    resetChapterForm()
+    emit('saved', { ...resolveUnchangedFeedback(), dirtyAfterSave: dirty.value })
+    return
+  }
   chapterSaving.value = true
   chapterError.value = ''
   try {
@@ -1191,7 +1211,6 @@ async function saveChapter() {
       colorCode,
       isVisible: chapterForm.isVisible,
     }), '章节保存失败')
-    ElMessage.success(savedMessage)
     const feedback = resolveSaveFeedback(null, savedMessage)
     // 保存成功后重建被保存表单的基线，避免自动刷新再次触发放弃确认。
     await load({ resetForms: false })
@@ -1224,7 +1243,7 @@ async function removeChapter(chapter) {
   }
   try {
     ensureSuccess(await deleteStoryManageChapter(chapter.id), '删除章节失败')
-    ElMessage.success('章节已删除')
+    emitSimpleSaved('章节已删除')
     await load({ resetForms: false })
     if (String(chapterForm.id) === String(chapter.id)) {
       chapterDialogOpen.value = false
@@ -1264,6 +1283,17 @@ async function saveNode() {
     nodeError.value = '请选择标签颜色'
     return
   }
+  // 编辑已有故事但没有任何改动：不调用保存接口，也不创建或提交审核。
+  if (shouldSkipUnchangedSave({
+    editing: Boolean(editingNodeId.value),
+    baseline: nodeBaseline.value,
+    snapshot: nodeFormSnapshot(),
+    busy: nodeSaving.value || uploadingCount.value > 0,
+  })) {
+    nodeDialogOpen.value = false
+    emit('saved', { ...resolveUnchangedFeedback(), dirtyAfterSave: dirty.value })
+    return
+  }
 
   nodeSaving.value = true
   const wasEditing = Boolean(editingNodeId.value)
@@ -1285,7 +1315,6 @@ async function saveNode() {
     const result = ensureSuccess(await saveStoryManageNode(payload), '故事保存失败')
     const successMessage = wasEditing ? '故事已保存' : '故事已创建'
     const feedback = resolveSaveFeedback(result, successMessage)
-    ElMessage.success(successMessage)
     // 先刷新列表并重建 clean 基线，再关闭弹窗；表单在关闭动画结束后由 handleNodeDialogClosed 重置。
     await load({ resetForms: false })
     captureNodeBaseline()
@@ -1315,7 +1344,7 @@ async function removeNode(node) {
   }
   try {
     ensureSuccess(await deleteStoryManageNode(node.id), '故事删除失败')
-    ElMessage.success('故事已删除')
+    emitSimpleSaved('故事已删除')
     await load({ resetForms: false })
     if (String(editingNodeId.value) === String(node.id)) resetNodeForm()
   } catch (error) {

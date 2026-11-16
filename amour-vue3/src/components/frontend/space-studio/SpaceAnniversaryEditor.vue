@@ -332,9 +332,9 @@ import {
   reviewStatusLabel,
   VISIBILITY_OPTIONS,
 } from '@/utils/spaceContent'
-import { createFormSnapshot, isFormDirty } from '@/utils/formBaseline'
+import { createFormSnapshot, isFormDirty, shouldSkipUnchangedSave } from '@/utils/formBaseline'
 import { confirmDiscardChanges } from '@/utils/unsavedChanges'
-import { resolveSaveFeedback } from '@/utils/saveFeedback'
+import { resolveSaveFeedback, resolveUnchangedFeedback } from '@/utils/saveFeedback'
 
 const props = defineProps({
   canPublish: { type: Boolean, default: false },
@@ -376,7 +376,7 @@ const dragSort = useDragSort({
     orderedItems.forEach((item, index) => {
       item.sortOrder = (index + 1) * 10
     })
-    ElMessage.success('纪念日顺序已保存')
+    emitSimpleSaved('纪念日顺序已保存')
   },
   onError: (err) => {
     sortError.value = readContentErrorMessage(err, '纪念日排序未保存，已恢复原顺序，请重试')
@@ -468,6 +468,14 @@ const dirty = computed(() => isFormDirty(baseline.value, formSnapshot()))
 function captureBaseline() {
   baseline.value = createFormSnapshot(formSnapshot())
   emit('update:dirty', dirty.value)
+}
+
+/** 排序、删除等无审核语义的成功操作统一走页面级保存反馈。 */
+function emitSimpleSaved(message) {
+  emit('saved', {
+    ...resolveSaveFeedback(null, message),
+    dirtyAfterSave: dirty.value,
+  })
 }
 
 watch(dirty, () => emit('update:dirty', dirty.value))
@@ -619,6 +627,18 @@ async function save() {
     error.value = '请选择卡片主题色'
     return
   }
+  // 编辑已有纪念日但没有任何改动：不调用保存接口，也不创建或提交审核。
+  if (shouldSkipUnchangedSave({
+    editing: Boolean(form.id),
+    baseline: baseline.value,
+    snapshot: formSnapshot(),
+    busy: saving.value || sort.busy,
+  })) {
+    dialogOpen.value = false
+    resetForm()
+    emit('saved', { ...resolveUnchangedFeedback(), dirtyAfterSave: dirty.value })
+    return
+  }
   saving.value = true
   try {
     const result = ensureSuccess(await saveAnniversaryManage({
@@ -659,7 +679,7 @@ async function removeAnniversary(item) {
   }
   try {
     ensureSuccess(await deleteAnniversaryManage(item.id), '纪念日删除失败')
-    ElMessage.success('纪念日已删除')
+    emitSimpleSaved('纪念日已删除')
     await load({ resetForms: false })
     if (String(form.id) === String(item.id)) {
       dialogOpen.value = false

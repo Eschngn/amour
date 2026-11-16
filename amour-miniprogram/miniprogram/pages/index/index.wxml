@@ -18,14 +18,27 @@
         <view class="orbit orbit-large"></view>
         <view class="orbit orbit-small"></view>
         <view class="photo-frame photo-frame-main">
-          <image class="hero-photo" src="{{heroPhotoOne}}" data-source="primary" mode="aspectFill" lazy-load="true" binderror="onPhotoError"></image>
+          <image wx:if="{{heroPhotoOne}}" class="hero-photo" src="{{heroPhotoOne}}" data-source="primary" mode="aspectFill" lazy-load="true" binderror="onPhotoError"></image>
+          <view wx:else class="hero-photo hero-photo-empty">
+            <text class="hero-photo-empty-heart">♥</text>
+            <text class="hero-photo-empty-text">尚未上传照片</text>
+          </view>
           <view class="photo-caption"><text class="caption-label">OUR FAVORITE</text><text class="caption-title">Love in every frame</text><text class="caption-heart">♥</text></view>
         </view>
         <view class="photo-frame photo-frame-small">
-          <image class="hero-photo" src="{{heroPhotoTwo}}" data-source="secondary" mode="aspectFill" lazy-load="true" binderror="onPhotoError"></image>
+          <image wx:if="{{heroPhotoTwo}}" class="hero-photo" src="{{heroPhotoTwo}}" data-source="secondary" mode="aspectFill" lazy-load="true" binderror="onPhotoError"></image>
+          <view wx:else class="hero-photo hero-photo-empty">
+            <text class="hero-photo-empty-heart">♥</text>
+            <text class="hero-photo-empty-text">尚未上传照片</text>
+          </view>
         </view>
         <view class="together-badge">
-          <view class="avatar-stack"><image class="mini-avatar" src="{{boyAvatar}}" mode="aspectFill"></image><image class="mini-avatar mini-avatar-overlap" src="{{girlAvatar}}" mode="aspectFill"></image></view>
+          <view class="avatar-stack">
+            <image wx:if="{{boyAvatar}}" class="mini-avatar" src="{{boyAvatar}}" mode="aspectFill" binderror="onAvatarError" data-source="boy"></image>
+            <view wx:else class="mini-avatar mini-avatar-fallback">{{boyInitial}}</view>
+            <image wx:if="{{girlAvatar}}" class="mini-avatar mini-avatar-overlap" src="{{girlAvatar}}" mode="aspectFill" binderror="onAvatarError" data-source="girl"></image>
+            <view wx:else class="mini-avatar mini-avatar-overlap mini-avatar-fallback">{{girlInitial}}</view>
+          </view>
           <view class="together-copy"><text class="together-label">TOGETHER</text><text class="together-days">{{togetherDays}} DAYS</text></view>
         </view>
         <view class="since-note"><text class="since-label">SINCE</text><text class="since-date">{{loveStartDate}}</text></view>

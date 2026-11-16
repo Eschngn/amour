@@ -40,6 +40,7 @@ import com.chengliuxiang.amour.common.domain.mapper.UserMapper;
 import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
 import com.chengliuxiang.amour.common.exception.BizException;
 import com.chengliuxiang.amour.common.model.PageResult;
+import com.chengliuxiang.amour.common.model.review.SpaceReviewItemStatusSummary;
 import com.chengliuxiang.amour.common.model.snapshot.AnniversaryPublicSnapshot;
 import com.chengliuxiang.amour.common.model.snapshot.HomeConfigPublicSnapshot;
 import com.chengliuxiang.amour.common.model.snapshot.PhotoPublicSnapshot;
@@ -182,7 +183,7 @@ public class AdminSpaceReviewServiceImpl implements AdminSpaceReviewService {
                             .collect(Collectors.toList());
                     List<SpaceReviewItemDO> items = itemsBySubmission.getOrDefault(
                             submission.getId(), Collections.emptyList());
-                    ItemCounts counts = countItems(items);
+                    SpaceReviewItemStatusSummary counts = SpaceReviewItemStatusSummary.of(items);
                     UserDO submitter = userMap.get(submission.getSubmittedBy());
                     return AdminSpaceReviewPageRspVO.builder()
                             .submissionId(submission.getId())
@@ -198,14 +199,16 @@ public class AdminSpaceReviewServiceImpl implements AdminSpaceReviewService {
                                     : visibilityText(space.getVisibility()))
                             .reviewType(submission.getReviewType())
                             .reviewTypeText(SpaceReviewConstants.reviewTypeText(submission.getReviewType()))
-                            .itemCount(counts.total)
+                            .itemCount(counts.getTotal())
                             .contentItemCount((int) items.stream()
                                     .filter(item -> SpaceReviewConstants.isContentItemType(item.getItemType()))
+                                    .filter(item -> !SpaceReviewConstants.isHistoricalItemStatus(
+                                            item.getItemStatus()))
                                     .count())
-                            .pendingItemCount(counts.pending)
-                            .approvedItemCount(counts.approved)
-                            .rejectedItemCount(counts.rejected)
-                            .withdrawnItemCount(counts.withdrawn)
+                            .pendingItemCount(counts.getPending())
+                            .approvedItemCount(counts.getApproved())
+                            .rejectedItemCount(counts.getRejected())
+                            .withdrawnItemCount(counts.getWithdrawn())
                             .itemRejectReason(firstRejectReason(items))
                             .submittedByAmourId(submitter == null ? ""
                                     : StrUtil.nullToEmpty(submitter.getAmourId()))
@@ -237,7 +240,11 @@ public class AdminSpaceReviewServiceImpl implements AdminSpaceReviewService {
         SpaceReviewSubmissionDO submission = requireSubmission(reqVO.getSubmissionId());
         CoupleSpaceDO space = requireSpace(submission.getSpaceId());
         List<SpaceReviewItemDO> items = itemMapper.selectBySubmissionId(submission.getId());
-        ItemCounts counts = countItems(items);
+        SpaceReviewItemStatusSummary counts = SpaceReviewItemStatusSummary.of(items);
+        // 已撤回 / 已被替代的项只保留在数据库中作为历史，不出现在当前审核详情与操作列表。
+        List<SpaceReviewItemDO> currentItems = items.stream()
+                .filter(item -> !SpaceReviewConstants.isHistoricalItemStatus(item.getItemStatus()))
+                .collect(Collectors.toList());
 
         List<AdminSpaceReviewDetailRspVO.ItemVO> publishedItems = loadPublishedItemVOs(space);
         Map<String, SpacePublishedItemDO> publishedByTarget = publishedItemMapper
@@ -245,7 +252,7 @@ public class AdminSpaceReviewServiceImpl implements AdminSpaceReviewService {
                 .collect(Collectors.toMap(
                         item -> itemKey(item.getItemType(), item.getItemId()), item -> item,
                         (left, right) -> left));
-        List<AdminSpaceReviewDetailRspVO.ItemVO> reviewItemVOs = items.stream()
+        List<AdminSpaceReviewDetailRspVO.ItemVO> reviewItemVOs = currentItems.stream()
                 .map(item -> toItemVO(item,
                         publishedByTarget.get(itemKey(item.getItemType(), item.getItemId()))))
                 .collect(Collectors.toList());
@@ -298,7 +305,7 @@ public class AdminSpaceReviewServiceImpl implements AdminSpaceReviewService {
         // 查看审核详情属于敏感读取，记录审计；审计失败不阻断排障。
         try {
             recordAudit(AdminAuditConstants.ACTION_SPACE_REVIEW_VIEW, space.getId(), submission.getId(),
-                    null, null, "查看空间审核详情", "items=" + items.size());
+                    null, null, "查看空间审核详情", "items=" + currentItems.size());
         } catch (Exception exception) {
             log.warn("空间审核详情审计记录失败，submissionId: {}", submission.getId(), exception);
         }
@@ -336,11 +343,11 @@ public class AdminSpaceReviewServiceImpl implements AdminSpaceReviewService {
                 .publishedItems(publishedItems)
                 .reviewItems(reviewItemVOs)
                 .pendingItems(pendingVOs)
-                .itemCount(counts.total)
-                .pendingItemCount(counts.pending)
-                .approvedItemCount(counts.approved)
-                .rejectedItemCount(counts.rejected)
-                .withdrawnItemCount(counts.withdrawn)
+                .itemCount(counts.getTotal())
+                .pendingItemCount(counts.getPending())
+                .approvedItemCount(counts.getApproved())
+                .rejectedItemCount(counts.getRejected())
+                .withdrawnItemCount(counts.getWithdrawn())
                 .publicStoryCount(countPublished(publishedItems, SpaceReviewConstants.ITEM_TYPE_STORY))
                 .publicPhotoCount(countPublished(publishedItems, SpaceReviewConstants.ITEM_TYPE_PHOTO))
                 .publicAnniversaryCount(countPublished(publishedItems,
@@ -384,8 +391,8 @@ public class AdminSpaceReviewServiceImpl implements AdminSpaceReviewService {
         }
 
         List<SpaceReviewItemDO> latestItems = itemMapper.selectBySubmissionId(submission.getId());
-        ItemCounts counts = countItems(latestItems);
-        String finalStatus = resolveFinalStatus(counts);
+        SpaceReviewItemStatusSummary counts = SpaceReviewItemStatusSummary.of(latestItems);
+        String finalStatus = counts.resolveSubmissionStatus();
         int resolved = submissionMapper.resolve(submission.getId(), space.getId(),
                 SpaceReviewConstants.STATUS_PENDING, finalStatus,
                 adminUserId, now, firstRejectReason(latestItems), now);
@@ -476,8 +483,8 @@ public class AdminSpaceReviewServiceImpl implements AdminSpaceReviewService {
         int rejectedItems = itemMapper.resolveBySubmissionIdWithDecision(submission.getId(),
                 SpaceReviewConstants.ITEM_STATUS_REJECTED, reason, adminUserId, now);
         List<SpaceReviewItemDO> items = itemMapper.selectBySubmissionId(submission.getId());
-        ItemCounts counts = countItems(items);
-        String finalStatus = resolveFinalStatus(counts);
+        SpaceReviewItemStatusSummary counts = SpaceReviewItemStatusSummary.of(items);
+        String finalStatus = counts.resolveSubmissionStatus();
         int resolved = submissionMapper.resolve(submission.getId(), space.getId(),
                 SpaceReviewConstants.STATUS_PENDING, finalStatus, adminUserId, now, reason, now);
         if (resolved == 0) {
@@ -697,13 +704,13 @@ public class AdminSpaceReviewServiceImpl implements AdminSpaceReviewService {
                                            Long adminUserId, LocalDateTime now,
                                            String latestRejectReason) {
         List<SpaceReviewItemDO> items = itemMapper.selectBySubmissionId(submission.getId());
-        ItemCounts counts = countItems(items);
-        if (counts.pending > 0) {
+        SpaceReviewItemStatusSummary counts = SpaceReviewItemStatusSummary.of(items);
+        if (counts.getPending() > 0) {
             submissionMapper.touchPending(submission.getId(), space.getId(),
                     latestRejectReason, now);
             return SpaceReviewConstants.STATUS_PENDING;
         }
-        String finalStatus = resolveFinalStatus(counts);
+        String finalStatus = counts.resolveSubmissionStatus();
         int resolved = submissionMapper.resolve(submission.getId(), space.getId(),
                 SpaceReviewConstants.STATUS_PENDING, finalStatus, adminUserId, now,
                 firstRejectReason(items), now);
@@ -754,40 +761,6 @@ public class AdminSpaceReviewServiceImpl implements AdminSpaceReviewService {
         return hasSpace && hasHomeConfig;
     }
 
-    private ItemCounts countItems(List<SpaceReviewItemDO> items) {
-        ItemCounts counts = new ItemCounts();
-        counts.total = items.size();
-        for (SpaceReviewItemDO item : items) {
-            String status = item.getItemStatus();
-            if (SpaceReviewConstants.ITEM_STATUS_PENDING.equals(status)) {
-                counts.pending++;
-            } else if (SpaceReviewConstants.ITEM_STATUS_APPROVED.equals(status)) {
-                counts.approved++;
-            } else if (SpaceReviewConstants.ITEM_STATUS_REJECTED.equals(status)) {
-                counts.rejected++;
-            } else if (SpaceReviewConstants.ITEM_STATUS_WITHDRAWN.equals(status)) {
-                counts.withdrawn++;
-            }
-        }
-        return counts;
-    }
-
-    private String resolveFinalStatus(ItemCounts counts) {
-        if (counts.pending > 0) {
-            return SpaceReviewConstants.STATUS_PENDING;
-        }
-        if (counts.total > 0 && counts.approved == counts.total) {
-            return SpaceReviewConstants.STATUS_APPROVED;
-        }
-        if (counts.approved == 0 && counts.rejected == 0) {
-            return SpaceReviewConstants.STATUS_WITHDRAWN;
-        }
-        if (counts.approved == 0) {
-            return SpaceReviewConstants.STATUS_REJECTED;
-        }
-        return SpaceReviewConstants.STATUS_PARTIALLY_APPROVED;
-    }
-
     private String firstRejectReason(List<SpaceReviewItemDO> items) {
         for (SpaceReviewItemDO item : items) {
             if (SpaceReviewConstants.ITEM_STATUS_REJECTED.equals(item.getItemStatus())
@@ -811,14 +784,6 @@ public class AdminSpaceReviewServiceImpl implements AdminSpaceReviewService {
             throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID);
         }
         return normalized;
-    }
-
-    private static final class ItemCounts {
-        private int total;
-        private int pending;
-        private int approved;
-        private int rejected;
-        private int withdrawn;
     }
 
     private void upsertPublished(SpaceReviewItemDO item, LocalDateTime now) {
@@ -854,11 +819,11 @@ public class AdminSpaceReviewServiceImpl implements AdminSpaceReviewService {
             return;
         }
         List<SpaceReviewItemDO> items = itemMapper.selectBySubmissionId(pending.getId());
-        ItemCounts counts = countItems(items);
-        if (counts.pending > 0) {
+        SpaceReviewItemStatusSummary counts = SpaceReviewItemStatusSummary.of(items);
+        if (counts.getPending() > 0) {
             return;
         }
-        String finalStatus = resolveFinalStatus(counts);
+        String finalStatus = counts.resolveSubmissionStatus();
         submissionMapper.resolve(pending.getId(), spaceId,
                 SpaceReviewConstants.STATUS_PENDING, finalStatus,
                 StpUtil.getLoginIdAsLong(), now, firstRejectReason(items), now);

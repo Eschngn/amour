@@ -6,6 +6,8 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.chengliuxiang.amour.common.domain.dos.PlatformConfigDO;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 public interface PlatformConfigMapper extends BaseMapper<PlatformConfigDO> {
@@ -32,6 +34,16 @@ public interface PlatformConfigMapper extends BaseMapper<PlatformConfigDO> {
     default List<PlatformConfigDO> selectByValueType(String valueType) {
         return selectList(new LambdaQueryWrapper<PlatformConfigDO>()
                 .eq(PlatformConfigDO::getValueType, valueType)
+                .orderByAsc(PlatformConfigDO::getSortOrder));
+    }
+
+    /** 批量读取指定配置键；调用方必须先完成键白名单校验，避免读取任意平台配置。 */
+    default List<PlatformConfigDO> selectByConfigKeys(Collection<String> configKeys) {
+        if (configKeys == null || configKeys.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return selectList(new LambdaQueryWrapper<PlatformConfigDO>()
+                .in(PlatformConfigDO::getConfigKey, configKeys)
                 .orderByAsc(PlatformConfigDO::getSortOrder));
     }
 

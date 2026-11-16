@@ -73,7 +73,7 @@
 
           <div class="mt-6 border-t border-stone-100 pt-6" aria-labelledby="studio-home-visual">
             <h3 id="studio-home-visual" class="font-display text-base font-bold text-stone-900">首页主视觉照片</h3>
-            <p class="mt-1 text-xs leading-5 text-stone-500">两张照片会出现在首页相片卡片里，留空时使用站点示例图。</p>
+            <p class="mt-1 text-xs leading-5 text-stone-500">两张照片会出现在首页相片卡片里；留空时展示“尚未上传照片”占位，不会使用示例照片。</p>
             <div class="mt-5 grid gap-4">
               <SpaceImageField
                 v-model="form.heroPhoto1"
@@ -171,7 +171,12 @@ import {
   toDateTimeLocalInput,
 } from '@/utils/spaceContent'
 import { confirmDiscardChanges } from '@/utils/unsavedChanges'
-import { SAVE_FEEDBACK_KIND, resolveSaveFeedback } from '@/utils/saveFeedback'
+import { SAVE_FEEDBACK_KIND, resolveSaveFeedback, resolveUnchangedFeedback } from '@/utils/saveFeedback'
+import {
+  createFormSnapshot,
+  isFormDirty,
+  shouldSkipUnchangedSave,
+} from '@/utils/formBaseline'
 
 const emit = defineEmits(['update:dirty', 'saved'])
 
@@ -182,7 +187,8 @@ const loadError = ref('')
 const saving = ref(false)
 const uploading = ref(false)
 const saveError = ref('')
-const snapshot = ref('')
+const baseline = ref('')
+const baselineForm = ref(null)
 
 const form = reactive({
   spaceName: '',
@@ -196,7 +202,24 @@ const form = reactive({
   heroPhoto2: '',
 })
 
-const dirty = computed(() => Boolean(snapshot.value) && JSON.stringify(form) !== snapshot.value)
+/** 快照与保存请求保持一致：文本 trim、图片与时间空值统一。 */
+function homeFormSnapshot() {
+  return {
+    spaceName: form.spaceName.trim(),
+    description: form.description.trim(),
+    loveStartTime: toBackendDateTime(form.loveStartTime),
+    configs: {
+      boy_name: form.boyName.trim(),
+      girl_name: form.girlName.trim(),
+      boy_avatar: form.boyAvatar.trim(),
+      girl_avatar: form.girlAvatar.trim(),
+      'home.hero_photo_1': form.heroPhoto1.trim(),
+      'home.hero_photo_2': form.heroPhoto2.trim(),
+    },
+  }
+}
+
+const dirty = computed(() => isFormDirty(baseline.value, homeFormSnapshot()))
 
 function emitDirty() {
   emit('update:dirty', dirty.value)
@@ -216,7 +239,8 @@ function applyHome(data) {
 }
 
 function captureSnapshot() {
-  snapshot.value = JSON.stringify(form)
+  baselineForm.value = { ...form }
+  baseline.value = createFormSnapshot(homeFormSnapshot())
   emitDirty()
 }
 
@@ -236,8 +260,7 @@ async function load() {
 }
 
 function reset() {
-  const data = JSON.parse(snapshot.value || '{}')
-  Object.assign(form, data)
+  if (baselineForm.value) Object.assign(form, baselineForm.value)
   saveError.value = ''
   emitDirty()
 }
@@ -265,6 +288,18 @@ async function save() {
   const validationError = validate()
   if (validationError) {
     saveError.value = validationError
+    return
+  }
+
+  // 编辑已有首页配置但没有任何改动：不提交保存，也不触发审核。
+  if (shouldSkipUnchangedSave({
+    editing: true,
+    baseline: baseline.value,
+    snapshot: homeFormSnapshot(),
+    busy: saving.value || uploading.value,
+  })) {
+    reset()
+    emit('saved', { ...resolveUnchangedFeedback(), dirtyAfterSave: dirty.value })
     return
   }
 

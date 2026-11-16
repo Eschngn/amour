@@ -36,4 +36,10 @@ public class SpaceContentSaveResultVO {
      * 未递增版本号、未创建或更新待审核项。
      */
     private Boolean changed;
+
+    /**
+     * 保存后的工作数据与当前已发布快照完全一致：原先的待审核项已被撤回，
+     * 本次没有产生新的审核项。前端据此展示「已恢复为当前公开版本」。
+     */
+    private Boolean restoredToPublished;
 }
