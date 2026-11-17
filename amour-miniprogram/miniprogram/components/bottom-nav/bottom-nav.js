@@ -1,6 +1,10 @@
+// 底部主导航：广场、故事、相册、我的空间（中间品牌入口）、留言、我的。
+// 只保留这一套导航实现，各页面通过 current 属性高亮所在栏目。
 const { hasFrontendQueryPermission } = require('../../utils/auth')
 
 const ROUTES = {
+  // 恋爱广场是公开浏览入口，匿名可访问，不依赖登录态与查询权限。
+  plaza: '/pages/plaza/index',
   home: '/pages/index/index',
   story: '/pages/story/story',
   photo: '/pages/photo/photo',
@@ -45,7 +49,14 @@ Component({
       const page = String(event.currentTarget.dataset.page || '')
       if (!page || page === this.data.current) return
       const url = ROUTES[page]
-      if (url && (page === 'home' || page === 'profile' || hasFrontendQueryPermission(page))) wx.reLaunch({ url })
+      if (!url) return
+      // 广场与我的空间、我的都只依赖公开或本地状态；私密模块沿用原有权限判断。
+      const allowed = page === 'plaza'
+        || page === 'home'
+        || page === 'profile'
+        || hasFrontendQueryPermission(page)
+      if (!allowed) return
+      wx.reLaunch({ url })
     },
   },
 })

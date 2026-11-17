@@ -1,0 +1,34 @@
+<!--
+  通用状态占位：空列表 / 加载失败 / 详情不存在。
+  只负责展示与事件通知，重试或返回动作由页面处理。
+-->
+<view class="empty-state {{compact ? 'is-compact' : ''}}">
+  <view class="state-icon {{variant === 'error' ? 'is-error' : ''}}">
+    <text>{{variant === 'error' ? '!' : '♡'}}</text>
+  </view>
+  <text class="state-title">{{title}}</text>
+  <text wx:if="{{description}}" class="state-description">{{description}}</text>
+  <view wx:if="{{actionText}}" class="state-actions">
+    <view
+      class="state-action {{variant === 'error' ? 'is-primary' : ''}}"
+      hover-class="action-hover"
+      hover-stay-time="60"
+      bindtap="onAction"
+      aria-role="button"
+      aria-label="{{actionText}}"
+    >
+      <text>{{actionText}}</text>
+    </view>
+    <view
+      wx:if="{{secondaryText}}"
+      class="state-action is-secondary"
+      hover-class="action-hover"
+      hover-stay-time="60"
+      bindtap="onSecondary"
+      aria-role="button"
+      aria-label="{{secondaryText}}"
+    >
+      <text>{{secondaryText}}</text>
+    </view>
+  </view>
+</view>

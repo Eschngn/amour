@@ -1,0 +1,17 @@
+<!--
+  空间头像：真实头像优先，地址为空或加载失败时回退到首字母 / 简洁图形占位。
+  地址变化时自动重置失败状态，避免“先失败后换新地址仍显示占位”。
+-->
+<view class="space-avatar {{size === 'large' ? 'is-large' : (size === 'small' ? 'is-small' : '')}}">
+  <image
+    wx:if="{{src && !failed}}"
+    class="avatar-image"
+    src="{{src}}"
+    mode="aspectFill"
+    lazy-load="{{lazyLoad}}"
+    binderror="onImageError"
+    aria-hidden="true"
+  ></image>
+  <text wx:elif="{{fallbackInitial}}" class="avatar-initial">{{fallbackInitial}}</text>
+  <text wx:else class="avatar-fallback-mark">♥</text>
+</view>

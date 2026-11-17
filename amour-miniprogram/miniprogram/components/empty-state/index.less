@@ -1,0 +1,99 @@
+@import "../../styles/tokens.less";
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.empty-state {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  padding: @space-7 @space-5;
+  border: 1rpx dashed @rose-line-strong;
+  border-radius: @radius-lg;
+  background: #fffdfc;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.empty-state.is-compact {
+  padding: @space-5 @space-4;
+}
+
+.state-icon {
+  display: flex;
+  width: 88rpx;
+  height: 88rpx;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: @bg-rose-soft;
+  color: fade(@rose-primary, 70%);
+  font-size: 40rpx;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.state-icon.is-error {
+  background: @danger-soft;
+  color: @danger;
+  font-size: 32rpx;
+  font-weight: 700;
+}
+
+.state-title {
+  margin-top: @space-4;
+  color: @text-primary;
+  font-size: @font-md;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.state-description {
+  margin-top: @space-2;
+  max-width: 520rpx;
+  color: @text-tertiary;
+  font-size: @font-sm;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.state-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: @space-4;
+}
+
+.state-action {
+  display: flex;
+  min-width: 200rpx;
+  height: 68rpx;
+  align-items: center;
+  justify-content: center;
+  margin: 0 @space-1;
+  padding: 0 @space-4;
+  border: 1rpx solid @rose-line-strong;
+  border-radius: @radius-pill;
+  background: @bg-card;
+  color: @rose-primary-dark;
+  font-size: @font-sm;
+  font-weight: 600;
+  box-sizing: border-box;
+}
+
+.state-action.is-primary {
+  border-color: @rose-primary;
+  background: @rose-primary;
+  color: @text-inverse;
+}
+
+.state-action.is-secondary {
+  color: @text-secondary;
+}
+
+.action-hover {
+  opacity: 0.8;
+}

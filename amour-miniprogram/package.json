@@ -2,7 +2,13 @@
   "name": "miniprogram-ts-less-quickstart",
   "version": "1.0.0",
   "description": "",
-  "scripts": {},
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --import ./tests/support/resolve-hooks.mjs --test tests/*.test.mjs",
+    "check": "node scripts/check-miniprogram.mjs",
+    "preview": "node scripts/preview-plaza.mjs",
+    "dev:host": "node scripts/dev-api-host.mjs"
+  },
   "keywords": [],
   "author": "",
   "license": "",
@@ -10,6 +16,8 @@
     "node-forge": "^1.4.0"
   },
   "devDependencies": {
-    "miniprogram-api-typings": "^2.8.3-1"
+    "less": "^4.9.1",
+    "miniprogram-api-typings": "^2.8.3-1",
+    "typescript": "^5.9.3"
   }
 }

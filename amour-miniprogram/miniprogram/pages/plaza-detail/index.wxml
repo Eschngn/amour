@@ -1,0 +1,168 @@
+<navigation-bar title="公开空间" back="{{true}}" color="#3b2c30" background="#fdf9f6"></navigation-bar>
+
+<scroll-view class="detail-scroll" scroll-y enhanced bounces="{{false}}" show-scrollbar="{{false}}" type="list">
+  <view class="detail-page">
+    <!-- 加载中：与详情结构接近的骨架 -->
+    <block wx:if="{{loading}}">
+      <view class="hero-card">
+        <view class="skeleton-block skeleton-cover"></view>
+        <view class="hero-body">
+          <view class="skeleton-block skeleton-title"></view>
+          <view class="skeleton-block skeleton-line"></view>
+          <view class="skeleton-block skeleton-line short"></view>
+        </view>
+      </view>
+      <view class="section-card">
+        <view class="skeleton-block skeleton-line"></view>
+        <view class="skeleton-block skeleton-line"></view>
+      </view>
+    </block>
+
+    <!-- 加载失败 / 空数据 / 空间已下架 -->
+    <empty-state
+      wx:elif="{{loadError}}"
+      variant="error"
+      title="{{unavailable ? '这个公开空间已经看不到了' : '公开空间暂时无法打开'}}"
+      description="{{loadError}}"
+      action-text="{{unavailable ? '返回恋爱广场' : '重新加载'}}"
+      secondary-text="{{unavailable ? '' : '返回恋爱广场'}}"
+      bind:action="onPrimaryAction"
+      bind:secondary="goBackToPlaza"
+    ></empty-state>
+
+    <empty-state
+      wx:elif="{{!space}}"
+      title="这个空间暂时没有公开内容"
+      description="空间主人可能已经关闭公开，或者链接已经失效。"
+      action-text="返回恋爱广场"
+      bind:action="goBackToPlaza"
+    ></empty-state>
+
+    <block wx:else>
+      <!-- 空间基础信息 -->
+      <view class="hero-card">
+        <view class="hero-cover">
+          <image
+            wx:if="{{space.coverUrl && !coverFailed}}"
+            class="hero-cover-image"
+            src="{{space.coverUrl}}"
+            mode="aspectFill"
+            binderror="onCoverError"
+            aria-hidden="true"
+          ></image>
+          <view wx:else class="hero-cover-placeholder">
+            <text class="placeholder-heart">♥</text>
+            <text class="placeholder-text">LOVE SPACE</text>
+          </view>
+        </view>
+
+        <view class="hero-body">
+          <view wx:if="{{space.members.length}}" class="member-row">
+            <view wx:for="{{space.members}}" wx:key="key" class="member">
+              <avatar
+                src="{{item.avatarUrl}}"
+                name="{{item.name}}"
+                initial="{{item.initial}}"
+                size="large"
+              ></avatar>
+              <text wx:if="{{item.name}}" class="member-name">{{item.name}}</text>
+            </view>
+          </view>
+
+          <text class="space-name">{{space.spaceName}}</text>
+
+          <view wx:if="{{space.togetherDays || space.startDateText}}" class="meta-row">
+            <text wx:if="{{space.togetherDays}}" class="meta-pill">{{space.togetherDays}}</text>
+            <text wx:if="{{space.startDateText}}" class="meta-text">{{space.startDateText}}</text>
+          </view>
+
+          <text wx:if="{{space.description}}" class="description">{{space.description}}</text>
+
+          <view wx:if="{{space.stats.length}}" class="stat-row">
+            <view wx:for="{{space.stats}}" wx:key="key" class="stat-item">
+              <text class="stat-value">{{item.value}}</text>
+              <text class="stat-label">{{item.label}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 公开故事 -->
+      <view wx:if="{{space.stories.length}}" class="section-card">
+        <view class="section-heading">
+          <text class="section-title">公开故事</text>
+          <text class="section-meta">{{space.stories.length}} 篇</text>
+        </view>
+        <view class="story-list">
+          <view wx:for="{{space.stories}}" wx:key="storyId" class="story-item">
+            <text class="story-title">{{item.title}}</text>
+            <view wx:if="{{item.dateText || item.location || item.tagLabel}}" class="story-meta">
+              <text wx:if="{{item.tagLabel}}" class="story-tag">{{item.tagLabel}}</text>
+              <text wx:if="{{item.dateText}}" class="story-meta-text">{{item.dateText}}</text>
+              <text wx:if="{{item.location}}" class="story-meta-text">· {{item.location}}</text>
+            </view>
+            <text wx:if="{{item.summary}}" class="story-summary">{{item.summary}}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 公开照片 -->
+      <view wx:if="{{space.photos.length}}" class="section-card">
+        <view class="section-heading">
+          <text class="section-title">公开照片</text>
+          <text class="section-meta">{{space.photos.length}} 张</text>
+        </view>
+        <view class="photo-grid">
+          <view wx:for="{{space.photos}}" wx:key="photoId" class="photo-item">
+            <view class="photo-frame">
+              <image
+                wx:if="{{!item.failed}}"
+                class="photo-image"
+                src="{{item.url}}"
+                mode="aspectFill"
+                lazy-load="true"
+                data-index="{{index}}"
+                binderror="onPhotoError"
+                aria-hidden="true"
+              ></image>
+              <view wx:else class="photo-fallback">
+                <text class="photo-fallback-mark">♡</text>
+              </view>
+            </view>
+            <text wx:if="{{item.title}}" class="photo-title">{{item.title}}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 公开纪念日 -->
+      <view wx:if="{{space.anniversaries.length}}" class="section-card">
+        <view class="section-heading">
+          <text class="section-title">公开纪念日</text>
+          <text class="section-meta">{{space.anniversaries.length}} 个</text>
+        </view>
+        <view class="anniversary-list">
+          <view wx:for="{{space.anniversaries}}" wx:key="anniversaryId" class="anniversary-item">
+            <text class="anniversary-title">{{item.title}}</text>
+            <view class="anniversary-meta">
+              <text wx:if="{{item.dateText}}">{{item.dateText}}</text>
+              <text wx:if="{{item.location}}"> · {{item.location}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 全部内容都为空时给出明确说明，而不是空白页 -->
+      <view wx:if="{{!space.stories.length && !space.photos.length && !space.anniversaries.length}}" class="section-card empty-note">
+        <text class="empty-note-text">这个空间暂时还没有公开的故事、照片或纪念日。</text>
+      </view>
+
+      <view class="back-section">
+        <view class="back-button" hover-class="back-hover" hover-stay-time="60" bindtap="goBackToPlaza" aria-role="button" aria-label="返回恋爱广场">
+          <text>返回恋爱广场</text>
+        </view>
+      </view>
+    </block>
+
+    <view class="safe-bottom"></view>
+  </view>
+</scroll-view>

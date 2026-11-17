@@ -1,5 +1,4 @@
 import { post } from '../../utils/request'
-import { hasFrontendQueryPermission } from '../../utils/auth'
 
 const DEFAULT_LOVE_START = '2024-05-20 18:30:00'
 

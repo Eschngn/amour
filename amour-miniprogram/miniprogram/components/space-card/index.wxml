@@ -1,0 +1,97 @@
+<!--
+  公开空间卡片（单列）。
+
+  - 数据全部由页面经适配层传入（space 属性），组件不请求接口、不改页面状态；
+  - 点击整卡触发 open 事件，携带 spaceId；页面负责校验并导航；
+  - 封面使用固定 16:9 比例，缺图 / 加载失败均回退到 CSS 占位，不会出现破图；
+  - skeleton 分支与真实卡片结构一致，首次加载时不会明显跳动。
+-->
+<view
+  wx:if="{{skeleton}}"
+  class="space-card is-skeleton"
+  aria-hidden="true"
+>
+  <view class="cover">
+    <view class="skeleton-block skeleton-cover"></view>
+  </view>
+  <view class="card-body">
+    <view class="skeleton-block skeleton-title"></view>
+    <view class="skeleton-block skeleton-members"></view>
+    <view class="skeleton-block skeleton-line"></view>
+    <view class="skeleton-block skeleton-line short"></view>
+    <view class="skeleton-footer">
+      <view class="skeleton-block skeleton-chip"></view>
+      <view class="skeleton-block skeleton-chip small"></view>
+    </view>
+  </view>
+</view>
+
+<view
+  wx:else
+  class="space-card"
+  hover-class="card-hover"
+  hover-stay-time="60"
+  bindtap="onOpen"
+  aria-role="button"
+  aria-label="{{space.ariaLabel}}"
+>
+  <view class="cover">
+    <image
+      wx:if="{{space.coverUrl && !coverFailed}}"
+      class="cover-image"
+      src="{{space.coverUrl}}"
+      mode="aspectFill"
+      lazy-load="true"
+      binderror="onCoverError"
+      aria-hidden="true"
+    ></image>
+    <view wx:else class="cover-placeholder">
+      <text class="placeholder-heart">♥</text>
+      <text class="placeholder-text">LOVE SPACE</text>
+    </view>
+
+    <view wx:if="{{space.togetherDays}}" class="cover-badge">
+      <text class="badge-text">{{space.togetherDays}}</text>
+    </view>
+  </view>
+
+  <view class="card-body">
+    <view class="title-row">
+      <text class="space-name">{{space.spaceName}}</text>
+      <text wx:if="{{space.startDateText}}" class="start-date">{{space.startDateText}}</text>
+    </view>
+
+    <view wx:if="{{space.members.length}}" class="member-row">
+      <view
+        wx:for="{{space.members}}"
+        wx:key="key"
+        class="member"
+      >
+        <avatar
+          src="{{item.avatarUrl}}"
+          name="{{item.name}}"
+          initial="{{item.initial}}"
+          size="small"
+          lazy-load="{{true}}"
+        ></avatar>
+        <text wx:if="{{item.name}}" class="member-name">{{item.name}}</text>
+      </view>
+    </view>
+
+    <text wx:if="{{space.description}}" class="description">{{space.description}}</text>
+
+    <text wx:if="{{space.recentText}}" class="recent-text">{{space.recentText}}</text>
+
+    <view wx:if="{{space.stats.length}}" class="stat-row">
+      <block wx:for="{{space.stats}}" wx:key="key">
+        <text wx:if="{{index > 0}}" class="stat-divider">·</text>
+        <text class="stat-item">{{item.label}} <text class="stat-value">{{item.value}}</text></text>
+      </block>
+    </view>
+
+    <view class="card-footer">
+      <text class="entry-hint">进入这个空间</text>
+      <text class="entry-arrow">→</text>
+    </view>
+  </view>
+</view>

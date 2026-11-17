@@ -1,6 +1,8 @@
 {
   "pages": [
     "pages/index/index",
+    "pages/plaza/index",
+    "pages/plaza-detail/index",
     "pages/story/story",
     "pages/story-detail/story-detail",
     "pages/photo/photo",

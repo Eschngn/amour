@@ -1,0 +1,10 @@
+{
+  "disableScroll": true,
+  "usingComponents": {
+    "navigation-bar": "/components/navigation-bar/navigation-bar",
+    "bottom-nav": "/components/bottom-nav/bottom-nav",
+    "space-card": "/components/space-card/index",
+    "empty-state": "/components/empty-state/index",
+    "list-footer": "/components/list-footer/index"
+  }
+}

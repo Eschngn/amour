@@ -1,0 +1,85 @@
+@import "../../styles/tokens.less";
+
+page {
+  display: flex;
+  height: 100vh;
+  flex-direction: column;
+  background: @bg-page;
+  color: @text-primary;
+}
+
+.page-scroll {
+  flex: 1;
+  min-height: 0;
+}
+
+.plaza-page {
+  background: @bg-page;
+  box-sizing: border-box;
+}
+
+/* ============ 介绍区 ============ */
+.plaza-intro {
+  padding: @space-3 @page-gutter @space-2;
+}
+
+.intro-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.intro-kicker {
+  color: @rose-primary;
+  font-size: @font-xs;
+  font-weight: 600;
+  letter-spacing: 3rpx;
+}
+
+.intro-count {
+  color: @text-tertiary;
+  font-size: @font-xs;
+}
+
+.intro-title {
+  display: block;
+  margin-top: @space-2;
+  color: @text-primary;
+  font-size: 42rpx;
+  font-weight: 700;
+  line-height: 1.32;
+}
+
+.intro-copy {
+  display: block;
+  margin-top: @space-2;
+  color: @text-tertiary;
+  font-size: @font-sm;
+  line-height: 1.62;
+}
+
+/* ============ 列表 ============ */
+.plaza-list {
+  padding: @space-4 @page-gutter 0;
+}
+
+.card-slot {
+  margin-bottom: @space-4;
+}
+
+.plaza-footer {
+  padding: @space-2 @page-gutter @space-4;
+}
+
+/* ============ 小屏收紧 ============ */
+@media (max-width: 360px) {
+  .plaza-intro,
+  .plaza-list,
+  .plaza-footer {
+    padding-right: 24rpx;
+    padding-left: 24rpx;
+  }
+  .intro-title {
+    font-size: 38rpx;
+  }
+}

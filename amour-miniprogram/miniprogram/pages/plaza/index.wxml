@@ -1,0 +1,74 @@
+<navigation-bar title="恋爱广场" back="{{false}}" color="#3b2c30" background="#fdf9f6"></navigation-bar>
+
+<scroll-view
+  class="page-scroll"
+  scroll-y
+  enhanced
+  bounces="{{false}}"
+  show-scrollbar="{{false}}"
+  type="list"
+  refresher-enabled="{{true}}"
+  refresher-triggered="{{refresherTriggered}}"
+  refresher-background="#fdf9f6"
+  refresher-default-style="black"
+  lower-threshold="160"
+  bindrefresherrefresh="onRefresh"
+  bindscrolltolower="onScrollToLower"
+>
+  <view class="plaza-page">
+    <view class="plaza-intro">
+      <view class="intro-heading">
+        <text class="intro-kicker">LOVE PLAZA</text>
+        <text wx:if="{{status === 'ready' && total > 0}}" class="intro-count">{{total}} 个公开空间</text>
+      </view>
+      <text class="intro-title">看看别人的心动日常</text>
+      <text class="intro-copy">这里只展示大家主动公开的故事、照片与纪念日，浏览不会加入对方的空间。</text>
+    </view>
+
+    <view class="plaza-list">
+      <block wx:if="{{status === 'loading'}}">
+        <!-- 首次加载：与真实卡片结构一致的骨架屏 -->
+        <view class="card-slot" wx:for="{{skeletonItems}}" wx:key="*this">
+          <space-card skeleton="{{true}}"></space-card>
+        </view>
+      </block>
+
+      <empty-state
+        wx:elif="{{status === 'error'}}"
+        variant="error"
+        title="恋爱广场暂时没有加载出来"
+        description="{{loadError}}"
+        action-text="重新加载"
+        bind:action="onRetryFirst"
+      ></empty-state>
+
+      <empty-state
+        wx:elif="{{!cards.length}}"
+        title="这里的心动故事，正在慢慢发生。"
+        description="还没有人公开自己的情侣空间，晚一点再来看看吧。"
+        action-text="刷新看看"
+        bind:action="onRetryEmpty"
+      ></empty-state>
+
+      <block wx:else>
+        <!-- 单列卡片列表：空间名称、成员、简介优先可读 -->
+        <view class="card-slot" wx:for="{{cards}}" wx:key="spaceId">
+          <space-card space="{{item}}" bind:open="onOpenSpace"></space-card>
+        </view>
+      </block>
+    </view>
+
+    <view wx:if="{{status === 'ready' && cards.length}}" class="plaza-footer">
+      <list-footer
+        loading="{{loadingMore}}"
+        error="{{loadMoreError}}"
+        has-more="{{hasMore}}"
+        show-end="{{showEnd}}"
+        bind:loadmore="onLoadMore"
+        bind:retry="onLoadMore"
+      ></list-footer>
+    </view>
+  </view>
+</scroll-view>
+
+<bottom-nav current="plaza"></bottom-nav>

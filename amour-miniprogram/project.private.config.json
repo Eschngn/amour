@@ -3,7 +3,8 @@
   "projectname": "amour-miniprogram",
   "setting": {
     "useCompilerPlugins": [
-      "typescript"
+      "typescript",
+      "less"
     ],
     "urlCheck": false,
     "coverView": false,

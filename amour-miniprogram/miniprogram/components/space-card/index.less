@@ -1,0 +1,291 @@
+@import "../../styles/tokens.less";
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.space-card {
+  position: relative;
+  overflow: hidden;
+  border: 1rpx solid @rose-line;
+  border-radius: @radius-lg;
+  background: @bg-card;
+  box-shadow: @shadow-card;
+}
+
+.card-hover {
+  opacity: 0.92;
+  transform: scale(0.995);
+}
+
+/* 封面固定 16:9，加载前后高度一致，不会撑动列表。 */
+.cover {
+  position: relative;
+  width: 100%;
+  height: 0;
+  padding-bottom: 56.25%;
+  overflow: hidden;
+  background: @bg-rose-soft;
+}
+
+.cover-image {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.cover-placeholder {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  border: 2rpx dashed fade(@rose-primary, 18%);
+  background: @bg-soft;
+  box-sizing: border-box;
+}
+
+.placeholder-heart {
+  color: fade(@rose-primary, 40%);
+  font-size: 46rpx;
+  line-height: 1;
+}
+
+.placeholder-text {
+  margin-top: @space-1;
+  color: fade(@rose-primary, 55%);
+  font-size: 18rpx;
+  font-weight: 600;
+  letter-spacing: 4rpx;
+}
+
+.cover-badge {
+  position: absolute;
+  right: @space-3;
+  bottom: @space-3;
+  padding: 8rpx 18rpx;
+  border-radius: @radius-pill;
+  background: rgba(59, 44, 48, 0.55);
+}
+
+.badge-text {
+  color: @text-inverse;
+  font-size: @font-xs;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.card-body {
+  padding: @space-4 @space-4 @space-3;
+}
+
+.title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.space-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: @text-primary;
+  font-size: @font-lg;
+  font-weight: 700;
+  line-height: 1.35;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.start-date {
+  flex: none;
+  margin-left: @space-3;
+  color: @rose-faint;
+  font-size: @font-xs;
+  white-space: nowrap;
+}
+
+.member-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: @space-3;
+}
+
+.member {
+  display: flex;
+  align-items: center;
+  max-width: 50%;
+  margin-right: @space-3;
+}
+
+.member-name {
+  margin-left: 10rpx;
+  overflow: hidden;
+  color: @text-secondary;
+  font-size: @font-sm;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.description {
+  display: -webkit-box;
+  overflow: hidden;
+  margin-top: @space-3;
+  color: @text-secondary;
+  font-size: @font-md;
+  line-height: 1.62;
+  word-break: break-word;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.recent-text {
+  display: block;
+  overflow: hidden;
+  margin-top: @space-2;
+  color: @text-tertiary;
+  font-size: @font-xs;
+  line-height: 1.5;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.stat-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: @space-3;
+  color: @text-tertiary;
+  font-size: @font-xs;
+  line-height: 1.5;
+}
+
+.stat-item {
+  color: @text-tertiary;
+  font-size: @font-xs;
+}
+
+.stat-value {
+  color: @rose-primary-dark;
+  font-weight: 600;
+}
+
+.stat-divider {
+  margin: 0 10rpx;
+  color: @rose-line-strong;
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: @space-4;
+  padding-top: @space-3;
+  border-top: 1rpx solid @rose-line;
+}
+
+.entry-hint {
+  color: @rose-primary;
+  font-size: @font-sm;
+  font-weight: 600;
+}
+
+.entry-arrow {
+  color: @rose-primary;
+  font-size: @font-md;
+  line-height: 1;
+}
+
+/* ============ 骨架屏 ============ */
+.is-skeleton {
+  pointer-events: none;
+}
+
+.skeleton-block {
+  border-radius: @radius-sm;
+  background: linear-gradient(90deg, #f7ecea 25%, #fdf5f3 37%, #f7ecea 63%);
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+}
+
+.skeleton-cover {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 0;
+}
+
+.skeleton-title {
+  width: 62%;
+  height: 34rpx;
+}
+
+.skeleton-members {
+  width: 42%;
+  height: 44rpx;
+  margin-top: @space-3;
+  border-radius: @radius-pill;
+}
+
+.skeleton-line {
+  width: 100%;
+  height: 22rpx;
+  margin-top: @space-3;
+}
+
+.skeleton-line.short {
+  width: 68%;
+}
+
+.skeleton-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: @space-4;
+  padding-top: @space-3;
+  border-top: 1rpx solid @rose-line;
+}
+
+.skeleton-chip {
+  width: 150rpx;
+  height: 26rpx;
+}
+
+.skeleton-chip.small {
+  width: 70rpx;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+@media (max-width: 360px) {
+  .card-body {
+    padding: @space-3;
+  }
+  .space-name {
+    font-size: 28rpx;
+  }
+  .description {
+    font-size: @font-sm;
+  }
+}

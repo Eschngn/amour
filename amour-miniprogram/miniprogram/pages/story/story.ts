@@ -108,7 +108,7 @@ Component({
         .reduce((sum: number, item: WechatMiniprogram.IAnyObject) => sum + Number(item.nodeCount || 0), 0)
       this.setData({
         activeChapter: index,
-        currentChapter: chapter,
+        currentChapter: chapter as { title: string; period: string },
         storiesLoading: true,
         storiesError: '',
         stories: [],

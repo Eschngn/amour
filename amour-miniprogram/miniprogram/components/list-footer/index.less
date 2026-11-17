@@ -1,0 +1,126 @@
+@import "../../styles/tokens.less";
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+/* 底部安全区由页面级 bottom-nav 承担，footer 不再重复留白。 */
+.list-footer {
+  min-height: 96rpx;
+  padding: @space-2 0 @space-3;
+}
+
+.footer-loading {
+  display: flex;
+  height: 88rpx;
+  align-items: center;
+  justify-content: center;
+}
+
+.footer-spinner {
+  width: 28rpx;
+  height: 28rpx;
+  margin-right: @space-2;
+  border: 3rpx solid @rose-primary-light;
+  border-top-color: @rose-primary;
+  border-radius: 50%;
+  box-sizing: border-box;
+  animation: footer-spin 0.9s linear infinite;
+}
+
+.footer-text {
+  color: @text-tertiary;
+  font-size: @font-sm;
+}
+
+.footer-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding: @space-2 @space-3;
+  border-radius: @radius-md;
+  background: @danger-soft;
+}
+
+.footer-error-text {
+  margin-right: @space-3;
+  color: @danger;
+  font-size: @font-sm;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.footer-retry {
+  display: flex;
+  min-width: 120rpx;
+  height: 60rpx;
+  align-items: center;
+  justify-content: center;
+  padding: 0 @space-4;
+  border: 1rpx solid fade(@danger, 35%);
+  border-radius: @radius-pill;
+  background: @bg-card;
+  color: @danger;
+  font-size: @font-sm;
+  font-weight: 600;
+  box-sizing: border-box;
+}
+
+.retry-hover {
+  opacity: 0.75;
+}
+
+.footer-more {
+  display: flex;
+  height: 80rpx;
+  align-items: center;
+  justify-content: center;
+  border: 1rpx solid @rose-line;
+  border-radius: @radius-pill;
+  background: @bg-card;
+  color: @rose-primary-dark;
+  font-size: @font-sm;
+  font-weight: 600;
+}
+
+.more-arrow {
+  margin-left: @space-2;
+  font-size: @font-md;
+  line-height: 1;
+}
+
+.more-hover {
+  background: @bg-rose-soft;
+}
+
+.footer-end {
+  display: flex;
+  height: 88rpx;
+  align-items: center;
+  justify-content: center;
+}
+
+.end-line {
+  width: 56rpx;
+  height: 1rpx;
+  background: @rose-line-strong;
+}
+
+.end-text {
+  margin: 0 @space-3;
+  color: @rose-faint;
+  font-size: @font-xs;
+  line-height: 1.5;
+  text-align: center;
+}
+
+@keyframes footer-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

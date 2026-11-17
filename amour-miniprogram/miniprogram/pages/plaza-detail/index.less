@@ -1,0 +1,418 @@
+@import "../../styles/tokens.less";
+
+page {
+  display: flex;
+  height: 100vh;
+  flex-direction: column;
+  background: @bg-page;
+  color: @text-primary;
+}
+
+.detail-scroll {
+  flex: 1;
+  min-height: 0;
+}
+
+.detail-page {
+  min-height: 100%;
+  padding: @space-4 @page-gutter 0;
+  background: @bg-page;
+  box-sizing: border-box;
+}
+
+/* ============ 基础信息卡片 ============ */
+.hero-card,
+.section-card {
+  overflow: hidden;
+  border: 1rpx solid @rose-line;
+  border-radius: @radius-lg;
+  background: @bg-card;
+  box-shadow: @shadow-card;
+}
+
+.section-card {
+  margin-top: @space-4;
+  padding: @space-4;
+}
+
+.hero-cover {
+  position: relative;
+  width: 100%;
+  height: 0;
+  padding-bottom: 48%;
+  overflow: hidden;
+  background: @bg-rose-soft;
+}
+
+.hero-cover-image {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.hero-cover-placeholder {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  background: @bg-soft;
+}
+
+.placeholder-heart {
+  color: fade(@rose-primary, 55%);
+  font-size: 56rpx;
+  line-height: 1;
+}
+
+.placeholder-text {
+  margin-top: @space-1;
+  color: fade(@rose-primary, 70%);
+  font-size: 18rpx;
+  font-weight: 600;
+  letter-spacing: 4rpx;
+}
+
+.hero-body {
+  padding: @space-4;
+}
+
+.member-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: @space-3;
+}
+
+.member {
+  display: flex;
+  align-items: center;
+  max-width: 100%;
+  margin-right: @space-4;
+  margin-bottom: @space-1;
+}
+
+.member-name {
+  margin-left: @space-2;
+  overflow: hidden;
+  color: @text-secondary;
+  font-size: @font-sm;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.space-name {
+  display: block;
+  color: @text-primary;
+  font-size: @font-xl;
+  font-weight: 700;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: @space-2;
+}
+
+.meta-pill {
+  padding: 6rpx 16rpx;
+  border-radius: @radius-pill;
+  background: @bg-rose-soft;
+  color: @rose-primary-dark;
+  font-size: @font-xs;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.meta-text {
+  margin-left: @space-2;
+  color: @text-tertiary;
+  font-size: @font-xs;
+}
+
+.description {
+  display: block;
+  margin-top: @space-3;
+  color: @text-secondary;
+  font-size: @font-md;
+  line-height: 1.65;
+  word-break: break-word;
+}
+
+.stat-row {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: @space-4;
+  padding-top: @space-3;
+  border-top: 1rpx solid @rose-line;
+}
+
+.stat-item {
+  display: flex;
+  min-width: 120rpx;
+  align-items: baseline;
+  margin-right: @space-5;
+}
+
+.stat-value {
+  color: @rose-primary-dark;
+  font-size: @font-lg;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.stat-label {
+  margin-left: 8rpx;
+  color: @text-tertiary;
+  font-size: @font-xs;
+}
+
+/* ============ 分区内容 ============ */
+.section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: @space-3;
+}
+
+.section-title {
+  color: @text-primary;
+  font-size: @font-md;
+  font-weight: 700;
+}
+
+.section-meta {
+  color: @text-tertiary;
+  font-size: @font-xs;
+}
+
+.story-item {
+  padding: @space-3 0;
+  border-top: 1rpx solid @rose-line;
+}
+
+.story-item:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.story-title {
+  display: block;
+  color: @text-primary;
+  font-size: @font-md;
+  font-weight: 600;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.story-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: @space-1;
+}
+
+.story-tag {
+  margin-right: @space-2;
+  padding: 4rpx 12rpx;
+  border-radius: @radius-pill;
+  background: @bg-rose-soft;
+  color: @rose-primary-dark;
+  font-size: 18rpx;
+}
+
+.story-meta-text {
+  color: @text-tertiary;
+  font-size: @font-xs;
+}
+
+.story-summary {
+  display: -webkit-box;
+  overflow: hidden;
+  margin-top: @space-1;
+  color: @text-secondary;
+  font-size: @font-sm;
+  line-height: 1.6;
+  word-break: break-word;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: @space-1;
+}
+
+.photo-item {
+  overflow: hidden;
+  border-radius: @radius-sm;
+  background: @bg-soft;
+}
+
+.photo-frame {
+  position: relative;
+  width: 100%;
+  height: 0;
+  padding-bottom: 100%;
+  overflow: hidden;
+  background: @bg-rose-soft;
+}
+
+.photo-image {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.photo-fallback {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: @bg-soft;
+}
+
+.photo-fallback-mark {
+  color: fade(@rose-primary, 45%);
+  font-size: 40rpx;
+  line-height: 1;
+}
+
+.photo-title {
+  display: block;
+  overflow: hidden;
+  padding: 8rpx 10rpx;
+  color: @text-secondary;
+  font-size: 18rpx;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.anniversary-item {
+  padding: @space-3 0;
+  border-top: 1rpx solid @rose-line;
+}
+
+.anniversary-item:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.anniversary-title {
+  display: block;
+  color: @text-primary;
+  font-size: @font-md;
+  font-weight: 600;
+}
+
+.anniversary-meta {
+  margin-top: 6rpx;
+  color: @text-tertiary;
+  font-size: @font-xs;
+}
+
+.empty-note {
+  text-align: center;
+}
+
+.empty-note-text {
+  color: @text-tertiary;
+  font-size: @font-sm;
+  line-height: 1.6;
+}
+
+/* ============ 返回 ============ */
+.back-section {
+  padding: @space-5 0 0;
+}
+
+.back-button {
+  display: flex;
+  height: 80rpx;
+  align-items: center;
+  justify-content: center;
+  border: 1rpx solid @rose-line-strong;
+  border-radius: @radius-pill;
+  background: @bg-card;
+  color: @rose-primary-dark;
+  font-size: @font-sm;
+  font-weight: 600;
+}
+
+.back-hover {
+  background: @bg-rose-soft;
+}
+
+.safe-bottom {
+  height: calc(env(safe-area-inset-bottom) + 24rpx);
+}
+
+/* ============ 骨架 ============ */
+.skeleton-block {
+  border-radius: @radius-sm;
+  background: linear-gradient(90deg, #f7ecea 25%, #fdf5f3 37%, #f7ecea 63%);
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+}
+
+.skeleton-cover {
+  height: 340rpx;
+  border-radius: 0;
+}
+
+.skeleton-title {
+  width: 62%;
+  height: 40rpx;
+  margin-top: @space-4;
+}
+
+.skeleton-line {
+  height: 22rpx;
+  margin-top: @space-3;
+}
+
+.skeleton-line.short {
+  width: 68%;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+@media (max-width: 360px) {
+  .detail-page {
+    padding-right: 24rpx;
+    padding-left: 24rpx;
+  }
+  .space-name {
+    font-size: 34rpx;
+  }
+  .stat-item {
+    margin-right: @space-4;
+  }
+}

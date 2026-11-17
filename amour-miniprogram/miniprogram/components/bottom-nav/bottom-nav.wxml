@@ -1,6 +1,9 @@
 <view class="bottom-nav">
   <view class="nav-bar">
     <view class="nav-side nav-side-left">
+      <view class="nav-item {{current === 'plaza' ? 'is-active' : ''}}" data-page="plaza" bindtap="navigate" hover-class="nav-hover" aria-role="button" aria-label="恋爱广场">
+        <view class="nav-icon plaza-icon"><view class="plaza-ring"></view><view class="plaza-ring plaza-ring-second"></view></view><text class="nav-label">广场</text>
+      </view>
       <view wx:if="{{showStory}}" class="nav-item {{current === 'story' ? 'is-active' : ''}}" data-page="story" bindtap="navigate" hover-class="nav-hover" aria-role="button" aria-label="故事">
         <text class="nav-icon story-icon">✦</text><text class="nav-label">故事</text>
       </view>
@@ -9,8 +12,8 @@
       </view>
     </view>
 
-    <view class="nav-item home-item {{current === 'home' ? 'is-active' : ''}}" data-page="home" bindtap="navigate" hover-class="home-hover" aria-role="button" aria-label="首页">
-      <view class="home-logo"><image class="logo-image" src="/images/amour-logo.svg" mode="aspectFit"></image></view><text class="nav-label home-label">首页</text>
+    <view class="nav-item home-item {{current === 'home' ? 'is-active' : ''}}" data-page="home" bindtap="navigate" hover-class="home-hover" aria-role="button" aria-label="我的空间">
+      <view class="home-logo"><image class="logo-image" src="/images/amour-logo.svg" mode="aspectFit"></image></view><text class="nav-label home-label">我的空间</text>
     </view>
 
     <view class="nav-side nav-side-right">

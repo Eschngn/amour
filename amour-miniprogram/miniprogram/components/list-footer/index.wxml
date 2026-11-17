@@ -1,0 +1,47 @@
+<!--
+  列表底部状态：加载更多 / 加载失败重试 / 已到底。
+  互斥展示，任何时刻最多一行；组件只负责展示和 triggerEvent。
+-->
+<view class="list-footer">
+  <!-- 加载中 -->
+  <view wx:if="{{loading}}" class="footer-loading" aria-role="alert">
+    <view class="footer-spinner"></view>
+    <text class="footer-text">正在加载更多空间</text>
+  </view>
+
+  <!-- 下一页失败：不清空已有内容，只给重试 -->
+  <view wx:elif="{{error}}" class="footer-error">
+    <text class="footer-error-text">{{error}}</text>
+    <view
+      class="footer-retry"
+      hover-class="retry-hover"
+      hover-stay-time="60"
+      bindtap="onRetry"
+      aria-role="button"
+      aria-label="重试加载更多"
+    >
+      <text>重试</text>
+    </view>
+  </view>
+
+  <!-- 还有下一页但未触发加载：提供明确的点击入口 -->
+  <view
+    wx:elif="{{hasMore}}"
+    class="footer-more"
+    hover-class="more-hover"
+    hover-stay-time="60"
+    bindtap="onLoadMore"
+    aria-role="button"
+    aria-label="加载更多公开空间"
+  >
+    <text>加载更多公开空间</text>
+    <text class="more-arrow">↓</text>
+  </view>
+
+  <!-- 已到底 / 列表为空 -->
+  <view wx:elif="{{showEnd}}" class="footer-end">
+    <view class="end-line"></view>
+    <text class="end-text">{{endText}}</text>
+    <view class="end-line"></view>
+  </view>
+</view>

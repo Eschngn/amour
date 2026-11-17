@@ -1,0 +1,8 @@
+{
+  "disableScroll": true,
+  "usingComponents": {
+    "navigation-bar": "/components/navigation-bar/navigation-bar",
+    "empty-state": "/components/empty-state/index",
+    "avatar": "/components/avatar/index"
+  }
+}
