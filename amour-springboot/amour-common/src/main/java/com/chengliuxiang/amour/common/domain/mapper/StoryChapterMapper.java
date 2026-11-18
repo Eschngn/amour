@@ -81,4 +81,17 @@ public interface StoryChapterMapper extends BaseMapper<StoryChapterDO> {
     default List<StoryChapterDO> selectManageList(Long spaceId) {
         return selectBySpaceId(spaceId);
     }
+
+    /**
+     * 销毁留档：读取空间内全部故事章节（含隐藏）。
+     */
+    default List<StoryChapterDO> selectAllBySpaceIdForArchive(Long spaceId) {
+        return selectList(new LambdaQueryWrapper<StoryChapterDO>()
+                .eq(StoryChapterDO::getSpaceId, spaceId)
+                .orderByAsc(StoryChapterDO::getId));
+    }
+
+    default int insertForArchiveRestore(StoryChapterDO chapter) {
+        return insert(chapter);
+    }
 }

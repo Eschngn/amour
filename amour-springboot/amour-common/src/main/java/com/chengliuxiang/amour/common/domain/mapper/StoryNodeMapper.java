@@ -269,4 +269,20 @@ public interface StoryNodeMapper extends BaseMapper<StoryNodeDO> {
                 .eq(StoryNodeDO::getChapterId, chapterId)
                 .eq(StoryNodeDO::getIsDeleted, false));
     }
+
+    /**
+     * 销毁留档：读取空间内全部故事（含已逻辑删除），保证快照完整。
+     */
+    default List<StoryNodeDO> selectAllBySpaceIdForArchive(Long spaceId) {
+        return selectList(new LambdaQueryWrapper<StoryNodeDO>()
+                .eq(StoryNodeDO::getSpaceId, spaceId)
+                .orderByAsc(StoryNodeDO::getId));
+    }
+
+    /**
+     * 留档恢复：按主键补回缺失的故事行（保留原主键，避免章节/图片引用断裂）。
+     */
+    default int insertForArchiveRestore(StoryNodeDO node) {
+        return insert(node);
+    }
 }

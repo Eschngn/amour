@@ -251,6 +251,64 @@ public interface CoupleSpaceMapper extends BaseMapper<CoupleSpaceDO> {
     }
 
     /**
+     * 对空间行加数据库写锁，用于跨实例串行化「销毁空间 / 接受邀请」这类会同时改写
+     * 空间状态与成员关系的操作。
+     *
+     * <p>与 {@link UserMapper#lockById(Long)} 同样使用同值 UPDATE：MySQL 下锁住该空间行，
+     * SQLite 下锁住写事务。不改动任何业务字段。调用方必须保持
+     * 「用户行 → 空间行」的固定加锁顺序，避免死锁。</p>
+     */
+    default void lockById(Long spaceId) {
+        if (spaceId == null) {
+            return;
+        }
+        update(null, new LambdaUpdateWrapper<CoupleSpaceDO>()
+                .eq(CoupleSpaceDO::getId, spaceId)
+                .setSql("update_time = update_time"));
+    }
+
+    /**
+     * 创建者销毁空间（另一半尚未加入阶段）。
+     *
+     * <p>条件更新一次性完成所有服务端校验：空间仍处于可销毁状态（等待绑定，或历史上单人正常），
+     * 创建者就是当前用户，且空间内有效成员恰好只有创建者一人。任一条件不满足返回 0，
+     * 调用方必须回滚整笔销毁事务，不能出现「已写留档但空间未销毁」或
+     * 「空间已销毁但未留档」「另一半已加入却被销毁」的中间态。</p>
+     *
+     * <p>同时强制 visibility=0，保证销毁后即使历史数据残留公开标记也不会进入恋爱广场。
+     * 不删除任何内容行，只改空间状态与时间字段。</p>
+     */
+    default int destroyByCreator(Long spaceId, Long creatorUserId, LocalDateTime destroyedAt) {
+        return update(null, new LambdaUpdateWrapper<CoupleSpaceDO>()
+                .eq(CoupleSpaceDO::getId, spaceId)
+                .eq(CoupleSpaceDO::getCreatedBy, creatorUserId)
+                .in(CoupleSpaceDO::getStatus, 0, 1)
+                .apply("(SELECT COUNT(*) FROM couple_member WHERE space_id = {0} AND status = 1) = 1",
+                        spaceId)
+                .apply("NOT EXISTS (SELECT 1 FROM couple_member WHERE space_id = {0} "
+                        + "AND status = 1 AND user_id <> {1})", spaceId, creatorUserId)
+                .set(CoupleSpaceDO::getStatus, 6)
+                .set(CoupleSpaceDO::getVisibility, 0)
+                .set(CoupleSpaceDO::getDestroyedAt, destroyedAt)
+                .set(CoupleSpaceDO::getUpdateTime, destroyedAt));
+    }
+
+    /**
+     * 管理员从销毁留档恢复空间：只允许 status=6 → 目标状态（销毁前状态，通常是 0 等待绑定）。
+     *
+     * <p>恢复后固定私密，不自动重新公开。{@code destroyed_at} 保留不清空，
+     * 作为历史销毁时间；恢复时间写入留档表。publicAt、spaceCode、创建者与全部内容保持不变。</p>
+     */
+    default int restoreDestroyed(Long spaceId, int targetStatus, LocalDateTime updateTime) {
+        return update(null, new LambdaUpdateWrapper<CoupleSpaceDO>()
+                .eq(CoupleSpaceDO::getId, spaceId)
+                .eq(CoupleSpaceDO::getStatus, 6)
+                .set(CoupleSpaceDO::getStatus, targetStatus)
+                .set(CoupleSpaceDO::getVisibility, 0)
+                .set(CoupleSpaceDO::getUpdateTime, updateTime));
+    }
+
+    /**
      * 工作台空间状态计数。返回每行包含 status 与 count 两个字段。
      */
     default List<java.util.Map<String, Object>> selectStatusCounts() {

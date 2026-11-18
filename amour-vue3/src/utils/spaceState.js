@@ -12,6 +12,8 @@ export const SPACE_STATUS = Object.freeze({
   ARCHIVED: 3,
   DELETING: 4,
   DELETED: 5,
+  /** 创建者在另一半加入前销毁：对普通用户不可见、不可访问，仅管理员可从留档恢复。 */
+  DESTROYED: 6,
 })
 
 export const SPACE_VIEW_MODE = Object.freeze({
@@ -51,6 +53,7 @@ export const SPACE_LIFECYCLE_ACTION = Object.freeze({
   LEAVE: 'leave',
   FREEZE: 'freeze',
   RESTORE: 'restore',
+  DESTROY: 'destroy',
 })
 
 /**
@@ -64,6 +67,99 @@ export function hasSpaceIdentity(spaceStatus) {
 /** 已完成解绑（status=5）的历史空间不能再当作可用空间。 */
 export function isUnboundSpace(spaceStatus) {
   return Boolean(spaceStatus) && Number(spaceStatus.status) === SPACE_STATUS.DELETED
+}
+
+/**
+ * 已被创建者销毁（status=6）的空间。
+ *
+ * 销毁后对普通用户完全不可见、不可访问：既不是「我的情侣空间」，也不能再执行任何
+ * 生命周期写操作；只有平台管理员可以从留档恢复。
+ */
+export function isDestroyedSpace(spaceStatus) {
+  return Boolean(spaceStatus) && Number(spaceStatus.status) === SPACE_STATUS.DESTROYED
+}
+
+/** 后端销毁相关业务错误码。前端只用于提示与状态处理，不据此绕过服务端校验。 */
+export const SPACE_DESTROY_ERROR = Object.freeze({
+  /** 只有空间创建者才能销毁。 */
+  NOT_CREATOR: '20093',
+  /** 另一半已加入空间，不能再销毁。 */
+  PARTNER_JOINED: '20094',
+  /** 当前空间状态不允许销毁。 */
+  STATUS_NOT_ALLOWED: '20095',
+  /** 空间已销毁。 */
+  DESTROYED: '20096',
+})
+
+/**
+ * 从响应中读取后端业务错误码。
+ * @param {object|null} responseBody 响应体（data.success=false）
+ * @param {object|null} [error] Axios 异常
+ */
+export function readSpaceErrorCode(responseBody, error) {
+  const fromBody = responseBody && typeof responseBody === 'object' ? responseBody.errorCode : ''
+  if (fromBody != null && String(fromBody) !== '') return String(fromBody)
+  const fromError = error?.response?.data?.errorCode
+  if (fromError != null && String(fromError) !== '') return String(fromError)
+  return ''
+}
+
+/**
+ * 销毁入口是否展示：只有「当前用户是创建者 + 另一半尚未加入」才展示。
+ *
+ * 前端隐藏只用于体验，真正的权限与成员关系校验在服务端。
+ */
+export function canShowDestroySection(spaceStatus) {
+  if (!hasActiveSpaceMembership(spaceStatus)) return false
+  if (spaceStatus?.creator !== true) return false
+  return activeSpaceMemberCount(spaceStatus) < 2
+}
+
+/**
+ * 是否允许发起销毁：创建者、有效成员恰好 1 人、空间处于等待绑定（或历史单人正常）状态，
+ * 并且当前没有待处理的解绑申请（解绑流程与销毁互斥，避免出现两套清理语义交叉）。
+ */
+export function canDestroySpace(spaceStatus) {
+  if (!canShowDestroySection(spaceStatus)) return false
+  // 解绑流程与销毁互斥：存在待处理解绑申请时先处理申请，避免两套清理语义交叉。
+  if (hasPendingUnbind(spaceStatus)) return false
+  const status = Number(spaceStatus.status)
+  if (status !== SPACE_STATUS.WAITING && status !== SPACE_STATUS.NORMAL) return false
+  return activeSpaceMemberCount(spaceStatus) === 1
+}
+
+/** 销毁被阻止的可展示原因；可以销毁时返回空字符串。 */
+export function destroyBlockReason(spaceStatus) {
+  if (!hasSpaceIdentity(spaceStatus)) return '还没有可以销毁的情侣空间'
+  // 已销毁 / 已解绑是「空间级终态」，优先于成员身份判断：
+  // 此时成员关系已被标记退出，继续判成员身份只会给出误导性的「你不是成员」。
+  const status = Number(spaceStatus.status)
+  if (status === SPACE_STATUS.DESTROYED) return '空间已销毁，只有管理员可以从留档恢复'
+  if (status === SPACE_STATUS.DELETED) return '空间已完成解绑'
+  if (!hasActiveSpaceMembership(spaceStatus)) return '你不是这个空间的成员'
+  if (status === SPACE_STATUS.FROZEN || status === SPACE_STATUS.ARCHIVED) {
+    return '冻结或归档的空间不能直接销毁'
+  }
+  if (status !== SPACE_STATUS.WAITING && status !== SPACE_STATUS.NORMAL) {
+    return '当前空间状态不允许销毁'
+  }
+  if (activeSpaceMemberCount(spaceStatus) >= 2) return '另一半已加入，不能再销毁空间'
+  if (spaceStatus?.creator !== true) return '只有空间创建者才能销毁空间'
+  if (hasPendingUnbind(spaceStatus)) return '存在待处理的解绑申请，请先处理'
+  return ''
+}
+
+/**
+ * 判断销毁请求失败是否属于「服务端拒绝且需要刷新状态」的场景。
+ *
+ * 另一半已加入 / 状态已变化都意味着页面状态过期，必须重新读取服务器状态，
+ * 不能仅依赖入口隐藏来保证安全。
+ */
+export function isDestroyRejectedByServer(responseBody, error) {
+  const code = readSpaceErrorCode(responseBody, error)
+  return code === SPACE_DESTROY_ERROR.PARTNER_JOINED
+    || code === SPACE_DESTROY_ERROR.STATUS_NOT_ALLOWED
+    || code === SPACE_DESTROY_ERROR.NOT_CREATOR
 }
 
 /**
@@ -149,8 +245,8 @@ export function activeSpaceMemberCount(spaceStatus) {
  */
 export function hasActiveSpaceMembership(spaceStatus) {
   if (!hasSpaceIdentity(spaceStatus)) return false
-  // 已完成解绑的空间即使历史上残留成员关系，也不再具备任何新操作资格。
-  if (isUnboundSpace(spaceStatus)) return false
+  // 已完成解绑或已被创建者销毁的空间即使历史上残留成员关系，也不再具备任何新操作资格。
+  if (isUnboundSpace(spaceStatus) || isDestroyedSpace(spaceStatus)) return false
   const role = Number(spaceStatus.currentUserRole)
   return (role === 1 || role === 2) && activeSpaceMemberCount(spaceStatus) > 0
 }
@@ -395,6 +491,9 @@ export function deriveExpectedViewModeAfterLifecycleAction(action) {
       return SPACE_VIEW_MODE.PRIVATE
     case SPACE_LIFECYCLE_ACTION.UNBIND_CONFIRM:
       // 只有另一方确认后才真正完成解绑，双方都不再有情侣空间。
+      return SPACE_VIEW_MODE.PLAZA
+    case SPACE_LIFECYCLE_ACTION.DESTROY:
+      // 销毁后空间从用户侧消失，页面应回到恋爱广场。
       return SPACE_VIEW_MODE.PLAZA
     case SPACE_LIFECYCLE_ACTION.LEAVE:
       // /space/leave 只是 /space/unbind/request 的兼容入口，不会单方退出。

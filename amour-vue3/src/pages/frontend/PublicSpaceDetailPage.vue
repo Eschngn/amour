@@ -1,18 +1,19 @@
 <template>
   <CouplePageScaffold>
     <main class="relative z-10">
-      <div class="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-16">
-        <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <RouterLink
-            to="/plaza"
-            class="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-white/75 px-3.5 py-2 text-xs font-semibold text-rose-600 transition hover:border-rose-300 hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
-          >
-            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path d="M19 12H5m5 5-5-5 5-5" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-            返回恋爱广场
-          </RouterLink>
-        </div>
+      <!--
+        返回栏常驻：滚到空间内容任意位置都能直接回广场。
+        从广场列表进来时走历史回退，恢复分页与滚动位置；直接打开时退回 /plaza。
+      -->
+      <StoryReturnBar
+        label="返回恋爱广场"
+        :to="returnTo || '/plaza'"
+        :link="!canGoBack"
+        aria-label="返回恋爱广场"
+        @activate="goBack"
+      />
+
+      <div class="mx-auto max-w-5xl px-4 pb-8 pt-2 sm:px-6 sm:pb-12 lg:px-8 lg:pb-16">
 
         <div v-if="loading" class="space-y-6" aria-label="正在加载公开情侣空间" aria-busy="true">
           <div class="h-14 animate-pulse rounded-2xl border border-rose-100 bg-white/55" />
@@ -45,12 +46,13 @@
             >
               重新加载
             </button>
-            <RouterLink
-              to="/plaza"
+            <button
+              type="button"
               class="rounded-full border border-rose-200 bg-white px-5 py-2.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50"
+              @click="goBack"
             >
               返回恋爱广场
-            </RouterLink>
+            </button>
           </div>
         </section>
 
@@ -218,7 +220,7 @@
                           <!-- 列表只展示摘要，完整正文进入独立公开详情页按需加载 -->
                           <RouterLink
                             v-if="story.hasContent"
-                            :to="`/plaza/${spaceId}/story/${story.storyId}`"
+                            :to="publicStoryLink(story)"
                             class="group inline-flex items-center gap-1.5 rounded-full bg-rose-500 px-4 py-2 text-xs font-semibold text-white shadow-sm shadow-rose-200 transition hover:bg-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
                             :aria-label="`阅读全文：${story.title || '未命名故事'}`"
                           >
@@ -345,9 +347,13 @@
           <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-rose-50 text-2xl text-rose-300" aria-hidden="true">♡</span>
           <h1 class="mt-4 font-display text-xl font-bold text-rose-950">没有找到这个公开空间</h1>
           <p class="mt-2 text-sm text-rose-700/50">它可能还没有公开，或者链接已经失效。</p>
-          <RouterLink to="/plaza" class="mt-5 inline-flex rounded-full bg-rose-500 px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-rose-600">
+          <button
+            type="button"
+            class="mt-5 inline-flex rounded-full bg-rose-500 px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-rose-600"
+            @click="goBack"
+          >
             返回恋爱广场
-          </RouterLink>
+          </button>
         </section>
       </div>
     </main>
@@ -363,9 +369,10 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import CouplePageScaffold from '@/components/frontend/CouplePageScaffold.vue'
+import StoryReturnBar from '@/components/frontend/StoryReturnBar.vue'
 import SpaceImagePreview from '@/components/frontend/space-studio/SpaceImagePreview.vue'
 import { fetchPublicSpaceDetail } from '@/api/gallery'
 import { buildPublicPhotoPreviews } from '@/utils/imagePreview'
@@ -387,9 +394,46 @@ import {
   themeBorderColor,
 } from '@/utils/themeColor'
 import { readSpaceErrorMessage } from '@/utils/spaceState'
+import {
+  PLAZA_LIST_PATH,
+  buildReturnTarget,
+  isPlazaListPath,
+  resolvePublicSpaceDetailReturn,
+  withReturnState,
+} from '@/utils/listViewState'
+import { useDetailReturnTarget } from '@/composables/useDetailReturnTarget'
+import { restoreScrollPosition } from '@/utils/scrollRestore'
+import { useListViewSnapshot } from '@/composables/useListViewSnapshot'
 
 const route = useRoute()
 const { spaceStatus, isSpaceReady } = useFrontendSpace()
+
+/**
+ * 公开空间也是“可返回的浏览位置”：从公开故事详情退回来时恢复滚动位置，
+ * 刷新后也能停在原处。快照绑定在 /plaza/:spaceId 这一条历史记录上。
+ */
+const {
+  snapshot: savedListView,
+} = useListViewSnapshot({
+  route,
+  collect: () => ({}),
+})
+
+let cancelScrollRestore = null
+
+/**
+ * 返回恋爱广场：从广场列表进来时历史回退（恢复分页与滚动），
+ * 直接打开时退回 /plaza。
+ */
+const {
+  returnTo,
+  canGoBack,
+  goBack,
+} = useDetailReturnTarget({
+  resolveReturn: resolvePublicSpaceDetailReturn,
+  isAllowedReturnPath: isPlazaListPath,
+  fallbackPath: PLAZA_LIST_PATH,
+})
 
 const space = ref(null)
 const loading = ref(true)
@@ -497,6 +541,17 @@ function photoDescription(photo) {
   return typeof value === 'string' ? value.trim() : ''
 }
 
+/**
+ * 公开故事详情链接：携带当前公开空间作为返回来源，
+ * 从故事详情返回时回到这个空间（滚动位置由浏览器与快照共同保证）。
+ */
+function publicStoryLink(story) {
+  return withReturnState(
+    `/plaza/${spaceId.value}/story/${story.storyId}`,
+    buildReturnTarget(route.fullPath),
+  )
+}
+
 /** 打开公开照片大图：图片下方展示标题、描述与拍摄信息。 */
 function openPhotoPreview(photo, event) {
   const index = publicPhotoPreviews.value.findIndex(item => String(item.id) === String(photo?.photoId))
@@ -514,7 +569,7 @@ function monthDay(value) {
   return `${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`
 }
 
-async function loadDetail() {
+async function loadDetail({ restoreScroll = false, restoreScrollY = 0 } = {}) {
   const id = spaceId.value
   const requestId = ++detailRequestId
 
@@ -556,11 +611,26 @@ async function loadDetail() {
       loading.value = false
     }
   }
+
+  // 内容渲染完成后再还原滚动位置：从公开故事详情退回本页时停回原处。
+  if (restoreScroll && restoreScrollY > 0 && !loadError.value) {
+    await nextTick()
+    cancelScrollRestore?.()
+    cancelScrollRestore = restoreScrollPosition(restoreScrollY)
+  }
 }
 
 watch(
   () => route.params.spaceId,
   () => {
+    // 首次进入（含从故事详情回退）时尝试恢复快照；切换到另一个空间则回到顶部。
+    const pending = savedListView.value
+    if (pending && pending.path === route.fullPath) {
+      loadDetail({ restoreScroll: true, restoreScrollY: pending.scrollY })
+      // 快照只用于这一次恢复，避免同一记录内重复应用。
+      savedListView.value = null
+      return
+    }
     loadDetail()
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -568,5 +638,10 @@ watch(
   },
   { immediate: true },
 )
+
+onBeforeUnmount(() => {
+  cancelScrollRestore?.()
+  cancelScrollRestore = null
+})
 </script>
 

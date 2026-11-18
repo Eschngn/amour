@@ -430,9 +430,20 @@ function clearSessionCache() {
 
 /**
  * 创建 / 绑定成功后刷新状态（必须 force：写操作之前发出的旧请求结果无效）。
+ *
+ * 注意返回类型：refreshSpaceStatus 返回的是空间对象（SpaceStatusVO 或 null），
+ * 本函数统一收敛为「会话快照」，调用方可以直接用 SESSION_STATUS 判断，
+ * 不会再出现“把空间对象当会话快照、status 数字与字符串永远不相等”的问题。
+ *
+ * 与 refreshSpaceStatus 一致：网络 / 服务异常不会 reject，而是把全局状态
+ * 安全降级为 error，调用方需要自行判断快照状态并给出重试入口。
+ *
+ * @param {string} [reason] 状态切换原因（日志用）
+ * @returns {Promise<ReturnType<typeof getSnapshot>>} 刷新后的会话快照
  */
 function refreshAfterSpaceChange(reason) {
-  return refreshSpaceStatus({ force: true, reason: reason || 'space-changed' })
+  const label = textOrDefault(reason, 'space-changed')
+  return refreshSpaceStatus({ force: true, reason: label }).then(() => getSnapshot())
 }
 
 /**

@@ -384,6 +384,40 @@
                   </button>
                 </template>
               </div>
+
+              <!--
+                创建者销毁入口：只在「当前用户是创建者 + 另一半尚未加入」时展示。
+                前端隐藏只用于体验；服务端会再次校验创建者身份与成员关系，另一半已加入时拒绝。
+              -->
+              <div
+                v-if="showDestroySection"
+                id="space-destroy"
+                class="scroll-mt-24 border-t border-stone-200/70 px-5 py-5"
+                aria-labelledby="space-destroy-heading"
+              >
+                <h3 id="space-destroy-heading" class="text-sm font-semibold text-stone-900">销毁并清空空间</h3>
+                <p id="space-destroy-desc" class="mt-1 text-xs leading-5 text-stone-500">
+                  在另一半加入之前，你可以销毁并清空这个空间。销毁后双方都看不到空间和内容，
+                  用户侧不能自行恢复，只有平台管理员可以协助恢复。
+                </p>
+                <p
+                  v-if="!canDestroyNow"
+                  class="mt-3 rounded-lg border border-stone-200 bg-white/70 px-3 py-2 text-[11px] leading-5 text-stone-600"
+                  role="status"
+                >
+                  {{ destroyBlockReasonText }}
+                </p>
+                <button
+                  type="button"
+                  class="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-rose-300 bg-white px-4 py-2.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                  :disabled="busyAction !== '' || !canDestroyNow"
+                  aria-describedby="space-destroy-desc"
+                  :aria-busy="isBusy('destroy') ? 'true' : 'false'"
+                  @click="destroySpace"
+                >
+                  {{ isBusy('destroy') ? '销毁中…' : '销毁并清空空间' }}
+                </button>
+              </div>
             </section>
           </aside>
         </div>
@@ -400,6 +434,7 @@ import {
   cancelCoupleSpaceUnbind,
   confirmCoupleSpaceUnbind,
   confirmSpaceRestore,
+  destroyCoupleSpace,
   rejectCoupleSpaceUnbind,
   requestCoupleSpaceUnbind,
   updateCoupleSpace,
@@ -411,6 +446,14 @@ import {
   clearSpaceStatus,
   useFrontendSpace,
 } from '@/composables/useFrontendSpace'
+import {
+  DESTROY_CONFIRM_KEYWORD,
+  buildDestroyErrorMessage,
+  buildDestroyPromptMessage,
+  clearSpaceLocalCache,
+  isDestroyStateConflict,
+  validateDestroyConfirmInput,
+} from '@/utils/spaceDestroy'
 import { formatSpaceDateTime, parseSpaceDateTime } from '@/utils/spaceFormat'
 import {
   SPACE_STATUS,
@@ -429,6 +472,9 @@ import {
   isUnbindRejectedForMe,
   isUnbindRequestConflict,
   isUnbindRequester,
+  canDestroySpace,
+  canShowDestroySection,
+  destroyBlockReason,
   readSpaceErrorMessage,
   unbindRequestBlockReason as unbindRequestBlockReasonByRule,
   visibilityBlockReason,
@@ -485,8 +531,10 @@ function memberInitial(member) {
 }
 // 刚创建、另一半还没加入的单人空间不展示解绑入口。
 const showUnbindSection = computed(() => canShowUnbindSection(spaceStatus.value))
+// 销毁入口同样属于空间生命周期操作，需要右侧边栏承载。
+const showDestroySection = computed(() => canShowDestroySection(spaceStatus.value))
 const hasLifecycle = computed(() => (
-  isRestorableSpace(spaceStatus.value) || showUnbindSection.value
+  isRestorableSpace(spaceStatus.value) || showUnbindSection.value || showDestroySection.value
 ))
 const canEditSpaceInfo = computed(() => (
   isSpaceWaiting.value
@@ -504,6 +552,8 @@ const unbindCanCancel = computed(() => canCancelUnbind(spaceStatus.value))
 const unbindCanConfirm = computed(() => canConfirmUnbind(spaceStatus.value))
 const unbindCanReject = computed(() => canRejectUnbind(spaceStatus.value))
 const canRequestUnbindNow = computed(() => canRequestUnbind(spaceStatus.value))
+const canDestroyNow = computed(() => canDestroySpace(spaceStatus.value))
+const destroyBlockReasonText = computed(() => destroyBlockReason(spaceStatus.value))
 const unbindRequestBlockReason = computed(() => unbindRequestBlockReasonByRule(spaceStatus.value))
 const unbindRequester = computed(() => (
   spaceStatus.value?.unbindRequester && typeof spaceStatus.value.unbindRequester === 'object'
@@ -933,6 +983,67 @@ async function confirmUnbind() {
     await router.push('/plaza')
   } catch (error) {
     ElMessage.error(readSpaceErrorMessage(error, '确认解绑失败，请稍后重试'))
+  } finally {
+    busyAction.value = ''
+  }
+}
+
+/**
+ * 销毁并清空空间（仅创建者、另一半未加入时可用）。
+ *
+ * 交互约定：
+ * 1. 先说明后果（双方不可见、用户侧不可恢复、仅管理员可协助恢复）；
+ * 2. 二次确认要求逐字输入固定文案，降低误触；
+ * 3. 提交锁从打开确认框之前开始，直到接口返回或取消才释放，期间所有写操作按钮禁用；
+ * 4. 成功后必须先强制刷新 /space/status，确认服务器不再返回该空间，才清理本地缓存并跳转；
+ * 5. 服务端拒绝（例如另一半已加入）时保留当前状态、提示可理解信息并强制刷新，
+ *    不依赖入口隐藏来保证安全。
+ */
+async function destroySpace() {
+  if (busyAction.value !== '' || !canDestroyNow.value) return
+  busyAction.value = 'destroy'
+  try {
+    try {
+      await ElMessageBox.prompt(buildDestroyPromptMessage(spaceStatus.value), '销毁并清空情侣空间', {
+        confirmButtonText: '确认销毁',
+        cancelButtonText: '取消',
+        type: 'warning',
+        inputType: 'textarea',
+        inputPlaceholder: `请输入“${DESTROY_CONFIRM_KEYWORD}”以确认`,
+        inputValidator: validateDestroyConfirmInput,
+        distinguishCancelAndClose: true,
+      })
+    } catch {
+      // 取消或关闭确认框：不做任何写操作，也不修改本地状态。
+      return
+    }
+
+    const { data } = await destroyCoupleSpace()
+    if (!data?.success) {
+      // 业务失败：保留当前页面状态，提示后端说明；状态类错误必须重新读取服务器状态。
+      ElMessage.error(buildDestroyErrorMessage(data, null))
+      if (isDestroyStateConflict(data, null)) {
+        await refreshSpaceStatusAfterLifecycleAction({ force: true })
+      }
+      return
+    }
+
+    // 关键：以服务器返回的 /space/status 为准。刷新失败时保持旧状态，绝不误判为已销毁。
+    await refreshSpaceStatusAfterLifecycleAction({ force: true })
+    if (spaceError.value !== '' || spaceStatus.value) {
+      ElMessage.warning('销毁已提交，但空间状态刷新失败，请重新读取状态后再离开页面')
+      return
+    }
+
+    clearSpaceLocalCache()
+    clearSpaceStatus()
+    ElMessage.success('情侣空间已销毁并清空，如有需要请联系管理员协助恢复')
+    await router.push('/plaza')
+  } catch (error) {
+    ElMessage.error(buildDestroyErrorMessage(null, error))
+    if (isDestroyStateConflict(null, error)) {
+      await refreshSpaceStatusAfterLifecycleAction({ force: true })
+    }
   } finally {
     busyAction.value = ''
   }

@@ -234,4 +234,14 @@ public interface SpaceReviewItemMapper extends BaseMapper<SpaceReviewItemDO> {
                 .in(SpaceReviewItemDO::getItemType, "STORY", "PHOTO", "ANNIVERSARY"));
         return count == null ? 0L : count;
     }
+
+    /**
+     * 销毁留档：读取空间内全部审核项。
+     */
+    default List<SpaceReviewItemDO> selectAllBySpaceIdForArchive(Long spaceId) {
+        return selectList(new LambdaQueryWrapper<SpaceReviewItemDO>()
+                .eq(SpaceReviewItemDO::getSpaceId, spaceId)
+                .orderByAsc(SpaceReviewItemDO::getId));
+    }
+
 }

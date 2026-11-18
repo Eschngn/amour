@@ -64,6 +64,14 @@ public class AdminPermissionInterceptor implements HandlerInterceptor {
         if (path.startsWith("/admin/dashboard/")) {
             return AdminPermissionConstants.DASHBOARD_QUERY;
         }
+        // 销毁留档：查询与恢复权限必须分开校验，查询权限不能用于恢复。
+        if (path.startsWith("/admin/space/archive/list")
+                || path.startsWith("/admin/space/archive/detail")) {
+            return AdminPermissionConstants.SPACE_QUERY;
+        }
+        if (path.startsWith("/admin/space/archive/restore")) {
+            return AdminPermissionConstants.SPACE_RESTORE;
+        }
         if (path.startsWith("/admin/space/list") || path.startsWith("/admin/space/detail")) {
             return AdminPermissionConstants.SPACE_QUERY;
         }

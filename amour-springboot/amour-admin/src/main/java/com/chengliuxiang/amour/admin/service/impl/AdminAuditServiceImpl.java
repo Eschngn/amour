@@ -125,6 +125,12 @@ public class AdminAuditServiceImpl implements AdminAuditService {
                 return "查看空间详情";
             case AdminAuditConstants.ACTION_SPACE_RESTORE:
                 return "人工恢复空间";
+            case AdminAuditConstants.ACTION_SPACE_DESTROY:
+                return "创建者销毁空间";
+            case AdminAuditConstants.ACTION_SPACE_ARCHIVE_VIEW:
+                return "查看销毁留档";
+            case AdminAuditConstants.ACTION_SPACE_ARCHIVE_RESTORE:
+                return "从销毁留档恢复空间";
             case AdminAuditConstants.ACTION_SPACE_SET_PRIVATE:
                 return "设为私密";
             case AdminAuditConstants.ACTION_CONTENT_VIEW:

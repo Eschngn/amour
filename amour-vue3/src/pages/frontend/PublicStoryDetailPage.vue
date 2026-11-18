@@ -1,6 +1,19 @@
 <template>
   <CouplePageScaffold>
     <main class="relative z-10">
+      <!--
+        返回栏常驻：滚到正文底部也能直接回到公开空间。
+        来源是广场列表或公开空间详情时走历史回退，恢复原来的浏览位置；
+        直接打开时退回该故事所属的公开空间，再退化为恋爱广场。
+      -->
+      <StoryReturnBar
+        :label="returnLabel"
+        :to="returnTo || spaceLink"
+        :link="!canGoBack"
+        :aria-label="returnLabel"
+        @activate="goBack"
+      />
+
       <!-- 加载中：保持与详情排版一致的骨架，避免正文加载完成时页面跳动 -->
       <div
         v-if="loading"
@@ -74,18 +87,8 @@
       </section>
 
       <!-- 公开故事详情 -->
-      <div v-else class="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-16 lg:px-8">
-        <RouterLink
-          :to="spaceLink"
-          class="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-white/75 px-3.5 py-2 text-xs font-semibold text-rose-600 transition hover:border-rose-300 hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
-        >
-          <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path d="M19 12H5m6 6-6-6 6-6" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-          返回公开空间
-        </RouterLink>
-
-        <section class="relative mt-5 overflow-hidden rounded-[2rem] border border-rose-100/80 bg-white/75 shadow-sm shadow-rose-100/50 backdrop-blur-sm">
+      <div v-else class="mx-auto max-w-5xl px-4 pb-10 pt-2 sm:px-6 sm:pb-16 lg:px-8">
+        <section class="relative overflow-hidden rounded-[2rem] border border-rose-100/80 bg-white/75 shadow-sm shadow-rose-100/50 backdrop-blur-sm">
           <div class="pointer-events-none absolute -left-12 -top-20 h-56 w-56 rounded-full bg-rose-100/60 blur-3xl" aria-hidden="true" />
           <div
             class="relative grid gap-0"
@@ -186,6 +189,7 @@ import { useRoute } from 'vue-router'
 import { MdPreview } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
 import CouplePageScaffold from '@/components/frontend/CouplePageScaffold.vue'
+import StoryReturnBar from '@/components/frontend/StoryReturnBar.vue'
 import { fetchPublicStoryDetail } from '@/api/gallery'
 import { formatSpaceDate } from '@/utils/spaceFormat'
 import {
@@ -196,6 +200,13 @@ import {
   themeBorderColor,
 } from '@/utils/themeColor'
 import { readSpaceErrorMessage } from '@/utils/spaceState'
+import {
+  PLAZA_LIST_PATH,
+  isPlazaListPath,
+  isPublicSpacePath,
+  resolvePublicStoryDetailReturn,
+} from '@/utils/listViewState'
+import { useDetailReturnTarget } from '@/composables/useDetailReturnTarget'
 
 const route = useRoute()
 
@@ -216,7 +227,33 @@ function readPositiveRouteParam(raw) {
 const spaceId = computed(() => readPositiveRouteParam(route.params.spaceId))
 const storyId = computed(() => readPositiveRouteParam(route.params.storyId))
 const spaceLink = computed(() => (
-  spaceId.value ? `/plaza/${spaceId.value}` : '/plaza'
+  spaceId.value ? `/plaza/${spaceId.value}` : PLAZA_LIST_PATH
+))
+
+/**
+ * 返回来源：公开空间详情 -> 公开故事详情，或恋爱广场列表 -> 公开空间 -> 公开故事详情。
+ * 直接打开详情时没有可信来源，退回该故事所属的公开空间。
+ */
+const {
+  returnTo,
+  returnTarget,
+  canGoBack,
+  goBack,
+} = useDetailReturnTarget({
+  resolveReturn: historyState => resolvePublicStoryDetailReturn(historyState, {
+    fallbackPath: spaceLink.value,
+  }),
+  isAllowedReturnPath: path => isPlazaListPath(path) || isPublicSpacePath(path),
+  fallbackPath: PLAZA_LIST_PATH,
+})
+
+/**
+ * 返回按钮文案：来源是广场列表时回到广场，否则回到公开空间。
+ * 用 returnTarget 而不是 returnTo —— 走历史回退（go）时 returnTo 为空，
+ * 但来源路径仍然记录在 returnTarget 里。
+ */
+const returnLabel = computed(() => (
+  isPlazaListPath(returnTarget.value?.path) ? '返回恋爱广场' : '返回公开空间'
 ))
 
 const tagAccent = computed(() => normalizeHexColor(story.value?.tagColor, DEFAULT_THEME_COLOR))

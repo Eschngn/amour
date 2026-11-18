@@ -89,4 +89,14 @@ public interface SpacePublishedItemMapper extends BaseMapper<SpacePublishedItemD
                 .eq(SpacePublishedItemDO::getPublishStatus, publishStatus));
         return count == null ? 0L : count;
     }
+
+    /**
+     * 销毁留档：读取空间内全部公开版本记录（含已下架）。
+     */
+    default List<SpacePublishedItemDO> selectAllBySpaceIdForArchive(Long spaceId) {
+        return selectList(new LambdaQueryWrapper<SpacePublishedItemDO>()
+                .eq(SpacePublishedItemDO::getSpaceId, spaceId)
+                .orderByAsc(SpacePublishedItemDO::getId));
+    }
+
 }

@@ -34,4 +34,17 @@ public interface StoryNodeImageMapper extends BaseMapper<StoryNodeImageDO> {
                 .eq(StoryNodeImageDO::getSpaceId, spaceId)
                 .eq(StoryNodeImageDO::getNodeId, nodeId));
     }
+
+    /**
+     * 销毁留档：读取空间内全部故事图片。
+     */
+    default List<StoryNodeImageDO> selectAllBySpaceIdForArchive(Long spaceId) {
+        return selectList(new LambdaQueryWrapper<StoryNodeImageDO>()
+                .eq(StoryNodeImageDO::getSpaceId, spaceId)
+                .orderByAsc(StoryNodeImageDO::getId));
+    }
+
+    default int insertForArchiveRestore(StoryNodeImageDO image) {
+        return insert(image);
+    }
 }

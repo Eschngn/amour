@@ -56,6 +56,8 @@ const SPACE_STATUS = Object.freeze({
   ARCHIVED: 3,
   DELETING: 4,
   DELETED: 5,
+  /** 创建者在另一半加入前销毁：普通用户不可见、不可访问，仅管理员可从留档恢复。 */
+  DESTROYED: 6,
 })
 
 /**

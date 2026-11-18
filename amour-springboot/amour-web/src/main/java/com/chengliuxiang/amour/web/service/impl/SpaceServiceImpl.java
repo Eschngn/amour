@@ -5,18 +5,22 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.chengliuxiang.amour.common.domain.dos.CoupleInvitationDO;
 import com.chengliuxiang.amour.common.domain.dos.CoupleMemberDO;
+import com.chengliuxiang.amour.common.domain.dos.CoupleSpaceArchiveDO;
 import com.chengliuxiang.amour.common.domain.dos.CoupleSpaceDO;
 import com.chengliuxiang.amour.common.domain.dos.CoupleSpaceRestoreConfirmDO;
 import com.chengliuxiang.amour.common.domain.dos.CoupleSpaceUnbindRequestDO;
 import com.chengliuxiang.amour.common.domain.dos.UserDO;
 import com.chengliuxiang.amour.common.domain.mapper.CoupleInvitationMapper;
 import com.chengliuxiang.amour.common.domain.mapper.CoupleMemberMapper;
+import com.chengliuxiang.amour.common.domain.mapper.CoupleSpaceArchiveMapper;
 import com.chengliuxiang.amour.common.domain.mapper.CoupleSpaceMapper;
 import com.chengliuxiang.amour.common.domain.mapper.CoupleSpaceRestoreConfirmMapper;
 import com.chengliuxiang.amour.common.domain.mapper.CoupleSpaceUnbindRequestMapper;
 import com.chengliuxiang.amour.common.domain.mapper.UserMapper;
 import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
 import com.chengliuxiang.amour.common.exception.BizException;
+import com.chengliuxiang.amour.common.model.snapshot.SpaceArchiveSnapshot;
+import com.chengliuxiang.amour.common.service.SpaceArchiveSnapshotService;
 import com.chengliuxiang.amour.common.utils.Response;
 import com.chengliuxiang.amour.web.model.vo.space.AcceptInvitationReqVO;
 import com.chengliuxiang.amour.web.model.vo.space.CreateInvitationReqVO;
@@ -27,6 +31,7 @@ import com.chengliuxiang.amour.web.model.vo.space.InvitationPreviewVO;
 import com.chengliuxiang.amour.web.model.vo.space.InvitationTokenReqVO;
 import com.chengliuxiang.amour.web.model.vo.space.InvitationVO;
 import com.chengliuxiang.amour.web.model.vo.space.RestoreConfirmVO;
+import com.chengliuxiang.amour.web.model.vo.space.SpaceDestroyVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceMemberVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceReviewStatusVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceStatusVO;
@@ -79,6 +84,7 @@ public class SpaceServiceImpl implements SpaceService {
     private static final int SPACE_STATUS_FROZEN = 2;
     private static final int SPACE_STATUS_ARCHIVED = 3;
     private static final int SPACE_STATUS_DELETED = 5;
+    private static final int SPACE_STATUS_DESTROYED = 6;
 
     private static final int MEMBER_STATUS_ACTIVE = 1;
     private static final int MEMBER_STATUS_LEFT = 3;
@@ -115,6 +121,10 @@ public class SpaceServiceImpl implements SpaceService {
     private CoupleMemberMapper coupleMemberMapper;
     @Resource
     private CoupleInvitationMapper coupleInvitationMapper;
+    @Resource
+    private CoupleSpaceArchiveMapper coupleSpaceArchiveMapper;
+    @Resource
+    private SpaceArchiveSnapshotService spaceArchiveSnapshotService;
     @Resource
     private CoupleSpaceRestoreConfirmMapper restoreConfirmMapper;
     @Resource
@@ -466,6 +476,10 @@ public class SpaceServiceImpl implements SpaceService {
         if (isDeletedSpace(space)) {
             // 已完成解绑的空间不能被旧邀请重新绑定：优先返回稳定的「已解绑」错误。
             throw new BizException(ResponseCodeEnum.SPACE_UNBOUND);
+        }
+        if (Objects.equals(space.getStatus(), SPACE_STATUS_DESTROYED)) {
+            // 已被创建者销毁的空间同样不能被旧邀请重新绑定。
+            throw new BizException(ResponseCodeEnum.SPACE_DESTROYED);
         }
         validateInvitationPending(invitation, now);
         CoupleMemberDO existing = coupleMemberMapper.selectBySpaceAndUser(space.getId(), userId);
@@ -876,6 +890,260 @@ public class SpaceServiceImpl implements SpaceService {
             throw new BizException(ResponseCodeEnum.SPACE_NOT_EXIST);
         }
         return Response.success(buildVisibilityVO(latest));
+    }
+
+    @Override
+    public Response<SpaceDestroyVO> destroySpace() {
+        Long userId = currentUserId();
+        ReentrantLock userLock = userLock(userId);
+        userLock.lock();
+        try {
+            // 幂等：用户已没有可用空间，但历史上销毁过自己创建的空间时，重复点击 / 网络重试
+            // 必须返回与首次一致的结果，而不是「你不是空间成员」这类误导性错误。
+            Response<SpaceDestroyVO> replayed = replayDestroyedSpace(userId);
+            if (replayed != null) {
+                return replayed;
+            }
+            // 先按当前登录用户的有效成员关系定位目标空间，绝不接受客户端传入 spaceId / userId。
+            // 加锁顺序保持 userLock → spaceLock，与解绑、恢复等生命周期写操作一致。
+            Long spaceId = resolveDestroyTargetSpaceId(userId);
+            ReentrantLock spaceLock = spaceLock(spaceId);
+            spaceLock.lock();
+            try {
+                // 事务必须在锁内提交：否则并发接受邀请可能在提交前读到旧成员关系，
+                // 造成「检查时未加入、提交时已加入」的竞态。
+                return transactionTemplate.execute(status -> doDestroySpace(userId, spaceId));
+            } finally {
+                spaceLock.unlock();
+            }
+        } finally {
+            userLock.unlock();
+        }
+    }
+
+    /**
+     * 重复销毁的幂等响应。
+     *
+     * <p>销毁会把成员关系标记为已退出，因此第二次请求已经找不到「有效成员关系」。
+     * 这里按「当前用户创建、status=6、留有未恢复留档」识别重放，返回同一份结果。
+     * 用户销毁后新建了别的空间时，仍会优先走正常销毁流程（见调用顺序）。</p>
+     */
+    private Response<SpaceDestroyVO> replayDestroyedSpace(Long userId) {
+        if (!coupleMemberMapper.selectActiveInLiveSpaces(userId).isEmpty()) {
+            return null;
+        }
+        List<CoupleSpaceDO> destroyedSpaces = coupleSpaceMapper.selectByCreatedBy(userId).stream()
+                .filter(space -> Objects.equals(space.getStatus(), SPACE_STATUS_DESTROYED))
+                .collect(Collectors.toList());
+        if (destroyedSpaces.isEmpty()) {
+            return null;
+        }
+        CoupleSpaceDO space = null;
+        CoupleSpaceArchiveDO archive = null;
+        for (CoupleSpaceDO candidate : destroyedSpaces) {
+            CoupleSpaceArchiveDO latest =
+                    coupleSpaceArchiveMapper.selectLatestActiveBySpaceId(candidate.getId());
+            if (latest != null) {
+                space = candidate;
+                archive = latest;
+                break;
+            }
+        }
+        if (space == null) {
+            return null;
+        }
+        return Response.success(SpaceDestroyVO.builder()
+                .spaceId(space.getId())
+                .spaceCode(space.getSpaceCode())
+                .status(space.getStatus())
+                .statusText(spaceStatusText(space.getStatus()))
+                .destroyedAt(space.getDestroyedAt())
+                .archiveId(archive.getId())
+                .destroyed(false)
+                .build());
+    }
+
+    /**
+     * 定位销毁目标空间。
+     *
+     * <p>与解绑入口不同，销毁只面向「仍然存在、尚未销毁」的空间：
+     * 已销毁空间由 {@link #doDestroySpace} 按幂等语义返回，不会走到这里。</p>
+     */
+    private Long resolveDestroyTargetSpaceId(Long userId) {
+        List<CoupleMemberDO> memberships = coupleMemberMapper.selectActiveInLiveSpaces(userId);
+        if (CollUtil.isEmpty(memberships)) {
+            // 没有任何有效成员关系：区分「已销毁/已解绑的历史残留」与「完全没有空间」。
+            if (coupleMemberMapper.countActiveByUserId(userId) > 0) {
+                throw new BizException(ResponseCodeEnum.SPACE_DESTROYED);
+            }
+            throw new BizException(ResponseCodeEnum.SPACE_NOT_MEMBER);
+        }
+        if (memberships.size() > 1) {
+            log.warn("用户 {} 存在多个未销毁空间的有效成员关系：{}", userId,
+                    memberships.stream().map(CoupleMemberDO::getSpaceId).collect(Collectors.toList()));
+            throw new BizException(ResponseCodeEnum.SPACE_MEMBERSHIP_CONFLICT);
+        }
+        return memberships.get(0).getSpaceId();
+    }
+
+    /**
+     * 销毁并清空情侣空间。
+     *
+     * <p>服务端重新校验（不信任任何客户端传参）：</p>
+     * <ol>
+     *     <li>目标空间由登录用户的有效成员关系推导；</li>
+     *     <li>当前用户必须是空间创建者（created_by 且成员身份为发起人）；</li>
+     *     <li>另一半尚未加入：有效成员数必须恰好为 1，且不允许存在其他有效成员；</li>
+     *     <li>空间仍处于可销毁状态（等待绑定，或历史上单人正常状态）；</li>
+     *     <li>空间尚未被销毁（status != 6）。</li>
+     * </ol>
+     *
+     * <p>一致性：条件更新 {@code destroyByCreator} 把上述校验一次性落到 SQL 的 WHERE 条件里，
+     * 只有全部成立才写入 status=6。任一条件不满足时返回 0 并整体回滚，
+     * 因此「并发接受邀请」与「重复销毁」都不会产生半更新或重复留档。</p>
+     *
+     * <p>留档：在同一事务内采集完整快照并写入 couple_space_archive，
+     * 不物理删除任何业务数据，也不删除对象存储文件。</p>
+     */
+    private Response<SpaceDestroyVO> doDestroySpace(Long userId, Long spaceId) {
+        // 空间行锁：与接受邀请等写操作共用，作为多实例下的最终防线。
+        coupleSpaceMapper.lockById(spaceId);
+
+        CoupleSpaceDO space = requireSpace(spaceId);
+        CoupleMemberDO membership = requireActiveMembershipInSpace(userId, spaceId);
+
+        // 幂等：同一创建者对已销毁空间重复提交，返回当前留档结果且不重复写入。
+        if (Objects.equals(space.getStatus(), SPACE_STATUS_DESTROYED)) {
+            return Response.success(buildDestroyVO(space, userId, false));
+        }
+
+        // 1. 只有创建者可以销毁。created_by 是空间级事实来源，member_role 作为兜底一致性校验。
+        if (!Objects.equals(space.getCreatedBy(), userId)
+                || (membership.getMemberRole() != null
+                && membership.getMemberRole() != MEMBER_ROLE_CREATOR)) {
+            throw new BizException(ResponseCodeEnum.SPACE_DESTROY_NOT_CREATOR);
+        }
+
+        // 2. 另一半必须尚未加入：以数据库成员关系为准，不信任前端。
+        Long activeMemberCount = coupleMemberMapper.countActiveBySpaceId(spaceId);
+        if (activeMemberCount != null && activeMemberCount >= MEMBER_LIMIT) {
+            throw new BizException(ResponseCodeEnum.SPACE_DESTROY_PARTNER_JOINED);
+        }
+        if (activeMemberCount == null || activeMemberCount != 1) {
+            // 0 人属于数据异常；既不是「另一半已加入」也不是正常单人空间，按状态错误处理。
+            throw new BizException(ResponseCodeEnum.SPACE_DESTROY_NOT_ALLOWED);
+        }
+
+        // 3. 空间必须仍处于可销毁状态。
+        if (!isDestroyableStatus(space.getStatus())) {
+            if (isRestorableStatus(space.getStatus())) {
+                throw new BizException(ResponseCodeEnum.SPACE_DESTROY_STATUS_NOT_ALLOWED);
+            }
+            throw new BizException(ResponseCodeEnum.SPACE_DESTROY_STATUS_NOT_ALLOWED);
+        }
+
+        // 4. 采集完整留档快照（空间、成员、配置、故事/章节/图片、相册/照片、纪念日、留言/回复、
+        //    审核与已发布版本）。快照与随后的状态写入处于同一事务，保证一致视图。
+        LocalDateTime now = LocalDateTime.now();
+        SpaceArchiveSnapshot snapshot = spaceArchiveSnapshotService.capture(space);
+        if (!spaceArchiveSnapshotService.hasOnlyCreatorMember(snapshot, userId)) {
+            // 采集瞬间成员关系与预期不一致（例如并发加入了第三名成员），拒绝销毁。
+            throw new BizException(ResponseCodeEnum.SPACE_DESTROY_PARTNER_JOINED);
+        }
+        SpaceArchiveSnapshotService.SnapshotCounts counts = spaceArchiveSnapshotService.countContents(snapshot);
+
+        CoupleSpaceArchiveDO archive = CoupleSpaceArchiveDO.builder()
+                .spaceId(spaceId)
+                .archiveRound(coupleSpaceArchiveMapper.nextArchiveRound(spaceId))
+                .spaceCode(space.getSpaceCode())
+                .spaceName(space.getSpaceName())
+                .statusBefore(space.getStatus())
+                .visibilityBefore(space.getVisibility())
+                .creatorUserId(space.getCreatedBy())
+                .destroyedBy(userId)
+                .destroyedAt(now)
+                .snapshotVersion(SpaceArchiveSnapshot.CURRENT_VERSION)
+                .snapshotJson(spaceArchiveSnapshotService.toJson(snapshot))
+                .memberCount(counts.getMembers())
+                .storyCount(counts.getStories())
+                .photoCount(counts.getPhotos())
+                .messageCount(counts.getMessages())
+                .anniversaryCount(counts.getAnniversaries())
+                .fileResourceCount(spaceArchiveSnapshotService.countFileResources(snapshot))
+                .createTime(now)
+                .updateTime(now)
+                .build();
+        coupleSpaceArchiveMapper.insertArchive(archive);
+
+        // 5. 条件更新空间状态；失败说明并发下成员关系或状态已变化，整体回滚（含已写入的留档）。
+        int destroyed = coupleSpaceMapper.destroyByCreator(spaceId, userId, now);
+        if (destroyed == 0) {
+            throw resolveDestroyFailure(spaceId, userId);
+        }
+
+        // 6. 成员关系标记为已退出（保留行，不物理删除）：任何依赖「有效成员」的查询都不再返回该空间，
+        //    即使有代码路径漏判 status=6，成员维度也已经无法继续使用空间。
+        int left = coupleMemberMapper.leaveAllActiveForDestroy(
+                spaceId, MEMBER_STATUS_LEFT, now, now);
+        if (left != 1) {
+            // 并发下成员关系被改写（例如刚好有第三名成员加入）时整体回滚。
+            throw new BizException(ResponseCodeEnum.SPACE_DESTROY_PARTNER_JOINED);
+        }
+
+        // 7. 销毁后撤销待处理邀请、清理恢复确认与解绑申请；内容表一律不做任何改动。
+        coupleInvitationMapper.revokePendingBySpaceId(spaceId, now);
+        restoreConfirmMapper.deleteBySpaceId(spaceId);
+        unbindRequestMapper.cancelPendingBySpaceId(spaceId, userId, now);
+        spaceReviewService.withdrawPending(spaceId, userId, "情侣空间已销毁");
+
+        CoupleSpaceDO latest = coupleSpaceMapper.findById(spaceId);
+        log.info("创建者 {} 销毁情侣空间 {}，留档 ID {}，成员 {} 故事 {} 照片 {} 留言 {} 纪念日 {}",
+                userId, spaceId, archive.getId(), counts.getMembers(), counts.getStories(),
+                counts.getPhotos(), counts.getMessages(), counts.getAnniversaries());
+        return Response.success(buildDestroyVO(latest == null ? space : latest, userId, true));
+    }
+
+    /**
+     * 条件更新失败的稳定错误：优先区分「另一半已加入」，其余按状态不允许处理。
+     */
+    private BizException resolveDestroyFailure(Long spaceId, Long userId) {
+        CoupleSpaceDO latest = coupleSpaceMapper.findById(spaceId);
+        if (latest == null) {
+            return new BizException(ResponseCodeEnum.SPACE_NOT_EXIST);
+        }
+        if (Objects.equals(latest.getStatus(), SPACE_STATUS_DESTROYED)) {
+            // 并发重复销毁：另一个请求已先完成，按幂等成功语义由调用方重读处理。
+            return new BizException(ResponseCodeEnum.SPACE_DESTROYED);
+        }
+        Long activeCount = coupleMemberMapper.countActiveBySpaceId(spaceId);
+        if (activeCount != null && activeCount >= MEMBER_LIMIT) {
+            return new BizException(ResponseCodeEnum.SPACE_DESTROY_PARTNER_JOINED);
+        }
+        if (!Objects.equals(latest.getCreatedBy(), userId)) {
+            return new BizException(ResponseCodeEnum.SPACE_DESTROY_NOT_CREATOR);
+        }
+        return new BizException(ResponseCodeEnum.SPACE_DESTROY_STATUS_NOT_ALLOWED);
+    }
+
+    private SpaceDestroyVO buildDestroyVO(CoupleSpaceDO space, Long userId, boolean destroyedNow) {
+        CoupleSpaceArchiveDO archive = coupleSpaceArchiveMapper.selectLatestActiveBySpaceId(space.getId());
+        return SpaceDestroyVO.builder()
+                .spaceId(space.getId())
+                .spaceCode(space.getSpaceCode())
+                .status(space.getStatus())
+                .statusText(spaceStatusText(space.getStatus()))
+                .destroyedAt(space.getDestroyedAt())
+                .archiveId(archive == null ? null : archive.getId())
+                .destroyed(destroyedNow)
+                .build();
+    }
+
+    /**
+     * 可销毁状态：等待绑定（0）是标准场景；历史上「单人正常（1）」同样没有另一半，
+     * 也应允许创建者销毁，避免脏状态卡死用户。
+     */
+    private boolean isDestroyableStatus(Integer status) {
+        return status != null && (status == SPACE_STATUS_WAITING || status == SPACE_STATUS_NORMAL);
     }
 
     @Override

@@ -38,6 +38,25 @@ html:root {
   --admin-nav-hover: #f3f1ee;
   --admin-header-bg: rgba(255, 255, 255, 0.88);
   --admin-overlay: rgba(28, 25, 23, 0.32);
+
+  /*
+   * 前台吸顶栏高度：SiteHeader 挂载后会实测并覆盖（移动端还有一条二级导航）。
+   * 这里给出首屏默认值，避免详情页返回栏在第一帧闪到顶栏下面。
+   */
+  --site-header-height: 64px;
+}
+
+/*
+ * 详情页返回栏的高度（按钮 36px + 上下内边距 20px）。
+ * 正文里的 sticky 侧栏/TOC 用下面的工具类对齐到返回栏下方，
+ * 避免吸顶元素互相遮挡。
+ */
+html:root {
+  --detail-return-bar-height: 3.5rem;
+}
+
+.detail-sticky-below-bar {
+  top: calc(var(--site-header-height, 64px) + var(--detail-return-bar-height) + 0.5rem);
 }
 
 /* 顶部轻提示：半透明圆角卡片 + 玫瑰色描边与柔和投影 */

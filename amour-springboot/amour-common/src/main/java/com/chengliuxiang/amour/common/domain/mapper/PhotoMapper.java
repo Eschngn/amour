@@ -309,4 +309,17 @@ public interface PhotoMapper extends BaseMapper<PhotoDO> {
                 .eq(PhotoDO::getPhotoCategoryId, categoryId)
                 .eq(PhotoDO::getIsDeleted, false));
     }
+
+    /**
+     * 销毁留档：读取空间内全部照片（含已逻辑删除）。
+     */
+    default List<PhotoDO> selectAllBySpaceIdForArchive(Long spaceId) {
+        return selectList(new LambdaQueryWrapper<PhotoDO>()
+                .eq(PhotoDO::getSpaceId, spaceId)
+                .orderByAsc(PhotoDO::getId));
+    }
+
+    default int insertForArchiveRestore(PhotoDO photo) {
+        return insert(photo);
+    }
 }

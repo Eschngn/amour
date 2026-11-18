@@ -10,6 +10,7 @@ import com.chengliuxiang.amour.web.model.vo.space.InvitationPreviewVO;
 import com.chengliuxiang.amour.web.model.vo.space.InvitationTokenReqVO;
 import com.chengliuxiang.amour.web.model.vo.space.InvitationVO;
 import com.chengliuxiang.amour.web.model.vo.space.RestoreConfirmVO;
+import com.chengliuxiang.amour.web.model.vo.space.SpaceDestroyVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceStatusVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceVisibilityReqVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceVisibilityVO;
@@ -104,4 +105,16 @@ public interface SpaceService {
      * 设置当前空间是否公开到恋爱广场。
      */
     Response<SpaceVisibilityVO> updateVisibility(SpaceVisibilityReqVO reqVO);
+
+    /**
+     * 创建者在「另一半尚未加入」时销毁并清空情侣空间。
+     *
+     * <p>服务端根据登录身份与数据库成员关系重新校验：操作者是空间创建者、另一半尚未加入、
+     * 空间仍处于等待绑定状态。销毁不做物理删除，而是写入完整留档并把空间标记为 status=6，
+     * 之后空间对普通用户完全不可见、不可访问，只有平台管理员可以从留档恢复。</p>
+     *
+     * <p>重复提交按幂等处理：已销毁时返回当前留档信息且 {@code destroyed=false}，
+     * 不会重复销毁或重复写入留档。</p>
+     */
+    Response<SpaceDestroyVO> destroySpace();
 }

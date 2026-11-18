@@ -194,4 +194,17 @@ public interface AnniversaryMapper extends BaseMapper<AnniversaryDO> {
                 .orderByDesc(AnniversaryDO::getId))
                 .getRecords();
     }
+
+    /**
+     * 销毁留档：读取空间内全部纪念日（含已逻辑删除）。
+     */
+    default List<AnniversaryDO> selectAllBySpaceIdForArchive(Long spaceId) {
+        return selectList(new LambdaQueryWrapper<AnniversaryDO>()
+                .eq(AnniversaryDO::getSpaceId, spaceId)
+                .orderByAsc(AnniversaryDO::getId));
+    }
+
+    default int insertForArchiveRestore(AnniversaryDO anniversary) {
+        return insert(anniversary);
+    }
 }

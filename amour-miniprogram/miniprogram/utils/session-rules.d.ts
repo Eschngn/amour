@@ -16,7 +16,19 @@ export interface AccessRedirect {
 
 export function isValidSpaceId(spaceId: unknown): boolean
 export function deriveHasSpace(space: Partial<CoupleSpace> | null | undefined): boolean
+export function isDestroyedSpace(space: Partial<CoupleSpace> | null | undefined): boolean
 export function isWaitingForPartner(space: Partial<CoupleSpace> | null | undefined): boolean
+export const SPACE_DESTROY_ERROR_CODE: Readonly<{
+  NOT_CREATOR: string
+  PARTNER_JOINED: string
+  STATUS_NOT_ALLOWED: string
+  DESTROYED: string
+  NOT_MEMBER: string
+}>
+export function canShowDestroyEntry(space: Partial<CoupleSpace> | null | undefined): boolean
+export function canDestroySpace(space: Partial<CoupleSpace> | null | undefined): boolean
+export function destroyBlockReason(space: Partial<CoupleSpace> | null | undefined): string
+export function isDestroyRejectedByServer(error: { errorCode?: string } | null | undefined): boolean
 export function isNormalSpace(space: Partial<CoupleSpace> | null | undefined): boolean
 export function deriveSessionStatus(input: SessionRuleInput): SessionStatus
 export function isLoggedInStatus(status: SessionStatus | string): boolean

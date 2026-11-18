@@ -314,8 +314,12 @@ test('公开空间详情只展示故事摘要并提供阅读全文入口', () =>
   assert.match(source, /sm:h-36/)
   assert.doesNotMatch(source, /sm:min-h-28|sm:aspect-auto/)
 
-  // 有正文时进入独立的公开故事详情页。
-  assert.match(source, /:to="`\/plaza\/\$\{spaceId\}\/story\/\$\{story\.storyId\}`"/)
+  // 有正文时进入独立的公开故事详情页，并携带返回来源（公开空间），
+  // 保证故事详情页能回到原来的空间浏览位置而不是重置。
+  assert.match(source, /:to="publicStoryLink\(story\)"/)
+  assert.match(source, /function publicStoryLink\(story\)/)
+  assert.match(source, /withReturnState\(/)
+  assert.match(source, /buildReturnTarget\(route\.fullPath\)/)
   assert.match(source, /阅读全文/)
   assert.match(source, /这篇故事还没有正文/)
 })

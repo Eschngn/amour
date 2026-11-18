@@ -40,8 +40,8 @@ export function refreshSpaceStatus(options?: {
   force?: boolean
   reason?: string
 }): Promise<Partial<CoupleSpace> | null>
-/** 创建 / 绑定成功后的强制刷新。 */
-export function refreshAfterSpaceChange(reason?: string): Promise<Partial<CoupleSpace> | null>
+/** 创建 / 绑定成功后的强制刷新；返回刷新后的会话快照（不是空间对象）。 */
+export function refreshAfterSpaceChange(reason?: string): Promise<SessionSnapshot>
 /** 登录成功统一入口：写入会话并刷新空间状态。 */
 export function notifyLoginSuccess(session: AuthSession): Promise<SessionSnapshot>
 /** 退出登录：清理缓存与全局状态。 */

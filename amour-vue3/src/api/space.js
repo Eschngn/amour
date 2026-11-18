@@ -212,6 +212,31 @@ export function leaveCoupleSpace() {
 }
 
 /**
+ * 创建者在「另一半尚未加入」时销毁并清空情侣空间。
+ *
+ * 对应后端 POST /space/destroy：无请求体。目标空间与操作者身份完全由服务端按登录态与
+ * 数据库成员关系推导，客户端不能指定 spaceId / userId。
+ *
+ * 服务端行为：
+ * - 只有空间创建者、且另一半尚未加入（有效成员恰好 1 人）、空间仍可销毁时才成功；
+ * - 另一半已加入返回 20094，非创建者返回 20093，状态不允许返回 20095；
+ * - 重复提交 / 网络重试按幂等处理：已销毁时返回同一份结果，`destroyed=false`；
+ * - 销毁不是物理删除：服务端写入完整留档，空间对普通用户不可见、不可访问，
+ *   只有平台管理员可以从留档恢复。
+ *
+ * 响应 data 为 SpaceDestroyVO：
+ * { spaceId, spaceCode, status, statusText, destroyedAt, archiveId, destroyed }。
+ *
+ * 成功后必须强制刷新 /space/status（此时应返回 data=null），
+ * 不能把网络失败误判为已销毁，也不能在本地伪造 status=6。
+ *
+ * @returns {Promise<import('axios').AxiosResponse>}
+ */
+export function destroyCoupleSpace() {
+  return api.post('/space/destroy')
+}
+
+/**
  * 设置空间整体是否公开到恋爱广场。
  *
  * 请求体只有 { visibility }，目标空间同样由后端按当前登录用户推导：

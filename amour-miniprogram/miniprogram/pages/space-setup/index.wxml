@@ -22,6 +22,15 @@
         <button class="retry-button" bindtap="onRetryPage">重试</button>
       </view>
 
+      <!-- 创建 / 绑定已成功，只是全局状态刷新失败：独立提示 + 重试，不回滚已创建状态 -->
+      <view wx:if="{{syncError}}" class="error-band sync-error-band">
+        <view class="error-copy">
+          <text class="error-title">{{syncErrorTitle}}</text>
+          <text class="error-note">{{syncError}}</text>
+        </view>
+        <button class="retry-button" bindtap="onRetrySync" loading="{{syncing}}" disabled="{{syncing}}">{{syncing ? '同步中…' : '重试同步'}}</button>
+      </view>
+
       <!-- 已创建但等待另一半加入：只展示邀请区，不再展示创建表单 -->
       <block wx:if="{{waiting}}">
         <view class="section-card">
@@ -47,12 +56,31 @@
           <text class="section-note">另一半加入后，故事、相册、留言等完整功能会自动出现在底部导航里。</text>
           <button class="secondary-button" bindtap="goProfile" hover-class="button-hover">去「我的」看看</button>
         </view>
+
+        <!--
+          创建者销毁入口：仅在「当前用户是创建者 + 另一半尚未加入」时展示。
+          前端隐藏只用于体验；服务端会再次校验创建者身份与成员关系，另一半已加入时拒绝。
+        -->
+        <view wx:if="{{showDestroyEntry}}" class="section-card destroy-card">
+          <text class="section-kicker">DESTROY</text>
+          <text class="section-title">销毁并清空空间</text>
+          <text class="section-note">在另一半加入之前，你可以销毁并清空这个空间。销毁后双方都看不到空间和内容，用户侧不能自行恢复，只有平台管理员可以协助恢复。</text>
+          <view wx:if="{{destroyBlockReason}}" class="inline-note">{{destroyBlockReason}}</view>
+          <view wx:if="{{destroyError}}" class="inline-error">{{destroyError}}</view>
+          <button
+            class="destroy-button"
+            bindtap="onDestroySpace"
+            loading="{{destroying}}"
+            disabled="{{destroying || !canDestroyNow}}"
+            hover-class="button-hover"
+          >{{destroying ? '正在销毁…' : '销毁并清空空间'}}</button>
+        </view>
       </block>
 
       <block wx:elif="{{hasSpace}}">
         <view class="section-card">
           <text class="section-title">你已经有情侣空间了</text>
-          <text class="section-note">正在返回空间首页…</text>
+          <text class="section-note">{{syncError ? '状态刷新成功后会自动返回空间首页，也可以点击上方「重试同步」。' : '正在返回空间首页…'}}</text>
         </view>
       </block>
 

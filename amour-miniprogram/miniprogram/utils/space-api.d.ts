@@ -5,6 +5,7 @@ import type {
   CreateInvitationResult,
   CreateSpacePayload,
   InvitationPreview,
+  SpaceDestroyResult,
   SpaceInvitation,
 } from '../types/space'
 
@@ -16,3 +17,5 @@ export function fetchSpaceInvitations(): Promise<SpaceInvitation[]>
 export function fetchReceivedInvitations(): Promise<SpaceInvitation[]>
 export function previewInvitation(token: string): Promise<InvitationPreview>
 export function acceptInvitation(payload: AcceptInvitationPayload): Promise<CoupleSpace>
+/** 创建者在另一半未加入时销毁空间；已销毁时幂等返回同一份结果（destroyed=false）。 */
+export function destroyCoupleSpace(): Promise<SpaceDestroyResult>

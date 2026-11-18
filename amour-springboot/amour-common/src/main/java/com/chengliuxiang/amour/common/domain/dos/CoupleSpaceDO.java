@@ -30,6 +30,7 @@ public class CoupleSpaceDO {
 
     /**
      * 空间状态：0-等待绑定 1-正常 2-冻结 3-历史归档 4-删除等待期 5-已解绑（逻辑删除）
+     * 6-已销毁（创建者在另一半加入前主动销毁，等待管理员从留档恢复）
      */
     private Integer status;
 
@@ -50,6 +51,12 @@ public class CoupleSpaceDO {
      * 完成解绑（逻辑删除）时间，status=5 时写入；历史归档(status=3)不写该字段。
      */
     private LocalDateTime deletedAt;
+
+    /**
+     * 创建者在另一半加入前主动销毁空间的时间，status=6 时写入。
+     * 销毁不是物理删除：空间与全部关联数据保留，等待管理员从留档恢复。
+     */
+    private LocalDateTime destroyedAt;
 
     private Long createdBy;
 

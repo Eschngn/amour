@@ -369,11 +369,13 @@
                         :time-config="datePickerTimeConfig"
                         :action-row="datePickerActionRow"
                         :input-attrs="{ id: 'setup-love-start', clearable: true }"
-                        :max-date="now"
+                        :max-date="loveStartMaxDate"
                         :dark="false"
                         :teleport="false"
                         placeholder="选择你们在一起的那一天"
                         model-type="format"
+                        @open="refreshLoveStartMaxDate"
+                        @internal-model-change="refreshLoveStartMaxDate"
                       >
                         <template #input-icon>
                           <span class="love-start-picker__icon" aria-hidden="true">
@@ -624,7 +626,8 @@ import {
   validateInviteeAmourId,
 } from '@/utils/spaceInvitation'
 import { resolveSafeRedirect } from '@/utils/safeRedirect'
-import { isUnboundSpace, readSpaceErrorMessage } from '@/utils/spaceState'
+import { isDestroyedSpace, isUnboundSpace, readSpaceErrorMessage } from '@/utils/spaceState'
+import { createMaxDateRef } from '@/utils/datePickerBounds'
 
 const route = useRoute()
 const router = useRouter()
@@ -640,8 +643,12 @@ const {
 } = useFrontendSpace()
 
 /** 有未解绑的空间时，页面统一展示空间概览与设置面板。 */
+// 已解绑（status=5）与已销毁（status=6）都是「用户侧没有可用空间」：
+// 不能再渲染空间设置面板（否则会重新暴露销毁 / 解绑 / 邀请等入口）。
 const showSpacePanel = computed(() => (
-  hasCoupleSpace.value && !isUnboundSpace(spaceStatus.value)
+  hasCoupleSpace.value
+  && !isUnboundSpace(spaceStatus.value)
+  && !isDestroyedSpace(spaceStatus.value)
 ))
 const pageHeading = computed(() => {
   if (showSpacePanel.value) return '空间设置'
@@ -691,8 +698,17 @@ const datePickerTimeConfig = {
   enableSeconds: false,
   minutesGridIncrement: 5,
 }
-/** 恋爱开始时间不能选未来。 */
-const now = new Date()
+/**
+ * 恋爱开始时间不能选未来。
+ *
+ * 注意不能写成 `const now = new Date()` 的固定快照：用户在该页面停留一段时间后
+ * 再点“此刻”，组件写入的时间会晚于过期上限，校验判为无效并禁用「确定」。
+ * 这里用可刷新的上限，在面板打开与取值变化时更新为真正的“此刻”。
+ */
+const {
+  maxDate: loveStartMaxDate,
+  refresh: refreshLoveStartMaxDate,
+} = createMaxDateRef()
 
 const inviteToken = ref('')
 const preview = ref(null)

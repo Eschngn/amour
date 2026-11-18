@@ -75,4 +75,17 @@ public interface PhotoCategoryMapper extends BaseMapper<PhotoCategoryDO> {
                 .orderByDesc(PhotoCategoryDO::getId)
                 .last("LIMIT 1"));
     }
+
+    /**
+     * 销毁留档：读取空间内全部相册分类（含停用）。
+     */
+    default List<PhotoCategoryDO> selectAllBySpaceIdForArchive(Long spaceId) {
+        return selectList(new LambdaQueryWrapper<PhotoCategoryDO>()
+                .eq(PhotoCategoryDO::getSpaceId, spaceId)
+                .orderByAsc(PhotoCategoryDO::getId));
+    }
+
+    default int insertForArchiveRestore(PhotoCategoryDO category) {
+        return insert(category);
+    }
 }

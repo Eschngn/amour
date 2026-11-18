@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.chengliuxiang.amour.common.domain.dos.MessageDO;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public interface MessageMapper extends BaseMapper<MessageDO> {
 
@@ -79,5 +80,18 @@ public interface MessageMapper extends BaseMapper<MessageDO> {
         return selectCount(new LambdaQueryWrapper<MessageDO>()
                 .eq(MessageDO::getSpaceId, spaceId)
                 .eq(MessageDO::getIsDeleted, false));
+    }
+
+    /**
+     * 销毁留档：读取空间内全部留言（含已逻辑删除）。
+     */
+    default List<MessageDO> selectAllBySpaceIdForArchive(Long spaceId) {
+        return selectList(new LambdaQueryWrapper<MessageDO>()
+                .eq(MessageDO::getSpaceId, spaceId)
+                .orderByAsc(MessageDO::getId));
+    }
+
+    default int insertForArchiveRestore(MessageDO message) {
+        return insert(message);
     }
 }

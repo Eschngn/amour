@@ -11,6 +11,7 @@ import com.chengliuxiang.amour.web.model.vo.space.InvitationPreviewVO;
 import com.chengliuxiang.amour.web.model.vo.space.InvitationTokenReqVO;
 import com.chengliuxiang.amour.web.model.vo.space.InvitationVO;
 import com.chengliuxiang.amour.web.model.vo.space.RestoreConfirmVO;
+import com.chengliuxiang.amour.web.model.vo.space.SpaceDestroyVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceStatusVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceVisibilityReqVO;
 import com.chengliuxiang.amour.web.model.vo.space.SpaceVisibilityVO;
@@ -127,6 +128,12 @@ public class SpaceController {
     @PostMapping("/unbind/confirm")
     public Response<UnbindStatusVO> confirmUnbind() {
         return spaceService.confirmUnbind();
+    }
+
+    @ApiOperationLog(description = "创建者销毁情侣空间（另一半未加入）")
+    @PostMapping("/destroy")
+    public Response<SpaceDestroyVO> destroySpace() {
+        return spaceService.destroySpace();
     }
 
     @ApiOperationLog(description = "设置情侣空间公开状态")

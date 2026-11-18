@@ -112,7 +112,7 @@
                 <ol class="space-y-5">
                   <li v-for="story in currentStories" :key="story.id" class="relative sm:pl-12">
                     <span class="absolute left-3 top-7 z-10 hidden h-3.5 w-3.5 rounded-full border-[3px] border-white shadow-sm sm:block" :style="storyDotStyle(story)" aria-hidden="true" />
-                    <router-link :to="'/story/' + story.id" class="group block min-w-0 overflow-hidden rounded-2xl border border-rose-100/90 bg-white/85 p-3 shadow-sm shadow-rose-100/30 transition duration-300 hover:-translate-y-0.5 hover:border-rose-200 hover:shadow-lg sm:rounded-3xl sm:p-0">
+                    <router-link :to="storyLink(story)" class="group block min-w-0 overflow-hidden rounded-2xl border border-rose-100/90 bg-white/85 p-3 shadow-sm shadow-rose-100/30 transition duration-300 hover:-translate-y-0.5 hover:border-rose-200 hover:shadow-lg sm:rounded-3xl sm:p-0">
                       <div class="grid sm:grid-cols-[minmax(0,1fr)_12rem]" :class="story.coverImage ? '' : 'sm:grid-cols-1'">
                         <div class="min-w-0 p-4 sm:p-6">
                           <div class="flex flex-wrap items-center gap-2 text-[11px] text-rose-600/50">
@@ -159,7 +159,8 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, watch, nextTick, onBeforeUnmount } from 'vue'
+import { useRoute } from 'vue-router'
 import CouplePageScaffold from '@/components/frontend/CouplePageScaffold.vue'
 import {
   DEFAULT_THEME_COLOR,
@@ -169,7 +170,31 @@ import {
   softenHexColor,
   themeBorderColor,
 } from '@/utils/themeColor'
+import {
+  STORY_LIST_PATH,
+  buildReturnTarget,
+  sanitizeChapterIndex,
+  withReturnState,
+} from '@/utils/listViewState'
+import { restoreScrollPosition } from '@/utils/scrollRestore'
+import { useListViewSnapshot } from '@/composables/useListViewSnapshot'
 import api from '@/axios'
+
+const route = useRoute()
+
+/**
+ * 浏览状态恢复：章节下标 + 列表滚动位置。
+ *
+ * 快照挂在 /story 这一条历史记录上（见 listViewState 的说明），
+ * 从其它入口新开的 /story 记录没有快照，仍从第一章开始。
+ */
+const {
+  snapshot: savedListView,
+  scheduleSave: scheduleListSnapshotSave,
+} = useListViewSnapshot({
+  route,
+  collect: () => ({ chapterIndex: activeChapter.value }),
+})
 
 const chapters = ref([])
 const currentStories = ref([])
@@ -184,6 +209,20 @@ const storiesLoading = ref(false)
 const loadError = ref('')
 const storiesError = ref('')
 const activeChapter = ref(0)
+
+/** 待恢复的滚动位置：数据渲染完成后才开始还原，避免过早滚动落空。 */
+let pendingScrollRestore = null
+let cancelScrollRestore = null
+
+function scheduleScrollRestore() {
+  const target = pendingScrollRestore
+  if (!target) return
+  pendingScrollRestore = null
+  nextTick(() => {
+    cancelScrollRestore?.()
+    cancelScrollRestore = restoreScrollPosition(target)
+  })
+}
 
 async function fetchStoryOverview() {
   const res = await api.post('/story/overview')
@@ -251,11 +290,29 @@ async function fetchStoriesByChapterId(chapterId) {
 async function init() {
   loading.value = true
   loadError.value = ''
+  // 只有章节数据回来之后才知道上次的章节下标是否仍然有效。
+  let restoreChapterIndex = null
+  let restoreScrollY = 0
+  const pending = savedListView.value
+  if (pending) {
+    restoreChapterIndex = pending.data?.chapterIndex
+    restoreScrollY = pending.scrollY
+  }
   activeChapter.value = 0
+  let restoreApplied = false
   try {
     await fetchStoryOverview()
+    const chapterIndex = sanitizeChapterIndex(restoreChapterIndex, chapters.value.length)
     if (chapters.value.length) {
-      await fetchStoriesByChapterId(chapters.value[0].id)
+      // 恢复章节时直接拉取对应故事，避免先按第一章请求一次再切换造成闪烁。
+      suppressChapterWatch = true
+      activeChapter.value = chapterIndex ?? 0
+      try {
+        await fetchStoriesByChapterId(chapters.value[activeChapter.value].id)
+      } finally {
+        suppressChapterWatch = false
+      }
+      restoreApplied = true
     }
   } catch (e) {
     console.error('Failed to init story page:', e)
@@ -263,14 +320,42 @@ async function init() {
   } finally {
     loading.value = false
   }
+  // 章节内容渲染完成后再还原滚动位置；章节已失效时只回到顶部。
+  if (restoreApplied) {
+    pendingScrollRestore = restoreScrollY
+    scheduleScrollRestore()
+  }
 }
 
+/** init 恢复章节时抑制 watcher，避免重复请求同一章。 */
+let suppressChapterWatch = false
+
 watch(activeChapter, async (newIdx) => {
+  if (suppressChapterWatch) return
+  // 章节切换后立刻记录，刷新时也能回到当前章节。
+  scheduleListSnapshotSave()
   const chapter = chapters.value[newIdx]
   if (chapter?.id) {
     await fetchStoriesByChapterId(chapter.id)
   }
 })
+
+onBeforeUnmount(() => {
+  cancelScrollRestore?.()
+  cancelScrollRestore = null
+})
+
+/**
+ * 进入详情时把“来源列表”写进目标路由的 history.state：
+ * 详情页据此优先回退到这条列表记录，从而恢复章节与滚动位置；
+ * 直接打开详情页时没有这个 state，详情页走默认列表兜底。
+ */
+function storyLink(story) {
+  return withReturnState(
+    '/story/' + story.id,
+    buildReturnTarget(route.fullPath || STORY_LIST_PATH),
+  )
+}
 
 function formatDate(dateStr) {
   if (!dateStr) return ''

@@ -119,6 +119,14 @@ page {
 
 .retry-button::after { border: 0; }
 
+/* 创建 / 绑定已成功、仅全局状态刷新失败：用提示色而非错误色，避免被误读成创建失败 */
+.sync-error-band {
+  border-color: @rose-primary-light;
+  background: @bg-rose-soft;
+}
+
+.sync-error-band .error-title { color: @rose-primary-dark; }
+
 .section-card {
   margin-bottom: @space-3;
   padding: @space-5 @space-4;
@@ -390,3 +398,30 @@ page {
 .safe-bottom { height: calc(40rpx + env(safe-area-inset-bottom)); }
 
 @keyframes spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+
+/* 创建者销毁空间：危险操作卡片与按钮，视觉上与普通次要按钮区分。 */
+.destroy-card {
+  border-color: fade(@rose-primary, 26%);
+  background: fade(@rose-primary, 4%);
+}
+
+.destroy-button {
+  width: 100%;
+  height: 84rpx;
+  margin-top: @space-4;
+  padding: 0;
+  border: 1rpx solid fade(@rose-primary, 45%);
+  border-radius: @radius-sm;
+  background: @bg-card;
+  color: @rose-primary-dark;
+  font-size: @font-sm;
+  font-weight: 700;
+  line-height: 82rpx;
+}
+
+.destroy-button::after { border: 0; }
+
+.destroy-button[disabled] {
+  opacity: 0.55;
+  color: @rose-faint;
+}

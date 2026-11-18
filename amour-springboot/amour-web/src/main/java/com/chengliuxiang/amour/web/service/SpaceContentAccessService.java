@@ -37,6 +37,7 @@ public class SpaceContentAccessService {
     private static final int STATUS_ARCHIVED = 3;
     private static final int STATUS_DELETING = 4;
     private static final int STATUS_DELETED = 5;
+    private static final int STATUS_DESTROYED = 6;
 
     private static final int MEMBER_ROLE_CREATOR = 1;
     private static final int MEMBER_STATUS_ACTIVE = 1;
@@ -87,9 +88,13 @@ public class SpaceContentAccessService {
         List<CoupleMemberDO> memberships = coupleMemberMapper.selectActiveInLiveSpaces(userId);
         if (CollUtil.isEmpty(memberships)) {
             // 与现有内容接口保持一致：历史 status=5 空间的残留成员返回“已解绑”，
-            // 完全没有成员关系时返回“空间不存在”，避免泄露其他空间的信息。
+            // status=6 空间的残留成员返回“已销毁”，完全没有成员关系时返回“空间不存在”，
+            // 避免泄露其他空间的信息。
             if (coupleMemberMapper.countActiveByUserId(userId) > 0) {
                 throw new BizException(ResponseCodeEnum.SPACE_UNBOUND);
+            }
+            if (coupleMemberMapper.countMembershipInSpaceStatus(userId, STATUS_DESTROYED) > 0) {
+                throw new BizException(ResponseCodeEnum.SPACE_DESTROYED);
             }
             throw new BizException(ResponseCodeEnum.SPACE_NOT_EXIST);
         }
@@ -111,6 +116,10 @@ public class SpaceContentAccessService {
         }
         if (status == STATUS_DELETED) {
             throw new BizException(ResponseCodeEnum.SPACE_UNBOUND);
+        }
+        if (status == STATUS_DESTROYED) {
+            // 创建者已销毁空间：对普通用户不可见、不可访问，只有管理员可从留档恢复。
+            throw new BizException(ResponseCodeEnum.SPACE_DESTROYED);
         }
         if (status == STATUS_FROZEN) {
             throw new BizException(ResponseCodeEnum.SPACE_FROZEN);

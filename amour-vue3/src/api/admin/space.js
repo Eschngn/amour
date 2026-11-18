@@ -40,3 +40,44 @@ export function restoreAdminSpace(spaceId, reason) {
     reason: String(reason || '').trim(),
   })
 }
+
+/**
+ * 分页查询「已销毁空间留档」。
+ *
+ * 默认只看尚未恢复的留档；restored=true 时查看已恢复的历史留档。
+ * 与空间列表相同，权限由 @/axios 的认证头 + AdminTokenFilter + AdminPermissionInterceptor
+ * （admin:space:query）保证，前端只做展示。
+ *
+ * @param {{ current: number, size: number, keyword?: string, spaceId?: number|null, restored?: boolean|null }} payload
+ * @returns {Promise<import('axios').AxiosResponse>}
+ */
+export function fetchAdminSpaceArchivePage(payload) {
+  return api.post('/admin/space/archive/list', payload)
+}
+
+/**
+ * 查询单条销毁留档详情：完整性、恢复资格与冲突情况。
+ *
+ * @param {number|string} archiveId
+ * @returns {Promise<import('axios').AxiosResponse>}
+ */
+export function fetchAdminSpaceArchiveDetail(archiveId) {
+  return api.post('/admin/space/archive/detail', { archiveId: Number(archiveId) })
+}
+
+/**
+ * 管理员从销毁留档恢复空间。必须填写原因，后台会写审计。
+ *
+ * 权限要求 admin:space:restore（查询权限不能用于恢复）。成功返回恢复后的状态、
+ * 恢复成员数；成员已加入其它空间等冲突会返回 20100 并拒绝整笔恢复，不覆盖现存数据。
+ *
+ * @param {number|string} archiveId
+ * @param {string} reason
+ * @returns {Promise<import('axios').AxiosResponse>}
+ */
+export function restoreAdminSpaceFromArchive(archiveId, reason) {
+  return api.post('/admin/space/archive/restore', {
+    archiveId: Number(archiveId),
+    reason: String(reason || '').trim(),
+  })
+}

@@ -81,3 +81,57 @@ export function groupRestoreConflicts(conflictSpaces = []) {
     blocking: list.filter(space => space?.autoClosable !== true),
   }
 }
+
+/**
+ * 从「销毁留档」恢复的确认弹窗正文。
+ *
+ * 与解绑恢复不同：销毁只发生在一人空间，恢复后回到「等待绑定」状态，
+ * 由创建者重新走邀请 / 绑定流程；不会自动恢复为正常可用，也不会重新公开。
+ *
+ * @param {{ spaceName?: string, spaceCode?: string, spaceId?: number,
+ *           archiveRound?: number, archiveStoryCount?: number, archivePhotoCount?: number,
+ *           archiveMessageCount?: number, archiveAnniversaryCount?: number,
+ *           destroyedAt?: string, creatorDisplayName?: string,
+ *           conflictCount?: number }} archive
+ * @returns {string}
+ */
+export function buildArchiveRestorePromptMessage(archive = {}) {
+  const counts = [
+    `故事 ${toCount(archive.archiveStoryCount)}`,
+    `照片 ${toCount(archive.archivePhotoCount)}`,
+    `留言 ${toCount(archive.archiveMessageCount)}`,
+    `纪念日 ${toCount(archive.archiveAnniversaryCount)}`,
+  ].join(' · ')
+  const lines = [
+    `确定从留档恢复“${spaceLabel(archive)}”吗？`,
+    `销毁时间：${archive.destroyedAt || '-'}`,
+    `创建者：${archive.creatorDisplayName || '-'}`,
+    `留档内容：${counts}`,
+    '恢复后：',
+    '· 空间回到「等待绑定」状态并保持私密，由创建者重新邀请另一半完成绑定；',
+    '· 故事、照片、纪念日、留言等内容按留档恢复，图片资源引用保持不变；',
+    '· 不会自动重新公开到恋爱广场。',
+  ]
+  const conflictCount = toCount(archive.conflictCount)
+  if (conflictCount > 0) {
+    lines.push(`· 检测到 ${conflictCount} 项冲突，系统会拒绝恢复，请先处理冲突。`)
+  }
+  lines.push('请填写恢复原因用于审计。')
+  return lines.join('\n')
+}
+
+/**
+ * 从留档恢复成功的提示。
+ *
+ * @param {{ spaceName?: string, restoredMemberCount?: number, alreadyRestored?: boolean } | null} payload
+ * @returns {string}
+ */
+export function buildArchiveRestoreSuccessMessage(payload = null) {
+  if (payload?.alreadyRestored) {
+    return '该留档已恢复，无需重复操作'
+  }
+  const label = spaceLabel(payload || {})
+  const members = toCount(payload?.restoredMemberCount)
+  const suffix = members > 0 ? `，已恢复 ${members} 名成员` : ''
+  return `“${label}”已从留档恢复为等待绑定状态${suffix}`
+}

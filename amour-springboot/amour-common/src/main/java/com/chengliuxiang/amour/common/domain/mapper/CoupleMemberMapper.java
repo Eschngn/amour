@@ -88,14 +88,17 @@ public interface CoupleMemberMapper extends BaseMapper<CoupleMemberDO> {
      * 统计用户当前有效加入的空间数量。
      */
     /**
-     * 查询用户在「未解绑空间」中的有效成员关系（status=5 的历史残留会被排除）。
-     * 解绑后双方都应被视为没有情侣空间，因此业务判断一律使用该方法而非 countActiveByUserId。
+     * 查询用户在「未解绑且未销毁空间」中的有效成员关系。
+     *
+     * <p>status=5（已解绑）与 status=6（已销毁）的历史残留都会被排除：
+     * 这两种空间对普通用户都不再是「我的情侣空间」，业务判断一律使用本方法，
+     * 而不是 {@link #countActiveByUserId(Long)}。</p>
      */
     default List<CoupleMemberDO> selectActiveInLiveSpaces(Long userId) {
         return selectList(new LambdaQueryWrapper<CoupleMemberDO>()
                 .eq(CoupleMemberDO::getUserId, userId)
                 .eq(CoupleMemberDO::getStatus, 1)
-                .apply("space_id IN (SELECT id FROM couple_space WHERE status <> 5)")
+                .apply("space_id IN (SELECT id FROM couple_space WHERE status NOT IN (5, 6))")
                 .orderByDesc(CoupleMemberDO::getId));
     }
 
@@ -166,4 +169,65 @@ public interface CoupleMemberMapper extends BaseMapper<CoupleMemberDO> {
                 .set(CoupleMemberDO::getLeftAt, leftAt)
                 .set(CoupleMemberDO::getUpdateTime, updateTime));
     }
+
+    /**
+     * 销毁空间：把空间内全部有效成员一次性标记为已退出，并写入退出时间。
+     *
+     * <p>销毁后成员不再能以任何身份访问该空间；成员关系行本身保留（不物理删除），
+     * 管理员从留档恢复时按快照重新激活。条件更新同时校验空间维度，返回受影响行数供调用方断言。</p>
+     */
+    default int leaveAllActiveForDestroy(Long spaceId, Integer status,
+                                         LocalDateTime leftAt, LocalDateTime updateTime) {
+        return update(null, new LambdaUpdateWrapper<CoupleMemberDO>()
+                .eq(CoupleMemberDO::getSpaceId, spaceId)
+                .eq(CoupleMemberDO::getStatus, 1)
+                .set(CoupleMemberDO::getStatus, status)
+                .set(CoupleMemberDO::getLeftAt, leftAt)
+                .set(CoupleMemberDO::getUpdateTime, updateTime));
+    }
+
+    /**
+     * 从销毁留档恢复：把该空间内全部已退出成员重新激活，并按快照恢复角色与加入时间。
+     *
+     * <p>返回受影响行数，调用方必须校验与快照中的成员数量一致，否则回滚整笔恢复事务。</p>
+     */
+    default int restoreLeftForArchive(Long spaceId, LocalDateTime updateTime) {
+        return update(null, new LambdaUpdateWrapper<CoupleMemberDO>()
+                .eq(CoupleMemberDO::getSpaceId, spaceId)
+                .eq(CoupleMemberDO::getStatus, 3)
+                .set(CoupleMemberDO::getStatus, 1)
+                .set(CoupleMemberDO::getLeftAt, null)
+                .set(CoupleMemberDO::getUpdateTime, updateTime));
+    }
+
+    /**
+     * 恢复单个成员关系为有效，并写回快照中的角色 / 加入时间 / 退出时间（退出时间为空）。
+     *
+     * <p>条件更新只允许从「已退出」恢复，避免覆盖并发新增的有效成员关系。</p>
+     */
+    default int restoreMemberFromArchive(Long spaceId, Long userId, Integer memberRole,
+                                         LocalDateTime joinedAt, LocalDateTime updateTime) {
+        return update(null, new LambdaUpdateWrapper<CoupleMemberDO>()
+                .eq(CoupleMemberDO::getSpaceId, spaceId)
+                .eq(CoupleMemberDO::getUserId, userId)
+                .eq(CoupleMemberDO::getStatus, 3)
+                .set(CoupleMemberDO::getStatus, 1)
+                .set(memberRole != null, CoupleMemberDO::getMemberRole, memberRole)
+                .set(joinedAt != null, CoupleMemberDO::getJoinedAt, joinedAt)
+                .set(CoupleMemberDO::getLeftAt, null)
+                .set(CoupleMemberDO::getUpdateTime, updateTime));
+    }
+
+    /**
+     * 统计用户在指定空间状态的成员关系数量（不限成员自身状态）。
+     *
+     * <p>用于把「空间已解绑（status=5）」与「空间已销毁（status=6）」区分成不同的稳定错误，
+     * 避免统一返回「空间不存在」造成前端无法给出可理解提示。</p>
+     */
+    default Long countMembershipInSpaceStatus(Long userId, int spaceStatus) {
+        return selectCount(new LambdaQueryWrapper<CoupleMemberDO>()
+                .eq(CoupleMemberDO::getUserId, userId)
+                .apply("space_id IN (SELECT id FROM couple_space WHERE status = {0})", spaceStatus));
+    }
+
 }

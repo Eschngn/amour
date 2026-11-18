@@ -1,6 +1,19 @@
 <template>
   <CouplePageScaffold>
     <main class="relative z-10">
+      <!--
+        返回栏常驻：滚动到正文任意位置都能直接返回列表。
+        sticky 定位在站点顶栏下方，不占正文宽度；来源可信时走历史回退，
+        因此能回到原来的章节与滚动位置，来源不可信时退回故事列表首页。
+      -->
+      <StoryReturnBar
+        label="返回故事列表"
+        :to="returnTo || '/story'"
+        :link="!canGoBack"
+        aria-label="返回故事列表"
+        @activate="goBack"
+      />
+
       <!-- 加载中 -->
       <div v-if="loading" class="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-16 lg:px-8 lg:py-20" aria-label="正在加载故事" aria-busy="true">
         <div class="h-80 animate-pulse rounded-[2rem] border border-rose-100 bg-white/60" />
@@ -16,25 +29,23 @@
           <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-rose-50 text-3xl text-rose-300" aria-hidden="true">♡</div>
           <p class="mt-5 font-display text-2xl font-bold text-rose-950">故事不在这里</p>
           <p class="mt-2 text-sm text-rose-700/50">它可能已被删除，或者还没有被写下。</p>
-          <router-link to="/story" class="mt-6 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-rose-200 transition hover:-translate-y-0.5 hover:brightness-105">
+          <RouterLink
+            :to="returnTo || '/story'"
+            class="mt-6 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-rose-200 transition hover:-translate-y-0.5 hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
+          >
             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
             返回故事列表
-          </router-link>
+          </RouterLink>
         </div>
       </div>
 
       <!-- 故事详情 -->
-      <div v-else class="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
+      <div v-else class="mx-auto max-w-5xl px-4 pb-10 pt-2 sm:px-6 sm:pb-16 lg:px-8 lg:pb-20">
         <!-- Hero：封面 + 标题 + Meta -->
         <section class="relative overflow-hidden rounded-[2rem] border border-rose-100/80 bg-white/75 shadow-sm shadow-rose-100/50 backdrop-blur-sm">
           <div class="pointer-events-none absolute -left-12 -top-20 h-56 w-56 rounded-full blur-3xl" :style="accentGlowStyle" aria-hidden="true" />
           <div class="relative grid lg:grid-cols-[minmax(0,1fr)_24rem]" :class="story.coverImage ? '' : 'lg:grid-cols-1'">
             <div class="flex flex-col justify-center p-5 sm:p-8 lg:p-10">
-              <router-link to="/story" class="mb-7 inline-flex w-fit items-center gap-1.5 rounded-full border border-rose-100 bg-white/80 px-3 py-1.5 text-xs font-semibold text-rose-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700">
-                <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
-                返回故事列表
-              </router-link>
-
               <div class="flex flex-wrap items-center gap-2 text-xs">
                 <span v-if="story.tagLabel" class="rounded-full border px-3 py-1 font-semibold" :style="tagPillStyle">{{ story.tagLabel }}</span>
                 <span class="font-semibold uppercase tracking-[0.18em]" :style="{ color: chapterAccentText }">{{ story.chapterName }}</span>
@@ -68,7 +79,7 @@
               </article>
 
               <!-- 目录侧边栏 -->
-              <aside v-if="hasToc" class="hidden border-l border-rose-100/80 px-4 py-6 lg:sticky lg:top-24 lg:block lg:self-start">
+              <aside v-if="hasToc" class="detail-sticky-below-bar hidden border-l border-rose-100/80 px-4 py-6 lg:sticky lg:block lg:self-start">
                 <StoryToc :content="story.content" embedded />
               </aside>
             </div>
@@ -85,7 +96,7 @@
             <div class="min-w-0 flex-1">
               <router-link
                 v-if="story.preStory"
-                :to="'/story/' + story.preStory.id"
+                :to="storyLink(story.preStory.id)"
                 class="group flex h-full flex-col rounded-2xl border border-rose-100 bg-white/80 p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-rose-200 hover:shadow-md"
               >
                 <span class="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-rose-400">
@@ -103,7 +114,7 @@
             <div class="min-w-0 flex-1">
               <router-link
                 v-if="story.nextStory"
-                :to="'/story/' + story.nextStory.id"
+                :to="storyLink(story.nextStory.id)"
                 class="group flex h-full flex-col rounded-2xl border border-rose-100 bg-white/80 p-4 text-right shadow-sm transition hover:-translate-y-0.5 hover:border-rose-200 hover:shadow-md"
               >
                 <span class="inline-flex items-center justify-end gap-1 text-[11px] font-semibold uppercase tracking-wider text-rose-400">
@@ -130,6 +141,7 @@ import { useRoute } from 'vue-router'
 import { MdPreview } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
 import CouplePageScaffold from '@/components/frontend/CouplePageScaffold.vue'
+import StoryReturnBar from '@/components/frontend/StoryReturnBar.vue'
 import StoryToc from '@/components/frontend/StoryToc.vue'
 import {
   DEFAULT_THEME_COLOR,
@@ -138,9 +150,32 @@ import {
   softenHexColor,
   themeBorderColor,
 } from '@/utils/themeColor'
+import {
+  STORY_LIST_PATH,
+  isStoryListPath,
+  resolveStoryDetailReturn,
+  withReturnState,
+} from '@/utils/listViewState'
+import { useDetailReturnTarget } from '@/composables/useDetailReturnTarget'
 import api from '@/axios'
 
 const route = useRoute()
+
+/**
+ * 返回来源：列表进入时 history.state 上带有 amourReturnTarget，
+ * 据此优先走 router.go() 真正回退（保留 /story 的章节与滚动快照）；
+ * 直接打开详情页、来源被替换或历史不足时回退到 /story。
+ */
+const {
+  returnTo,
+  canGoBack,
+  goBack,
+  buildChainedTarget,
+} = useDetailReturnTarget({
+  resolveReturn: resolveStoryDetailReturn,
+  isAllowedReturnPath: isStoryListPath,
+  fallbackPath: STORY_LIST_PATH,
+})
 
 const markdownPreviewIcons = {
   copy: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" class="md-editor-icon"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>'
@@ -182,6 +217,11 @@ const formattedDate = computed(() => {
   if (!story.value?.happenedTime) return ''
   return story.value.happenedTime.split(' ')[0]
 })
+
+/** 上一篇/下一篇继续携带来源信息（hop 递增），连续翻篇后仍能回到最初的列表。 */
+function storyLink(id) {
+  return withReturnState('/story/' + id, buildChainedTarget())
+}
 
 async function fetchStory() {
   loading.value = true

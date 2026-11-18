@@ -1,5 +1,29 @@
 <template>
   <div class="space-y-5">
+    <!-- 视图切换：正式空间列表 / 已销毁空间留档（管理员恢复入口） -->
+    <nav class="flex flex-wrap items-center gap-1 rounded-xl border border-slate-200 bg-white p-1" aria-label="空间视图切换">
+      <button
+        type="button"
+        class="rounded-lg px-3.5 py-2 text-xs font-semibold transition"
+        :class="view === 'spaces' ? 'bg-rose-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'"
+        :aria-pressed="view === 'spaces' ? 'true' : 'false'"
+        @click="switchView('spaces')"
+      >
+        空间列表
+      </button>
+      <button
+        type="button"
+        class="rounded-lg px-3.5 py-2 text-xs font-semibold transition"
+        :class="view === 'archives' ? 'bg-rose-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'"
+        :aria-pressed="view === 'archives' ? 'true' : 'false'"
+        @click="switchView('archives')"
+      >
+        已销毁空间（留档）
+      </button>
+    </nav>
+
+    <!-- ==================== 正式空间列表 ==================== -->
+    <template v-if="view === 'spaces'">
     <section class="admin-filter-panel">
       <div class="admin-filter-bar">
         <div class="admin-filter-fields">
@@ -165,6 +189,233 @@
         </div>
       </div>
     </section>
+    </template>
+
+    <!-- ==================== 已销毁空间留档 ==================== -->
+    <template v-else>
+      <section class="admin-filter-panel">
+        <div class="admin-filter-bar">
+          <div class="admin-filter-fields">
+            <label class="admin-filter-field admin-filter-field--search">
+              <Search class="admin-search-icon" aria-hidden="true" />
+              <input
+                v-model="archiveFilters.keyword"
+                type="search"
+                aria-label="搜索销毁留档"
+                placeholder="搜索空间名或 spaceCode"
+                class="admin-search-input"
+                @keyup.enter="applyArchiveFilters"
+              >
+            </label>
+            <el-select
+              v-model="archiveFilters.restored"
+              clearable
+              placeholder="全部留档状态"
+              class="admin-filter-field admin-filter-field--select"
+              @change="applyArchiveFilters"
+            >
+              <el-option :value="false" label="未恢复" />
+              <el-option :value="true" label="已恢复" />
+            </el-select>
+          </div>
+          <div class="admin-filter-actions">
+            <button
+              type="button"
+              class="admin-filter-button admin-filter-button--primary"
+              @click="applyArchiveFilters"
+            >
+              查询
+            </button>
+            <button
+              type="button"
+              class="admin-filter-button admin-filter-button--secondary admin-filter-button--icon"
+              aria-label="刷新销毁留档列表"
+              title="刷新销毁留档列表"
+              @click="loadArchives"
+            >
+              <Refresh class="h-3.5 w-3.5" :class="{ 'animate-spin': archiveLoading }" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div v-if="archiveLoading" class="flex items-center justify-center py-24 text-sm text-slate-400">加载中…</div>
+        <div v-else-if="archiveError" class="px-6 py-16 text-center text-sm text-rose-600">
+          {{ archiveError }}
+          <button type="button" class="ml-2 font-semibold underline" @click="loadArchives">重试</button>
+        </div>
+        <div v-else-if="!archiveRows.length" class="px-6 py-20 text-center">
+          <Connection class="mx-auto h-9 w-9 text-slate-200" />
+          <p class="mt-3 text-sm font-medium text-slate-600">暂无已销毁空间留档</p>
+          <p class="mt-1 text-xs text-slate-400">创建者在另一半加入前销毁空间后，留档会出现在这里。</p>
+        </div>
+        <div v-else class="overflow-x-auto">
+          <table class="w-full min-w-[960px] divide-y divide-slate-200 text-left text-sm">
+            <thead class="bg-slate-50 text-xs font-medium tracking-wide text-slate-500">
+              <tr>
+                <th class="px-6 py-3">空间</th>
+                <th class="px-4 py-3">创建者 / 销毁人</th>
+                <th class="px-4 py-3">销毁时间</th>
+                <th class="px-4 py-3">留档内容</th>
+                <th class="px-4 py-3">状态</th>
+                <th class="px-6 py-3 admin-table-actions">操作</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr v-for="row in archiveRows" :key="row.archiveId" class="align-top hover:bg-slate-50/70">
+                <td class="max-w-[18rem] px-6 py-4">
+                  <p class="truncate font-medium text-slate-800" :title="row.spaceName || '未命名空间'">{{ row.spaceName || '未命名空间' }}</p>
+                  <p class="mt-1 truncate font-mono text-[11px] text-slate-400" :title="`空间 ID ${row.spaceId}`">ID {{ row.spaceId }} · {{ row.spaceCode || '-' }}</p>
+                  <p class="mt-1 text-[10px] text-slate-400">第 {{ row.archiveRound || 1 }} 次留档</p>
+                </td>
+                <td class="px-4 py-4 text-xs">
+                  <p class="text-slate-700">创建者：{{ row.creatorDisplayName || '恋人' }}<span class="ml-1 font-mono text-[10px] text-slate-400">{{ row.creatorAmourId || '-' }}</span></p>
+                  <p class="mt-1 text-slate-500">销毁人：{{ row.destroyedByDisplayName || '恋人' }}<span class="ml-1 font-mono text-[10px] text-slate-400">{{ row.destroyedByAmourId || '-' }}</span></p>
+                </td>
+                <td class="whitespace-nowrap px-4 py-4 text-xs text-slate-600">
+                  {{ row.destroyedAt || '-' }}
+                  <p v-if="row.restoredAt" class="mt-1 text-[11px] text-emerald-600">恢复于 {{ row.restoredAt }}</p>
+                </td>
+                <td class="whitespace-nowrap px-4 py-4 text-xs text-slate-600">
+                  <p class="font-semibold text-slate-700" :title="archiveContentBreakdown(row)">{{ archiveContentTotal(row) }} 项</p>
+                  <p class="mt-1 text-[10px] text-slate-400" :title="`图片资源引用 ${row.fileResourceCount ?? 0} 个`">资源引用 {{ row.fileResourceCount ?? 0 }}</p>
+                </td>
+                <td class="whitespace-nowrap px-4 py-4">
+                  <span
+                    class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold"
+                    :class="row.restoredAt ? 'bg-emerald-50 text-emerald-600' : (row.restorable ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-600')"
+                    :title="row.restoreBlockReason || ''"
+                  >
+                    {{ row.restoredAt ? '已恢复' : (row.restorable ? '可恢复' : '存在冲突') }}
+                  </span>
+                  <p v-if="!row.restoredAt && row.restoreBlockReason" class="mt-1 max-w-[16rem] text-[10px] leading-4 text-rose-500">{{ row.restoreBlockReason }}</p>
+                </td>
+                <td class="whitespace-nowrap px-6 py-4 admin-table-actions">
+                  <div class="admin-table-action-group admin-table-action-group--space">
+                    <button type="button" class="admin-table-action text-slate-600 hover:bg-slate-100" @click="openArchiveDetail(row)">
+                      <View class="h-3.5 w-3.5" aria-hidden="true" />详情
+                    </button>
+                    <button
+                      v-if="!row.restoredAt"
+                      type="button"
+                      class="admin-table-action text-emerald-600 hover:bg-emerald-50"
+                      :disabled="!row.restorable || restoringArchiveId !== null"
+                      :title="row.restorable ? '' : row.restoreBlockReason"
+                      @click="restoreArchive(row)"
+                    >
+                      <CircleCheck class="h-3.5 w-3.5" aria-hidden="true" />{{ restoringArchiveId === row.archiveId ? '恢复中…' : '从留档恢复' }}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-5 py-3 sm:px-6">
+          <span class="text-xs text-slate-400">共 {{ archiveTotal }} 条</span>
+          <div class="flex items-center gap-1">
+            <button type="button" :disabled="archiveCurrent <= 1 || archiveLoading" class="rounded-lg px-3 py-1.5 text-xs transition enabled:hover:bg-slate-100 disabled:text-slate-300" @click="archiveCurrent -= 1">上一页</button>
+            <span class="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-medium text-white">{{ archiveCurrent }}</span>
+            <button type="button" :disabled="archiveCurrent >= archiveTotalPages || archiveLoading" class="rounded-lg px-3 py-1.5 text-xs transition enabled:hover:bg-slate-100 disabled:text-slate-300" @click="archiveCurrent += 1">下一页</button>
+          </div>
+        </div>
+      </section>
+
+      <el-drawer v-model="archiveDetailVisible" title="销毁留档详情" size="min(820px, calc(100vw - 24px))" class="admin-drawer admin-dialog-surface" modal-class="admin-modal-overlay" append-to-body destroy-on-close>
+        <div v-if="archiveDetailLoading" class="py-20 text-center text-sm text-slate-400">详情加载中…</div>
+        <div v-else-if="archiveDetail" class="space-y-4">
+          <section class="rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-50/70 to-white p-5">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-2">
+                  <h3 class="text-lg font-semibold text-slate-900">{{ archiveDetail.spaceName || '未命名空间' }}</h3>
+                  <span class="rounded-full px-2.5 py-1 text-[11px] font-semibold" :class="archiveDetail.restorable ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-600'">
+                    {{ archiveDetail.restoredAt ? '已恢复' : (archiveDetail.restorable ? '可恢复' : '存在冲突') }}
+                  </span>
+                </div>
+                <p class="mt-2 font-mono text-xs text-slate-400">ID {{ archiveDetail.spaceId }} · {{ archiveDetail.spaceCode }} · 第 {{ archiveDetail.archiveRound }} 次留档</p>
+                <p class="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-600">{{ archiveDetail.description || '暂无空间简介' }}</p>
+              </div>
+              <button
+                v-if="!archiveDetail.restoredAt"
+                type="button"
+                class="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="!archiveDetail.restorable || restoringArchiveId !== null"
+                :title="archiveDetail.restorable ? '' : archiveDetail.restoreBlockReason"
+                @click="restoreArchiveDetail"
+              >
+                <CircleCheck class="h-4 w-4" aria-hidden="true" />{{ restoringArchiveId === archiveDetail.archiveId ? '恢复中…' : '从留档恢复' }}
+              </button>
+            </div>
+            <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div v-for="item in archiveDetailCounts" :key="item.label" class="rounded-xl border border-white bg-white/80 px-3 py-2 text-center">
+                <p class="text-[10px] text-slate-400">{{ item.label }}</p>
+                <p class="mt-1 text-lg font-semibold tabular-nums text-slate-800">{{ item.value }}</p>
+              </div>
+            </div>
+          </section>
+
+          <div class="grid gap-3 sm:grid-cols-2">
+            <div class="detail-card"><p class="detail-label">销毁时间</p><p class="detail-value">{{ archiveDetail.destroyedAt || '-' }}</p></div>
+            <div class="detail-card"><p class="detail-label">恢复时间</p><p class="detail-value">{{ archiveDetail.restoredAt || '尚未恢复' }}</p></div>
+            <div class="detail-card"><p class="detail-label">创建者</p><p class="detail-value">{{ archiveDetail.creatorDisplayName || '恋人' }}（{{ archiveDetail.creatorAmourId || '-' }}）</p></div>
+            <div class="detail-card"><p class="detail-label">销毁操作者</p><p class="detail-value">{{ archiveDetail.destroyedByDisplayName || '恋人' }}（{{ archiveDetail.destroyedByAmourId || '-' }}）</p></div>
+            <div class="detail-card"><p class="detail-label">销毁前状态</p><p class="detail-value">{{ archiveDetail.statusBeforeText || '-' }}</p></div>
+            <div class="detail-card"><p class="detail-label">当前空间状态</p><p class="detail-value">{{ archiveDetail.currentSpaceStatusText || '-' }}</p></div>
+            <div class="detail-card"><p class="detail-label">图片资源引用</p><p class="detail-value">{{ archiveDetail.fileResourceCount ?? 0 }} 个</p></div>
+            <div class="detail-card"><p class="detail-label">快照版本</p><p class="detail-value">v{{ archiveDetail.snapshotVersion ?? '-' }}</p></div>
+          </div>
+
+          <section class="rounded-xl border border-slate-200 p-4">
+            <h4 class="text-xs font-semibold text-slate-700">留档完整性</h4>
+            <dl class="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
+              <div v-for="item in archiveIntegrityItems" :key="item.label" class="rounded-lg bg-slate-50 px-3 py-2">
+                <dt class="text-[10px] text-slate-400">{{ item.label }}</dt>
+                <dd class="mt-0.5 font-semibold text-slate-700">{{ item.value }}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section v-if="archiveDetail.conflicts?.length" class="rounded-xl border border-rose-200 bg-rose-50/60 p-4">
+            <h4 class="text-xs font-semibold text-rose-700">恢复冲突（必须全部处理）</h4>
+            <ul class="mt-2 space-y-1.5 text-[11px] leading-5 text-rose-700">
+              <li v-for="(conflict, index) in archiveDetail.conflicts" :key="`${conflict.type}-${conflict.conflictSpaceId || ''}-${index}`">
+                · {{ conflict.typeText || conflict.type }}：{{ conflict.message || '-' }}
+                <span v-if="conflict.conflictSpaceId" class="font-mono text-[10px]">（ID {{ conflict.conflictSpaceId }} · {{ conflict.conflictSpaceName || '未命名空间' }}）</span>
+              </li>
+            </ul>
+          </section>
+
+          <section class="rounded-xl border border-slate-200 p-4">
+            <h4 class="text-xs font-semibold text-slate-700">留档成员</h4>
+            <div v-if="archiveDetail.members?.length" class="mt-3 space-y-2">
+              <div v-for="member in archiveDetail.members" :key="`${member.memberRole}-${member.amourId}`" class="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 p-2.5 text-xs">
+                <span class="min-w-0 flex-1 truncate text-slate-700">{{ member.displayName }}<span class="ml-1 font-mono text-[10px] text-slate-400">{{ member.amourId || '-' }}</span></span>
+                <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500">{{ member.roleText }}</span>
+                <span class="text-[10px] text-slate-400">加入 {{ member.joinedAt || '-' }}</span>
+              </div>
+            </div>
+            <p v-else class="mt-2 text-xs text-slate-400">留档中没有成员记录</p>
+          </section>
+
+          <section class="rounded-xl border border-slate-200 p-4">
+            <h4 class="text-xs font-semibold text-slate-700">生命周期</h4>
+            <ul v-if="archiveDetail.timeline?.length" class="mt-3 space-y-2">
+              <li v-for="(event, index) in archiveDetail.timeline" :key="index" class="flex gap-3 text-xs">
+                <span class="w-32 shrink-0 text-slate-400">{{ event.time }}</span>
+                <span class="min-w-0 text-slate-700">{{ event.title }}<span v-if="event.description" class="text-slate-400"> · {{ event.description }}</span></span>
+              </li>
+            </ul>
+            <p v-else class="mt-2 text-xs text-slate-400">暂无生命周期记录</p>
+          </section>
+
+          <p class="rounded-lg bg-slate-50 px-3 py-2 text-[11px] leading-5 text-slate-500">
+            恢复会把空间还原为「等待绑定」并保持私密，由创建者重新邀请另一半完成绑定；故事、照片、纪念日、留言等按留档恢复，图片资源引用保持不变。若成员已加入其他未销毁空间，系统会拒绝恢复且不覆盖现存数据。
+          </p>
+        </div>
+      </el-drawer>
+    </template>
 
     <el-drawer v-model="detailVisible" title="空间详情" size="min(900px, calc(100vw - 24px))" class="admin-drawer admin-dialog-surface" modal-class="admin-modal-overlay" append-to-body destroy-on-close>
       <div v-if="detailLoading" class="py-20 text-center text-sm text-slate-400">详情加载中…</div>
@@ -363,14 +614,25 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { CircleCheck, Connection, Refresh, Search, View } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { fetchAdminSpaceDetail, fetchAdminSpacePage, restoreAdminSpace } from '@/api/admin/space'
+import {
+  fetchAdminSpaceArchiveDetail,
+  fetchAdminSpaceArchivePage,
+  fetchAdminSpaceDetail,
+  fetchAdminSpacePage,
+  restoreAdminSpace,
+  restoreAdminSpaceFromArchive,
+} from '@/api/admin/space'
 import {
   ADMIN_RESTORE_MESSAGE_BOX_CLASS,
+  buildArchiveRestorePromptMessage,
+  buildArchiveRestoreSuccessMessage,
   buildRestorePromptMessage,
   buildRestoreSuccessMessage,
 } from '@/utils/adminRestore'
 import { ADMIN_PERMISSIONS, hasAdminPermission } from '@/utils/adminAuth'
 
+/** 当前视图：spaces-正式空间列表；archives-已销毁空间留档。 */
+const view = ref('spaces')
 const filters = reactive({ keyword: '', status: null, visibility: null })
 const current = ref(1)
 const pageSize = 10
@@ -385,6 +647,59 @@ const detail = ref(null)
 const activeTab = ref('overview')
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
+const canRestoreSpace = computed(() => hasAdminPermission(ADMIN_PERMISSIONS.SPACE_RESTORE))
+
+/* -------------------- 已销毁空间留档 -------------------- */
+
+const archiveFilters = reactive({ keyword: '', restored: null })
+const archiveCurrent = ref(1)
+const archiveTotal = ref(0)
+const archiveRows = ref([])
+const archiveLoading = ref(false)
+const archiveError = ref('')
+const restoringArchiveId = ref(null)
+const archiveDetailVisible = ref(false)
+const archiveDetailLoading = ref(false)
+const archiveDetail = ref(null)
+const archiveTotalPages = computed(() => Math.max(1, Math.ceil(archiveTotal.value / pageSize)))
+const archiveDetailCounts = computed(() => {
+  if (!archiveDetail.value) return []
+  return [
+    { label: '故事', value: archiveDetail.value.storyCount ?? 0 },
+    { label: '照片', value: archiveDetail.value.photoCount ?? 0 },
+    { label: '留言', value: archiveDetail.value.messageCount ?? 0 },
+    { label: '纪念日', value: archiveDetail.value.anniversaryCount ?? 0 },
+  ]
+})
+const archiveIntegrityItems = computed(() => {
+  if (!archiveDetail.value) return []
+  return [
+    { label: '成员', value: archiveDetail.value.memberCount ?? 0 },
+    { label: '故事章节', value: archiveDetail.value.storyChapterCount ?? 0 },
+    { label: '故事图片', value: archiveDetail.value.storyImageCount ?? 0 },
+    { label: '相册分类', value: archiveDetail.value.photoCategoryCount ?? 0 },
+    { label: '留言回复', value: archiveDetail.value.messageReplyCount ?? 0 },
+    { label: '空间配置', value: archiveDetail.value.configCount ?? 0 },
+    { label: '审核提交', value: archiveDetail.value.reviewSubmissionCount ?? 0 },
+    { label: '已发布版本', value: archiveDetail.value.publishedItemCount ?? 0 },
+  ]
+})
+
+function archiveContentTotal(row) {
+  return (row.archiveStoryCount ?? 0) + (row.archivePhotoCount ?? 0)
+    + (row.archiveMessageCount ?? 0) + (row.archiveAnniversaryCount ?? 0)
+}
+
+function archiveContentBreakdown(row) {
+  return `故事 ${row.archiveStoryCount ?? 0} · 照片 ${row.archivePhotoCount ?? 0}`
+    + ` · 留言 ${row.archiveMessageCount ?? 0} · 纪念日 ${row.archiveAnniversaryCount ?? 0}`
+}
+
+function switchView(next) {
+  if (view.value === next) return
+  view.value = next
+  if (next === 'archives') loadArchives()
+}
 const hasContentPermission = computed(() => hasAdminPermission(ADMIN_PERMISSIONS.CONTENT_QUERY))
 const hasSpaceReviewPermission = computed(() => hasAdminPermission(ADMIN_PERMISSIONS.SPACE_REVIEW_QUERY))
 const detailCounts = computed(() => {
@@ -549,7 +864,161 @@ async function restoreDetail() {
   })
 }
 
+/* -------------------- 已销毁空间留档：加载 / 详情 / 恢复 -------------------- */
+
+let archiveLoadSequence = 0
+let archiveDetailSequence = 0
+
+async function loadArchives() {
+  const requestId = ++archiveLoadSequence
+  archiveLoading.value = true
+  archiveError.value = ''
+  try {
+    const { data } = await fetchAdminSpaceArchivePage({
+      current: archiveCurrent.value,
+      size: pageSize,
+      keyword: archiveFilters.keyword.trim() || undefined,
+      restored: typeof archiveFilters.restored === 'boolean' ? archiveFilters.restored : undefined,
+    })
+    if (requestId !== archiveLoadSequence) return
+    if (!data?.success) throw new Error(data?.message || '销毁留档列表加载失败')
+    archiveRows.value = Array.isArray(data.data?.records) ? data.data.records : []
+    archiveTotal.value = Number(data.data?.total) || 0
+  } catch (e) {
+    if (requestId !== archiveLoadSequence) return
+    archiveRows.value = []
+    archiveTotal.value = 0
+    archiveError.value = e.response?.data?.message || e.message || '销毁留档列表加载失败'
+  } finally {
+    if (requestId === archiveLoadSequence) archiveLoading.value = false
+  }
+}
+
+function applyArchiveFilters() {
+  if (archiveCurrent.value === 1) loadArchives()
+  else archiveCurrent.value = 1
+}
+
+async function openArchiveDetail(row) {
+  const requestId = ++archiveDetailSequence
+  archiveDetailVisible.value = true
+  archiveDetailLoading.value = true
+  archiveDetail.value = null
+  try {
+    const { data } = await fetchAdminSpaceArchiveDetail(row.archiveId)
+    if (requestId !== archiveDetailSequence) return
+    if (!data?.success) throw new Error(data?.message || '销毁留档详情加载失败')
+    archiveDetail.value = data.data
+  } catch (e) {
+    if (requestId !== archiveDetailSequence) return
+    ElMessage.error(e.response?.data?.message || e.message || '销毁留档详情加载失败')
+    archiveDetailVisible.value = false
+  } finally {
+    if (requestId === archiveDetailSequence) archiveDetailLoading.value = false
+  }
+}
+
+/** 从留档恢复前必须填写审计原因。 */
+async function promptArchiveReason(row) {
+  try {
+    const result = await ElMessageBox.prompt(buildArchiveRestorePromptMessage(row),
+      '从销毁留档恢复情侣空间', {
+        confirmButtonText: '确认恢复',
+        cancelButtonText: '取消',
+        customClass: ADMIN_RESTORE_MESSAGE_BOX_CLASS,
+        modalClass: 'admin-modal-overlay',
+        inputType: 'textarea',
+        inputPlaceholder: '请填写恢复原因（必填）',
+        inputValidator: value => (String(value || '').trim().length > 0 ? true : '请填写恢复原因'),
+      })
+    return String(result.value || '').trim()
+  } catch {
+    return ''
+  }
+}
+
+async function restoreArchive(row) {
+  if (restoringArchiveId.value !== null) return
+  if (!hasAdminPermission(ADMIN_PERMISSIONS.SPACE_RESTORE)) {
+    ElMessage.warning('当前账号没有从留档恢复空间的权限')
+    return
+  }
+  if (row.restoredAt) {
+    ElMessage.info('该留档已恢复，无需重复操作')
+    return
+  }
+  if (!row.restorable) {
+    ElMessage.warning(row.restoreBlockReason || '当前留档不满足恢复条件')
+    return
+  }
+  const conflicts = Array.isArray(row.conflicts) ? row.conflicts : []
+  const reason = await promptArchiveReason({
+    spaceId: row.spaceId,
+    spaceName: row.spaceName,
+    spaceCode: row.spaceCode,
+    archiveRound: row.archiveRound,
+    archiveStoryCount: row.archiveStoryCount,
+    archivePhotoCount: row.archivePhotoCount,
+    archiveMessageCount: row.archiveMessageCount,
+    archiveAnniversaryCount: row.archiveAnniversaryCount,
+    destroyedAt: row.destroyedAt,
+    creatorDisplayName: row.creatorDisplayName,
+    conflictCount: conflicts.length,
+  })
+  if (!reason) return
+  restoringArchiveId.value = row.archiveId
+  try {
+    const { data } = await restoreAdminSpaceFromArchive(row.archiveId, reason)
+    if (!data?.success) throw new Error(data?.message || '从留档恢复失败')
+    ElMessage.success(buildArchiveRestoreSuccessMessage({
+      spaceName: row.spaceName,
+      spaceCode: row.spaceCode,
+      spaceId: row.spaceId,
+      ...data.data,
+    }))
+    // 恢复成功后详情已过期（成员、状态、空间列表都被改写），必须重新拉取。
+    if (archiveDetail.value?.archiveId === row.archiveId) {
+      await openArchiveDetail({ archiveId: row.archiveId })
+    }
+    await loadArchives()
+  } catch (e) {
+    ElMessage.error(e.response?.data?.message || e.message || '从留档恢复失败')
+    // 业务失败（冲突 / 状态已变化）时同步刷新，避免继续展示过期的恢复资格。
+    if (e.response?.data?.errorCode) {
+      if (archiveDetail.value?.archiveId === row.archiveId) {
+        await openArchiveDetail({ archiveId: row.archiveId })
+      }
+      await loadArchives()
+    }
+  } finally {
+    restoringArchiveId.value = null
+  }
+}
+
+async function restoreArchiveDetail() {
+  if (!archiveDetail.value) return
+  const detail = archiveDetail.value
+  await restoreArchive({
+    archiveId: detail.archiveId,
+    spaceId: detail.spaceId,
+    spaceName: detail.spaceName,
+    spaceCode: detail.spaceCode,
+    archiveRound: detail.archiveRound,
+    archiveStoryCount: detail.storyCount,
+    archivePhotoCount: detail.photoCount,
+    archiveMessageCount: detail.messageCount,
+    archiveAnniversaryCount: detail.anniversaryCount,
+    destroyedAt: detail.destroyedAt,
+    creatorDisplayName: detail.creatorDisplayName,
+    restoredAt: detail.restoredAt,
+    restorable: detail.restorable,
+    restoreBlockReason: detail.restoreBlockReason,
+    conflicts: detail.conflicts,
+  })
+}
+
 watch(current, load)
+watch(archiveCurrent, loadArchives)
 onMounted(load)
 </script>
 

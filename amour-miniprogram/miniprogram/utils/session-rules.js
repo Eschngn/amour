@@ -41,7 +41,86 @@ function isValidSpaceId(spaceId) {
 function deriveHasSpace(space) {
   if (!space || typeof space !== 'object') return false
   if (!isValidSpaceId(space.spaceId)) return false
-  return Number(space.status) !== SPACE_STATUS.DELETED
+  // status=5（已解绑）与 status=6（已销毁）都不再是「我的情侣空间」：
+  // 销毁后普通用户不可见、不可访问，只有管理员可以从留档恢复。
+  const status = Number(space.status)
+  return status !== SPACE_STATUS.DELETED && status !== SPACE_STATUS.DESTROYED
+}
+
+/** 空间是否已被创建者销毁（status=6）。 */
+function isDestroyedSpace(space) {
+  if (!space || typeof space !== 'object') return false
+  if (!isValidSpaceId(space.spaceId)) return false
+  return Number(space.status) === SPACE_STATUS.DESTROYED
+}
+
+/** 后端销毁相关业务错误码（与 ResponseCodeEnum 保持一致）。 */
+const SPACE_DESTROY_ERROR_CODE = Object.freeze({
+  NOT_CREATOR: '20093',
+  PARTNER_JOINED: '20094',
+  STATUS_NOT_ALLOWED: '20095',
+  DESTROYED: '20096',
+  NOT_MEMBER: '20034',
+})
+
+/**
+ * 销毁入口是否展示：只有「当前用户是创建者 + 另一半尚未加入」才展示。
+ *
+ * 前端隐藏只用于体验，真正的权限与成员关系校验在服务端。
+ */
+function canShowDestroyEntry(space) {
+  if (!isWaitingForPartner(space)) return false
+  if (space.creator !== true) return false
+  const count = Number(space.memberCount)
+  return !Number.isFinite(count) || count < 2
+}
+
+/**
+ * 是否允许发起销毁：创建者、有效成员恰好 1 人、空间处于等待绑定（或历史单人正常）状态。
+ */
+function canDestroySpace(space) {
+  if (!deriveHasSpace(space)) return false
+  if (space.creator !== true) return false
+  if (space.unbindPending === true) return false
+  const count = Number(space.memberCount)
+  if (Number.isFinite(count) && count !== 1) return false
+  const status = Number(space.status)
+  return status === SPACE_STATUS.WAITING || status === SPACE_STATUS.NORMAL
+}
+
+/** 销毁被阻止的可展示原因；可以销毁时返回空字符串。 */
+function destroyBlockReason(space) {
+  if (!deriveHasSpace(space)) {
+    return isDestroyedSpace(space)
+      ? '空间已销毁，只有管理员可以从留档恢复'
+      : '还没有可以销毁的情侣空间'
+  }
+  if (space.creator !== true) return '只有空间创建者才能销毁空间'
+  const count = Number(space.memberCount)
+  if (Number.isFinite(count) && count >= 2) return '另一半已加入，不能再销毁空间'
+  if (space.unbindPending === true) return '存在待处理的解绑申请，请先处理'
+  const status = Number(space.status)
+  if (status === SPACE_STATUS.FROZEN || status === SPACE_STATUS.ARCHIVED) {
+    return '冻结或归档的空间不能直接销毁'
+  }
+  if (status !== SPACE_STATUS.WAITING && status !== SPACE_STATUS.NORMAL) {
+    return '当前空间状态不允许销毁'
+  }
+  return ''
+}
+
+/**
+ * 判断销毁请求失败是否属于「服务端拒绝且需要刷新状态」的场景。
+ *
+ * 另一半已加入 / 状态已变化都意味着本地状态过期，必须重新读取服务器状态，
+ * 不能只依赖入口隐藏来保证安全。
+ */
+function isDestroyRejectedByServer(error) {
+  if (!error) return false
+  const code = String(error.errorCode || '')
+  return code === SPACE_DESTROY_ERROR_CODE.PARTNER_JOINED
+    || code === SPACE_DESTROY_ERROR_CODE.STATUS_NOT_ALLOWED
+    || code === SPACE_DESTROY_ERROR_CODE.NOT_CREATOR
 }
 
 /** 空间是否处于“等待另一半加入”状态（已创建但只有一个人）。 */
@@ -213,8 +292,14 @@ function resolveAccessRedirect(status) {
 module.exports = {
   isValidSpaceId,
   deriveHasSpace,
+  isDestroyedSpace,
   isWaitingForPartner,
   isNormalSpace,
+  SPACE_DESTROY_ERROR_CODE,
+  canShowDestroyEntry,
+  canDestroySpace,
+  destroyBlockReason,
+  isDestroyRejectedByServer,
   deriveSessionStatus,
   isLoggedInStatus,
   bucketOf,

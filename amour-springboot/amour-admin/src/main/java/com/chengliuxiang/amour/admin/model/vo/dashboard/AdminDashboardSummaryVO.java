@@ -50,6 +50,11 @@ public class AdminDashboardSummaryVO {
 
     private Long unboundSpaceCount;
 
+    /**
+     * 已被创建者销毁、等待管理员从留档恢复的空间数量（status=6）。
+     */
+    private Long destroyedSpaceCount;
+
     private Long publicSpaceCount;
 
     private Long totalUserCount;

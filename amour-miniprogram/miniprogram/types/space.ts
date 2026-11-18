@@ -112,3 +112,17 @@ export interface AcceptInvitationPayload {
   token?: string
   invitationId?: number | string
 }
+
+/** 销毁空间结果（SpaceDestroyVO）。 */
+export interface SpaceDestroyResult {
+  spaceId?: number | string | null
+  spaceCode?: string | null
+  /** 销毁后状态：6-已销毁 */
+  status?: number | string | null
+  statusText?: string | null
+  destroyedAt?: string | null
+  /** 留档 ID，仅后台排障使用 */
+  archiveId?: number | string | null
+  /** 本次请求是否真正执行了销毁；重复提交的幂等响应为 false */
+  destroyed?: boolean | null
+}

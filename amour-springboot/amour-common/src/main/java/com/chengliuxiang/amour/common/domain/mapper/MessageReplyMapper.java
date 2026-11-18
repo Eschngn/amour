@@ -83,4 +83,17 @@ public interface MessageReplyMapper extends BaseMapper<MessageReplyDO> {
         }
         return replyIds;
     }
+
+    /**
+     * 销毁留档：读取空间内全部留言回复（含已逻辑删除）。
+     */
+    default List<MessageReplyDO> selectAllBySpaceIdForArchive(Long spaceId) {
+        return selectList(new LambdaQueryWrapper<MessageReplyDO>()
+                .eq(MessageReplyDO::getSpaceId, spaceId)
+                .orderByAsc(MessageReplyDO::getId));
+    }
+
+    default int insertForArchiveRestore(MessageReplyDO reply) {
+        return insert(reply);
+    }
 }

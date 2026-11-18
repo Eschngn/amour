@@ -46,6 +46,7 @@ CREATE TABLE `couple_space` (
     -- 情侣空间封面图片URL
     `cover_image` TEXT NOT NULL DEFAULT '',
     -- 空间状态：0-等待绑定 1-正常 2-冻结 3-历史归档 4-删除等待期 5-已解绑（逻辑删除）
+    -- 6-已销毁（创建者在另一半加入前主动销毁，等待管理员从留档恢复；数据不做物理删除）
     `status` INTEGER NOT NULL DEFAULT 0,
     -- 空间可见性：0-私密 1-公开到恋爱广场
     `visibility` INTEGER NOT NULL DEFAULT 0,
@@ -59,6 +60,8 @@ CREATE TABLE `couple_space` (
     `delete_after` TEXT DEFAULT NULL,
     -- 完成解绑（逻辑删除）时间，status=5 时写入
     `deleted_at` TEXT DEFAULT NULL,
+    -- 创建者在另一半加入前销毁空间的时间，status=6 时写入
+    `destroyed_at` TEXT DEFAULT NULL,
     -- 空间创建者用户ID
     `created_by` INTEGER NOT NULL,
     -- 空间工作版本号：空间基础信息/主页配置保存成功后递增，用于审核并发校验
@@ -160,6 +163,59 @@ CREATE INDEX `idx_couple_space_unbind_space_status` ON `couple_space_unbind_requ
 CREATE INDEX `idx_couple_space_unbind_requester_status` ON `couple_space_unbind_request` (`requester_user_id`, `status`);
 -- 同一空间最多只能有一条待处理（status=0）解绑申请；历史申请保留可追溯。
 CREATE UNIQUE INDEX `uk_couple_space_unbind_pending` ON `couple_space_unbind_request` (`space_id`) WHERE `status` = 0;
+
+-- 情侣空间销毁留档。创建者在「另一半尚未加入」时销毁空间后写入完整快照，
+-- 空间与全部关联业务数据保留在原表（不做物理删除），只有平台管理员可从本留档恢复。
+-- 快照不保存密码、openid、邀请明文 token 等敏感字段。
+CREATE TABLE `couple_space_archive` (
+    -- 留档主键ID
+    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+    -- 被销毁的情侣空间ID
+    `space_id` INTEGER NOT NULL,
+    -- 同一空间的第几次销毁留档（恢复后再次销毁时递增）
+    `archive_round` INTEGER NOT NULL DEFAULT 1,
+    -- 销毁前的空间公开标识
+    `space_code` TEXT NOT NULL DEFAULT '',
+    -- 销毁前的空间名称（冗余保存，便于后台列表展示）
+    `space_name` TEXT NOT NULL DEFAULT '',
+    -- 销毁前的空间状态：当前只允许 0-等待绑定
+    `status_before` INTEGER NOT NULL DEFAULT 0,
+    -- 销毁前的空间可见性
+    `visibility_before` INTEGER NOT NULL DEFAULT 0,
+    -- 空间创建者用户ID
+    `creator_user_id` INTEGER NOT NULL,
+    -- 销毁操作者用户ID（只允许创建者本人）
+    `destroyed_by` INTEGER NOT NULL,
+    -- 销毁时间
+    `destroyed_at` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- 快照结构版本，便于后续兼容升级
+    `snapshot_version` INTEGER NOT NULL DEFAULT 1,
+    -- 完整快照 JSON：空间、成员、配置、故事/章节/图片、相册/照片、纪念日、留言/回复、审核与已发布版本
+    `snapshot_json` TEXT NOT NULL DEFAULT '',
+    -- 快照中的成员数量
+    `member_count` INTEGER NOT NULL DEFAULT 0,
+    -- 快照中的故事数量
+    `story_count` INTEGER NOT NULL DEFAULT 0,
+    -- 快照中的照片数量
+    `photo_count` INTEGER NOT NULL DEFAULT 0,
+    -- 快照中的留言数量
+    `message_count` INTEGER NOT NULL DEFAULT 0,
+    -- 快照中的纪念日数量
+    `anniversary_count` INTEGER NOT NULL DEFAULT 0,
+    -- 快照中保留的图片资源引用数量；留档不会触发对象存储物理删除
+    `file_resource_count` INTEGER NOT NULL DEFAULT 0,
+    -- 管理员从本留档恢复的时间；为空表示尚未恢复
+    `restored_at` TEXT DEFAULT NULL,
+    -- 执行恢复的管理员用户ID
+    `restored_by` INTEGER DEFAULT NULL,
+    -- 创建时间
+    `create_time` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- 最后更新时间，由应用在更新时维护
+    `update_time` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX `idx_couple_space_archive_space_round` ON `couple_space_archive` (`space_id`, `archive_round`);
+CREATE INDEX `idx_couple_space_archive_restored_time` ON `couple_space_archive` (`restored_at`, `destroyed_at`);
+CREATE INDEX `idx_couple_space_archive_destroyed_time` ON `couple_space_archive` (`destroyed_at`);
 
 CREATE TABLE `platform_config` (
     -- 平台配置主键ID

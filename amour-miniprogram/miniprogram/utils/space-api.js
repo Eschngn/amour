@@ -12,6 +12,7 @@
  *     POST /space/invitation/received   → InvitationVO[]（我收到的邀请）
  *     POST /space/invitation/preview    { token } → InvitationPreviewVO
  *     POST /space/invitation/accept     { token } | { invitationId } → SpaceStatusVO
+ *     POST /space/destroy               → SpaceDestroyVO（创建者在另一半未加入时销毁并留档）
  * - 字段语义以 SpaceStatusVO / InvitationPreviewVO 为准，见下方类型定义与 .d.ts。
  */
 const { post } = require('./request')
@@ -91,6 +92,25 @@ function acceptInvitation(payload) {
   return post('/space/invitation/accept', body)
 }
 
+/**
+ * 创建者在「另一半尚未加入」时销毁并清空情侣空间。
+ *
+ * 请求无参数：目标空间与操作者身份完全由服务端按登录态与数据库成员关系推导，
+ * 客户端不能指定 spaceId / userId。
+ *
+ * 服务端行为：
+ * - 只有创建者、且另一半尚未加入（有效成员恰好 1 人）、空间仍可销毁时才成功；
+ * - 另一半已加入返回 20094，非创建者返回 20093，状态不允许返回 20095；
+ * - 重复提交 / 网络重试按幂等处理：已销毁时返回同一份结果，destroyed=false；
+ * - 销毁不是物理删除：服务端写入完整留档，空间对普通用户不可见、不可访问，
+ *   只有平台管理员可以从留档恢复。
+ *
+ * 成功后必须强制刷新 /space/status（此时应返回 data=null），不能本地伪造 status=6。
+ */
+function destroyCoupleSpace() {
+  return post('/space/destroy')
+}
+
 module.exports = {
   fetchSpaceStatus,
   createCoupleSpace,
@@ -99,4 +119,5 @@ module.exports = {
   fetchReceivedInvitations,
   previewInvitation,
   acceptInvitation,
+  destroyCoupleSpace,
 }

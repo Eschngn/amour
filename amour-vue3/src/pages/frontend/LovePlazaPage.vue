@@ -226,7 +226,7 @@
 
           <template v-else>
             <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-              <PublicSpaceCard v-for="space in spaces" :key="space.spaceId" :space="space" />
+              <PublicSpaceCard v-for="space in spaces" :key="space.spaceId" :space="space" :to="spaceLink(space)" />
             </div>
 
             <div v-if="hasMore" class="mt-8 flex flex-col items-center gap-3">
@@ -262,7 +262,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import CouplePageScaffold from '@/components/frontend/CouplePageScaffold.vue'
 import PublicSpaceCard from '@/components/frontend/PublicSpaceCard.vue'
@@ -272,6 +272,14 @@ import { useFrontendSpace } from '@/composables/useFrontendSpace'
 import { SPACE_STATUS } from '@/utils/spaceState'
 import { isUnavailableSpace, readSpaceErrorMessage } from '@/utils/spaceState'
 import { formatCount } from '@/utils/spaceFormat'
+import {
+  PLAZA_LIST_PATH,
+  buildReturnTarget,
+  sanitizePlazaPageCount,
+  withReturnState,
+} from '@/utils/listViewState'
+import { restoreScrollPosition } from '@/utils/scrollRestore'
+import { useListViewSnapshot } from '@/composables/useListViewSnapshot'
 
 const route = useRoute()
 const {
@@ -398,6 +406,22 @@ const total = ref(0)
 const current = ref(1)
 let requestInFlight = false
 
+/**
+ * 广场浏览状态恢复：已加载页数 + 列表滚动位置。
+ *
+ * 快照只在 /plaza 这一条历史记录上；从公开空间详情返回时，
+ * 先按快照补齐分页再还原滚动位置，列表内容与滚动距离保持一致。
+ */
+const {
+  snapshot: savedListView,
+  scheduleSave: scheduleListSnapshotSave,
+} = useListViewSnapshot({
+  route,
+  collect: () => ({ loadedPages: current.value }),
+})
+
+let cancelScrollRestore = null
+
 const hasMore = computed(() => !loading.value && spaces.value.length < total.value)
 
 function fallbackMessage(error) {
@@ -435,6 +459,8 @@ async function loadPlaza({ reset = true } = {}) {
     spaces.value = reset ? records : [...spaces.value, ...records]
     current.value = Number(data.data.current) || target
     total.value = Number(data.data.total) || spaces.value.length
+    // 分页变化后记录已加载页数，返回/刷新时可以按同样页数补齐。
+    scheduleListSnapshotSave()
   } catch (error) {
     if (reset) {
       loadError.value = fallbackMessage(error)
@@ -452,7 +478,48 @@ function loadMore() {
   loadPlaza({ reset: false })
 }
 
-onMounted(() => loadPlaza())
+/** 打开公开情侣空间时携带来源列表信息，详情页返回后才能回到当前浏览位置。 */
+function spaceLink(space) {
+  return withReturnState(
+    `/plaza/${space.spaceId}`,
+    buildReturnTarget(route.fullPath || PLAZA_LIST_PATH),
+  )
+}
+
+/**
+ * 首屏加载：先按快照补齐已加载的页数，再还原滚动位置。
+ *
+ * 分页必须逐页追加，接口只支持 current/size；补齐失败（网络异常等）
+ * 时保留已拿到的内容，滚动位置按实际高度尽力还原，不会卡住页面。
+ */
+async function init() {
+  const pending = savedListView.value
+  const restorePages = sanitizePlazaPageCount(pending?.data?.loadedPages)
+  const restoreScrollY = pending?.scrollY || 0
+
+  await loadPlaza()
+  if (loadError.value) return
+
+  if (restorePages && restorePages > 1) {
+    // 最多补到快照记录的页数；中途失败就停，已加载部分仍然可用。
+    while (current.value < restorePages && hasMore.value && !loadMoreError.value) {
+      await loadPlaza({ reset: false })
+    }
+  }
+
+  if (restoreScrollY > 0) {
+    await nextTick()
+    cancelScrollRestore?.()
+    cancelScrollRestore = restoreScrollPosition(restoreScrollY)
+  }
+}
+
+onMounted(init)
+
+onBeforeUnmount(() => {
+  cancelScrollRestore?.()
+  cancelScrollRestore = null
+})
 </script>
 
 <style scoped>

@@ -109,6 +109,16 @@ public enum ResponseCodeEnum implements BaseExceptionInterface {
     SPACE_MEMBERSHIP_CONFLICT("20089", "该账号存在多个有效情侣空间，请先处理空间冲突后再操作"),
     SPACE_RESTORE_CONFLICT("20090", "存在无法自动处理的冲突空间，请先处理后再恢复"),
     SPACE_REVIEW_ITEM_NOT_PENDING("20091", "该审核项已被处理，请刷新后重试"),
+    SPACE_DESTROY_NOT_ALLOWED("20092", "当前空间不满足销毁条件"),
+    SPACE_DESTROY_NOT_CREATOR("20093", "只有情侣空间创建者才能销毁空间"),
+    SPACE_DESTROY_PARTNER_JOINED("20094", "另一半已加入情侣空间，不能再销毁"),
+    SPACE_DESTROY_STATUS_NOT_ALLOWED("20095", "只有等待另一半加入的空间才能销毁"),
+    SPACE_DESTROYED("20096", "情侣空间已销毁，只有管理员可以从留档恢复"),
+    SPACE_ARCHIVE_NOT_EXIST("20097", "空间销毁留档不存在"),
+    SPACE_ARCHIVE_ALREADY_RESTORED("20098", "该留档已恢复，请刷新列表"),
+    SPACE_ARCHIVE_SNAPSHOT_INVALID("20099", "空间留档数据损坏，无法恢复"),
+    SPACE_ARCHIVE_RESTORE_CONFLICT("20100", "恢复冲突：空间或成员数据与留档不一致"),
+    SPACE_ARCHIVE_DATA_MISSING("20101", "恢复失败：留档中的部分数据已不存在"),
 
     ;
 

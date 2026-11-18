@@ -1,6 +1,6 @@
 <template>
   <RouterLink
-    :to="`/plaza/${space.spaceId}`"
+    :to="linkTarget"
     class="group flex h-full min-w-0 flex-col overflow-hidden rounded-[1.75rem] border border-rose-100/80 bg-white/85 shadow-lg shadow-rose-100/35 backdrop-blur-sm transition duration-300 hover:-translate-y-1 hover:border-rose-200 hover:shadow-xl hover:shadow-rose-200/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
     :aria-label="`查看${displayName}的情侣空间`"
   >
@@ -123,7 +123,17 @@ const props = defineProps({
     type: Object,
     required: true,
   },
+  /**
+   * 可选的跳转地址。列表页传入带 history.state 的对象，让公开空间详情知道
+   * 自己来自恋爱广场，返回时能恢复分页与滚动位置；不传时保持原始 /plaza/:id。
+   */
+  to: {
+    type: [String, Object],
+    default: null,
+  },
 })
+
+const linkTarget = computed(() => props.to ?? `/plaza/${props.space?.spaceId}`)
 
 const coverFailed = ref(false)
 const coverUrl = computed(() => String(props.space?.coverImage || '').trim())

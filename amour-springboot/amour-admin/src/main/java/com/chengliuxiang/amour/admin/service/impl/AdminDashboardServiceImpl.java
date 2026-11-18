@@ -85,6 +85,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         long archived = 0;
         long deleting = 0;
         long unbound = 0;
+        long destroyed = 0;
         long totalSpaces = 0;
         for (Map<String, Object> row : statusRows) {
             long count = number(row.get("total"));
@@ -108,6 +109,9 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
                     break;
                 case 5:
                     unbound = count;
+                    break;
+                case 6:
+                    destroyed = count;
                     break;
                 default:
                     break;
@@ -144,6 +148,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
                 .archivedSpaceCount(archived)
                 .unbindPendingSpaceCount(pendingUnbind)
                 .unboundSpaceCount(unbound)
+                .destroyedSpaceCount(destroyed)
                 .publicSpaceCount(publicSpaces)
                 .totalUserCount(totalUsers)
                 .activeUserCount(activeUsers)

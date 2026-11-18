@@ -149,4 +149,14 @@ public interface SpaceReviewSubmissionMapper extends BaseMapper<SpaceReviewSubmi
                 })
                 .orElse(0L);
     }
+
+    /**
+     * 销毁留档：读取空间内全部审核提交（含待审核与历史处理结果）。
+     */
+    default List<SpaceReviewSubmissionDO> selectAllBySpaceIdForArchive(Long spaceId) {
+        return selectList(new LambdaQueryWrapper<SpaceReviewSubmissionDO>()
+                .eq(SpaceReviewSubmissionDO::getSpaceId, spaceId)
+                .orderByAsc(SpaceReviewSubmissionDO::getId));
+    }
+
 }

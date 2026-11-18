@@ -1,6 +1,11 @@
 <template>
+  <!--
+    --site-header-height 由组件实测写入（桌面端 64px、移动端含二级导航时更高），
+    供详情页吸顶返回栏与 sticky 侧栏统一对齐，避免写死 64px 后移动端被顶栏盖住。
+  -->
   <header
-    class="sticky top-0 z-40 border-b border-stone-200/80 bg-[#fcfaf7]/90 backdrop-blur-xl"
+    ref="headerRef"
+    class="site-header sticky top-0 z-40 border-b border-stone-200/80 bg-[#fcfaf7]/90 backdrop-blur-xl"
   >
     <div
       class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8"
@@ -356,6 +361,32 @@ const dropdownRef = ref(null)
 const triggerRef = ref(null)
 const dropdownStyle = ref({})
 
+/**
+ * 顶栏实测高度。
+ *
+ * 桌面端只有一行 64px；移动端还带一条可横向滚动的二级导航，高度随字号和
+ * 安全区变化。详情页的吸顶返回栏通过 CSS 变量读取这个值，避免硬编码后在
+ * 窄屏被顶栏遮挡。ResizeObserver 不可用时退化为 resize 监听。
+ */
+const headerRef = ref(null)
+const headerHeight = ref(64)
+let headerResizeObserver = null
+
+function applyHeaderHeight(height) {
+  const value = Number(height)
+  if (!Number.isFinite(value) || value <= 0) return
+  headerHeight.value = Math.round(value)
+  if (typeof document !== 'undefined') {
+    document.documentElement.style.setProperty('--site-header-height', `${headerHeight.value}px`)
+  }
+}
+
+function measureHeaderHeight() {
+  const el = headerRef.value
+  if (!el) return
+  applyHeaderHeight(el.getBoundingClientRect().height)
+}
+
 function initials(name) {
   return String(name || '恋人').trim().slice(0, 2).toUpperCase()
 }
@@ -393,12 +424,22 @@ function onDocumentClick(e) {
 
 onMounted(() => {
   document.addEventListener('click', onDocumentClick)
+  measureHeaderHeight()
+  if (typeof ResizeObserver === 'function' && headerRef.value) {
+    headerResizeObserver = new ResizeObserver(() => measureHeaderHeight())
+    headerResizeObserver.observe(headerRef.value)
+  } else {
+    window.addEventListener('resize', measureHeaderHeight)
+  }
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', onDocumentClick)
   window.removeEventListener('resize', updateDropdownPosition)
   window.removeEventListener('scroll', updateDropdownPosition, true)
+  window.removeEventListener('resize', measureHeaderHeight)
+  headerResizeObserver?.disconnect()
+  headerResizeObserver = null
 })
 
 async function onLogout() {

@@ -59,4 +59,13 @@ public interface CoupleSpaceConfigMapper extends BaseMapper<CoupleSpaceConfigDO>
         return delete(new LambdaQueryWrapper<CoupleSpaceConfigDO>()
                 .eq(CoupleSpaceConfigDO::getSpaceId, spaceId));
     }
+
+    /**
+     * 销毁留档：读取空间内全部主页配置。
+     */
+    default List<CoupleSpaceConfigDO> selectAllBySpaceIdForArchive(Long spaceId) {
+        return selectList(new LambdaQueryWrapper<CoupleSpaceConfigDO>()
+                .eq(CoupleSpaceConfigDO::getSpaceId, spaceId)
+                .orderByAsc(CoupleSpaceConfigDO::getId));
+    }
 }

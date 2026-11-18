@@ -17,6 +17,12 @@ public final class AdminAuditConstants {
     public static final String ACTION_SPACE_DETAIL_VIEW = "SPACE_DETAIL_VIEW";
     public static final String ACTION_SPACE_RESTORE = "SPACE_RESTORE";
     public static final String ACTION_SPACE_SET_PRIVATE = "SPACE_SET_PRIVATE";
+    /** 创建者在另一半加入前销毁空间（用户侧写留档，不经过后台权限）。 */
+    public static final String ACTION_SPACE_DESTROY = "SPACE_DESTROY";
+    /** 后台查看已销毁空间留档。 */
+    public static final String ACTION_SPACE_ARCHIVE_VIEW = "SPACE_ARCHIVE_VIEW";
+    /** 后台从销毁留档恢复空间。 */
+    public static final String ACTION_SPACE_ARCHIVE_RESTORE = "SPACE_ARCHIVE_RESTORE";
 
     public static final String ACTION_CONTENT_VIEW = "CONTENT_VIEW";
     public static final String ACTION_CONTENT_VISIBILITY = "CONTENT_VISIBILITY";
