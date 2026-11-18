@@ -9,6 +9,10 @@ import javax.validation.constraints.Size;
  *
  * <p>不接收客户端时间戳、完整 URL 或 referer：统计日期以服务端接收时间为准，
  * 页面只上报白名单路由键，访客只上报第一方随机 ID。</p>
+ *
+ * <p>{@code clientType} 是采集端自报的访问渠道（web / miniprogram），
+ * 服务端只允许白名单值，未上报时按 web 兼容。它仅用于统计分渠道，
+ * 不参与任何鉴权或权限判断。</p>
  */
 @Data
 public class PageViewEventReqVO {
@@ -30,4 +34,13 @@ public class PageViewEventReqVO {
      */
     @Size(max = 64, message = "事件标识过长")
     private String eventId;
+
+    /**
+     * 访问渠道（客户端类型）：web / miniprogram。
+     *
+     * <p>可选字段：旧版网页端不上报，服务端统一按 web 处理；
+     * 其它值一律拒绝，避免事件表被写成任意渠道名。</p>
+     */
+    @Size(max = 20, message = "客户端类型过长")
+    private String clientType;
 }

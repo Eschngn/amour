@@ -258,6 +258,9 @@ const router = createRouter({
 /**
  * 用户侧页面浏览采集：只上报白名单路由键，fire-and-forget。
  * 失败静默丢弃，不阻塞路由跳转，也不弹提示。
+ *
+ * 渠道由采集器固定标记为 web（见 pageViewTracker 的 clientType），
+ * 管理后台路由、登录页和静态页不会上报；小程序端使用自己的采集模块。
  */
 const pageViewTracker = createPageViewTracker({
   send: (payload) => {

@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  PAGE_VIEW_CLIENT_TYPE_WEB,
   PAGE_VIEW_VISITOR_STORAGE_KEY,
   PAGE_VIEW_VISITOR_TTL_DAYS,
   createPageViewTracker,
@@ -146,7 +147,9 @@ test('采集器只发送白名单字段，并在短时重复导航时去重', ()
 
   assert.equal(tracker.track({ path: '/' }, { path: '/' }), true)
   assert.equal(sent.length, 1)
-  assert.deepEqual(Object.keys(sent[0]).sort(), ['eventId', 'pageKey', 'visitorId'])
+  assert.deepEqual(Object.keys(sent[0]).sort(), ['clientType', 'eventId', 'pageKey', 'visitorId'])
+  assert.equal(sent[0].clientType, 'web', '网页端必须明确上报 clientType: web')
+  assert.equal(sent[0].clientType, PAGE_VIEW_CLIENT_TYPE_WEB)
   assert.equal(sent[0].pageKey, 'home')
   assert.match(sent[0].visitorId, /^[0-9a-f]{32}$/)
   assert.ok(!JSON.stringify(sent[0]).includes('?'))
@@ -163,6 +166,48 @@ test('采集器只发送白名单字段，并在短时重复导航时去重', ()
   assert.equal(tracker.track({ path: '/admin/dashboard' }, { path: '/plaza' }), false)
   assert.equal(tracker.track({ path: '/login' }, { path: '/plaza' }), false)
   assert.equal(sent.length, 2)
+})
+
+test('网页端不会把管理后台和登录页计入 PV', () => {
+  const sent = []
+  const tracker = createPageViewTracker({
+    send: payload => sent.push(payload),
+    now: () => 1000,
+    storage: memoryStorage(),
+    random: fixedRandom('a'),
+  })
+
+  assert.equal(tracker.track({ path: '/admin/dashboard' }, { path: '/' }), false)
+  assert.equal(tracker.track({ path: '/admin/login' }, { path: '/' }), false)
+  assert.equal(tracker.track({ path: '/login' }, { path: '/' }), false)
+  assert.equal(sent.length, 0, '后台与登录页不能产生用户侧 PV')
+})
+
+test('短时间连续导航到同一页面只计一次，切换到新页面再计一次', () => {
+  const sent = []
+  let now = 1000
+  const tracker = createPageViewTracker({
+    send: payload => sent.push(payload),
+    now: () => now,
+    storage: memoryStorage(),
+    random: sequenceRandom(),
+    dedupeWindowMs: 2000,
+  })
+
+  const home = { path: '/', matched: [{}] }
+  assert.equal(tracker.track({ path: '/', matched: [{}] }, {}), true)
+  now += 300
+  assert.equal(tracker.track(home, home), false)
+  now += 300
+  assert.equal(tracker.track(home, home), false)
+  assert.equal(sent.length, 1)
+
+  now += 300
+  assert.equal(tracker.track({ path: '/plaza' }, home), true)
+  assert.equal(sent.length, 2)
+  assert.equal(sent[1].pageKey, 'plaza')
+  assert.equal(sent[1].clientType, 'web')
+  assert.ok(sent.every(item => item.clientType === 'web'))
 })
 
 test('上报失败不会抛到路由流程', () => {

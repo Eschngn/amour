@@ -1,5 +1,6 @@
 import { post } from '../../utils/request'
 import { hasFrontendQueryPermission } from '../../utils/auth'
+import { withComponentPageViewTracking } from '../../utils/page-view-lifecycle'
 
 const PAGE_SIZE = 6
 let latestPhotoRequestId = 0
@@ -30,7 +31,7 @@ function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback
 }
 
-Component({
+Component(withComponentPageViewTracking({
   data: {
     loading: true,
     loadingMore: false,
@@ -163,4 +164,4 @@ Component({
       this.loadMore()
     },
   },
-})
+}, 'pages/photo/photo'))

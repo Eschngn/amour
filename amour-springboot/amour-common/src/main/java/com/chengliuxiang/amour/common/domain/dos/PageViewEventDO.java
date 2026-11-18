@@ -13,8 +13,8 @@ import java.time.LocalDateTime;
 /**
  * 用户侧有效页面浏览事件。
  *
- * <p>只保存统计所需的最小信息：服务端统计日期、页面标识、去重访客键与登录用户内部 ID。
- * 不保存完整 URL、referer、IP 明文、openid、token 等敏感数据。</p>
+ * <p>只保存统计所需的最小信息：服务端统计日期、页面标识、去重访客键、登录用户内部 ID
+ * 与访问渠道。不保存完整 URL、referer、IP 明文、openid、token 等敏感数据。</p>
  */
 @Data
 @Builder
@@ -46,6 +46,14 @@ public class PageViewEventDO {
      * 访客去重键：SHA-256(u:用户ID) 或 SHA-256(g:游客随机ID)，不含明文身份。
      */
     private String visitorKey;
+
+    /**
+     * 访问渠道（客户端类型）：web 或 miniprogram，数据库默认值为 web。
+     *
+     * <p>该值由采集端上报、服务端按白名单校验，只是统计维度，
+     * 不能作为身份或权限判断依据。历史数据迁移后统一为 web。</p>
+     */
+    private String clientType;
 
     /**
      * 登录用户内部 ID；游客为空。仅用于追溯登录用户的去重来源。

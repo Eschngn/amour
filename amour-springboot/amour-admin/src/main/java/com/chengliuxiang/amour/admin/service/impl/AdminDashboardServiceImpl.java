@@ -1,6 +1,8 @@
 package com.chengliuxiang.amour.admin.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.chengliuxiang.amour.admin.model.vo.dashboard.AdminDashboardActivityChannelDailyVO;
+import com.chengliuxiang.amour.admin.model.vo.dashboard.AdminDashboardActivityChannelVO;
 import com.chengliuxiang.amour.admin.model.vo.dashboard.AdminDashboardActivityDailyVO;
 import com.chengliuxiang.amour.admin.model.vo.dashboard.AdminDashboardActivityReqVO;
 import com.chengliuxiang.amour.admin.model.vo.dashboard.AdminDashboardActivityVO;
@@ -19,6 +21,8 @@ import com.chengliuxiang.amour.common.domain.mapper.SpaceReviewSubmissionMapper;
 import com.chengliuxiang.amour.common.domain.mapper.UserMapper;
 import com.chengliuxiang.amour.common.enums.ResponseCodeEnum;
 import com.chengliuxiang.amour.common.exception.BizException;
+import com.chengliuxiang.amour.common.model.stat.PageViewChannelStat;
+import com.chengliuxiang.amour.common.model.stat.PageViewDailyChannelStat;
 import com.chengliuxiang.amour.common.model.stat.PageViewDailyStat;
 import com.chengliuxiang.amour.common.utils.Response;
 import org.springframework.stereotype.Service;
@@ -33,6 +37,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -177,8 +182,13 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         LocalDate previousEnd = startDate.minusDays(1);
         LocalDate previousStart = previousEnd.minusDays(dayCount - 1);
 
-        List<PageViewDailyStat> rows = pageViewEventMapper.selectDailyStats(
-                startDate.toString(), endDate.toString());
+        String startKey = startDate.toString();
+        String endKey = endDate.toString();
+        String previousStartKey = previousStart.toString();
+        String previousEndKey = previousEnd.toString();
+
+        // 每日合计：保持原有 totalPv / daily.pv 口径不变。
+        List<PageViewDailyStat> rows = pageViewEventMapper.selectDailyStats(startKey, endKey);
         Map<String, PageViewDailyStat> statByDate = new HashMap<>();
         if (rows != null) {
             for (PageViewDailyStat row : rows) {
@@ -188,57 +198,191 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
             }
         }
 
+        // 每日分渠道：缺失的日期 + 渠道组合由服务层补 0。
+        Map<String, Map<String, PageViewDailyChannelStat>> channelStatsByDate = new HashMap<>();
+        List<PageViewDailyChannelStat> channelRows =
+                pageViewEventMapper.selectDailyChannelStats(startKey, endKey);
+        if (channelRows != null) {
+            for (PageViewDailyChannelStat row : channelRows) {
+                if (row == null || row.getViewDate() == null) {
+                    continue;
+                }
+                // 迁移后 client_type 已有默认值；这里再兜底一次，避免手工导入的旧数据落空。
+                String clientType = PageViewConstants.normalizeClientType(row.getClientType());
+                if (clientType == null) {
+                    continue;
+                }
+                channelStatsByDate
+                        .computeIfAbsent(row.getViewDate(), key -> new HashMap<>())
+                        .put(clientType, row);
+            }
+        }
+
         List<AdminDashboardActivityDailyVO> daily = new ArrayList<>((int) dayCount);
+        List<Map<String, AdminDashboardActivityChannelDailyVO>> channelDailyByDay =
+                new ArrayList<>((int) dayCount);
         long totalPv = 0L;
         for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
-            PageViewDailyStat stat = statByDate.get(date.toString());
+            String dateKey = date.toString();
+            PageViewDailyStat stat = statByDate.get(dateKey);
             long pv = stat == null ? 0L : safeLong(stat.getPv());
             long uv = stat == null ? 0L : safeLong(stat.getUv());
             totalPv += pv;
+
+            Map<String, PageViewDailyChannelStat> channelStats =
+                    channelStatsByDate.getOrDefault(dateKey, Collections.emptyMap());
+            long webPv = channelPv(channelStats, PageViewConstants.CLIENT_TYPE_WEB);
+            long webUv = channelUv(channelStats, PageViewConstants.CLIENT_TYPE_WEB);
+            long miniPv = channelPv(channelStats, PageViewConstants.CLIENT_TYPE_MINIPROGRAM);
+            long miniUv = channelUv(channelStats, PageViewConstants.CLIENT_TYPE_MINIPROGRAM);
+
             daily.add(AdminDashboardActivityDailyVO.builder()
-                    .date(date.toString())
+                    .date(dateKey)
                     .pv(pv)
                     .uv(uv)
+                    .webPv(webPv)
+                    .webUv(webUv)
+                    .miniprogramPv(miniPv)
+                    .miniprogramUv(miniUv)
                     .build());
+
+            Map<String, AdminDashboardActivityChannelDailyVO> perChannel =
+                    new LinkedHashMap<>(PageViewConstants.SUPPORTED_CLIENT_TYPES.size());
+            perChannel.put(PageViewConstants.CLIENT_TYPE_WEB,
+                    AdminDashboardActivityChannelDailyVO.builder()
+                            .date(dateKey).pv(webPv).uv(webUv).build());
+            perChannel.put(PageViewConstants.CLIENT_TYPE_MINIPROGRAM,
+                    AdminDashboardActivityChannelDailyVO.builder()
+                            .date(dateKey).pv(miniPv).uv(miniUv).build());
+            channelDailyByDay.add(perChannel);
         }
 
-        Long totalUvValue = pageViewEventMapper.countDistinctVisitors(
-                startDate.toString(), endDate.toString());
+        // 区间 UV 必须整段去重，不能把每日 UV 相加。
+        Long totalUvValue = pageViewEventMapper.countDistinctVisitors(startKey, endKey);
         long totalUv = safeLong(totalUvValue);
 
         long previousPv = 0L;
-        List<PageViewDailyStat> previousRows = pageViewEventMapper.selectDailyStats(
-                previousStart.toString(), previousEnd.toString());
+        List<PageViewDailyStat> previousRows =
+                pageViewEventMapper.selectDailyStats(previousStartKey, previousEndKey);
         if (previousRows != null) {
             for (PageViewDailyStat row : previousRows) {
                 previousPv += row == null ? 0L : safeLong(row.getPv());
             }
         }
-        Long previousUvValue = pageViewEventMapper.countDistinctVisitors(
-                previousStart.toString(), previousEnd.toString());
+        Long previousUvValue = pageViewEventMapper.countDistinctVisitors(previousStartKey, previousEndKey);
         long previousUv = safeLong(previousUvValue);
 
+        // 分渠道区间数据：UV 按渠道独立整段去重。
+        Map<String, PageViewChannelStat> channelStats = toChannelStatMap(
+                pageViewEventMapper.selectChannelStats(startKey, endKey));
+        Map<String, PageViewChannelStat> previousChannelStats = toChannelStatMap(
+                pageViewEventMapper.selectChannelStats(previousStartKey, previousEndKey));
+
+        List<AdminDashboardActivityChannelVO> channels =
+                new ArrayList<>(PageViewConstants.SUPPORTED_CLIENT_TYPES.size());
+        for (String clientType : PageViewConstants.SUPPORTED_CLIENT_TYPES) {
+            PageViewChannelStat current = channelStats.get(clientType);
+            PageViewChannelStat previous = previousChannelStats.get(clientType);
+            long channelPv = current == null ? 0L : safeLong(current.getPv());
+            long channelUv = current == null ? 0L : safeLong(current.getUv());
+            long previousChannelPv = previous == null ? 0L : safeLong(previous.getPv());
+            long previousChannelUv = previous == null ? 0L : safeLong(previous.getUv());
+
+            List<AdminDashboardActivityChannelDailyVO> channelDaily =
+                    new ArrayList<>((int) dayCount);
+            for (int index = 0; index < channelDailyByDay.size(); index += 1) {
+                String dateKey = daily.get(index).getDate();
+                AdminDashboardActivityChannelDailyVO item = channelDailyByDay.get(index).get(clientType);
+                channelDaily.add(item == null
+                        ? AdminDashboardActivityChannelDailyVO.builder()
+                                .date(dateKey).pv(0L).uv(0L).build()
+                        : item);
+            }
+
+            channels.add(AdminDashboardActivityChannelVO.builder()
+                    .clientType(clientType)
+                    .clientTypeText(PageViewConstants.clientTypeText(clientType))
+                    .totalPv(channelPv)
+                    .totalUv(channelUv)
+                    .averagePv(round1((double) channelPv / dayCount))
+                    .averageUv(round1((double) channelUv / dayCount))
+                    .pvShare(share(channelPv, totalPv))
+                    .uvShare(share(channelUv, totalUv))
+                    .previousTotalPv(previousChannelPv)
+                    .previousTotalUv(previousChannelUv)
+                    .pvChangeRate(changeRate(channelPv, previousChannelPv))
+                    .uvChangeRate(changeRate(channelUv, previousChannelUv))
+                    .daily(channelDaily)
+                    .build());
+        }
+
         return Response.success(AdminDashboardActivityVO.builder()
-                .startDate(startDate.toString())
-                .endDate(endDate.toString())
+                .startDate(startKey)
+                .endDate(endKey)
                 .days((int) dayCount)
                 .totalPv(totalPv)
                 .totalUv(totalUv)
                 .averagePv(round1((double) totalPv / dayCount))
                 .averageUv(round1((double) totalUv / dayCount))
-                .previousStartDate(previousStart.toString())
-                .previousEndDate(previousEnd.toString())
+                .previousStartDate(previousStartKey)
+                .previousEndDate(previousEndKey)
                 .previousTotalPv(previousPv)
                 .previousTotalUv(previousUv)
                 .pvChangeRate(changeRate(totalPv, previousPv))
                 .uvChangeRate(changeRate(totalUv, previousUv))
                 .daily(daily)
+                .channels(channels)
                 .generatedAt(LocalDateTime.now(ZONE).format(FORMATTER))
                 .timezone(PageViewConstants.TIME_ZONE)
-                .coverage(PageViewConstants.COVERAGE_WEB_SPA)
+                .coverage(PageViewConstants.COVERAGE_WEB_AND_MINIPROGRAM)
+                .channelNote("渠道来自采集端上报的客户端类型标识（web / miniprogram），"
+                        + "服务端按白名单校验，仅用于统计分组，不作为鉴权或权限判断依据。")
+                .historyNote("渠道字段上线前的历史浏览记录没有渠道信息，迁移后统一按 Web 归类；"
+                        + "历史数据无法反推真实小程序来源，不做猜测性归属。")
                 .maxRangeDays(PageViewConstants.MAX_RANGE_DAYS)
                 .retentionDays(PageViewConstants.RETENTION_DAYS)
                 .build());
+    }
+
+    /**
+     * 渠道聚合结果按渠道索引；缺少的渠道由调用方补 0。
+     */
+    private Map<String, PageViewChannelStat> toChannelStatMap(List<PageViewChannelStat> rows) {
+        Map<String, PageViewChannelStat> result = new HashMap<>();
+        if (rows == null) {
+            return result;
+        }
+        for (PageViewChannelStat row : rows) {
+            if (row == null) {
+                continue;
+            }
+            String clientType = PageViewConstants.normalizeClientType(row.getClientType());
+            if (clientType == null) {
+                continue;
+            }
+            result.put(clientType, row);
+        }
+        return result;
+    }
+
+    private long channelPv(Map<String, PageViewDailyChannelStat> stats, String clientType) {
+        PageViewDailyChannelStat stat = stats.get(clientType);
+        return stat == null ? 0L : safeLong(stat.getPv());
+    }
+
+    private long channelUv(Map<String, PageViewDailyChannelStat> stats, String clientType) {
+        PageViewDailyChannelStat stat = stats.get(clientType);
+        return stat == null ? 0L : safeLong(stat.getUv());
+    }
+
+    /**
+     * 占比：总量为 0 时返回 null，前端显示“—”，不出现 NaN / Infinity。
+     */
+    private Double share(long part, long total) {
+        if (total <= 0) {
+            return null;
+        }
+        return round1(part * 100.0 / total);
     }
 
     private LocalDate parseDate(String raw) {

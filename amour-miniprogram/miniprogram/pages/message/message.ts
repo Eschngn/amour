@@ -1,5 +1,6 @@
 import { ApiError, post } from '../../utils/request'
 import { ensureWechatLogin, hasFrontendQueryPermission } from '../../utils/auth'
+import { withComponentPageViewTracking } from '../../utils/page-view-lifecycle'
 
 const PAGE_SIZE = 8
 
@@ -45,7 +46,7 @@ function isUnauthorized(error: unknown) {
     && (error.statusCode === 401 || error.errorCode === '20002')
 }
 
-Component({
+Component(withComponentPageViewTracking({
   data: {
     loading: true,
     loadError: '',
@@ -141,4 +142,4 @@ Component({
       this.loadMessages(this.data.currentPage)
     },
   },
-})
+}, 'pages/message/message'))

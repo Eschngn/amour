@@ -1,5 +1,6 @@
 import { post } from '../../utils/request'
 import { hasFrontendQueryPermission } from '../../utils/auth'
+import { withComponentPageViewTracking } from '../../utils/page-view-lifecycle'
 
 interface StoryChapter {
   id: number
@@ -41,7 +42,7 @@ function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback
 }
 
-Component({
+Component(withComponentPageViewTracking({
   data: {
     loading: true,
     loadError: '',
@@ -145,4 +146,4 @@ Component({
       }
     },
   },
-})
+}, 'pages/story/story'))

@@ -51,6 +51,9 @@ HTML 并（在有 Chrome 时）截图，用于快速检查排版；它不属于�
 ```
 miniprogram/
 ├── api/plaza.ts              # 恋爱广场公开接口（只调用 /gallery/**）
+├── api/analytics.ts          # 页面浏览上报（复用 utils/request，失败静默）
+├── utils/page-view-tracker.ts   # 访客 ID / 事件 ID / 页面键映射 / 去重
+├── utils/page-view-lifecycle.ts # 生命周期接入（Page 与 Component 两种页面形态）
 ├── types/plaza.ts            # 接口结构与页面展示模型
 ├── utils/plaza-adapter.ts    # 接口 → 展示模型（日期、图片、可选字段、统计）
 ├── utils/plaza-pager.ts      # 列表状态机（分页 / 竞态 / 去重 / 卸载）
@@ -67,6 +70,21 @@ miniprogram/
 │   └── plaza-detail/         # 公开空间详情承接页
 └── styles/tokens.less        # 颜色 / 间距 / 圆角 / 字号变量
 ```
+
+## 页面浏览统计
+
+小程序端上报的页面浏览事件用于管理控制台「平台活跃度」的**微信小程序端** PV / UV。
+
+- 渠道固定上报 `clientType: 'miniprogram'`；服务端只接受 `web` / `miniprogram` 白名单值。
+  渠道是客户端自报的统计维度，**不作为鉴权或权限判断依据**。
+- 计数口径与 Web 端一致：页面首次展示计一次；同一实例重复 `onShow`（包括从后台返回）
+  不重复计数；真正切换到新页面或重新进入页面才计数；不按接口请求计数。
+- 游客访客 ID 保存在小程序本地存储（`amour_pv_visitor_id`，32 位十六进制，180 天轮换），
+  与后端校验规则一致。
+- 上报失败静默丢弃，不阻塞页面，也不弹提示。
+- 覆盖页面：首页、恋爱广场、公开空间详情、故事列表 / 详情、相册列表 / 详情、
+  留言板、个人中心。登录页、资料编辑、日志与错误页不统计。
+- 详细统计口径与数据库迁移见仓库根目录 `docs/analytics-client-type.md`。
 
 ## 恋爱广场
 

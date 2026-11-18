@@ -1,5 +1,6 @@
 const { post } = require('../../utils/request')
 const { hasFrontendQueryPermission } = require('../../utils/auth')
+const { withPageViewTracking } = require('../../utils/page-view-lifecycle')
 
 function stripInlineMarkdown(value) {
   return String(value || '')
@@ -140,7 +141,7 @@ function buildStoryContext(story) {
   }
 }
 
-Page({
+Page(withPageViewTracking({
   data: {
     loading: true,
     error: '',
@@ -415,4 +416,4 @@ Page({
     if (pages.length > 1) wx.navigateBack()
     else wx.reLaunch({ url: '/pages/story/story' })
   },
-})
+}, 'pages/story-detail/story-detail'))

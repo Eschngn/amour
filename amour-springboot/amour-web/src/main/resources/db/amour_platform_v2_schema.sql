@@ -585,7 +585,8 @@ CREATE INDEX `idx_admin_audit_space_time` ON `admin_audit_log` (`target_space_id
 CREATE INDEX `idx_admin_audit_admin_time` ON `admin_audit_log` (`admin_user_id`, `create_time`);
 
 -- 用户侧有效页面浏览事件，用于工作台真实 PV/UV 统计。
--- 只保存统计日期、页面标识、去重访客键和登录用户内部 ID，不保存完整 URL、referer、IP 或 openid。
+-- 只保存统计日期、页面标识、去重访客键、登录用户内部 ID 与访问渠道，
+-- 不保存完整 URL、referer、IP 或 openid。
 CREATE TABLE `page_view_event` (
     -- 事件主键ID
     `id` INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -599,12 +600,15 @@ CREATE TABLE `page_view_event` (
     `visitor_key` TEXT NOT NULL,
     -- 登录用户内部ID，游客为空
     `user_id` INTEGER DEFAULT NULL,
+    -- 访问渠道（客户端类型）：web / miniprogram。仅用于统计，不作为权限依据。
+    -- 默认 web：旧版网页端上报与历史数据都按 Web 兼容。
+    `client_type` TEXT NOT NULL DEFAULT 'web',
     -- 服务端接收时间
     `create_time` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE UNIQUE INDEX `uk_page_view_event_id` ON `page_view_event` (`event_id`);
-CREATE INDEX `idx_page_view_date_visitor` ON `page_view_event` (`view_date`, `visitor_key`);
-CREATE INDEX `idx_page_view_date_page` ON `page_view_event` (`view_date`, `page_key`);
+CREATE INDEX `idx_page_view_date_client_visitor` ON `page_view_event` (`view_date`, `client_type`, `visitor_key`);
+CREATE INDEX `idx_page_view_date_client_page` ON `page_view_event` (`view_date`, `client_type`, `page_key`);
 
 -- 后台管理员由 user.is_platform_admin 标识，不建角色/权限表；
 -- 管理员账号通过 db/amour_platform_v2_seed.sql 初始化。

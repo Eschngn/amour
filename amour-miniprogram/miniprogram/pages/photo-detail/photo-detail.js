@@ -18,7 +18,9 @@ function formatPhoto(photo) {
   }
 }
 
-Page({
+const { withPageViewTracking } = require('../../utils/page-view-lifecycle')
+
+Page(withPageViewTracking({
   data: {
     photo: null,
     photos: [],
@@ -280,4 +282,4 @@ Page({
     if (pages.length > 1) wx.navigateBack()
     else wx.reLaunch({ url: '/pages/photo/photo' })
   },
-})
+}, 'pages/photo-detail/photo-detail'))

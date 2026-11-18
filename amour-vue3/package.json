@@ -10,15 +10,16 @@
     "test:space-state": "node --test src/composables/useFrontendSpace.test.mjs src/utils/spaceRequestGate.test.mjs src/utils/spaceUnbind.test.mjs",
     "test:space-api": "node --test src/utils/spaceInvitation.test.mjs src/utils/safeRedirect.test.mjs",
     "test:space-settings": "node --test src/utils/spaceLifecycle.test.mjs src/utils/spaceRequestGate.test.mjs",
-    "test:admin-activity": "node --test src/utils/activityRange.test.mjs src/utils/pageViewTracker.test.mjs",
+    "test:admin-activity": "node --test src/utils/activityRange.test.mjs src/utils/pageViewTracker.test.mjs src/utils/activityCopy.test.mjs src/utils/activityChannels.test.mjs src/composables/useActivityDashboard.test.mjs src/utils/activityChannelPanel.test.mjs src/utils/activityChart.test.mjs src/utils/activityChartHost.test.mjs src/utils/activityChartCanvas.test.mjs",
     "test:comment-time": "node --test src/utils/commentTime.test.mjs src/composables/useCommentClock.test.mjs",
-    "test": "node --test src/composables/useFrontendSpace.test.mjs src/composables/useCommentClock.test.mjs src/utils/commentTime.test.mjs src/utils/spaceInvitation.test.mjs src/utils/safeRedirect.test.mjs src/utils/spaceLifecycle.test.mjs src/utils/spaceRequestGate.test.mjs src/utils/spaceUnbind.test.mjs src/utils/activityRange.test.mjs src/utils/pageViewTracker.test.mjs src/utils/adminRestore.test.mjs src/utils/adminRestoreSource.test.mjs src/utils/formBaseline.test.mjs src/utils/saveFeedback.test.mjs src/utils/storyEditor.test.mjs src/utils/spaceEditUnchanged.test.mjs src/utils/spaceStudioLayout.test.mjs src/utils/spaceReviewDisplay.test.mjs src/utils/authStorage.test.mjs src/utils/reorderList.test.mjs src/utils/spaceContentSort.test.mjs src/utils/spaceContentOrder.test.mjs src/utils/spaceMessageVisual.test.mjs src/utils/imagePreview.test.mjs src/utils/siteNav.test.mjs src/utils/spaceHomeStories.test.mjs src/utils/coupleMediaFallback.test.mjs"
+    "test": "node --test src/composables/useFrontendSpace.test.mjs src/composables/useCommentClock.test.mjs src/utils/commentTime.test.mjs src/utils/spaceInvitation.test.mjs src/utils/safeRedirect.test.mjs src/utils/spaceLifecycle.test.mjs src/utils/spaceRequestGate.test.mjs src/utils/spaceUnbind.test.mjs src/utils/activityRange.test.mjs src/utils/pageViewTracker.test.mjs src/utils/adminRestore.test.mjs src/utils/adminRestoreSource.test.mjs src/utils/formBaseline.test.mjs src/utils/saveFeedback.test.mjs src/utils/storyEditor.test.mjs src/utils/spaceEditUnchanged.test.mjs src/utils/spaceStudioLayout.test.mjs src/utils/spaceReviewDisplay.test.mjs src/utils/authStorage.test.mjs src/utils/reorderList.test.mjs src/utils/spaceContentSort.test.mjs src/utils/spaceContentOrder.test.mjs src/utils/spaceMessageVisual.test.mjs src/utils/imagePreview.test.mjs src/utils/siteNav.test.mjs src/utils/spaceHomeStories.test.mjs src/utils/coupleMediaFallback.test.mjs src/utils/activityCopy.test.mjs src/utils/activityChannels.test.mjs src/composables/useActivityDashboard.test.mjs src/utils/activityChannelPanel.test.mjs src/utils/activityChart.test.mjs src/utils/activityChartHost.test.mjs src/utils/activityChartCanvas.test.mjs"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",
     "@headlessui/vue": "^1.7.23",
     "@vuepic/vue-datepicker": "^14.0.0",
     "axios": "^1.16.0",
+    "echarts": "^6.1.0",
     "element-plus": "^2.14.0",
     "flowbite": "^1.8.1",
     "md-editor-v3": "^6.5.0",

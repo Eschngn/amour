@@ -1,4 +1,5 @@
 import { post } from '../../utils/request'
+import { withComponentPageViewTracking } from '../../utils/page-view-lifecycle'
 
 const DEFAULT_LOVE_START = '2024-05-20 18:30:00'
 
@@ -55,7 +56,7 @@ function formatLoveStartDate(value: string) {
 
 let timeTicker: number | undefined
 
-Component({
+Component(withComponentPageViewTracking({
   data: {
     boyName: 'HE',
     girlName: 'SHE',
@@ -244,4 +245,4 @@ Component({
       }
     },
   },
-})
+}, 'pages/index/index'))

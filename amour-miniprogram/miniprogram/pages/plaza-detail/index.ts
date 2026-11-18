@@ -2,6 +2,7 @@ import { fetchPlazaSpaceDetail } from '../../api/plaza'
 import type { PlazaError } from '../../api/plaza'
 import { adaptSpaceDetail } from '../../utils/plaza-adapter'
 import type { SpaceDetailView } from '../../types/plaza'
+import { withPageViewTracking } from '../../utils/page-view-lifecycle'
 
 /**
  * 公开空间详情承接页。
@@ -35,7 +36,7 @@ interface DetailCustom {
 
 const SPACE_ID_PATTERN = /^\d{1,18}$/
 
-Page<DetailPageData, DetailCustom & DetailMethods>({
+Page<DetailPageData, DetailCustom & DetailMethods>(withPageViewTracking<DetailPageData, DetailCustom & DetailMethods>({
   data: {
     spaceId: '',
     loading: true,
@@ -133,4 +134,4 @@ Page<DetailPageData, DetailCustom & DetailMethods>({
     if (photos[index].failed) return
     this.setData({ [`space.photos[${index}].failed`]: true })
   },
-})
+}, 'pages/plaza-detail/index'))

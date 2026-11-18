@@ -1,123 +1,215 @@
 <template>
-  <div class="space-y-5">
-    <section v-if="error" class="rounded-xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">
-      {{ error }}
-      <button type="button" class="ml-2 font-semibold underline" @click="load">重试</button>
-    </section>
-
-    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <article
-        v-for="card in headlineCards"
-        :key="card.label"
-        class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-      >
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-medium text-slate-400">{{ card.label }}</span>
-          <component :is="card.icon" class="h-4 w-4" :class="card.tone" />
+  <div class="admin-dashboard space-y-5">
+    <!-- 平台概况：不随下面的访问日期筛选变化 -->
+    <section aria-labelledby="overview-heading">
+      <div class="flex flex-wrap items-baseline justify-between gap-2">
+        <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h2 id="overview-heading" class="text-base font-semibold tracking-tight text-slate-900">平台概况</h2>
+          <p class="text-xs text-slate-400">平台当前的整体情况，不随访问日期变化</p>
         </div>
-        <p class="mt-3 text-3xl font-semibold tracking-tight text-slate-900 tabular-nums">
-          {{ loading ? '—' : card.value }}
+        <p v-if="summaryGeneratedAt" class="text-xs tabular-nums text-slate-400">
+          数据更新时间：{{ summaryGeneratedAt }}
         </p>
-        <p class="mt-1 text-xs text-slate-400">{{ card.note }}</p>
-      </article>
+      </div>
+
+      <div v-if="summaryError" class="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-rose-200 bg-rose-50/70 px-4 py-3 text-sm text-rose-800" role="alert">
+        <span>平台概况加载失败：{{ summaryError }}</span>
+        <button
+          type="button"
+          class="font-semibold underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+          @click="loadSummary"
+        >重试</button>
+      </div>
+
+      <div class="mt-3 grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <article
+          v-for="card in overviewCards"
+          :key="card.key"
+          class="admin-dashboard-card admin-dashboard-stat"
+        >
+          <div class="flex items-center justify-between gap-2">
+            <p class="text-xs font-medium text-slate-500">{{ card.label }}</p>
+            <component :is="card.icon" class="h-4 w-4 shrink-0" :class="card.tone" aria-hidden="true" />
+          </div>
+          <p class="mt-2 text-[28px] font-semibold leading-none tracking-tight tabular-nums text-slate-900">
+            <span v-if="summaryLoading" class="inline-block h-7 w-12 animate-pulse rounded bg-slate-100 align-middle" aria-hidden="true" />
+            <template v-else>{{ card.value }}</template>
+          </p>
+          <p class="mt-1.5 text-xs leading-5 text-slate-400">{{ card.note }}</p>
+        </article>
+      </div>
     </section>
 
+    <!-- 访问情况：日期筛选只影响这里 -->
     <AdminActivityPanel />
 
-    <section class="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-      <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <h2 class="text-sm font-semibold text-slate-900">空间状态</h2>
+    <!-- 空间状态与待办 -->
+    <section class="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+      <article class="admin-dashboard-card" aria-labelledby="space-status-heading">
+        <header class="flex flex-wrap items-start justify-between gap-3">
+          <div class="min-w-0">
+            <h2 id="space-status-heading" class="text-base font-semibold tracking-tight text-slate-900">空间状态</h2>
             <p class="mt-1 text-xs text-slate-400">按空间当前状态统计</p>
           </div>
           <RouterLink
             v-if="canSpace"
             to="/admin/space"
-            class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
+            class="admin-dashboard-link"
           >
             进入空间管理
+            <ArrowRight class="h-3.5 w-3.5" aria-hidden="true" />
           </RouterLink>
-        </div>
-        <div class="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        </header>
+
+        <dl class="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
           <div
             v-for="item in spaceStatusItems"
             :key="item.key"
-            class="rounded-xl border border-slate-100 bg-slate-50/70 px-4 py-3"
+            class="rounded-xl border border-slate-100 bg-slate-50/60 px-3.5 py-2.5"
           >
-            <p class="text-xs text-slate-400">{{ item.label }}</p>
-            <p class="mt-2 text-2xl font-semibold tabular-nums text-slate-800">{{ loading ? '—' : item.value }}</p>
+            <dt class="text-xs text-slate-500">{{ item.label }}</dt>
+            <dd class="mt-1 text-xl font-semibold tabular-nums text-slate-800">
+              {{ summaryLoading ? '—' : item.value }}
+            </dd>
           </div>
-        </div>
+        </dl>
       </article>
 
-      <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <h2 class="text-sm font-semibold text-slate-900">待办与入口</h2>
-        <div class="mt-4 space-y-2">
-          <RouterLink
-            v-if="canSpaceReview"
-            to="/admin/space-review"
-            class="flex items-center justify-between rounded-xl border border-rose-100 bg-rose-50/60 px-4 py-3 transition hover:bg-rose-50"
-          >
-            <span class="flex items-center gap-2 text-sm font-medium text-rose-700">
-              <Document class="h-4 w-4" aria-hidden="true" />空间审核
-              <span v-if="summary.pendingReviewItemCount" class="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-rose-600">
-                {{ summary.pendingReviewItemCount }} 项待处理
-              </span>
-            </span>
-            <ArrowRight class="h-3.5 w-3.5 text-rose-300" />
-          </RouterLink>
-          <RouterLink
-            v-if="canContent"
-            to="/admin/story"
-            class="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/70 px-4 py-3 text-sm text-slate-600 transition hover:bg-slate-100"
-          >
-            <span class="flex items-center gap-2"><Files class="h-4 w-4 text-slate-400" aria-hidden="true" />内容治理</span>
-            <ArrowRight class="h-3.5 w-3.5 text-slate-300" />
-          </RouterLink>
-          <RouterLink
-            v-if="canAudit"
-            to="/admin/audit"
-            class="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/70 px-4 py-3 text-sm text-slate-600 transition hover:bg-slate-100"
-          >
-            <span class="flex items-center gap-2"><Document class="h-4 w-4 text-slate-400" aria-hidden="true" />操作审计</span>
-            <ArrowRight class="h-3.5 w-3.5 text-slate-300" />
-          </RouterLink>
-        </div>
+      <article class="admin-dashboard-card" aria-labelledby="todo-heading">
+        <header>
+          <h2 id="todo-heading" class="text-base font-semibold tracking-tight text-slate-900">待办与入口</h2>
+          <p class="mt-1 text-xs text-slate-400">只显示你有权限进入的功能</p>
+        </header>
 
-        <div class="mt-5 grid grid-cols-2 gap-3 border-t border-slate-100 pt-4">
+        <ul class="mt-4 space-y-2">
+          <li v-if="canSpaceReview">
+            <RouterLink
+              to="/admin/space-review"
+              class="flex items-center justify-between gap-3 rounded-xl border border-rose-100 bg-rose-50/60 px-4 py-3 transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+            >
+              <span class="flex min-w-0 items-center gap-2 text-sm font-medium text-rose-800">
+                <Document class="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span class="truncate">空间审核</span>
+              </span>
+              <span class="flex shrink-0 items-center gap-2">
+                <span
+                  v-if="pendingReviewText"
+                  class="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-100"
+                >{{ pendingReviewText }}</span>
+                <ArrowRight class="h-3.5 w-3.5 text-rose-300" aria-hidden="true" />
+              </span>
+            </RouterLink>
+          </li>
+          <li v-if="canContent">
+            <RouterLink
+              to="/admin/story"
+              class="admin-dashboard-entry"
+            >
+              <span class="flex items-center gap-2"><Files class="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />内容治理</span>
+              <ArrowRight class="h-3.5 w-3.5 shrink-0 text-slate-300" aria-hidden="true" />
+            </RouterLink>
+          </li>
+          <li v-if="canAudit">
+            <RouterLink
+              to="/admin/audit"
+              class="admin-dashboard-entry"
+            >
+              <span class="flex items-center gap-2"><Document class="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />操作审计</span>
+              <ArrowRight class="h-3.5 w-3.5 shrink-0 text-slate-300" aria-hidden="true" />
+            </RouterLink>
+          </li>
+        </ul>
+
+        <p v-if="!hasAnyEntry" class="mt-4 rounded-xl border border-dashed border-slate-200 px-4 py-5 text-center text-xs text-slate-400">
+          暂无待处理事项
+        </p>
+
+        <dl class="mt-4 grid grid-cols-2 gap-2.5 border-t border-slate-100 pt-3">
           <div>
-            <p class="text-[11px] text-slate-400">用户总数</p>
-            <p class="mt-1 text-lg font-semibold tabular-nums text-slate-800">{{ loading ? '—' : summary.totalUserCount }}</p>
+            <dt class="text-xs text-slate-500">用户总数</dt>
+            <dd class="mt-1 text-lg font-semibold tabular-nums text-slate-800">{{ summaryLoading ? '—' : formatCount(summary.totalUserCount) }}</dd>
           </div>
           <div>
-            <p class="text-[11px] text-slate-400">平台管理员</p>
-            <p class="mt-1 text-lg font-semibold tabular-nums text-slate-800">{{ loading ? '—' : summary.platformAdminCount }}</p>
+            <dt class="text-xs text-slate-500">平台管理员</dt>
+            <dd class="mt-1 text-lg font-semibold tabular-nums text-slate-800">{{ summaryLoading ? '—' : formatCount(summary.platformAdminCount) }}</dd>
           </div>
-        </div>
+        </dl>
       </article>
     </section>
-
-    <p v-if="summary.generatedAt" class="text-right text-[11px] text-slate-400">
-      数据生成时间：{{ summary.generatedAt }}
-    </p>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { ArrowRight, Connection, Document, Files, Lock, User } from '@element-plus/icons-vue'
+import { ArrowRight, Connection, Document, Files, Lock } from '@element-plus/icons-vue'
 import AdminActivityPanel from '@/components/admin/AdminActivityPanel.vue'
 import { fetchAdminDashboardSummary } from '@/api/admin/dashboard'
 import { ADMIN_PERMISSIONS, hasAdminPermission } from '@/utils/adminAuth'
+import { formatCount } from '@/utils/activityCopy'
 
-const loading = ref(false)
-const error = ref('')
+const summaryLoading = ref(false)
+const summaryError = ref('')
 const summary = reactive(defaultSummary())
+const hasLoadedSummary = ref(false)
+
 const canSpace = computed(() => hasAdminPermission(ADMIN_PERMISSIONS.SPACE_QUERY))
 const canSpaceReview = computed(() => hasAdminPermission(ADMIN_PERMISSIONS.SPACE_REVIEW_QUERY))
 const canContent = computed(() => hasAdminPermission(ADMIN_PERMISSIONS.CONTENT_QUERY))
 const canAudit = computed(() => hasAdminPermission(ADMIN_PERMISSIONS.AUDIT_QUERY))
+
+const summaryGeneratedAt = computed(() => (hasLoadedSummary.value ? summary.generatedAt : ''))
+
+const overviewCards = computed(() => [
+  {
+    key: 'pending-space',
+    label: '待审核空间',
+    value: formatCount(summary.pendingSpaceReviewCount),
+    note: '等待处理的公开提交',
+    icon: Document,
+    tone: 'text-rose-500',
+  },
+  {
+    key: 'pending-content',
+    label: '待审核内容',
+    value: formatCount(summary.pendingContentReviewCount),
+    note: '故事、照片与纪念日',
+    icon: Files,
+    tone: 'text-amber-500',
+  },
+  {
+    key: 'space-total',
+    label: '空间总数',
+    value: formatCount(summary.totalSpaceCount),
+    note: '含等待绑定与已解绑',
+    icon: Connection,
+    tone: 'text-emerald-500',
+  },
+  {
+    key: 'space-public',
+    label: '公开空间',
+    value: formatCount(summary.publicSpaceCount),
+    note: '在恋爱广场可见',
+    icon: Lock,
+    tone: 'text-sky-500',
+  },
+])
+
+const spaceStatusItems = computed(() => [
+  { key: 'waiting', label: '等待绑定', value: formatCount(summary.waitingSpaceCount) },
+  { key: 'normal', label: '正常', value: formatCount(summary.normalSpaceCount) },
+  { key: 'frozen', label: '已冻结', value: formatCount(summary.frozenSpaceCount) },
+  { key: 'archived', label: '已归档', value: formatCount(summary.archivedSpaceCount) },
+  { key: 'unbindPending', label: '待确认解绑', value: formatCount(summary.unbindPendingSpaceCount) },
+  { key: 'unbound', label: '双方已解绑', value: formatCount(summary.unboundSpaceCount) },
+])
+
+// 无待办时不显示空徽标。
+const pendingReviewText = computed(() => {
+  const count = Number(summary.pendingReviewItemCount)
+  return Number.isFinite(count) && count > 0 ? `${formatCount(count)} 项待处理` : ''
+})
+
+const hasAnyEntry = computed(() => canSpaceReview.value || canContent.value || canAudit.value)
 
 function defaultSummary() {
   return {
@@ -141,37 +233,22 @@ function defaultSummary() {
   }
 }
 
-const headlineCards = computed(() => [
-  { label: '待审核空间', value: summary.pendingSpaceReviewCount, note: '等待处理的公开提交', icon: Document, tone: 'text-rose-500' },
-  { label: '待审核内容', value: summary.pendingContentReviewCount, note: '故事、照片与纪念日', icon: Files, tone: 'text-amber-500' },
-  { label: '空间总数', value: summary.totalSpaceCount, note: '含等待绑定/解绑历史', icon: Connection, tone: 'text-emerald-500' },
-  { label: '公开空间', value: summary.publicSpaceCount, note: '恋爱广场可见', icon: Lock, tone: 'text-sky-500' },
-])
-
-const spaceStatusItems = computed(() => [
-  { key: 'waiting', label: '等待绑定', value: summary.waitingSpaceCount },
-  { key: 'normal', label: '正常', value: summary.normalSpaceCount },
-  { key: 'frozen', label: '已冻结', value: summary.frozenSpaceCount },
-  { key: 'archived', label: '已归档', value: summary.archivedSpaceCount },
-  { key: 'unbindPending', label: '待确认解绑', value: summary.unbindPendingSpaceCount },
-  { key: 'unbound', label: '双方已解绑', value: summary.unboundSpaceCount },
-])
-
-async function load() {
-  loading.value = true
-  error.value = ''
+async function loadSummary() {
+  summaryLoading.value = true
+  summaryError.value = ''
   try {
     const { data } = await fetchAdminDashboardSummary()
     if (!data?.success || !data.data) {
-      throw new Error(data?.message || '工作台指标加载失败')
+      throw new Error(data?.message || '平台概况加载失败')
     }
     Object.assign(summary, defaultSummary(), data.data)
+    hasLoadedSummary.value = true
   } catch (e) {
-    error.value = e.response?.data?.message || e.message || '工作台指标加载失败'
+    summaryError.value = e.response?.data?.message || e.message || '平台概况加载失败'
   } finally {
-    loading.value = false
+    summaryLoading.value = false
   }
 }
 
-onMounted(load)
+onMounted(loadSummary)
 </script>

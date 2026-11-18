@@ -32,6 +32,9 @@ import java.util.regex.Pattern;
  * 客户端无法补录历史或未来日期。已登录用户用内部用户 ID 派生去重键，
  * 游客用第一方随机 ID，两者都先做 SHA-256，表中不落明文身份。</p>
  *
+ * <p>访问渠道（web / miniprogram）由采集端上报并在此按白名单校验，未上报时按 web 兼容。
+ * 渠道属于统计维度：它由客户端自报，不能作为可信身份或权限边界，也不得用于鉴权。</p>
+ *
  * <p>明显自动化请求（常见爬虫 UA）直接忽略但仍返回成功，避免采集端被用来探测过滤规则；
  * 这不是完整的机器人识别，后台页面会明确说明该限制。</p>
  */
@@ -74,6 +77,12 @@ public class AnalyticsServiceImpl implements AnalyticsService {
             throw new BizException(ResponseCodeEnum.PAGE_VIEW_EVENT_INVALID);
         }
 
+        // 渠道只允许 web / miniprogram；空值（旧版网页端）按 web 兼容。
+        String clientType = PageViewConstants.normalizeClientType(reqVO.getClientType());
+        if (clientType == null) {
+            throw new BizException(ResponseCodeEnum.PAGE_VIEW_EVENT_INVALID);
+        }
+
         boolean loggedIn = StpUtil.isLogin();
         Long userId = null;
         String visitorKey;
@@ -103,6 +112,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
                 .eventId(eventId)
                 .viewDate(LocalDate.now(ZONE).toString())
                 .pageKey(pageKey)
+                .clientType(clientType)
                 .visitorKey(visitorKey)
                 .userId(userId)
                 .createTime(LocalDateTime.now(ZONE))

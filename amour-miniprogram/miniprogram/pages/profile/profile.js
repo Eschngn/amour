@@ -5,6 +5,7 @@ const {
 } = require('../../utils/auth')
 const { encryptPassword } = require('../../utils/login-crypto')
 const { post } = require('../../utils/request')
+const { withComponentPageViewTracking } = require('../../utils/page-view-lifecycle')
 
 function getInitial(value) {
   const normalized = String(value || '').trim()
@@ -185,7 +186,7 @@ if (false) Component({
   },
 })
 
-Component({
+Component(withComponentPageViewTracking({
   data: {
     loggedIn: false,
     authenticating: false,
@@ -374,4 +375,4 @@ Component({
       }
     },
   },
-})
+}, 'pages/profile/profile'))

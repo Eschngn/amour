@@ -99,7 +99,7 @@ const pageIcon = computed(() => pageIcons[route.path] || Collection)
 const pageIconTone = computed(() => pageIconTones[route.path] || 'bg-stone-100 text-stone-500 ring-1 ring-stone-200')
 
 const descriptions = {
-  '/admin/dashboard': '空间状态、公开审核待办与平台数据概览',
+  '/admin/dashboard': '平台概况、访问情况与治理待办',
   '/admin/story': '按空间查看故事并处置违规内容',
   '/admin/message': '按空间查看私密留言并处理违规内容',
   '/admin/photo': '按空间查看照片并处置违规内容',

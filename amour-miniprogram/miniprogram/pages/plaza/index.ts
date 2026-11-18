@@ -3,6 +3,7 @@ import { adaptSpaceCards } from '../../utils/plaza-adapter'
 import { PlazaPager } from '../../utils/plaza-pager'
 import type { PlazaListState } from '../../utils/plaza-pager'
 import type { SpaceCardView } from '../../types/plaza'
+import { withPageViewTracking } from '../../utils/page-view-lifecycle'
 
 /**
  * 恋爱广场列表页。
@@ -53,7 +54,7 @@ const SKELETON_ITEMS = [1, 2, 3, 4]
 /** 安全空格标识：只允许后端下发的正整数，避免拼接出异常路由。 */
 const SPACE_ID_PATTERN = /^\d{1,18}$/
 
-Page<PlazaPageData, PlazaCustom & PlazaMethods>({
+Page<PlazaPageData, PlazaCustom & PlazaMethods>(withPageViewTracking<PlazaPageData, PlazaCustom & PlazaMethods>({
   data: {
     cards: [],
     status: 'loading',
@@ -184,4 +185,4 @@ Page<PlazaPageData, PlazaCustom & PlazaMethods>({
       },
     })
   },
-})
+}, 'pages/plaza/index'))

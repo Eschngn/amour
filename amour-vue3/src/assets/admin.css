@@ -1027,6 +1027,237 @@ body .el-overlay.admin-modal-overlay.is-message-box {
   color: #ffffff;
 }
 
+
+/*
+ * 管理控制台 → 工作台数据看板
+ * 只作用于 /admin/dashboard 页面（根节点 .admin-dashboard），
+ * 避免影响其它后台页面与前台站点。
+ */
+.admin-dashboard {
+  --dashboard-card-radius: 18px;
+  --dashboard-card-gap: 20px;
+  --dashboard-card-padding: 22px;
+  --dashboard-up: #047857;
+  --dashboard-down: #be123c;
+}
+
+.admin-dashboard .admin-dashboard-card {
+  min-width: 0;
+  padding: var(--dashboard-card-padding);
+  border: 1px solid var(--admin-border, #e7e5e4);
+  border-radius: var(--dashboard-card-radius);
+  background: var(--admin-surface, #ffffff);
+  box-shadow: var(--admin-panel-shadow, 0 1px 2px rgba(28, 25, 23, 0.03), 0 10px 28px rgba(28, 25, 23, 0.035));
+}
+
+/* 平台概况的数字卡：比主卡片更紧凑，不再嵌套边框 */
+.admin-dashboard .admin-dashboard-stat {
+  padding: 16px 18px;
+  border-radius: 16px;
+}
+
+/* 趋势 / 来源卡片内已经是卡片，嵌套一层时改用浅色描边，避免双层阴影 */
+.admin-dashboard .admin-dashboard-card--nested {
+  padding: 18px;
+  border-radius: 16px;
+  box-shadow: none;
+  background: var(--admin-surface, #ffffff);
+}
+
+.admin-dashboard .admin-dashboard-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border: 1px solid var(--admin-border, #e7e5e4);
+  border-radius: 10px;
+  color: var(--admin-text-secondary, #57534e);
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.admin-dashboard .admin-dashboard-link:hover {
+  border-color: var(--admin-border-hover, #c5beb8);
+  background: var(--admin-surface-muted, #faf9f7);
+  color: var(--admin-text, #1c1917);
+}
+
+.admin-dashboard .admin-dashboard-link:focus-visible {
+  outline: 2px solid var(--admin-brand, #e11d48);
+  outline-offset: 2px;
+}
+
+.admin-dashboard .admin-dashboard-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--admin-border, #e7e5e4);
+  border-radius: 12px;
+  color: var(--admin-text-secondary, #57534e);
+  font-size: 14px;
+  text-decoration: none;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.admin-dashboard .admin-dashboard-entry:hover {
+  border-color: var(--admin-border-hover, #c5beb8);
+  background: var(--admin-surface-muted, #faf9f7);
+}
+
+.admin-dashboard .admin-dashboard-entry:focus-visible {
+  outline: 2px solid var(--admin-brand, #e11d48);
+  outline-offset: 2px;
+}
+
+/* 分段切换控件：日期范围、指标、图表形式共用 */
+.admin-dashboard .admin-dashboard-segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--admin-border, #e7e5e4);
+  border-radius: 12px;
+  background: var(--admin-surface-muted, #faf9f7);
+}
+
+.admin-dashboard .admin-dashboard-segmented-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--admin-text-secondary, #57534e);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.admin-dashboard .admin-dashboard-segmented-button:hover:not(.is-active) {
+  color: var(--admin-text, #1c1917);
+}
+
+.admin-dashboard .admin-dashboard-segmented-button.is-active {
+  background: var(--admin-surface, #ffffff);
+  box-shadow: 0 1px 2px rgba(28, 25, 23, 0.06);
+  color: var(--admin-brand-strong, #be123c);
+  font-weight: 600;
+}
+
+.admin-dashboard .admin-dashboard-segmented-button:focus-visible {
+  outline: 2px solid var(--admin-brand, #e11d48);
+  outline-offset: 1px;
+}
+
+.admin-dashboard .admin-dashboard-disclosure {
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.admin-dashboard .admin-dashboard-disclosure:focus-visible {
+  outline: 2px solid var(--admin-brand, #e11d48);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.admin-dashboard .admin-dashboard-pager {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--admin-border, #e7e5e4);
+  border-radius: 8px;
+  background: var(--admin-surface, #ffffff);
+  color: var(--admin-text-secondary, #57534e);
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.admin-dashboard .admin-dashboard-pager:hover:not(:disabled) {
+  border-color: var(--admin-border-hover, #c5beb8);
+  background: var(--admin-surface-muted, #faf9f7);
+}
+
+.admin-dashboard .admin-dashboard-pager:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.admin-dashboard .admin-dashboard-pager:focus-visible {
+  outline: 2px solid var(--admin-brand, #e11d48);
+  outline-offset: 2px;
+}
+
+/* 每日明细表：紧凑、只在内部横向滚动 */
+.admin-dashboard .admin-dashboard-table {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-dashboard .admin-dashboard-table th,
+.admin-dashboard .admin-dashboard-table td {
+  padding-right: 12px;
+}
+
+.admin-dashboard .admin-dashboard-table tbody tr:last-child {
+  border-bottom: 0;
+}
+
+/* ECharts 画布：文字选中会干扰拖拽 dataZoom，统一禁止选择 */
+.admin-dashboard .admin-dashboard-chart-canvas {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+@media (max-width: 1279px) {
+  .admin-dashboard {
+    --dashboard-card-padding: 20px;
+  }
+}
+
+@media (max-width: 639px) {
+  .admin-dashboard {
+    --dashboard-card-gap: 16px;
+    --dashboard-card-padding: 16px;
+  }
+
+  .admin-dashboard .admin-dashboard-card {
+    border-radius: 16px;
+  }
+
+  /* 手机端：分段控件撑满可用宽度，图标按钮留在同一行右侧。 */
+  .admin-dashboard .admin-dashboard-segmented {
+    flex: 1 1 auto;
+  }
+
+  .admin-dashboard .admin-dashboard-segmented--presets {
+    flex: 1 1 200px;
+  }
+
+  .admin-dashboard .admin-dashboard-segmented-button {
+    flex: 1 1 auto;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+
+  .admin-dashboard .admin-dashboard-card--nested {
+    padding: 14px;
+  }
+}
+
+
 /*
  * 后台编辑弹窗 / 抽屉的输入控件。
  * el-dialog / el-drawer 可能通过 append-to-body 挂到 body，scoped CSS 覆盖不到内部节点；

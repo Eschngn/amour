@@ -1,8 +1,8 @@
 /**
- * 工作台活跃度统计的日期范围工具。
+ * 数据看板的日期范围工具。
  *
  * 所有日期都以本地日历的 yyyy-MM-dd 字符串处理，避免 new Date('yyyy-MM-dd')
- * 按 UTC 解析导致跨时区偏移一天。服务端同样按 Asia/Shanghai 切分统计日期。
+ * 按 UTC 解析导致跨时区偏移一天。服务端同样按北京时间（Asia/Shanghai）切分统计日期。
  */
 
 export const ACTIVITY_MAX_RANGE_DAYS = 90
@@ -16,7 +16,7 @@ export const ACTIVITY_TIME_ZONE = 'Asia/Shanghai'
 export const ACTIVITY_PRESETS = Object.freeze([
   { key: '7d', label: '近 7 天', days: 7 },
   { key: '30d', label: '近 30 天', days: 30 },
-  { key: 'custom', label: '自定义', days: 0 },
+  { key: 'custom', label: '自定义日期', days: 0 },
 ])
 
 const DATE_KEY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/
@@ -116,16 +116,16 @@ export function validateActivityRange(startDate, endDate, options = {}) {
     return { valid: false, message: '请选择开始和结束日期' }
   }
   if (!parseDateKey(startDate) || !parseDateKey(endDate)) {
-    return { valid: false, message: '日期格式应为 YYYY-MM-DD' }
+    return { valid: false, message: '请选择有效的日期' }
   }
   if (endDate < startDate) {
     return { valid: false, message: '结束日期不能早于开始日期' }
   }
   if (endDate > today) {
-    return { valid: false, message: '结束日期不能晚于今天' }
+    return { valid: false, message: '不能选择今天之后的日期' }
   }
   if (countDays(startDate, endDate) > maxDays) {
-    return { valid: false, message: `统计区间最长支持 ${maxDays} 天` }
+    return { valid: false, message: `最多可查看 ${maxDays} 天` }
   }
   return { valid: true, message: '' }
 }
@@ -135,34 +135,7 @@ export function buildActivityPayload(startDate, endDate) {
 }
 
 /**
- * 环比变化显示；服务端在上一周期为 0 时返回 null。
- */
-export function formatChangeRate(value) {
-  if (value === null || value === undefined || value === '') return '—'
-  const rate = Number(value)
-  if (!Number.isFinite(rate)) return '—'
-  const abs = Math.abs(rate)
-  const text = Number.isInteger(abs) ? String(abs) : abs.toFixed(1)
-  if (rate > 0) return `+${text}%`
-  if (rate < 0) return `-${text}%`
-  return '0%'
-}
-
-/**
- * 千分位数字；decimals 用于日均值等需要一位小数的场景。
- */
-export function formatActivityNumber(value, decimals = 0) {
-  if (value === null || value === undefined || value === '') return '—'
-  const number = Number(value)
-  if (!Number.isFinite(number)) return '—'
-  return number.toLocaleString('zh-CN', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  })
-}
-
-/**
- * 2026-11-11 -> 11-11，用于坐标轴与明细方格。
+ * 2026-11-11 -> 11-11，用于坐标轴。
  */
 export function formatShortDate(dateKey) {
   return typeof dateKey === 'string' && dateKey.length >= 10 ? dateKey.slice(5) : dateKey

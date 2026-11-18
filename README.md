@@ -70,6 +70,12 @@ npm run build
 
 前端 `dist` 目录部署到 Nginx，参考 `amour-vue3/deploy/nginx/default.conf`。
 
+## 访问渠道统计
+
+管理控制台「平台活跃度」按渠道（Web 网页端 / 微信小程序端）统计 PV / UV。
+渠道字段、采集口径与数据库迁移步骤见
+[`docs/analytics-client-type.md`](docs/analytics-client-type.md)。
+
 ## 安全
 
 登录密码使用 RSA-OAEP 挑战加密。生产多实例部署时需通过环境变量 `LOGIN_RSA_PUBLIC_KEY` 和 `LOGIN_RSA_PRIVATE_KEY` 配置统一密钥对，否则应用启动时会自动生成临时密钥。

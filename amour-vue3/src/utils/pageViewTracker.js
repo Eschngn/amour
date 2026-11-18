@@ -6,12 +6,15 @@
  * - 忽略 hash / query-only 变化、重复导航、后台路由与登录页；
  * - 只上报白名单页面键，不上报完整 URL、referer 或任何身份信息；
  * - 游客使用第一方随机访客 ID（180 天轮换），登录用户由服务端按账号内部 ID 去重；
- * - 上报是 fire-and-forget，失败不影响页面主流程。
+ * - 上报是 fire-and-forget，失败不影响页面主流程；
+ * - 渠道固定上报 web：本采集器只用于 Web 站点，小程序端使用自己的采集模块。
+ *   渠道是客户端自报的统计维度，不参与鉴权或权限判断。
  */
 
 export const PAGE_VIEW_VISITOR_STORAGE_KEY = 'amour_pv_visitor_id'
 export const PAGE_VIEW_VISITOR_TTL_DAYS = 180
 export const PAGE_VIEW_DEDUPE_WINDOW_MS = 2000
+export const PAGE_VIEW_CLIENT_TYPE_WEB = 'web'
 
 /**
  * 服务端白名单必须与本表保持一致（见 PageViewConstants）。
@@ -193,6 +196,7 @@ export function createPageViewTracker(options = {}) {
           pageKey,
           visitorId: readOrCreateVisitorId(storage, timestamp, random),
           eventId: createEventId(),
+          clientType: PAGE_VIEW_CLIENT_TYPE_WEB,
         })
       } catch {
         // 采集失败不能影响路由跳转和页面渲染。

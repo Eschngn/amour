@@ -2,11 +2,10 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   ACTIVITY_MAX_RANGE_DAYS,
+  ACTIVITY_PRESETS,
   addDays,
   buildActivityPayload,
   countDays,
-  formatActivityNumber,
-  formatChangeRate,
   formatShortDate,
   formatWeekday,
   paginateActivityDays,
@@ -80,22 +79,26 @@ test('自定义区间校验覆盖空值、倒置、未来和超长', () => {
   assert.equal(validateActivityRange(addDays(exactly, -1), today, { today }).valid, false)
 })
 
-test('环比展示不会出现 NaN/Infinity', () => {
-  assert.equal(formatChangeRate(null), '—')
-  assert.equal(formatChangeRate(undefined), '—')
-  assert.equal(formatChangeRate(Number.NaN), '—')
-  assert.equal(formatChangeRate(Number.POSITIVE_INFINITY), '—')
-  assert.equal(formatChangeRate(0), '0%')
-  assert.equal(formatChangeRate(12.5), '+12.5%')
-  assert.equal(formatChangeRate(200), '+200%')
-  assert.equal(formatChangeRate(-12.34), '-12.3%')
+test('快捷日期范围文案使用自然中文，不出现专业缩写', () => {
+  assert.deepEqual(ACTIVITY_PRESETS.map(item => item.key), ['7d', '30d', 'custom'])
+  assert.equal(ACTIVITY_PRESETS[0].label, '近 7 天')
+  assert.equal(ACTIVITY_PRESETS[1].label, '近 30 天')
+  assert.equal(ACTIVITY_PRESETS[2].label, '自定义日期')
+  for (const preset of ACTIVITY_PRESETS) {
+    assert.doesNotMatch(preset.label, /PV|UV|环比|区间汇总/)
+  }
 })
 
-test('数字与日期标签格式稳定', () => {
-  assert.equal(formatActivityNumber(1234), '1,234')
-  assert.equal(formatActivityNumber(1.8, 1), '1.8')
-  assert.equal(formatActivityNumber(0), '0')
-  assert.equal(formatActivityNumber(null), '—')
+test('校验提示使用普通中文', () => {
+  const today = '2026-11-11'
+  assert.match(validateActivityRange(today, '2026-11-12', { today }).message, /今天之后/)
+  assert.match(validateActivityRange('2026-08-01', today, { today }).message, /最多可查看 90 天/)
+  assert.equal(validateActivityRange('bad', today, { today }).message, '请选择有效的日期')
+  // 提示语不应出现 YYYY-MM-DD 这类开发格式名。
+  assert.doesNotMatch(validateActivityRange('bad', today, { today }).message, /YYYY/)
+})
+
+test('日期标签格式稳定', () => {
   assert.equal(formatShortDate('2026-11-11'), '11-11')
   assert.equal(formatShortDate(''), '')
   assert.equal(formatWeekday('2026-11-11'), '周三')
