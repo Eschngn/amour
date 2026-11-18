@@ -1,0 +1,206 @@
+@import "../../styles/tokens.less";
+
+page {
+  display: flex;
+  height: 100vh;
+  flex-direction: column;
+  background: @bg-page;
+  color: @text-primary;
+}
+
+.page-scroll { flex: 1; min-height: 0; }
+
+.login-page {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  padding: 0 @page-gutter;
+  box-sizing: border-box;
+}
+
+.login-hero {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  padding: @space-7 0 @space-6;
+  text-align: center;
+}
+
+.brand-logo {
+  display: flex;
+  width: 144rpx;
+  height: 144rpx;
+  align-items: center;
+  justify-content: center;
+  border: 7rpx solid #fff;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 12rpx 30rpx rgba(193, 86, 103, .2);
+  box-sizing: border-box;
+}
+
+.brand-image { width: 96rpx; height: 96rpx; }
+
+.brand-kicker {
+  margin-top: @space-4;
+  color: @rose-primary;
+  font-size: @font-xs;
+  font-weight: 600;
+  letter-spacing: 4rpx;
+}
+
+.brand-title {
+  margin-top: @space-2;
+  color: @text-primary;
+  font-family: Georgia, serif;
+  font-size: 44rpx;
+  font-weight: 700;
+}
+
+.brand-copy {
+  max-width: 520rpx;
+  margin-top: @space-2;
+  color: @text-tertiary;
+  font-size: @font-sm;
+  line-height: 1.65;
+}
+
+.status-card {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  margin-top: @space-4;
+  padding: @space-6 @space-5;
+  border: 1rpx solid @rose-line;
+  border-radius: @radius-lg;
+  background: @bg-card;
+  box-shadow: @shadow-card;
+}
+
+.status-spinner {
+  width: 44rpx;
+  height: 44rpx;
+  border: 5rpx solid @rose-primary-light;
+  border-top-color: @rose-primary;
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+  box-sizing: border-box;
+}
+
+.status-title {
+  margin-top: @space-4;
+  color: @text-primary;
+  font-size: @font-md;
+  font-weight: 600;
+}
+
+.status-note {
+  margin-top: @space-1;
+  color: @text-tertiary;
+  font-size: @font-xs;
+}
+
+.error-band {
+  display: flex;
+  align-items: center;
+  margin-top: @space-3;
+  padding: @space-3 @space-4;
+  border: 1rpx solid @rose-line-strong;
+  border-radius: @radius-md;
+  background: @danger-soft;
+  box-sizing: border-box;
+}
+
+.error-copy { min-width: 0; flex: 1; }
+
+.error-title {
+  display: block;
+  color: @danger;
+  font-size: @font-sm;
+  font-weight: 700;
+}
+
+.error-note {
+  display: block;
+  margin-top: 6rpx;
+  color: @rose-muted;
+  font-size: @font-xs;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.retry-button {
+  width: 120rpx;
+  height: 58rpx;
+  flex: none;
+  margin: 0 0 0 @space-3;
+  padding: 0;
+  border: 0;
+  border-radius: @radius-sm;
+  background: @rose-primary-dark;
+  color: @text-inverse;
+  font-size: @font-xs;
+  font-weight: 700;
+  line-height: 58rpx;
+}
+
+.retry-button::after { border: 0; }
+
+.action-section {
+  display: flex;
+  flex-direction: column;
+  margin-top: @space-4;
+}
+
+.primary-button {
+  display: flex;
+  width: 100%;
+  height: 92rpx;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: @radius-pill;
+  background: @rose-primary;
+  color: @text-inverse;
+  font-size: @font-md;
+  font-weight: 700;
+  line-height: 92rpx;
+  box-shadow: 0 10rpx 24rpx rgba(193, 86, 103, .22);
+}
+
+.primary-button[disabled] { opacity: .68; }
+
+.secondary-button {
+  display: flex;
+  width: 100%;
+  height: 84rpx;
+  align-items: center;
+  justify-content: center;
+  margin-top: @space-3;
+  padding: 0;
+  border: 1rpx solid @rose-line-strong;
+  border-radius: @radius-pill;
+  background: transparent;
+  color: @rose-muted;
+  font-size: @font-sm;
+  font-weight: 600;
+  line-height: 84rpx;
+}
+
+.primary-button::after,
+.secondary-button::after { border: 0; }
+
+.button-hover { opacity: .78; }
+
+.login-note {
+  margin-top: @space-4;
+  color: @rose-faint;
+  font-size: @font-xs;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.safe-bottom { height: calc(40rpx + env(safe-area-inset-bottom)); }
+
+@keyframes spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }

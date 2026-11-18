@@ -1,0 +1,132 @@
+<navigation-bar title="情侣空间" back="{{true}}" color="#3b2c30" background="#fdf9f6"></navigation-bar>
+
+<scroll-view class="page-scroll" scroll-y bounces="{{false}}" type="list" enhanced show-scrollbar="false">
+  <view class="setup-page">
+    <view class="setup-hero">
+      <text class="hero-kicker">OUR SPACE</text>
+      <text class="hero-title">{{waiting ? '等待另一半加入' : '开启你们的情侣空间'}}</text>
+      <text class="hero-copy">{{waiting ? '把邀请令牌发给 Ta，Ta 在「我的 → 绑定情侣空间」输入后即可加入。' : '创建属于两个人的空间，把故事、照片和悄悄话都收在这里。'}}</text>
+    </view>
+
+    <view wx:if="{{loading}}" class="state-card">
+      <view class="state-spinner"></view>
+      <text class="state-title">正在确认情侣空间状态</text>
+    </view>
+
+    <block wx:else>
+      <view wx:if="{{pageError}}" class="error-band">
+        <view class="error-copy">
+          <text class="error-title">情侣空间状态暂时无法确认</text>
+          <text class="error-note">{{pageError}}</text>
+        </view>
+        <button class="retry-button" bindtap="onRetryPage">重试</button>
+      </view>
+
+      <!-- 已创建但等待另一半加入：只展示邀请区，不再展示创建表单 -->
+      <block wx:if="{{waiting}}">
+        <view class="section-card">
+          <text class="section-kicker">INVITE YOUR PARTNER</text>
+          <text class="section-title">邀请另一半加入</text>
+          <text class="section-note">生成邀请令牌后发给 Ta；对方在「我的 → 绑定情侣空间」中粘贴即可加入。</text>
+          <view wx:if="{{invitationLinkLoading}}" class="inline-loading"><view class="state-spinner small"></view><text>正在生成邀请…</text></view>
+          <block wx:else>
+            <view wx:if="{{createdInvitationLink}}" class="token-box">
+              <text class="token-label">邀请令牌</text>
+              <text class="token-value">{{createdInvitationLink}}</text>
+            </view>
+            <view wx:if="{{invitationLinkError}}" class="inline-error">{{invitationLinkError}}</view>
+            <view class="button-row">
+              <button class="primary-button" bindtap="onCopyInvitation" hover-class="button-hover">复制邀请令牌</button>
+              <button class="secondary-button" bindtap="generateInvitationLink" loading="{{invitationLinkLoading}}" hover-class="button-hover">重新生成</button>
+            </view>
+          </block>
+        </view>
+        <view class="section-card">
+          <text class="section-kicker">NEXT STEP</text>
+          <text class="section-title">先自己逛逛吧</text>
+          <text class="section-note">另一半加入后，故事、相册、留言等完整功能会自动出现在底部导航里。</text>
+          <button class="secondary-button" bindtap="goProfile" hover-class="button-hover">去「我的」看看</button>
+        </view>
+      </block>
+
+      <block wx:elif="{{hasSpace}}">
+        <view class="section-card">
+          <text class="section-title">你已经有情侣空间了</text>
+          <text class="section-note">正在返回空间首页…</text>
+        </view>
+      </block>
+
+      <block wx:else>
+        <!-- 1. 创建 -->
+        <view class="section-card">
+          <text class="section-kicker">CREATE</text>
+          <text class="section-title">创建情侣空间</text>
+          <text class="section-note">创建后你将成为空间发起人，另一半需要通过邀请加入。</text>
+          <view class="field">
+            <text class="field-label">空间名称</text>
+            <input class="field-input" value="{{form.spaceName}}" maxlength="30" placeholder="例如：我们的故事" placeholder-class="field-placeholder" bindinput="onNameInput" />
+          </view>
+          <view class="field">
+            <text class="field-label">空间简介</text>
+            <textarea class="field-textarea" value="{{form.description}}" maxlength="500" placeholder="写一句只属于你们的话（可留空）" placeholder-class="field-placeholder" bindinput="onDescriptionInput"></textarea>
+          </view>
+          <view wx:if="{{createError}}" class="inline-error">{{createError}}</view>
+          <button class="primary-button" bindtap="onCreate" loading="{{creating}}" disabled="{{creating}}" hover-class="button-hover">{{creating ? '正在创建…' : '创建情侣空间'}}</button>
+        </view>
+
+        <!-- 2. 绑定 / 加入 -->
+        <view class="section-card">
+          <text class="section-kicker">BIND</text>
+          <text class="section-title">绑定 / 加入情侣空间</text>
+          <text class="section-note">粘贴另一半发来的邀请链接或邀请令牌，确认后即可加入。</text>
+          <view class="field">
+            <text class="field-label">邀请链接或令牌</text>
+            <input class="field-input" value="{{invitationCode}}" placeholder="粘贴邀请链接或邀请令牌" placeholder-class="field-placeholder" bindinput="onInvitationInput" />
+          </view>
+          <view wx:if="{{bindError}}" class="inline-error">{{bindError}}</view>
+          <view wx:if="{{bindInfo}}" class="inline-note">{{bindInfo}}</view>
+          <view wx:if="{{preview}}" class="preview-card">
+            <text class="preview-name">{{preview.spaceName || '情侣空间'}}</text>
+            <text class="preview-note">发起人：{{preview.inviterName || '对方'}}{{preview.memberCount ? ' · 已有 ' + preview.memberCount + ' 人' : ''}}</text>
+            <text wx:if="{{preview.description}}" class="preview-desc">{{preview.description}}</text>
+          </view>
+          <view class="button-row">
+            <button class="secondary-button" bindtap="onPreviewInvitation" loading="{{previewing}}" hover-class="button-hover">预览邀请</button>
+            <button class="primary-button" bindtap="onAcceptByToken" loading="{{binding}}" disabled="{{binding}}" hover-class="button-hover">确认加入</button>
+          </view>
+        </view>
+
+        <!-- 3. 我收到的邀请 -->
+        <view class="section-card">
+          <text class="section-kicker">RECEIVED</text>
+          <text class="section-title">我收到的邀请</text>
+          <view wx:if="{{receivedLoading}}" class="inline-loading"><view class="state-spinner small"></view><text>正在加载邀请…</text></view>
+          <view wx:elif="{{receivedError}}" class="inline-error-row">
+            <text class="inline-error">{{receivedError}}</text>
+            <button class="retry-button" bindtap="onRetryReceived">重试</button>
+          </view>
+          <block wx:elif="{{receivedInvitations.length}}">
+            <view class="invite-row" wx:for="{{receivedInvitations}}" wx:key="invitationId">
+              <view class="invite-copy">
+                <text class="invite-name">{{item.spaceName || '情侣空间'}}</text>
+                <text class="invite-note">{{item.inviterName || '对方'}} 邀请你加入{{item.expiresAt ? ' · ' + item.expiresAt + ' 前有效' : ''}}</text>
+              </view>
+              <button class="accept-button" data-id="{{item.invitationId}}" bindtap="onAcceptReceived" disabled="{{binding}}" hover-class="button-hover">接受</button>
+            </view>
+          </block>
+          <block wx:else>
+            <text class="section-note">暂时还没有收到邀请。</text>
+            <button class="secondary-button" bindtap="onRetryReceived" hover-class="button-hover">刷新邀请</button>
+          </block>
+        </view>
+      </block>
+
+      <view class="recheck-row">
+        <text class="recheck-note">状态看起来不对？</text>
+        <text class="recheck-link" bindtap="onRecheck">重新确认情侣空间状态</text>
+      </view>
+    </block>
+
+    <view class="safe-bottom"></view>
+  </view>
+</scroll-view>

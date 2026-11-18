@@ -1,6 +1,7 @@
 import { post } from '../../utils/request'
 import { hasFrontendQueryPermission } from '../../utils/auth'
 import { withComponentPageViewTracking } from '../../utils/page-view-lifecycle'
+import { guardPageReady } from '../../utils/access-control'
 
 interface StoryChapter {
   id: number
@@ -58,10 +59,12 @@ Component(withComponentPageViewTracking({
 
   lifetimes: {
     async attached() {
-      const app = getApp<IAppOption>()
-      if (app.globalData.authReady) await app.globalData.authReady.catch(() => undefined)
+      // 页面守卫：未登录 / 无情侣空间时跳回「我的」并展示创建 / 绑定提示；
+      // 模块查询权限沿用项目原有逻辑，缺失时回到公开的恋爱广场。
+      const allowed = await guardPageReady('pages/story/story')
+      if (!allowed) return
       if (!hasFrontendQueryPermission('story')) {
-        wx.reLaunch({ url: '/pages/index/index' })
+        wx.reLaunch({ url: '/pages/plaza/index' })
         return
       }
       this.loadOverview()

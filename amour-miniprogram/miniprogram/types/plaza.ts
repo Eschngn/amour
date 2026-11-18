@@ -2,9 +2,10 @@
  * 恋爱广场（公开空间）数据类型。
  *
  * 字段以 amour-springboot GalleryController / GallerySpaceCardVO 为准：
- * - POST /gallery/spaces            → PageResult<GallerySpaceCardVO>
- * - POST /gallery/space/detail      → GallerySpaceDetailVO
- * 这两个接口匿名可访问，只返回后端审核通过并公开的字段，
+ * - POST /gallery/spaces             → PageResult<GallerySpaceCardVO>
+ * - POST /gallery/space/detail       → GallerySpaceDetailVO
+ * - POST /gallery/space/story/detail → GalleryStoryDetailVO
+ * 这些接口匿名可访问，只返回后端审核通过并公开的字段，
  * 前端不补充成员资料、不读取工作版本内容。
  *
  * 注意：小程序端与请求层约定保持一致，全部使用 camelCase 字段名。
@@ -101,6 +102,26 @@ export interface GalleryStoryListItem {
   isMilestone?: boolean | null
 }
 
+/**
+ * 公开故事正文（GalleryStoryDetailVO）。
+ *
+ * 由 POST /gallery/space/story/detail 按 spaceId + storyId 单独读取：
+ * 空间详情的故事列表只有摘要与正文预览，完整正文必须按需加载。
+ * 接口不返回成员、审核、章节等私密或后台字段。
+ */
+export interface GalleryStoryDetail {
+  storyId?: number | string | null
+  title?: string | null
+  summary?: string | null
+  content?: string | null
+  happenedTime?: string | null
+  location?: string | null
+  coverImage?: string | null
+  tagLabel?: string | null
+  tagColor?: string | null
+  isMilestone?: boolean | null
+}
+
 /** 广场列表请求参数，对应 GallerySpacePageQueryReqVO。 */
 export interface PlazaPageQuery {
   current: number
@@ -169,6 +190,12 @@ export interface SpaceStoryView {
   location: string
   tagLabel: string
   coverUrl: string
+  /** 是否有完整正文；为 false 时列表不提供“阅读全文”入口 */
+  hasContent: boolean
+  /** 去掉 Markdown 标记的正文预览，摘要为空时作为列表文案 */
+  contentPreview: string
+  /** 正文长度（去空白字符），用于展示“约 N 字” */
+  contentLength: number
 }
 
 export interface SpacePhotoView {
@@ -176,8 +203,58 @@ export interface SpacePhotoView {
   title: string
   description: string
   url: string
+  /** 原始拍摄时间（后端 yyyy-MM-dd HH:mm:ss），缺失时为空字符串 */
+  takenTime: string
+  /** 拍摄时间展示文本（yyyy.MM.dd），缺失时为空字符串 */
+  dateText: string
+  /** 拍摄地点，缺失时为空字符串 */
+  location: string
   /** 图片加载失败时由页面置为 true，回退到占位 */
   failed?: boolean
+}
+
+/**
+ * 公开故事详情展示模型。
+ *
+ * story 为详情接口返回的原始结构归一化结果，blocks 为解析后的正文块，
+ * 两者都来自 `/gallery/space/story/detail`，不依赖列表索引或临时缓存。
+ */
+export interface SpaceStoryDetailView {
+  spaceId: string
+  story: SpaceStoryView
+  /** 原样保留的正文 Markdown，用于分享 / 复制等后续能力 */
+  content: string
+  /** 解析后的正文块，直接交给 WXML 渲染 */
+  blocks: StoryContentBlock[]
+  /** 正文内图片地址，用于预览 */
+  contentImages: string[]
+  totalWords: number
+  readTime: string
+  formattedDate: string
+}
+
+/** 正文块：由 utils/story-content 的 Markdown 解析产出。 */
+export interface StoryContentBlock {
+  /** 稳定 key，用于 wx:key */
+  key: string
+  type: 'heading' | 'paragraph' | 'quote' | 'list' | 'code' | 'image' | 'divider'
+  text?: string
+  language?: string
+  level?: number
+  alt?: string
+  url?: string
+}
+
+/** 公开照片详情展示模型。 */
+export interface SpacePhotoDetailView {
+  spaceId: string
+  photo: SpacePhotoView
+  /** 同一空间的公开照片，按接口顺序，用于左右滑动切换 */
+  photos: SpacePhotoView[]
+  /** 当前照片在 photos 中的下标 */
+  index: number
+  /** 拍摄时间展示文本（yyyy年MM月dd日 HH:mm），缺失时为“拍摄时间未记录” */
+  formattedDateTime: string
 }
 
 export interface SpaceAnniversaryView {

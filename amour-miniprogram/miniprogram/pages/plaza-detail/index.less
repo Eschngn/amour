@@ -198,13 +198,52 @@ page {
 }
 
 .story-item {
-  padding: @space-3 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin: 0 -@space-2;
+  padding: @space-3 @space-2;
   border-top: 1rpx solid @rose-line;
+  border-radius: @radius-sm;
+}
+
+/* 整行都是点击区域：按下时整块高亮反馈 */
+.story-item-hover {
+  background: @bg-rose-soft;
 }
 
 .story-item:first-child {
   padding-top: 0;
   border-top: 0;
+}
+
+.story-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.story-entry {
+  display: flex;
+  flex: none;
+  align-items: center;
+  margin-left: @space-2;
+  padding-top: 2rpx;
+}
+
+.story-entry-text {
+  color: @rose-primary-dark;
+  font-size: @font-xs;
+  white-space: nowrap;
+}
+
+.story-entry-text.is-muted {
+  color: @text-tertiary;
+}
+
+.story-entry-arrow {
+  margin-left: 6rpx;
+  color: @rose-primary;
+  font-size: @font-xs;
 }
 
 .story-title {
@@ -259,6 +298,10 @@ page {
   overflow: hidden;
   border-radius: @radius-sm;
   background: @bg-soft;
+}
+
+.photo-item-hover {
+  opacity: 0.86;
 }
 
 .photo-frame {

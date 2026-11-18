@@ -1,114 +1,105 @@
-<block wx:if="{{false}}">
 <navigation-bar title="我的" back="{{false}}" color="#623640" background="#fcf8f5"></navigation-bar>
 
 <scroll-view class="page-scroll" scroll-y bounces="{{false}}" type="list" enhanced show-scrollbar="false">
   <view class="profile-page">
-    <view class="profile-hero">
-      <view class="avatar-picker" catchtap="openProfileEditor">
-        <view class="avatar-wrap {{avatarUploading ? 'is-uploading' : ''}}">
+    <!-- 状态确认中：骨架占位，不短暂展示任何需要情侣空间的内容 -->
+    <block wx:if="{{statusLoading}}">
+      <view class="profile-skeleton">
+        <view class="skeleton-avatar"></view>
+        <view class="skeleton-copy"><view class="skeleton-line wide"></view><view class="skeleton-line"></view></view>
+      </view>
+      <view class="skeleton-card"></view>
+      <view class="skeleton-card short"></view>
+    </block>
+
+    <block wx:else>
+      <view wx:if="{{authenticating}}" class="login-progress"><view class="login-progress-bar"></view></view>
+
+      <!-- 账号摘要：未登录时展示登录引导，已登录时展示资料入口 -->
+      <view class="account-summary" bindtap="onAccountTap" hover-class="account-summary-hover">
+        <view class="avatar-wrap">
           <text wx:if="{{!avatar || avatarError}}" class="avatar-initial">{{initial}}</text>
           <image wx:else class="avatar-image" src="{{avatar}}" mode="aspectFill" binderror="onAvatarError"></image>
-          <view wx:if="{{avatarUploading}}" class="avatar-uploading"><view class="avatar-spinner"></view></view>
         </view>
+        <view class="account-copy">
+          <text class="display-name">{{loggedIn ? displayName : '尚未登录'}}</text>
+          <text class="username">{{loggedIn ? (username ? '@' + username : '账号信息已同步') : '微信登录后可创建情侣空间'}}</text>
+        </view>
+        <view class="edit-chevron" aria-role="button" aria-label="{{loggedIn ? '编辑个人资料' : '微信登录'}}">{{loggedIn ? '›' : '登录'}}</view>
       </view>
-      <text class="display-name" catchtap="openProfileEditor" hover-class="nickname-hover">{{displayName}}</text>
-      <view class="account-state">
-        <view class="state-dot {{loggedIn ? 'is-online' : ''}}"></view>
-        <text>{{accountState}}</text>
-      </view>
-    </view>
 
-    <view class="auth-band {{loginError ? 'has-error' : ''}}">
-      <view class="auth-status-icon">
-        <view wx:if="{{authenticating}}" class="auth-spinner"></view>
-        <text wx:elif="{{loginError}}">!</text>
-        <text wx:elif="{{loggedIn}}">✓</text>
-        <view wx:else class="wechat-mark"><view></view><view></view></view>
+      <!-- 未登录：登录入口 + 说明 -->
+      <view wx:if="{{!loggedIn}}" class="login-panel">
+        <view class="login-copy">
+          <text class="login-title">登录后开启情侣空间</text>
+          <text class="login-note">登录即可创建属于你们两个人的空间，把故事、照片和悄悄话都收在一起。</text>
+        </view>
+        <button class="primary-button" bindtap="onLogin" loading="{{loggingIn}}" disabled="{{loggingIn}}" hover-class="button-hover">{{loggingIn ? '正在登录…' : '微信登录'}}</button>
       </view>
-      <view class="auth-copy">
-        <text class="auth-title">{{authTitle}}</text>
-        <text class="auth-note">{{loginError || authNote}}</text>
-      </view>
-      <button
-        wx:if="{{!authenticating && (!loggedIn || loginError)}}"
-        class="login-button"
-        bindtap="retryLogin"
-        hover-class="button-hover"
-        loading="{{authenticating}}"
-      >{{loginError ? '重试' : '微信登录'}}</button>
-    </view>
 
-    <view class="profile-section">
-      <text class="section-kicker">恋语间</text>
-      <text class="section-title">个人空间</text>
-      <view class="setting-list">
-        <view class="setting-row">
-          <view class="setting-icon heart-icon">♡</view>
-          <view class="setting-copy">
-            <text class="setting-title">相伴时光</text>
-            <text class="setting-note">收藏属于两个人的生活记录</text>
+      <!-- 已登录但没有可用情侣空间：创建 / 绑定引导（核心需求） -->
+      <view wx:elif="{{!hasSpace}}" class="space-guide {{spaceStateError ? 'has-error' : ''}}">
+        <view class="space-guide-head">
+          <view class="space-guide-icon">
+            <text wx:if="{{spaceStateError}}">!</text>
+            <text wx:else>♡</text>
+          </view>
+          <view class="space-guide-copy">
+            <text class="space-guide-title">{{spaceStateTitle}}</text>
+            <text class="space-guide-note">{{spaceStateNote}}</text>
           </view>
         </view>
-        <view
-          class="setting-row {{(!loggedIn || loginError) ? 'is-actionable' : ''}}"
-          bindtap="handleAccountAction"
-          hover-class="{{(!loggedIn || loginError) ? 'row-hover' : 'none'}}"
-        >
-          <view class="setting-icon account-icon"><view class="mini-profile-icon"><view></view><view></view></view></view>
-          <view class="setting-copy">
-            <text class="setting-title">账号信息</text>
-            <text class="setting-note">{{loggedIn ? accountLabel : '等待微信登录'}}</text>
+        <view wx:if="{{spaceStateError}}" class="space-guide-actions">
+          <button class="primary-button" bindtap="onRetrySession" loading="{{authenticating}}" hover-class="button-hover">重新查询状态</button>
+          <button class="secondary-button" bindtap="onCreateSpace" hover-class="button-hover">仍然创建情侣空间</button>
+        </view>
+        <block wx:else>
+          <view class="space-guide-actions">
+            <button class="primary-button" bindtap="onCreateSpace" hover-class="button-hover">创建情侣空间</button>
+            <button class="secondary-button" bindtap="onBindSpace" hover-class="button-hover">绑定 / 加入情侣空间</button>
           </view>
-          <text wx:if="{{!loggedIn || loginError}}" class="setting-arrow">›</text>
-          <view wx:else class="row-check">✓</view>
+          <text class="space-guide-tip">创建或绑定成功后，故事、相册、留言等完整功能会自动开启。</text>
+        </block>
+      </view>
+
+      <!-- 已有情侣空间：展示空间摘要与入口 -->
+      <view wx:else class="space-card">
+        <view class="space-card-head">
+          <view class="space-card-icon">♥</view>
+          <view class="space-card-copy">
+            <text class="space-card-title">{{spaceName}}</text>
+            <text class="space-card-note">{{spaceSummary}}</text>
+          </view>
         </view>
-        <view class="setting-row">
-          <view class="setting-icon shield-icon"><view class="shield-mark">✓</view></view>
-          <view class="setting-copy">
-            <text class="setting-title">会话安全</text>
-            <text class="setting-note">会话密钥仅由服务端保管</text>
+        <button class="secondary-button" bindtap="onOpenSpace" hover-class="button-hover">进入情侣空间</button>
+      </view>
+
+      <!-- 账号同步错误提示 -->
+      <view wx:if="{{loginError || sessionError}}" class="error-band">
+        <view class="error-copy">
+          <text class="error-title">{{loggedIn ? '状态同步失败' : '登录失败'}}</text>
+          <text class="error-note">{{loginError || sessionError}}</text>
+        </view>
+        <button class="retry-button" bindtap="onRetrySession" loading="{{authenticating}}">重试</button>
+      </view>
+
+      <view class="settings-section">
+        <text class="section-title">账号安全</text>
+        <view class="settings-list">
+          <view class="settings-row {{(!loggedIn || authenticating) ? 'is-disabled' : ''}}" bindtap="openPasswordModal" hover-class="settings-row-hover">
+            <view class="lock-icon"><view class="lock-shackle"></view><view class="lock-body"><view></view></view></view>
+            <view class="settings-copy"><text class="settings-title">{{passwordSet ? '修改密码' : '设置密码'}}</text><text class="settings-note">{{passwordSet ? '需验证当前密码' : '设置后可在网页端使用用户名登录'}}</text></view>
+            <text class="row-status">{{passwordSet ? '已设置' : '未设置'}}</text><text class="row-chevron">›</text>
           </view>
         </view>
       </view>
 
-    </view>
-    <view class="safe-bottom"></view>
-  </view>
-</scroll-view>
-<bottom-nav current="profile"></bottom-nav>
-</block>
+      <view wx:if="{{loggedIn}}" class="logout-section">
+        <button class="logout-button" bindtap="requestLogout" loading="{{loggingOut}}" disabled="{{loggingOut}}" hover-class="logout-hover">{{loggingOut ? '正在退出…' : '退出登录'}}</button>
+      </view>
 
-<navigation-bar title="我的" back="{{false}}" color="#623640" background="#fcf8f5"></navigation-bar>
-
-<scroll-view class="page-scroll" scroll-y bounces="{{false}}" type="list" enhanced show-scrollbar="false">
-  <view class="profile-page">
-    <view wx:if="{{authenticating}}" class="login-progress"><view class="login-progress-bar"></view></view>
-    <view class="account-summary" bindtap="openProfileEditor" hover-class="account-summary-hover">
-      <view class="avatar-wrap">
-        <text wx:if="{{!avatar || avatarError}}" class="avatar-initial">{{initial}}</text>
-        <image wx:else class="avatar-image" src="{{avatar}}" mode="aspectFill" binderror="onAvatarError"></image>
-      </view>
-      <view class="account-copy">
-        <text class="display-name">{{displayName}}</text>
-        <text class="username">{{username ? '@' + username : (authenticating ? '正在同步账号' : '账号信息未就绪')}}</text>
-      </view>
-      <view class="edit-chevron" aria-role="button" aria-label="编辑个人资料">›</view>
-    </view>
-    <view wx:if="{{loginError}}" class="error-band">
-      <view class="error-copy"><text class="error-title">账号同步失败</text><text class="error-note">{{loginError}}</text></view>
-      <button class="retry-button" bindtap="retryLogin" loading="{{authenticating}}">重试</button>
-    </view>
-    <view class="settings-section">
-      <text class="section-title">账号安全</text>
-      <view class="settings-list">
-        <view class="settings-row {{(!loggedIn || authenticating) ? 'is-disabled' : ''}}" bindtap="openPasswordModal" hover-class="settings-row-hover">
-          <view class="lock-icon"><view class="lock-shackle"></view><view class="lock-body"><view></view></view></view>
-          <view class="settings-copy"><text class="settings-title">{{passwordSet ? '修改密码' : '设置密码'}}</text><text class="settings-note">{{passwordSet ? '需验证当前密码' : '设置后可在网页端使用用户名登录'}}</text></view>
-          <text class="row-status">{{passwordSet ? '已设置' : '未设置'}}</text><text class="row-chevron">›</text>
-        </view>
-      </view>
-    </view>
-    <view class="safe-bottom"></view>
+      <view class="safe-bottom"></view>
+    </block>
   </view>
 </scroll-view>
 <bottom-nav current="profile"></bottom-nav>

@@ -32,7 +32,9 @@ test('超时使用单独文案', () => {
 })
 
 test('空间未公开错误码标记不可用且不再重试', () => {
-  ['20032', '20046', '20047', '20048', '20049', '20058'].forEach((code) => {
+  // 20003 是公开故事详情返回的“故事不存在 / 已删除 / 已改为私密”，
+  // 与空间级不可见一样，重试没有意义。
+  ['20032', '20046', '20047', '20048', '20049', '20058', '20003'].forEach((code) => {
     const error = toPlazaError({ message: '该情侣空间未公开', statusCode: 200, errorCode: code }, '兜底')
     assert.equal(error.errorCode, code)
     assert.equal(error.unavailable, true)

@@ -19,6 +19,7 @@ function formatPhoto(photo) {
 }
 
 const { withPageViewTracking } = require('../../utils/page-view-lifecycle')
+const { guardPageReady } = require('../../utils/access-control')
 
 Page(withPageViewTracking({
   data: {
@@ -43,7 +44,11 @@ Page(withPageViewTracking({
     error: '',
   },
 
-  onLoad(options) {
+  async onLoad(options) {
+    // 页面守卫：分享 / 深链 / 历史栈进入同样受控；
+    // 未登录或没有情侣空间时跳回「我的」并展示创建 / 绑定提示。
+    const allowed = await guardPageReady('pages/photo-detail/photo-detail')
+    if (!allowed || this.pageUnloaded) return
     const id = Number(options.id)
     this.detailBackCommitting = false
     const storedPhotos = wx.getStorageSync('photoDetailCollection')
@@ -267,6 +272,7 @@ Page(withPageViewTracking({
   },
 
   onUnload() {
+    this.pageUnloaded = true
     if (this.detailSwitchTimer) clearTimeout(this.detailSwitchTimer)
     if (this.detailResetTimer) clearTimeout(this.detailResetTimer)
   },

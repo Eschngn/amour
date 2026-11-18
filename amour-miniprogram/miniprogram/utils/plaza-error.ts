@@ -33,8 +33,13 @@ export interface PlazaErrorInput {
 const NETWORK_MESSAGE = '网络连接不太稳定，请稍后重试'
 const TIMEOUT_MESSAGE = '这次加载等得有点久，请稍后重试'
 
-/** 空间级不可见错误码：不存在 / 未公开 / 冻结 / 归档 / 不可访问 / 已解绑。 */
-export const UNAVAILABLE_CODES = ['20032', '20046', '20047', '20048', '20049', '20058']
+/**
+ * 不可重试的不可见错误码：
+ * - 空间级：不存在 / 未公开 / 冻结 / 归档 / 不可访问 / 已解绑；
+ * - 内容级：公开故事不存在（含已删除、已改为私密、已下架，后端统一返回 20003）。
+ * 重试这些错误没有意义，页面直接展示“已不可见 + 返回入口”。
+ */
+export const UNAVAILABLE_CODES = ['20032', '20046', '20047', '20048', '20049', '20058', '20003']
 
 export function createPlazaError(message: string, options: {
   statusCode?: number

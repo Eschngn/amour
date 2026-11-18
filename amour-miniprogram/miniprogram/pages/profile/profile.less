@@ -125,3 +125,115 @@ page { display: flex; height: 100vh; flex-direction: column; background: #fcf8f5
   .auth-note { max-width: 280rpx; }
   .login-button { width: 132rpx; padding-right: 14rpx; padding-left: 14rpx; }
 }
+
+/* ============================================================
+   会话状态驱动的新增区块
+   - 状态确认骨架：避免首屏闪烁
+   - 未登录登录面板 / 无情侣空间引导 / 已有空间摘要
+   ============================================================ */
+
+.profile-skeleton { padding: 36rpx 42rpx; border-bottom: 1rpx solid #f0dcdc; background: #fff; }
+.profile-skeleton { display: flex; align-items: center; }
+.skeleton-avatar { width: 124rpx; height: 124rpx; flex: none; border-radius: 50%; background: #f6ebec; }
+.skeleton-copy { min-width: 0; flex: 1; margin-left: 28rpx; }
+.skeleton-line { width: 52%; height: 22rpx; margin-top: 16rpx; border-radius: 11rpx; background: #f6ebec; }
+.skeleton-line.wide { width: 76%; height: 30rpx; margin-top: 0; }
+.skeleton-card { height: 208rpx; margin: 32rpx 42rpx 0; border-radius: 16rpx; background: #faf3f2; }
+.skeleton-card.short { height: 148rpx; }
+
+.login-panel,
+.space-guide,
+.space-card {
+  margin: 32rpx 42rpx 0;
+  padding: 32rpx 28rpx;
+  border: 1rpx solid #efdcde;
+  border-radius: 18rpx;
+  background: #fff;
+  box-shadow: 0 8rpx 24rpx rgba(150, 104, 110, .06);
+  box-sizing: border-box;
+}
+
+.login-copy { margin-bottom: 8rpx; }
+.login-title { display: block; color: #603640; font-size: 30rpx; font-weight: 700; }
+.login-note { display: block; margin-top: 10rpx; color: #9b858a; font-size: 22rpx; line-height: 1.6; }
+
+.space-guide { border-color: #f0d6d9; background: linear-gradient(180deg, #fff7f6 0%, #ffffff 62%); }
+.space-guide.has-error { border-color: #eed6d8; background: #fff6f6; }
+.space-guide-head { display: flex; align-items: flex-start; }
+.space-guide-icon {
+  display: flex;
+  width: 64rpx;
+  height: 64rpx;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #fae9ea;
+  color: #c86b78;
+  font-family: Georgia, serif;
+  font-size: 32rpx;
+}
+.has-error .space-guide-icon { background: #fbe4e4; color: #b85060; font-size: 28rpx; font-weight: 700; }
+.space-guide-copy { min-width: 0; flex: 1; margin-left: 20rpx; }
+.space-guide-title { display: block; color: #5c3340; font-size: 30rpx; font-weight: 700; }
+.space-guide-note { display: block; margin-top: 8rpx; color: #9b858a; font-size: 22rpx; line-height: 1.6; }
+.space-guide-actions { margin-top: 22rpx; }
+.space-guide-tip { display: block; margin-top: 18rpx; color: #b0969b; font-size: 20rpx; line-height: 1.55; }
+
+.space-card-head { display: flex; align-items: center; }
+.space-card-icon {
+  display: flex;
+  width: 64rpx;
+  height: 64rpx;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #fae9ea;
+  color: #c86b78;
+  font-size: 30rpx;
+}
+.space-card-copy { min-width: 0; flex: 1; margin-left: 20rpx; }
+.space-card-title { display: block; overflow: hidden; color: #5c3340; font-size: 30rpx; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.space-card-note { display: block; margin-top: 8rpx; color: #9b858a; font-size: 22rpx; }
+
+.primary-button {
+  display: flex;
+  width: 100%;
+  height: 84rpx;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 42rpx;
+  background: #c86b78;
+  color: #fff;
+  font-size: 26rpx;
+  font-weight: 700;
+  line-height: 84rpx;
+  box-sizing: border-box;
+}
+.primary-button[disabled] { opacity: .62; }
+.primary-button::after { border: 0; }
+
+.secondary-button {
+  display: flex;
+  width: 100%;
+  height: 80rpx;
+  align-items: center;
+  justify-content: center;
+  margin: 18rpx 0 0;
+  padding: 0;
+  border: 1rpx solid #e6d5d8;
+  border-radius: 40rpx;
+  background: #fff;
+  color: #a65360;
+  font-size: 25rpx;
+  font-weight: 700;
+  line-height: 80rpx;
+  box-sizing: border-box;
+}
+.secondary-button::after { border: 0; }
+
+.logout-section { padding: 36rpx 42rpx 0; }

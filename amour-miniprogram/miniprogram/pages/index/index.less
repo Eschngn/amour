@@ -74,3 +74,32 @@ page { display: flex; height: 100vh; flex-direction: column; background: #fcf8f5
   .section-aside { display: none; }
   .quote-section { margin-left: 30rpx; margin-right: 30rpx; }
 }
+
+/* 页面守卫检查中 / 不通过时的占位：避免受限内容在状态确认前闪现。 */
+.home-blocked {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: 200rpx 60rpx;
+  box-sizing: border-box;
+}
+
+.blocked-spinner {
+  width: 44rpx;
+  height: 44rpx;
+  border: 5rpx solid #f6dcdd;
+  border-top-color: #c96a78;
+  border-radius: 50%;
+  animation: blocked-spin .8s linear infinite;
+  box-sizing: border-box;
+}
+
+.blocked-note {
+  margin-top: 24rpx;
+  color: #9b858a;
+  font-size: 24rpx;
+}
+
+@keyframes blocked-spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }

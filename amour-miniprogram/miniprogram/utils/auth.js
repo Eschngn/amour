@@ -10,6 +10,18 @@ const VALIDATION_CACHE_MS = 30000
 
 let loginPromise = null
 let lastValidatedAt = 0
+/** 登录态被清理（401 / 20002 / 手动退出）时通知订阅者，由 session-state 统一收敛全局状态。 */
+const authClearedListeners = new Set()
+
+function emitAuthCleared() {
+  authClearedListeners.forEach((listener) => {
+    try {
+      listener()
+    } catch (error) {
+      console.warn('[auth] 登录态清理回调异常', error)
+    }
+  })
+}
 
 function readString(key) {
   const value = wx.getStorageSync(key)
@@ -63,6 +75,19 @@ function clearAuth() {
     app.globalData.auth = undefined
     app.globalData.authReady = undefined
   }
+  emitAuthCleared()
+}
+
+/**
+ * 订阅登录态被清理事件（token 失效、退出登录）。
+ *
+ * 只用于通知，不携带任何凭证信息；session-state 用它在 401 后立即收敛为未登录，
+ * 避免受限页面继续按“已登录”渲染。
+ */
+function onAuthCleared(listener) {
+  if (typeof listener !== 'function') return () => undefined
+  authClearedListeners.add(listener)
+  return () => authClearedListeners.delete(listener)
 }
 
 function getWechatCode() {
@@ -177,4 +202,5 @@ module.exports = {
   logoutWechat,
   updateStoredProfile,
   hasFrontendQueryPermission,
+  onAuthCleared,
 }

@@ -3,6 +3,8 @@
     "pages/index/index",
     "pages/plaza/index",
     "pages/plaza-detail/index",
+    "pages/plaza-story/plaza-story",
+    "pages/plaza-photo/plaza-photo",
     "pages/story/story",
     "pages/story-detail/story-detail",
     "pages/photo/photo",
@@ -10,6 +12,8 @@
     "pages/message/message",
     "pages/profile/profile",
     "pages/profile-edit/profile-edit",
+    "pages/login/login",
+    "pages/space-setup/index",
     "pages/logs/logs"
   ],
   "window": {

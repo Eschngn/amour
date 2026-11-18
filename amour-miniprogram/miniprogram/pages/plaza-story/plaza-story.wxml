@@ -1,0 +1,113 @@
+<navigation-bar title="公开故事" back="{{true}}" color="#3b2c30" background="#fdf9f6" bind:back="onNavBack"></navigation-bar>
+
+<scroll-view class="page-scroll" scroll-y enhanced bounces="{{false}}" show-scrollbar="{{false}}" type="list">
+  <view class="detail-page">
+    <!-- 加载中：与详情结构一致的骨架 -->
+    <view wx:if="{{loading}}" class="loading-state">
+      <view class="hero-skeleton"></view>
+      <view class="article-skeleton">
+        <view class="skeleton-line" wx:for="{{loadingItems}}" wx:key="*this"></view>
+      </view>
+    </view>
+
+    <!-- 不可见 / 加载失败：沿用项目既有空状态样式，并提供返回入口 -->
+    <view wx:elif="{{error}}" class="empty-state">
+      <text class="state-symbol">♡</text>
+      <text class="state-title">{{unavailable ? '这篇故事已经看不到了' : '公开故事暂时无法打开'}}</text>
+      <text class="state-copy">{{error}}</text>
+      <view class="state-actions">
+        <view
+          class="outline-button"
+          hover-class="button-hover"
+          hover-stay-time="60"
+          bindtap="backToSpace"
+          aria-role="button"
+          aria-label="返回公开空间"
+        >
+          <text>返回公开空间</text>
+        </view>
+        <view
+          wx:if="{{!unavailable}}"
+          class="primary-button"
+          hover-class="button-hover"
+          hover-stay-time="60"
+          bindtap="onPrimaryAction"
+          aria-role="button"
+          aria-label="重新加载"
+        >
+          <text>重新加载</text>
+        </view>
+      </view>
+    </view>
+
+    <block wx:elif="{{story}}">
+      <view class="detail-hero">
+        <image
+          wx:if="{{story.coverUrl && !coverFailed}}"
+          class="hero-cover"
+          src="{{story.coverUrl}}"
+          mode="aspectFill"
+          binderror="onCoverError"
+          aria-hidden="true"
+        ></image>
+        <view class="hero-content">
+          <view class="story-labels">
+            <text wx:if="{{story.tagLabel}}" class="story-tag">{{story.tagLabel}}</text>
+            <text class="chapter-name">公开故事</text>
+          </view>
+          <text class="story-title">{{story.title}}</text>
+          <text wx:if="{{story.summary}}" class="story-summary">{{story.summary}}</text>
+          <view class="story-meta">
+            <text>◷ {{readTime}}</text>
+            <text>▤ {{totalWords}} 字</text>
+            <text wx:if="{{formattedDate}}">◇ {{formattedDate}}</text>
+            <text wx:if="{{story.location}}">⌖ {{story.location}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="article-paper">
+        <block wx:for="{{blocks}}" wx:key="key">
+          <text wx:if="{{item.type === 'heading'}}" class="article-heading heading-level-{{item.level}}">{{item.text}}</text>
+          <text wx:elif="{{item.type === 'paragraph'}}" class="article-paragraph">{{item.text}}</text>
+          <view wx:elif="{{item.type === 'quote'}}" class="article-quote"><text>{{item.text}}</text></view>
+          <view wx:elif="{{item.type === 'list'}}" class="article-list-item">
+            <text class="list-dot">•</text>
+            <text class="list-text">{{item.text}}</text>
+          </view>
+          <view wx:elif="{{item.type === 'code'}}" class="article-code">
+            <text class="code-language">{{item.language}}</text>
+            <text class="code-content">{{item.text}}</text>
+          </view>
+          <image
+            wx:elif="{{item.type === 'image'}}"
+            class="article-image"
+            src="{{item.url}}"
+            mode="widthFix"
+            data-url="{{item.url}}"
+            bindtap="onPreviewImage"
+            aria-role="button"
+            aria-label="预览 {{item.alt}}"
+          ></image>
+          <view wx:elif="{{item.type === 'divider'}}" class="article-divider"></view>
+        </block>
+        <view wx:if="{{!blocks.length}}" class="article-empty">这一页还没有写下正文。</view>
+      </view>
+
+      <view class="back-section">
+        <view
+          class="back-button"
+          hover-class="back-hover"
+          hover-stay-time="60"
+          bindtap="backToSpace"
+          aria-role="button"
+          aria-label="返回公开空间"
+        >
+          <text>返回公开空间</text>
+        </view>
+      </view>
+    </block>
+
+    <view class="safe-bottom"></view>
+  </view>
+</scroll-view>

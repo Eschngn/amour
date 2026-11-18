@@ -1,0 +1,330 @@
+@import "../../styles/tokens.less";
+
+page {
+  display: flex;
+  height: 100vh;
+  flex-direction: column;
+  background: @bg-page;
+  color: @text-primary;
+}
+
+.page-scroll {
+  flex: 1;
+  min-height: 0;
+}
+
+.detail-page {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  padding: @space-4 @page-gutter 0;
+  background: @bg-page;
+  box-sizing: border-box;
+}
+
+/* ============ 照片主体 ============ */
+.photo-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  flex: none;
+  overflow: hidden;
+  border: 1rpx solid @rose-line;
+  border-radius: @radius-lg;
+  background: @bg-soft;
+  box-shadow: @shadow-card;
+}
+
+.photo-slide {
+  width: 100%;
+  height: 100%;
+}
+
+.detail-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.stage-hover {
+  opacity: 0.92;
+}
+
+.image-fallback {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+.image-fallback-mark {
+  color: fade(@rose-primary, 45%);
+  font-size: 56rpx;
+  line-height: 1;
+}
+
+.image-fallback-text {
+  margin-top: @space-2;
+  color: @text-tertiary;
+  font-size: @font-xs;
+}
+
+.image-toolbar {
+  position: absolute;
+  z-index: 2;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: @space-2 @space-3;
+  background: rgba(255, 255, 255, 0.9);
+  color: @text-tertiary;
+  font-size: @font-xs;
+  pointer-events: none;
+}
+
+/* ============ 照片信息 ============ */
+.detail-content {
+  margin-top: @space-3;
+  padding: @space-4;
+  border: 1rpx solid @rose-line;
+  border-radius: @radius-lg;
+  background: @bg-card;
+  box-shadow: @shadow-soft;
+}
+
+.title-row {
+  display: flex;
+  align-items: flex-start;
+}
+
+.title-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.photo-category {
+  display: inline-block;
+  padding: 7rpx 14rpx;
+  border-radius: @radius-pill;
+  background: @bg-rose-soft;
+  color: @rose-primary-dark;
+  font-size: @font-xs;
+  font-weight: 700;
+}
+
+.photo-title {
+  display: block;
+  margin-top: @space-2;
+  color: @text-primary;
+  font-family: Georgia, serif;
+  font-size: @font-2xl;
+  font-weight: 700;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.title-meta {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: @space-3;
+  padding-bottom: @space-3;
+  border-bottom: 1rpx solid @rose-line;
+}
+
+.title-meta-item {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  color: @text-tertiary;
+  font-size: @font-xs;
+  line-height: 1.6;
+}
+
+.title-meta-item + .title-meta-item {
+  margin-left: @space-4;
+}
+
+.title-meta-icon {
+  display: inline-flex;
+  width: 30rpx;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  margin-right: @space-1;
+  color: @rose-primary;
+  font-size: @font-sm;
+  line-height: 1.4;
+}
+
+.title-meta-value {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.photo-description {
+  display: block;
+  margin-top: @space-3;
+  color: @text-secondary;
+  font-size: @font-md;
+  line-height: 1.85;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.photo-description.is-muted {
+  color: @text-tertiary;
+  font-size: @font-sm;
+}
+
+.switch-bar {
+  margin-top: @space-3;
+  text-align: center;
+}
+
+.switch-hint {
+  color: @text-tertiary;
+  font-size: @font-xs;
+}
+
+/* ============ 加载 / 空 / 失败 ============ */
+.loading-state {
+  padding-top: 5rpx;
+}
+
+.stage-skeleton {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: @radius-lg;
+  background: @bg-soft;
+}
+
+.copy-skeleton {
+  margin-top: @space-3;
+  padding: @space-4;
+  border-radius: @radius-lg;
+  background: @bg-card;
+}
+
+.skeleton-line {
+  height: 24rpx;
+  margin-bottom: @space-3;
+  border-radius: @radius-sm;
+  background: @bg-rose-soft;
+}
+
+.skeleton-line.short {
+  width: 58%;
+}
+
+.empty-state {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  margin-top: @space-5;
+  padding: @space-7 @space-4;
+  border: 1rpx dashed @rose-line-strong;
+  border-radius: @radius-lg;
+  background: @bg-card;
+  text-align: center;
+}
+
+.state-symbol {
+  display: flex;
+  width: 82rpx;
+  height: 82rpx;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: @bg-rose-soft;
+  color: @rose-primary;
+  font-size: 34rpx;
+}
+
+.state-title {
+  margin-top: @space-3;
+  color: @text-primary;
+  font-size: @font-lg;
+  font-weight: 700;
+}
+
+.state-copy {
+  margin-top: @space-2;
+  color: @text-tertiary;
+  font-size: @font-sm;
+  line-height: 1.6;
+}
+
+.state-actions {
+  display: flex;
+  margin-top: @space-4;
+}
+
+.outline-button,
+.primary-button {
+  display: flex;
+  height: 72rpx;
+  align-items: center;
+  justify-content: center;
+  margin: 0 8rpx;
+  padding: 0 @space-4;
+  border-radius: @radius-pill;
+  font-size: @font-xs;
+  font-weight: 600;
+}
+
+.outline-button {
+  border: 1rpx solid @rose-line-strong;
+  background: @bg-card;
+  color: @rose-primary-dark;
+}
+
+.primary-button {
+  border: 1rpx solid @rose-primary;
+  background: @rose-primary;
+  color: @text-inverse;
+}
+
+.button-hover {
+  opacity: 0.86;
+}
+
+/* ============ 返回 ============ */
+.back-section {
+  padding: @space-5 0 0;
+}
+
+.back-button {
+  display: flex;
+  height: 80rpx;
+  align-items: center;
+  justify-content: center;
+  border: 1rpx solid @rose-line-strong;
+  border-radius: @radius-pill;
+  background: @bg-card;
+  color: @rose-primary-dark;
+  font-size: @font-sm;
+  font-weight: 600;
+}
+
+.back-hover {
+  background: @bg-rose-soft;
+}
+
+.safe-bottom {
+  height: calc(env(safe-area-inset-bottom) + 24rpx);
+}
+
+@media (max-width: 360px) {
+  .detail-page {
+    padding-right: 24rpx;
+    padding-left: 24rpx;
+  }
+  .photo-title {
+    font-size: 38rpx;
+  }
+}

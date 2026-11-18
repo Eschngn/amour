@@ -1,107 +1,13 @@
 const { post } = require('../../utils/request')
 const { hasFrontendQueryPermission } = require('../../utils/auth')
 const { withPageViewTracking } = require('../../utils/page-view-lifecycle')
-
-function stripInlineMarkdown(value) {
-  return String(value || '')
-    .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/__([^_]+)__/g, '$1')
-    .replace(/[`*_~]/g, '')
-    .trim()
-}
-
-function parseMarkdown(content) {
-  const lines = String(content || '').replace(/\r\n/g, '\n').split('\n')
-  const blocks = []
-  let paragraph = []
-  let quote = []
-  let code = []
-  let codeLanguage = ''
-  let inCode = false
-
-  const flushParagraph = () => {
-    const text = stripInlineMarkdown(paragraph.join(' '))
-    if (text) blocks.push({ type: 'paragraph', text })
-    paragraph = []
-  }
-  const flushQuote = () => {
-    const text = stripInlineMarkdown(quote.join('\n'))
-    if (text) blocks.push({ type: 'quote', text })
-    quote = []
-  }
-
-  lines.forEach((rawLine) => {
-    const line = rawLine.trim()
-    const fence = line.match(/^```\s*(.*)$/)
-    if (fence) {
-      if (inCode) {
-        blocks.push({ type: 'code', text: code.join('\n'), language: codeLanguage || 'CODE' })
-        code = []
-        codeLanguage = ''
-        inCode = false
-      } else {
-        flushParagraph()
-        flushQuote()
-        codeLanguage = fence[1].trim().toUpperCase()
-        inCode = true
-      }
-      return
-    }
-    if (inCode) {
-      code.push(rawLine)
-      return
-    }
-
-    const quoteMatch = line.match(/^>\s?(.*)$/)
-    if (quoteMatch) {
-      flushParagraph()
-      quote.push(quoteMatch[1])
-      return
-    }
-    flushQuote()
-
-    if (!line) {
-      flushParagraph()
-      return
-    }
-
-    const imageMatch = line.match(/^!\[([^\]]*)\]\((https?:\/\/[^)]+)\)$/)
-    if (imageMatch) {
-      flushParagraph()
-      blocks.push({ type: 'image', alt: imageMatch[1] || '故事图片', url: imageMatch[2] })
-      return
-    }
-
-    const headingMatch = line.match(/^(#{1,3})\s+(.+)$/)
-    if (headingMatch) {
-      flushParagraph()
-      blocks.push({ type: 'heading', level: headingMatch[1].length, text: stripInlineMarkdown(headingMatch[2]) })
-      return
-    }
-
-    if (/^(-{3,}|\*{3,})$/.test(line)) {
-      flushParagraph()
-      blocks.push({ type: 'divider' })
-      return
-    }
-
-    const listMatch = line.match(/^[-*+]\s+(.+)$/)
-    if (listMatch) {
-      flushParagraph()
-      blocks.push({ type: 'list', text: stripInlineMarkdown(listMatch[1]) })
-      return
-    }
-
-    paragraph.push(line)
-  })
-
-  flushParagraph()
-  flushQuote()
-  if (inCode && code.length) blocks.push({ type: 'code', text: code.join('\n'), language: codeLanguage || 'CODE' })
-  return blocks
-}
+const { guardPageReady } = require('../../utils/access-control')
+const {
+  collectContentImages,
+  countStoryWords,
+  formatStoryReadTime,
+  parseStoryContent,
+} = require('../../utils/story-content')
 
 function formatDate(value) {
   return value ? String(value).slice(0, 10).replace(/-/g, '.') : '日期未记录'
@@ -125,18 +31,15 @@ function buildStoryContext(story) {
   const normalizedStory = normalizeStory(story)
   if (!normalizedStory) return null
   const content = String(normalizedStory.content || '')
-  const blocks = parseMarkdown(content).map((block, index) => ({
-    ...block,
-    key: `${block.type}-${index}`,
-  }))
-  const totalWords = content.replace(/\s/g, '').length
-  const contentImages = blocks.filter((block) => block.type === 'image').map((block) => block.url)
+  // 正文解析与公开故事详情共用 utils/story-content，避免两套 Markdown 语义产生差异。
+  const blocks = parseStoryContent(content)
+  const totalWords = countStoryWords(content)
   return {
     story: normalizedStory,
     blocks,
-    contentImages,
+    contentImages: collectContentImages(blocks),
     totalWords,
-    readTime: totalWords ? `约 ${Math.ceil(totalWords / 400)} 分钟` : '小于 1 分钟',
+    readTime: formatStoryReadTime(totalWords),
     formattedDate: formatDate(normalizedStory.happenedTime),
   }
 }
@@ -167,9 +70,13 @@ Page(withPageViewTracking({
     loadingItems: [1, 2, 3, 4, 5],
   },
 
-  onLoad(options) {
+  async onLoad(options) {
+    // 页面守卫：分享 / 深链 / 历史栈进入同样受控；
+    // 未登录或没有情侣空间时跳回「我的」并展示创建 / 绑定提示。
+    const allowed = await guardPageReady('pages/story-detail/story-detail')
+    if (!allowed || this.pageUnloaded) return
     if (!hasFrontendQueryPermission('story')) {
-      wx.reLaunch({ url: '/pages/index/index' })
+      wx.reLaunch({ url: '/pages/plaza/index' })
       return
     }
     const id = Number(options.id)
@@ -397,6 +304,7 @@ Page(withPageViewTracking({
   },
 
   onUnload() {
+    this.pageUnloaded = true
     if (this.detailSwitchTimer) clearTimeout(this.detailSwitchTimer)
     if (this.detailResetTimer) clearTimeout(this.detailResetTimer)
   },

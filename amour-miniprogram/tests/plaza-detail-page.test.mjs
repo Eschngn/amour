@@ -16,6 +16,9 @@ import assert from 'node:assert/strict'
 const requests = []
 let responseHandler = null
 const navigations = []
+const toasts = []
+const pendingCompletes = []
+const failedNavigations = []
 let pageOptions = null
 
 globalThis.wx = {
@@ -26,8 +29,15 @@ globalThis.wx = {
     requests.push(options)
     if (responseHandler) responseHandler(options, requests.length)
   },
-  showToast() {},
-  navigateTo() {},
+  showToast(options) {
+    toasts.push(options && options.title)
+  },
+  navigateTo(options) {
+    navigations.push({ type: 'navigateTo', url: options && options.url })
+    if (options && options.fail) failedNavigations.push(options.fail)
+    // 真实小程序里 complete 在导航结束时才回调；测试通过 pendingCompletes 控制时机。
+    if (options && options.complete) pendingCompletes.push(options.complete)
+  },
   navigateBack(options) {
     navigations.push({ type: 'back', delta: options && options.delta })
   },
@@ -107,6 +117,9 @@ const detailBody = {
 test.beforeEach(() => {
   requests.length = 0
   navigations.length = 0
+  toasts.length = 0
+  pendingCompletes.length = 0
+  failedNavigations.length = 0
   responseHandler = null
   pageStack = [{ route: 'pages/plaza/index' }, { route: 'pages/plaza-detail/index' }]
 })
@@ -249,4 +262,155 @@ test('公开照片加载失败只回退对应一张', async () => {
   // 越界索引不影响任何状态
   page.onPhotoError({ currentTarget: { dataset: { index: 9 } } })
   assert.equal(page.data.space.photos[1].failed, undefined)
+})
+
+// ============================ 公开故事 / 照片点击导航 ============================
+
+const listDetailBody = Object.assign({}, detailBody, {
+  stories: [
+    { storyId: 8001, title: '第一次见面', summary: '', contentPreview: '预览一', contentLength: 12, hasContent: true },
+    { storyId: 8002, title: '第一次一起看电影', summary: '散场后还在讨论剧情。', contentLength: 0, hasContent: false },
+  ],
+  photos: [
+    { photoId: 11001, title: '周末早餐', url: 'https://cdn.example.com/p1.jpg' },
+    { photoId: 11002, title: '夏日散步', url: 'https://cdn.example.com/p2.jpg' },
+  ],
+})
+
+test('公开故事列表项点击：带 spaceId + storyId 进入公开故事详情（不使用列表下标）', async () => {
+  responseHandler = (options) => options.success({
+    statusCode: 200,
+    data: { success: true, data: listDetailBody },
+  })
+  const page = createPage({ spaceId: '2001' })
+  await flush()
+
+  page.onOpenStory({ currentTarget: { dataset: { storyId: '8002' } } })
+  assert.deepEqual(navigations, [{
+    type: 'navigateTo',
+    url: '/pages/plaza-story/plaza-story?spaceId=2001&storyId=8002',
+  }])
+  // 列表顺序变化后再点同一篇，URL 里的内容标识不变，仍然打开同一篇。
+  pendingCompletes.forEach(complete => complete({}))
+  pendingCompletes.length = 0
+  page.data.space.stories.reverse()
+  navigations.length = 0
+  page.onOpenStory({ currentTarget: { dataset: { storyId: '8002' } } })
+  assert.deepEqual(navigations, [{
+    type: 'navigateTo',
+    url: '/pages/plaza-story/plaza-story?spaceId=2001&storyId=8002',
+  }])
+})
+
+test('公开故事列表项点击：非法或缺失标识不导航并提示', async () => {
+  responseHandler = (options) => options.success({
+    statusCode: 200,
+    data: { success: true, data: listDetailBody },
+  })
+  const page = createPage({ spaceId: '2001' })
+  await flush()
+
+  page.onOpenStory({ currentTarget: { dataset: {} } })
+  page.onOpenStory({ currentTarget: { dataset: { storyId: '../../etc/passwd' } } })
+  page.onOpenStory({ currentTarget: {} })
+  assert.deepEqual(navigations, [])
+  assert.equal(toasts.length, 3)
+})
+
+test('公开照片列表项点击：带 spaceId + photoId 进入公开照片详情', async () => {
+  responseHandler = (options) => options.success({
+    statusCode: 200,
+    data: { success: true, data: listDetailBody },
+  })
+  const page = createPage({ spaceId: '2001' })
+  await flush()
+
+  page.onOpenPhoto({ currentTarget: { dataset: { photoId: '11002' } } })
+  assert.deepEqual(navigations, [{
+    type: 'navigateTo',
+    url: '/pages/plaza-photo/plaza-photo?spaceId=2001&photoId=11002',
+  }])
+
+  // 列表排序变化不影响定位：仍然按 photoId 传参
+  pendingCompletes.forEach(complete => complete({}))
+  pendingCompletes.length = 0
+  page.data.space.photos.reverse()
+  navigations.length = 0
+  page.onOpenPhoto({ currentTarget: { dataset: { photoId: '11002' } } })
+  assert.deepEqual(navigations, [{
+    type: 'navigateTo',
+    url: '/pages/plaza-photo/plaza-photo?spaceId=2001&photoId=11002',
+  }])
+})
+
+test('公开照片列表项点击：非法标识不导航并提示', async () => {
+  responseHandler = (options) => options.success({
+    statusCode: 200,
+    data: { success: true, data: listDetailBody },
+  })
+  const page = createPage({ spaceId: '2001' })
+  await flush()
+
+  page.onOpenPhoto({ currentTarget: { dataset: { photoId: 'abc' } } })
+  page.onOpenPhoto({ currentTarget: { dataset: {} } })
+  assert.deepEqual(navigations, [])
+  assert.equal(toasts.length, 2)
+})
+
+test('快速连续点击只导航一次，导航结束后可再次点击', async () => {
+  responseHandler = (options) => options.success({
+    statusCode: 200,
+    data: { success: true, data: listDetailBody },
+  })
+  const page = createPage({ spaceId: '2001' })
+  await flush()
+
+  const event = { currentTarget: { dataset: { storyId: '8001' } } }
+  page.onOpenStory(event)
+  // 导航尚未 complete 时的连击被导航锁挡住，不会叠加多个详情页。
+  page.onOpenStory(event)
+  page.onOpenPhoto({ currentTarget: { dataset: { photoId: '11001' } } })
+  assert.equal(navigations.length, 1)
+
+  pendingCompletes.forEach(complete => complete({}))
+  pendingCompletes.length = 0
+  page.onOpenStory(event)
+  assert.equal(navigations.length, 2)
+})
+
+test('导航失败时提示并解锁，用户可以再次点击', async () => {
+  responseHandler = (options) => options.success({
+    statusCode: 200,
+    data: { success: true, data: listDetailBody },
+  })
+  const page = createPage({ spaceId: '2001' })
+  await flush()
+
+  page.onOpenPhoto({ currentTarget: { dataset: { photoId: '11001' } } })
+  assert.equal(failedNavigations.length, 1)
+  // 小程序里 fail 之后仍会回调 complete，两者都要能安全释放导航锁。
+  failedNavigations.forEach(fail => fail({ errMsg: 'navigateTo:fail' }))
+  pendingCompletes.forEach(complete => complete({}))
+  pendingCompletes.length = 0
+  assert.equal(toasts.length, 1)
+  assert.match(String(toasts[0]), /无法打开详情/)
+
+  page.onOpenPhoto({ currentTarget: { dataset: { photoId: '11001' } } })
+  assert.equal(navigations.length, 2)
+})
+
+test('故事列表项渲染出 hasContent 与正文预览字段，供整行可点击入口使用', async () => {
+  responseHandler = (options) => options.success({
+    statusCode: 200,
+    data: { success: true, data: listDetailBody },
+  })
+  const page = createPage({ spaceId: '2001' })
+  await flush()
+
+  const [withContent, withoutContent] = page.data.space.stories
+  assert.equal(withContent.hasContent, true)
+  assert.equal(withContent.contentPreview, '预览一')
+  assert.equal(withoutContent.hasContent, false)
+  // 摘要为空时回退到正文预览，与后端 contentPreview 语义一致
+  assert.equal(withContent.summary, '预览一')
 })

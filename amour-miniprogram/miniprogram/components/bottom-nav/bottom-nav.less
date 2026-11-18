@@ -15,6 +15,8 @@
 .home-logo { display: flex; width: 88rpx; height: 88rpx; align-items: center; justify-content: center; border: 7rpx solid #fff; border-radius: 50%; background: #fff; box-shadow: 0 9rpx 24rpx rgba(193, 86, 103, .24); box-sizing: border-box; }
 .logo-image { width: 58rpx; height: 58rpx; }
 .home-label { margin-top: 5rpx; color: #c65f70; font-size: 20rpx; white-space: nowrap; }
+/* 无情侣空间时品牌入口不展示，用等宽占位保持左右两组 Tab 均分，避免布局跳动。 */
+.home-placeholder { width: 132rpx; }
 .profile-icon { position: relative; width: 44rpx; height: 44rpx; }
 .profile-head { position: absolute; top: 5rpx; left: 16rpx; width: 13rpx; height: 13rpx; border: 3rpx solid currentColor; border-radius: 50%; box-sizing: border-box; }
 .profile-body { position: absolute; bottom: 5rpx; left: 9rpx; width: 26rpx; height: 16rpx; border: 3rpx solid currentColor; border-bottom: 0; border-radius: 16rpx 16rpx 0 0; box-sizing: border-box; }
@@ -23,6 +25,10 @@
 .plaza-ring { position: absolute; top: 12rpx; left: 7rpx; width: 22rpx; height: 22rpx; border: 2.5rpx solid currentColor; border-radius: 50%; box-sizing: border-box; }
 .plaza-ring-second { top: 8rpx; left: 18rpx; opacity: .62; }
 .nav-hover { opacity: .56; }.home-hover { transform: translateY(-24rpx) scale(.96); }
+
+/* 状态确认中的占位：与真实导航等高，避免首屏高度跳动。 */
+.nav-bar-skeleton { grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; }
+.nav-skeleton-item { width: 56rpx; height: 20rpx; margin: 0 auto; border-radius: 10rpx; background: #f3e9ea; }
 
 @media (max-width: 360px) {
   .nav-label { font-size: 18rpx; }

@@ -2,21 +2,33 @@ import type {
   GallerySpaceCard,
   GallerySpaceDetail,
   GallerySpaceMember,
+  GalleryStoryDetail,
   SpaceAnniversaryView,
   SpaceCardView,
   SpaceDetailView,
   SpaceMemberView,
+  SpacePhotoDetailView,
   SpacePhotoView,
   SpaceStatView,
+  SpaceStoryDetailView,
   SpaceStoryView,
 } from '../types/plaza'
+import {
+  collectContentImages,
+  countStoryWords,
+  formatStoryDate,
+  formatStoryReadTime,
+  parseStoryContent,
+} from './story-content'
 
 /**
  * 恋爱广场数据适配层。
  *
- * 职责：把后端 GallerySpaceCardVO / GallerySpaceDetailVO 转换成扁平、可直接渲染的视图模型。
+ * 职责：把后端 GallerySpaceCardVO / GallerySpaceDetailVO / GalleryStoryDetailVO
+ * 转换成扁平、可直接渲染的视图模型。
  * - 这里是唯一处理日期格式、图片地址、可选字段和统计值的地方；
  * - 缺失字段不编造：没有头像 / 封面 / 简介 / 开始时间时返回空值，由组件展示占位或直接省略；
+ * - 公开故事正文的 Markdown 解析复用 utils/story-content，与私有故事详情保持一致；
  * - 不做任何网络请求，纯函数便于单测。
  */
 
@@ -274,7 +286,9 @@ function buildStories(raw: GallerySpaceDetail): SpaceStoryView[] {
     if (!story || typeof story !== 'object') return
     const storyId = normalizeSpaceId(story.storyId)
     if (!storyId) return
-    const summary = normalizeText(story.summary) || normalizeText(story.contentPreview)
+    const contentPreview = normalizeText(story.contentPreview)
+    const summary = normalizeText(story.summary) || contentPreview
+    const contentLength = toOptionalCount(story.contentLength)
     stories.push({
       storyId,
       title: normalizeText(story.title) || '未命名故事',
@@ -283,6 +297,12 @@ function buildStories(raw: GallerySpaceDetail): SpaceStoryView[] {
       location: normalizeText(story.location),
       tagLabel: normalizeText(story.tagLabel),
       coverUrl: normalizeImageUrl(story.coverImage),
+      // hasContent 缺失时用正文长度兜底，两者都没有才认为没有正文入口。
+      hasContent: typeof story.hasContent === 'boolean'
+        ? story.hasContent
+        : (contentLength === null ? Boolean(contentPreview) : contentLength > 0),
+      contentPreview,
+      contentLength: contentLength === null ? 0 : contentLength,
     })
   })
   return stories
@@ -301,9 +321,18 @@ function buildPhotos(raw: GallerySpaceDetail): SpacePhotoView[] {
       title: normalizeText(photo.title) || '未命名照片',
       description: normalizeText(photo.description),
       url,
+      takenTime: normalizeDateTimeText(photo.takenTime),
+      dateText: formatDate(photo.takenTime),
+      location: normalizeText(photo.location),
     })
   })
   return photos
+}
+
+/** 保留后端下发的 LocalDateTime 原文（去除首尾空白），供详情页精确格式化。 */
+function normalizeDateTimeText(value: unknown): string {
+  if (typeof value !== 'string') return ''
+  return value.trim()
 }
 
 function buildAnniversaries(raw: GallerySpaceDetail): SpaceAnniversaryView[] {
@@ -348,3 +377,93 @@ export function adaptSpaceDetail(raw: GallerySpaceDetail | null | undefined, now
     anniversaries: buildAnniversaries(raw),
   }
 }
+
+/* ============================ 公开详情页适配 ============================ */
+
+/**
+ * 公开故事详情适配。
+ *
+ * 详情接口返回的是完整正文，这里复用列表项的故事字段归一化逻辑，
+ * 并把正文解析成渲染块。spaceId 由调用方传入（详情响应里没有空间字段），
+ * 保证详情页始终知道自己属于哪个公开空间，返回时能回到对应空间。
+ */
+export function adaptStoryDetail(
+  raw: GalleryStoryDetail | null | undefined,
+  spaceId: unknown,
+): SpaceStoryDetailView | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const normalizedSpaceId = normalizeSpaceId(spaceId)
+  const storyId = normalizeSpaceId(raw.storyId)
+  if (!storyId) return null
+
+  const content = typeof raw.content === 'string' ? raw.content : ''
+  const blocks = parseStoryContent(content)
+  const totalWords = countStoryWords(content)
+  const summary = normalizeText(raw.summary)
+
+  return {
+    spaceId: normalizedSpaceId,
+    story: {
+      storyId,
+      title: normalizeText(raw.title) || '未命名故事',
+      summary,
+      dateText: formatDate(raw.happenedTime),
+      location: normalizeText(raw.location),
+      tagLabel: normalizeText(raw.tagLabel),
+      coverUrl: normalizeImageUrl(raw.coverImage),
+      hasContent: totalWords > 0,
+      contentPreview: summary,
+      contentLength: totalWords,
+    },
+    content,
+    blocks,
+    contentImages: collectContentImages(blocks),
+    totalWords,
+    readTime: formatStoryReadTime(totalWords),
+    formattedDate: formatStoryDate(raw.happenedTime),
+  }
+}
+
+/**
+ * 公开照片详情适配：在空间详情照片列表里按 photoId 精确匹配。
+ *
+ * 不依赖列表索引：即使列表顺序、分页或缓存发生变化，
+ * 只要 photoId 仍在该空间的公开照片内，就能定位到正确的那一张。
+ *
+ * @returns 匹配不到时返回 null，由页面展示“照片已不可见”并给出返回入口。
+ */
+export function adaptPhotoDetail(
+  raw: GallerySpaceDetail | null | undefined,
+  spaceId: unknown,
+  photoId: unknown,
+): SpacePhotoDetailView | null {
+  if (!raw || typeof raw !== 'object') return null
+  const normalizedSpaceId = normalizeSpaceId(spaceId) || normalizeSpaceId(raw.spaceId)
+  const targetPhotoId = normalizeSpaceId(photoId)
+  if (!targetPhotoId) return null
+
+  const photos = buildPhotos(raw)
+  const index = photos.findIndex(photo => photo.photoId === targetPhotoId)
+  if (index < 0) return null
+  const photo = photos[index]
+
+  return {
+    spaceId: normalizedSpaceId,
+    photo,
+    photos,
+    index,
+    formattedDateTime: formatPhotoDateTime(photo.takenTime),
+  }
+}
+
+/** 照片拍摄时间展示为 2024年05月20日 09:00；缺失时返回项目既有文案。 */
+export function formatPhotoDateTime(value: unknown): string {
+  const text = normalizeDateTimeText(value)
+  if (!text) return '拍摄时间未记录'
+  const [datePart, timePart = ''] = text.split(/[ T]/)
+  const parts = datePart.split('-')
+  const date = parts.length === 3 ? `${parts[0]}年${parts[1]}月${parts[2]}日` : datePart
+  const clock = timePart.slice(0, 5)
+  return clock ? `${date} ${clock}` : date
+}
+

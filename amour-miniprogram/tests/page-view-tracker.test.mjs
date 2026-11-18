@@ -72,6 +72,9 @@ test('页面路径映射到白名单 pageKey', () => {
   assert.equal(resolvePageKey('pages/index/index?from=share'), 'home')
   assert.equal(resolvePageKey('pages/plaza/index'), 'plaza')
   assert.equal(resolvePageKey('pages/plaza-detail/index'), 'plaza_detail')
+  // 广场公开故事 / 照片详情复用内容详情页键，不新增自造键
+  assert.equal(resolvePageKey('pages/plaza-story/plaza-story?spaceId=2001&storyId=8001'), 'story_detail')
+  assert.equal(resolvePageKey('pages/plaza-photo/plaza-photo?spaceId=2001&photoId=11001'), 'photo_detail')
   assert.equal(resolvePageKey('pages/story/story'), 'story')
   assert.equal(resolvePageKey('pages/story-detail/story-detail?id=3'), 'story_detail')
   assert.equal(resolvePageKey('pages/photo/photo'), 'photo')

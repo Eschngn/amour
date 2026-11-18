@@ -1,0 +1,42 @@
+<navigation-bar title="登录" back="{{true}}" color="#623640" background="#fcf8f5"></navigation-bar>
+
+<scroll-view class="page-scroll" scroll-y bounces="{{false}}" type="list" enhanced show-scrollbar="false">
+  <view class="login-page">
+    <view class="login-hero">
+      <view class="brand-logo"><image class="brand-image" src="/images/amour-logo.svg" mode="aspectFit"></image></view>
+      <text class="brand-kicker">AMOUR</text>
+      <text class="brand-title">登录恋语间</text>
+      <text class="brand-copy">用微信登录后，就可以创建属于你们两个人的情侣空间。</text>
+    </view>
+
+    <view wx:if="{{loading}}" class="status-card">
+      <view class="status-spinner"></view>
+      <text class="status-title">正在确认登录状态</text>
+      <text class="status-note">请稍候，马上就好</text>
+    </view>
+
+    <block wx:else>
+      <view wx:if="{{errorMessage}}" class="error-band">
+        <view class="error-copy">
+          <text class="error-title">登录没有完成</text>
+          <text class="error-note">{{errorMessage}}</text>
+        </view>
+        <button class="retry-button" bindtap="onRetry" loading="{{authenticating}}">重试</button>
+      </view>
+
+      <view class="action-section">
+        <button
+          class="primary-button"
+          bindtap="onLogin"
+          loading="{{authenticating}}"
+          disabled="{{authenticating}}"
+          hover-class="button-hover"
+        >{{authenticating ? '正在登录…' : '微信登录'}}</button>
+        <button class="secondary-button" bindtap="onSkip" disabled="{{authenticating}}" hover-class="button-hover">先去逛逛恋爱广场</button>
+        <text class="login-note">登录仅用于识别你的账号，不会获取你的微信昵称与头像以外的信息。</text>
+      </view>
+    </block>
+
+    <view class="safe-bottom"></view>
+  </view>
+</scroll-view>

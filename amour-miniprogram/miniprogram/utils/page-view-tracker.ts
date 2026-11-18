@@ -55,6 +55,11 @@ const ROUTE_PAGE_KEYS: Record<string, SupportedPageKey> = {
   'pages/index/index': 'home',
   'pages/plaza/index': 'plaza',
   'pages/plaza-detail/index': 'plaza_detail',
+  // 广场公开故事 / 照片详情与私有详情共用同一页面键：都是“内容详情页”的浏览，
+  // 服务端白名单未区分公开与私有，前端也不新增自造键。
+  'pages/plaza-story/plaza-story': 'story_detail',
+  'pages/plaza-photo/plaza-photo': 'photo_detail',
+  'pages/space-setup/index': 'space_setup',
   'pages/story/story': 'story',
   'pages/story-detail/story-detail': 'story_detail',
   'pages/photo/photo': 'photo',

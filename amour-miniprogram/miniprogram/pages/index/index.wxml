@@ -1,7 +1,11 @@
 <navigation-bar title="恋语间" back="{{false}}" color="#572c37" background="#fcf8f5"></navigation-bar>
 
 <scroll-view class="scrollarea" scroll-y bounces="{{false}}" type="list" enhanced show-scrollbar="false">
-  <view class="home-page">
+  <view wx:if="{{pageBlocked}}" class="home-blocked">
+    <view class="blocked-spinner"></view>
+    <text class="blocked-note">正在确认情侣空间状态…</text>
+  </view>
+  <view wx:else class="home-page">
     <view class="hero-section">
       <view class="hero-copy">
         <view class="eyebrow"><text class="eyebrow-dot"></text><text>{{boyName}} · {{girlName}} / OUR LITTLE UNIVERSE</text></view>

@@ -1,5 +1,7 @@
 import { post } from '../../utils/request'
 import { withComponentPageViewTracking } from '../../utils/page-view-lifecycle'
+import { guardPageReady, navigateWithGuard } from '../../utils/access-control'
+import { hasFrontendQueryPermission } from '../../utils/auth'
 
 const DEFAULT_LOVE_START = '2024-05-20 18:30:00'
 
@@ -56,6 +58,22 @@ function formatLoveStartDate(value: string) {
 
 let timeTicker: number | undefined
 
+/**
+ * 页面实例卸载标记。
+ *
+ * 守卫是异步的：状态确认期间用户可能已经离开页面，此时不能再 setData / 加载数据。
+ * 小程序组件类型没有为自定义实例字段提供声明，这里用一组小工具集中处理。
+ */
+const detachedInstances = new WeakSet<object>()
+
+function markDetached(instance: object): void {
+  detachedInstances.add(instance)
+}
+
+function isDetached(instance: object): boolean {
+  return detachedInstances.has(instance)
+}
+
 Component(withComponentPageViewTracking({
   data: {
     boyName: 'HE',
@@ -70,6 +88,8 @@ Component(withComponentPageViewTracking({
     loveStartTime: DEFAULT_LOVE_START,
     loveStartDate: '2024 · 05 · 20',
     togetherDays: 0,
+    /** 页面守卫检查中 / 不通过时展示占位，避免受限内容闪现 */
+    pageBlocked: true,
     storyStat: '等待新的章节',
     showStory: false,
     showPhoto: false,
@@ -84,8 +104,16 @@ Component(withComponentPageViewTracking({
 
   lifetimes: {
     async attached() {
-      const app = getApp<IAppOption>()
-      if (app.globalData.authReady) await app.globalData.authReady.catch(() => undefined)
+      // 情侣空间首页属于「必须存在情侣空间」的页面：
+      // 未登录 / 无情侣空间 / 状态异常时由统一守卫跳回「我的」并展示引导，
+      // 不能只依赖底部 Tab 隐藏，深链、分享与历史栈恢复都要被拦截。
+      const allowed = await guardPageReady('pages/index/index')
+      if (isDetached(this)) return
+      if (!allowed) {
+        this.setData({ pageBlocked: true })
+        return
+      }
+      this.setData({ pageBlocked: false })
       this.updateTime()
       timeTicker = setInterval(() => this.updateTime(), 1000)
       this.setData({
@@ -95,6 +123,7 @@ Component(withComponentPageViewTracking({
       }, () => this.loadHomeData())
     },
     detached() {
+      markDetached(this)
       if (timeTicker) {
         clearInterval(timeTicker)
         timeTicker = undefined
@@ -104,8 +133,7 @@ Component(withComponentPageViewTracking({
 
   methods: {
     hasQueryPermission(module: string) {
-      const auth = getApp<IAppOption>().globalData.auth
-      return !auth || !auth.token || (auth.permissions || []).includes(`frontend:${module}:query`)
+      return hasFrontendQueryPermission(module)
     },
 
     updateTime() {
@@ -206,7 +234,7 @@ Component(withComponentPageViewTracking({
         this.showPermissionDenied('story')
         return
       }
-      wx.navigateTo({ url: '../story/story' })
+      navigateWithGuard('../story/story')
     },
 
     openSection(event: WechatMiniprogram.BaseEvent) {
@@ -221,7 +249,7 @@ Component(withComponentPageViewTracking({
         this.showPermissionDenied(section)
         return
       }
-      wx.navigateTo({ url: routes[section] })
+      navigateWithGuard(routes[section])
     },
 
     onPhotoError(event: WechatMiniprogram.BaseEvent) {

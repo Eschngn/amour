@@ -229,3 +229,131 @@ test('详情适配拒绝非法空间标识', () => {
   assert.equal(normalizeSpaceId(12), '12')
   assert.equal(normalizeSpaceId(-3), '')
 })
+
+// ============================ 公开详情页适配 ============================
+
+const {
+  adaptStoryDetail,
+  adaptPhotoDetail,
+  formatPhotoDateTime,
+} = await import('../miniprogram/utils/plaza-adapter.ts')
+
+test('故事列表项补充 hasContent / 正文预览 / 字数，供详情入口使用', () => {
+  const detail = adaptSpaceDetail(Object.assign(seedCard(), {
+    stories: [
+      { storyId: 8001, title: '第一次见面', summary: '', contentPreview: '预览一', contentLength: 12, hasContent: true },
+      { storyId: 8002, title: '没有正文', hasContent: false, contentLength: 0 },
+      // hasContent 缺失：用正文长度兜底
+      { storyId: 8003, title: '只有长度', contentLength: '8' },
+      // 长度与预览都缺失：视为没有正文
+      { storyId: 8004, title: '什么都没有' },
+    ],
+  }), NOW)
+
+  assert.equal(detail.stories[0].hasContent, true)
+  assert.equal(detail.stories[0].contentPreview, '预览一')
+  assert.equal(detail.stories[0].contentLength, 12)
+  assert.equal(detail.stories[1].hasContent, false)
+  assert.equal(detail.stories[2].hasContent, true)
+  assert.equal(detail.stories[2].contentLength, 8)
+  assert.equal(detail.stories[3].hasContent, false)
+  assert.equal(detail.stories[3].contentLength, 0)
+})
+
+test('公开照片补充拍摄时间与地点，缺图仍被过滤', () => {
+  const detail = adaptSpaceDetail(Object.assign(seedCard(), {
+    photos: [
+      {
+        photoId: 11001,
+        title: '周末早餐',
+        description: '一起做的第一顿早餐。',
+        url: 'https://cdn.example.com/p.jpg',
+        takenTime: '2024-05-20 09:00:00',
+        location: '杭州',
+      },
+      { photoId: 11002, title: '没有地址', url: '' },
+    ],
+  }), NOW)
+
+  assert.equal(detail.photos.length, 1)
+  assert.equal(detail.photos[0].takenTime, '2024-05-20 09:00:00')
+  assert.equal(detail.photos[0].dateText, '2024.05.20')
+  assert.equal(detail.photos[0].location, '杭州')
+})
+
+test('故事详情适配：正文解析与 spaceId 来自路由参数', () => {
+  const view = adaptStoryDetail({
+    storyId: 8001,
+    title: '第一次见面',
+    summary: '那天在咖啡馆坐了很久。',
+    content: '我们第一次见面，聊了很多关于未来和旅行的话题。',
+    happenedTime: '2024-05-20 19:30:00',
+    location: '杭州',
+    tagLabel: '初见',
+    coverImage: 'https://cdn.example.com/cover.jpg',
+  }, '2001')
+
+  assert.ok(view)
+  assert.equal(view.spaceId, '2001')
+  assert.equal(view.story.storyId, '8001')
+  assert.equal(view.story.title, '第一次见面')
+  assert.equal(view.story.dateText, '2024.05.20')
+  assert.equal(view.story.hasContent, true)
+  assert.equal(view.totalWords, 23)
+  assert.equal(view.readTime, '约 1 分钟')
+  assert.equal(view.formattedDate, '2024.05.20')
+  assert.equal(view.blocks.length, 1)
+  assert.equal(view.content, '我们第一次见面，聊了很多关于未来和旅行的话题。')
+})
+
+test('故事详情适配：非法或缺失 storyId 返回 null，由页面展示不可见', () => {
+  assert.equal(adaptStoryDetail(null, '2001'), null)
+  assert.equal(adaptStoryDetail({ title: '没有编号' }, '2001'), null)
+  assert.equal(adaptStoryDetail({ storyId: 'abc' }, '2001'), null)
+  assert.equal(adaptStoryDetail([], '2001'), null)
+  // spaceId 缺失时仍可展示故事本身，但返回入口会退回广场
+  const view = adaptStoryDetail({ storyId: 8001, title: 't' }, '')
+  assert.ok(view)
+  assert.equal(view.spaceId, '')
+})
+
+test('照片详情适配：按 photoId 精确匹配，与列表下标无关', () => {
+  const raw = Object.assign(seedCard(), {
+    photos: [
+      { photoId: 11001, title: '周末早餐', url: 'https://cdn.example.com/p1.jpg', takenTime: '2024-05-20 09:00:00' },
+      { photoId: 11002, title: '夏日散步', url: 'https://cdn.example.com/p2.jpg', takenTime: '2024-07-01 18:00:00' },
+    ],
+  })
+
+  const second = adaptPhotoDetail(raw, '2001', '11002')
+  assert.ok(second)
+  assert.equal(second.spaceId, '2001')
+  assert.equal(second.photo.photoId, '11002')
+  assert.equal(second.photo.title, '夏日散步')
+  assert.equal(second.index, 1)
+  assert.equal(second.photos.length, 2)
+  assert.equal(second.formattedDateTime, '2024年07月01日 18:00')
+
+  // 顺序反转后同一 photoId 仍指向同一张照片
+  const reversed = adaptPhotoDetail(Object.assign({}, raw, { photos: raw.photos.slice().reverse() }), '2001', '11002')
+  assert.equal(reversed.photo.title, '夏日散步')
+  assert.equal(reversed.index, 0)
+})
+
+test('照片详情适配：不在公开列表 / 非法 ID 返回 null', () => {
+  const raw = Object.assign(seedCard(), {
+    photos: [{ photoId: 11001, title: '公开照片', url: 'https://cdn.example.com/p1.jpg' }],
+  })
+  // 私密照片不在公开快照里，匹配不到
+  assert.equal(adaptPhotoDetail(raw, '2001', '11003'), null)
+  assert.equal(adaptPhotoDetail(raw, '2001', 'abc'), null)
+  assert.equal(adaptPhotoDetail(raw, '2001', ''), null)
+  assert.equal(adaptPhotoDetail(null, '2001', '11001'), null)
+})
+
+test('照片拍摄时间格式化：缺失走项目既有文案', () => {
+  assert.equal(formatPhotoDateTime('2024-05-20 09:00:00'), '2024年05月20日 09:00')
+  assert.equal(formatPhotoDateTime('2024-05-20'), '2024年05月20日')
+  assert.equal(formatPhotoDateTime(''), '拍摄时间未记录')
+  assert.equal(formatPhotoDateTime(null), '拍摄时间未记录')
+})

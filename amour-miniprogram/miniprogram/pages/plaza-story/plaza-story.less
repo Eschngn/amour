@@ -1,0 +1,367 @@
+@import "../../styles/tokens.less";
+
+page {
+  display: flex;
+  height: 100vh;
+  flex-direction: column;
+  background: @bg-page;
+  color: @text-primary;
+}
+
+.page-scroll {
+  flex: 1;
+  min-height: 0;
+}
+
+.detail-page {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  padding: @space-4 @page-gutter 0;
+  background: @bg-page;
+  box-sizing: border-box;
+}
+
+/* ============ 头部 ============ */
+.detail-hero {
+  overflow: hidden;
+  border: 1rpx solid @rose-line;
+  border-radius: @radius-lg;
+  background: @bg-card;
+  box-shadow: @shadow-card;
+}
+
+.hero-cover {
+  display: block;
+  width: 100%;
+  height: 390rpx;
+  background: @bg-rose-soft;
+}
+
+.hero-content {
+  padding: @space-5 @space-4 @space-4;
+}
+
+.story-labels {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.story-tag {
+  padding: 7rpx 14rpx;
+  border-radius: @radius-pill;
+  background: @bg-rose-soft;
+  color: @rose-primary-dark;
+  font-size: @font-xs;
+  font-weight: 700;
+}
+
+.chapter-name {
+  margin-left: @space-2;
+  color: @rose-muted;
+  font-size: @font-xs;
+  font-weight: 700;
+  letter-spacing: 2rpx;
+}
+
+.story-title {
+  display: block;
+  margin-top: @space-3;
+  color: @text-primary;
+  font-family: Georgia, serif;
+  font-size: @font-2xl;
+  font-weight: 700;
+  line-height: 1.32;
+  word-break: break-word;
+}
+
+.story-summary {
+  display: block;
+  margin-top: @space-3;
+  color: @text-secondary;
+  font-size: @font-sm;
+  line-height: 1.75;
+  word-break: break-word;
+}
+
+.story-meta {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: @space-3;
+}
+
+.story-meta text {
+  margin: @space-1 @space-2 0 0;
+  padding: @space-1 @space-2;
+  border: 1rpx solid @rose-line;
+  border-radius: @radius-pill;
+  background: @bg-card;
+  color: @text-tertiary;
+  font-size: @font-xs;
+}
+
+/* ============ 正文 ============ */
+.article-paper {
+  margin-top: @space-4;
+  padding: @space-5 @space-4;
+  border: 1rpx solid @rose-line;
+  border-radius: @radius-lg;
+  background: @bg-card;
+  box-shadow: @shadow-soft;
+}
+
+.article-heading {
+  display: block;
+  color: @text-primary;
+  font-family: Georgia, serif;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.heading-level-1 {
+  margin: 4rpx 0 @space-4;
+  font-size: @font-xl;
+}
+
+.heading-level-2 {
+  margin: @space-5 0 @space-3;
+  padding-bottom: @space-2;
+  border-bottom: 1rpx solid @rose-line;
+  font-size: @font-lg;
+}
+
+.heading-level-3 {
+  margin: @space-4 0 @space-2;
+  font-size: @font-md;
+}
+
+.article-paragraph {
+  display: block;
+  margin: @space-3 0;
+  color: @text-secondary;
+  font-size: @font-md;
+  line-height: 1.95;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.article-quote {
+  margin: @space-3 0;
+  padding: @space-3;
+  border-left: 6rpx solid @rose-primary-light;
+  background: @bg-rose-soft;
+  color: @rose-muted;
+  font-size: @font-sm;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+
+.article-list-item {
+  display: flex;
+  align-items: flex-start;
+  margin: @space-1 0;
+  color: @text-secondary;
+  font-size: @font-sm;
+  line-height: 1.75;
+}
+
+.list-dot {
+  width: 32rpx;
+  flex: none;
+  color: @rose-primary;
+  font-size: @font-md;
+}
+
+.list-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.article-code {
+  overflow: hidden;
+  margin: @space-4 0;
+  border: 1rpx solid @rose-line;
+  border-radius: @radius-md;
+  background: @bg-soft;
+}
+
+.code-language {
+  display: block;
+  padding: @space-1 @space-3;
+  border-bottom: 1rpx solid @rose-line;
+  background: @bg-rose-soft;
+  color: @rose-primary-dark;
+  font-size: @font-xs;
+  font-weight: 700;
+  letter-spacing: 2rpx;
+}
+
+.code-content {
+  display: block;
+  overflow-x: auto;
+  padding: @space-3;
+  color: @text-primary;
+  font-family: Menlo, Monaco, monospace;
+  font-size: @font-xs;
+  line-height: 1.7;
+  white-space: pre;
+}
+
+.article-image {
+  display: block;
+  width: 100%;
+  margin: @space-4 0;
+  border-radius: @radius-md;
+  background: @bg-rose-soft;
+}
+
+.article-divider {
+  height: 1rpx;
+  margin: @space-5 0;
+  background: @rose-line;
+}
+
+.article-empty {
+  padding: @space-6 @space-3;
+  color: @text-tertiary;
+  font-size: @font-sm;
+  text-align: center;
+}
+
+/* ============ 加载 / 空 / 失败 ============ */
+.loading-state {
+  padding-top: 5rpx;
+}
+
+.hero-skeleton {
+  height: 600rpx;
+  border-radius: @radius-lg;
+  background: @bg-soft;
+}
+
+.article-skeleton {
+  margin-top: @space-4;
+  padding: @space-5 @space-4;
+  border-radius: @radius-lg;
+  background: @bg-card;
+}
+
+.skeleton-line {
+  height: 24rpx;
+  margin-bottom: @space-4;
+  border-radius: @radius-sm;
+  background: @bg-rose-soft;
+}
+
+.skeleton-line:nth-child(3n) {
+  width: 72%;
+}
+
+.empty-state {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  margin-top: @space-5;
+  padding: @space-7 @space-4;
+  border: 1rpx dashed @rose-line-strong;
+  border-radius: @radius-lg;
+  background: @bg-card;
+  text-align: center;
+}
+
+.state-symbol {
+  display: flex;
+  width: 82rpx;
+  height: 82rpx;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: @bg-rose-soft;
+  color: @rose-primary;
+  font-size: 35rpx;
+}
+
+.state-title {
+  margin-top: @space-3;
+  color: @text-primary;
+  font-size: @font-lg;
+  font-weight: 700;
+}
+
+.state-copy {
+  margin-top: @space-2;
+  color: @text-tertiary;
+  font-size: @font-sm;
+  line-height: 1.6;
+}
+
+.state-actions {
+  display: flex;
+  margin-top: @space-4;
+}
+
+.outline-button,
+.primary-button {
+  display: flex;
+  height: 72rpx;
+  align-items: center;
+  justify-content: center;
+  margin: 0 8rpx;
+  padding: 0 @space-4;
+  border-radius: @radius-pill;
+  font-size: @font-xs;
+  font-weight: 600;
+}
+
+.outline-button {
+  border: 1rpx solid @rose-line-strong;
+  background: @bg-card;
+  color: @rose-primary-dark;
+}
+
+.primary-button {
+  border: 1rpx solid @rose-primary;
+  background: @rose-primary;
+  color: @text-inverse;
+}
+
+.button-hover {
+  opacity: 0.86;
+}
+
+/* ============ 返回 ============ */
+.back-section {
+  padding: @space-5 0 0;
+}
+
+.back-button {
+  display: flex;
+  height: 80rpx;
+  align-items: center;
+  justify-content: center;
+  border: 1rpx solid @rose-line-strong;
+  border-radius: @radius-pill;
+  background: @bg-card;
+  color: @rose-primary-dark;
+  font-size: @font-sm;
+  font-weight: 600;
+}
+
+.back-hover {
+  background: @bg-rose-soft;
+}
+
+.safe-bottom {
+  height: calc(env(safe-area-inset-bottom) + 24rpx);
+}
+
+@media (max-width: 360px) {
+  .detail-page {
+    padding-right: 24rpx;
+    padding-left: 24rpx;
+  }
+  .story-title {
+    font-size: 40rpx;
+  }
+}

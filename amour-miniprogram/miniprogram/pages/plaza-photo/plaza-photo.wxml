@@ -1,0 +1,114 @@
+<navigation-bar title="公开照片" back="{{true}}" color="#3b2c30" background="#fdf9f6" bind:back="onNavBack"></navigation-bar>
+
+<scroll-view class="page-scroll" scroll-y enhanced bounces="{{false}}" show-scrollbar="{{false}}" type="list">
+  <view class="detail-page">
+    <!-- 加载中：与详情结构一致的骨架 -->
+    <view wx:if="{{loading}}" class="loading-state">
+      <view class="stage-skeleton"></view>
+      <view class="copy-skeleton">
+        <view class="skeleton-line short"></view>
+        <view class="skeleton-line"></view>
+        <view class="skeleton-line"></view>
+      </view>
+    </view>
+
+    <!-- 不可见 / 加载失败：沿用项目既有空状态样式，并提供返回入口 -->
+    <view wx:elif="{{error}}" class="empty-state">
+      <text class="state-symbol">□</text>
+      <text class="state-title">{{unavailable ? '这张照片已经看不到了' : '公开照片暂时无法打开'}}</text>
+      <text class="state-copy">{{error}}</text>
+      <view class="state-actions">
+        <view
+          class="outline-button"
+          hover-class="button-hover"
+          hover-stay-time="60"
+          bindtap="backToSpace"
+          aria-role="button"
+          aria-label="返回公开空间"
+        >
+          <text>返回公开空间</text>
+        </view>
+        <view
+          wx:if="{{!unavailable}}"
+          class="primary-button"
+          hover-class="button-hover"
+          hover-stay-time="60"
+          bindtap="onPrimaryAction"
+          aria-role="button"
+          aria-label="重新加载"
+        >
+          <text>重新加载</text>
+        </view>
+      </view>
+    </view>
+
+    <block wx:elif="{{photo}}">
+      <view class="photo-stage" bindtouchstart="onTouchStart" bindtouchend="onTouchEnd">
+        <view
+          class="photo-slide"
+          bindtap="onPreviewImage"
+          hover-class="stage-hover"
+          aria-role="button"
+          aria-label="预览原图 {{photo.title}}"
+        >
+          <image
+            wx:if="{{!photo.failed}}"
+            class="detail-image"
+            src="{{photo.url}}"
+            mode="aspectFit"
+            data-index="{{index}}"
+            binderror="onPhotoError"
+          ></image>
+          <view wx:else class="image-fallback">
+            <text class="image-fallback-mark">♡</text>
+            <text class="image-fallback-text">图片加载失败</text>
+          </view>
+        </view>
+        <view class="image-toolbar">
+          <text>{{index + 1}} / {{photos.length}}</text>
+          <text>点击查看原图</text>
+        </view>
+      </view>
+
+      <view class="detail-content">
+        <view class="title-row">
+          <view class="title-copy">
+            <text class="photo-category">公开照片</text>
+            <text class="photo-title">{{photo.title}}</text>
+          </view>
+        </view>
+        <view class="title-meta">
+          <view class="title-meta-item">
+            <text class="title-meta-icon">◷</text>
+            <text class="title-meta-value">{{formattedDateTime}}</text>
+          </view>
+          <view wx:if="{{photo.location}}" class="title-meta-item">
+            <text class="title-meta-icon">⌖</text>
+            <text class="title-meta-value">{{photo.location}}</text>
+          </view>
+        </view>
+        <text wx:if="{{photo.description}}" class="photo-description">{{photo.description}}</text>
+        <text wx:else class="photo-description is-muted">这张照片还没有写下描述。</text>
+      </view>
+
+      <view wx:if="{{photos.length > 1}}" class="switch-bar">
+        <text class="switch-hint">左右轻扫切换同一空间的公开照片</text>
+      </view>
+
+      <view class="back-section">
+        <view
+          class="back-button"
+          hover-class="back-hover"
+          hover-stay-time="60"
+          bindtap="backToSpace"
+          aria-role="button"
+          aria-label="返回公开空间"
+        >
+          <text>返回公开空间</text>
+        </view>
+      </view>
+    </block>
+
+    <view class="safe-bottom"></view>
+  </view>
+</scroll-view>

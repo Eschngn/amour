@@ -58,6 +58,11 @@ miniprogram/
 ├── utils/plaza-adapter.ts    # 接口 → 展示模型（日期、图片、可选字段、统计）
 ├── utils/plaza-pager.ts      # 列表状态机（分页 / 竞态 / 去重 / 卸载）
 ├── utils/plaza-error.ts      # 错误语义（可重试 / 空间不可见 / 网络失败）
+├── utils/session-constants.js   # 状态 / Tab / 页面权限常量
+├── utils/session-rules.js       # 状态推导、Tab 过滤、页面级别（纯函数，有单测）
+├── utils/session-state.js       # 唯一用户状态源（登录态 + 情侣空间状态）
+├── utils/access-control.js      # 路由守卫与导航拦截
+├── utils/space-api.js           # 情侣空间接口封装
 ├── components/
 │   ├── space-card/           # 公开空间卡片 + 骨架
 │   ├── avatar/               # 头像与失败回退
@@ -67,7 +72,9 @@ miniprogram/
 │   └── bottom-nav/           # 唯一一套底部导航
 ├── pages/
 │   ├── plaza/                # 恋爱广场列表
-│   └── plaza-detail/         # 公开空间详情承接页
+│   ├── plaza-detail/         # 公开空间详情承接页
+│   ├── login/                # 登录页（未登录访问受限页时的落点）
+│   └── space-setup/          # 创建情侣空间 / 绑定加入
 └── styles/tokens.less        # 颜色 / 间距 / 圆角 / 字号变量
 ```
 
@@ -92,14 +99,91 @@ miniprogram/
 - 接口：
   - `POST /gallery/spaces` `{ current, size }` → `PageResult<GallerySpaceCardVO>`
   - `POST /gallery/space/detail` `{ spaceId }` → `GallerySpaceDetailVO`
+  - `POST /gallery/space/story/detail` `{ spaceId, storyId }` → `GalleryStoryDetailVO`
 - 只使用后端公开只读接口返回的字段，不补充成员资料、不读取待审核快照。
 - 图片只接受 `http(s)` 绝对地址；相对路径与空值一律走占位，避免破图。
 - 分页去重按 `spaceId`；刷新与分页并发时旧响应会被丢弃；卸载后忽略在途响应。
 
-## 与旧入口的对应关系
+### 公开内容详情（故事 / 照片）
+
+| 页面 | 路由 | 数据来源 | 访问级别 |
+| --- | --- | --- | --- |
+| 公开空间 | `pages/plaza-detail/index` | `POST /gallery/space/detail` | `public` |
+| 公开故事详情 | `pages/plaza-story/plaza-story` | `POST /gallery/space/story/detail` | `public` |
+| 公开照片详情 | `pages/plaza-photo/plaza-photo` | `POST /gallery/space/detail` 后按 `photoId` 精确匹配 | `public` |
+
+- 列表项**整块**是点击区域：故事整行、照片整格都可点，不是只有标题或图片可点。
+- 导航只携带 `spaceId + storyId / photoId`，**不传列表下标**：
+  详情页进入后按 ID 重新拉取数据，列表排序、分页或缓存变化都不会打开错误内容。
+- 公开故事详情复用私有故事详情的正文渲染语义（`utils/story-content` 统一解析 Markdown），
+  但走独立的公开接口，不要求登录态 / 情侣空间 / 私有模块权限。
+- 照片没有独立公开详情接口，复用空间详情返回的公开照片列表：
+  只要 `photoId` 仍在该空间的公开照片内就能定位；照片被删除、改为私密或属于其它空间时
+  展示“不可见”空状态，不回退到私有相册接口。
+- 隐私拦截仍由后端完成：私密故事 / 照片不会进入公开快照，公开详情接口按快照查找，
+  前端不放大任何权限，私有详情页（`pages/story-detail`、`pages/photo-detail`）仍是 `space` 级别。
+- 详情页返回优先 `navigateBack`，保留公开空间页的列表与滚动位置；
+  从分享 / 扫码直达（页面栈只有一层）时按路由里的 `spaceId` 重建公开空间页。
+- 公开详情页的页面浏览统计复用 `story_detail` / `photo_detail` 页键，不新增后端白名单之外的键。
+
+## 登录态与情侣空间状态控制
+
+小程序端只有**一份**用户状态来源：`utils/session-state.js`。
+Tab 展示、页面权限、路由跳转全部由它推导，页面不再各自判断。
+
+### 状态模型
+
+| 状态 | 含义 | 底部 Tab |
+| --- | --- | --- |
+| `loading` | 正在恢复登录态 / 查询情侣空间状态 | 骨架占位，不渲染真实 Tab |
+| `unauthenticated` | 未登录 | 恋爱广场 + 我的 |
+| `authenticated_without_space` | 已登录但未创建 / 绑定 / 加入情侣空间 | 恋爱广场 + 我的 |
+| `authenticated_with_space` | 已登录且存在情侣空间 | 完整 Tab |
+| `error` | 情侣空间状态查询失败（安全降级） | 恋爱广场 + 我的，我的页提供重试 |
+
+情侣空间状态**只**通过后端 `POST /space/status` 判断（`data=null` 表示没有空间），
+不在本地猜测。状态确认前不会短暂展示完整 Tab。
+
+### 模块职责
+
+```
+utils/session-constants.js   状态 / Tab / 页面权限常量（唯一常量来源）
+utils/session-rules.js       纯规则：状态推导、Tab 过滤、页面级别、拦截目标
+utils/session-state.js       唯一状态源：恢复登录、刷新空间状态、请求序号防竞态
+utils/access-control.js      路由守卫：页面守卫、导航拦截、全局状态变化拦截
+utils/space-api.js           情侣空间接口（复用 /space/status、/space/create、邀请相关）
+```
+
+### Tab 与页面权限
+
+- Tab 定义集中在 `session-constants.js` 的 `TAB_DEFINITIONS`，`bottom-nav` 只渲染状态允许的 Tab。
+- 页面访问级别在 `session-rules.js` 的 `PAGE_ACCESS_BY_ROUTE` 声明：
+  - `public`：恋爱广场、广场详情、我的、登录页；
+  - `auth`：资料编辑、情侣空间创建 / 绑定；
+  - `space`：情侣空间首页、故事、相册、留言及其详情页。
+- **只隐藏 Tab 不够**：受限页面在 `onLoad` / `attached` 走 `guardPageReady()`，
+  深链、分享、扫码、历史栈、Tab 点击全部受控，拦截后 `reLaunch` 到「我的」并提示创建 / 绑定。
+- `app.ts` 启动时绑定 `bindSessionNavigationGuard()`：停留期间 token 失效 / 退出登录会立即把受限页面赶回「我的」。
+
+### 页面访问级别表必须与 `app.json` 同步
+
+新增页面时要在 `PAGE_ACCESS_BY_ROUTE` 里声明级别，否则默认按 `auth` 处理。
+`tests/acceptance.test.mjs` 会校验两者的双向一致性。
+
+### 关键流程
+
+- **启动**：恢复本地凭证 → 校验登录 → 查询 `/space/status`；确认前状态为 `loading`。
+- **登录成功**：保存会话 → 重新查询空间状态 → 按结果更新 Tab（`notifyLoginSuccess` / `loginSession`）。
+- **退出登录**：清登录缓存 + 空间缓存 + 页面数据 → 立即切两个 Tab → `reLaunch` 重建页面栈。
+- **创建 / 绑定成功**：`refreshAfterSpaceChange()` 强制刷新（丢弃写操作前的在途响应），无需重启即可恢复完整 Tab。
+- **Token 失效**：请求层 401 / 20002 清理登录态并通知 `session-state`，收敛为未登录。
+
+### 与旧入口的对应关系
 
 | 入口 | 路由 | 说明 |
 | --- | --- | --- |
-| 底部导航「我的空间」 | `pages/index/index` | 原有情侣空间首页，路由未变 |
-| 底部导航「广场」（新增） | `pages/plaza/index` | 新增公开浏览入口 |
-| 底部导航「故事 / 相册 / 留言 / 我的」 | 原路由 | 保持不变，权限逻辑不变 |
+| 底部导航「我的空间」 | `pages/index/index` | 原有情侣空间首页，路由未变；现在需要情侣空间才可访问 |
+| 底部导航「广场」 | `pages/plaza/index` | 公开浏览入口，匿名可访问 |
+| 底部导航「故事 / 相册 / 留言 / 我的」 | 原路由 | 前三个需要情侣空间 + 模块查询权限；「我的」始终公开 |
+| 登录页（新增） | `pages/login/login` | 未登录访问受限页时的落点，登录成功后按状态回跳 |
+| 创建 / 绑定页（新增） | `pages/space-setup/index` | 创建情侣空间、绑定 / 加入情侣空间 |

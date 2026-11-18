@@ -22,7 +22,8 @@ registerHooks({
     try {
       return nextResolve(specifier, context)
     } catch (error) {
-      if (!error || error.code !== 'ERR_MODULE_NOT_FOUND') throw error
+      // CJS require 与 ESM import 的“未找到”错误码不同，两种都要能补后缀。
+      if (!error || (error.code !== 'ERR_MODULE_NOT_FOUND' && error.code !== 'MODULE_NOT_FOUND')) throw error
       const base = dirname(fileURLToPath(context.parentURL))
       const candidates = [
         resolvePath(base, `${specifier}.ts`),

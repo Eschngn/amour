@@ -6,6 +6,13 @@ const {
 const { encryptPassword } = require('../../utils/login-crypto')
 const { post } = require('../../utils/request')
 const { withComponentPageViewTracking } = require('../../utils/page-view-lifecycle')
+const sessionState = require('../../utils/session-state')
+const {
+  SESSION_STATUS,
+  SPACE_REQUIRED_TOAST,
+} = require('../../utils/session-constants')
+const { isWaitingForPartner, deriveHasSpace } = require('../../utils/session-rules')
+const { openSpaceSetup } = require('../../utils/access-control')
 
 function getInitial(value) {
   const normalized = String(value || '').trim()
@@ -18,178 +25,67 @@ function getErrorMessage(error) {
     : '暂时无法连接登录服务'
 }
 
+/** 账号显示名：微信用户不为空的 username 之外统一展示「微信用户」。 */
 function getAccountLabel(username) {
   const normalized = String(username || '').trim()
   return normalized && !normalized.startsWith('wx_') ? normalized : '微信用户'
 }
 
-if (false) Component({
-  data: {
-    loggedIn: false,
-    authenticating: false,
-    loggingOut: false,
-    loginError: '',
-    displayName: '恋语间 用户',
-    accountLabel: '微信用户',
-    avatar: '',
-    avatarError: false,
-    initial: 'A',
-    authTitle: '尚未登录',
-    authNote: '微信授权尚未完成',
-    accountState: '尚未登录',
-  },
+/** 空间状态的展示文案（只在已登录但没有可用空间 / 状态异常时使用）。 */
+function describeSpaceState(status, snapshot) {
+  if (status === SESSION_STATUS.ERROR) {
+    return {
+      spaceStateTitle: '情侣空间状态暂时无法确认',
+      spaceStateNote: snapshot.spaceError || snapshot.authError || '请检查网络后重试',
+      spaceStateError: true,
+    }
+  }
+  return {
+    spaceStateTitle: '还没有情侣空间',
+    spaceStateNote: '创建或绑定后，故事、相册、留言等功能会自动开启',
+    spaceStateError: false,
+  }
+}
 
-  lifetimes: {
-    attached() {
-      this.loadStoredProfile()
-      this.authenticate(false)
-    },
-  },
+/** 空间信息摘要：已存在空间时用于展示名称与状态。 */
+function describeSpace(space) {
+  if (!deriveHasSpace(space)) return { spaceName: '', spaceSummary: '' }
+  const name = String(space.spaceName || '').trim() || '我们的小空间'
+  if (isWaitingForPartner(space)) {
+    return { spaceName: name, spaceSummary: '等待另一半加入' }
+  }
+  const count = Number(space.memberCount)
+  return {
+    spaceName: name,
+    spaceSummary: Number.isFinite(count) && count > 0 ? `${count} 位成员` : '空间已就绪',
+  }
+}
 
-  pageLifetimes: {
-    show() {
-      this.loadStoredProfile()
-      this.authenticate(false, true)
-    },
-  },
-
-  methods: {
-    openProfileEditor() {
-      if (this.data.authenticating || this.data.loggingOut) return
-      if (!this.data.loggedIn || this.data.loginError) {
-        wx.showToast({ title: '请先完成微信登录', icon: 'none' })
-        this.authenticate(true)
-        return
-      }
-      wx.navigateTo({ url: '../profile-edit/profile-edit' })
-    },
-
-    loadStoredProfile() {
-      const auth = getStoredAuth()
-      const loggedIn = Boolean(auth.token)
-      const displayName = auth.displayName || '恋语间 用户'
-      this.setData({
-        loggedIn,
-        displayName,
-        accountLabel: getAccountLabel(auth.username),
-        avatar: auth.avatar || '',
-        avatarError: false,
-        initial: getInitial(displayName),
-        authTitle: loggedIn ? '微信登录已连接' : '尚未登录',
-        authNote: loggedIn ? '登录状态有效' : '微信授权尚未完成',
-        accountState: loggedIn ? '微信用户 · 已登录' : '尚未登录',
-      })
-    },
-
-    async authenticate(force, forceValidation = false) {
-      if (this.data.authenticating || this.data.loggingOut) return
-      const hadToken = Boolean(getStoredAuth().token)
-      this.setData({
-        authenticating: true,
-        loginError: '',
-        authTitle: hadToken && !force ? '正在确认登录状态' : '正在连接微信',
-        authNote: '请稍候',
-        accountState: '登录处理中',
-      })
-      try {
-        const authPromise = ensureWechatLogin({
-          force: Boolean(force),
-          forceValidation: Boolean(forceValidation),
-        })
-        const app = getApp()
-        if (app && app.globalData) app.globalData.authReady = authPromise
-        const auth = await authPromise
-        const displayName = auth.displayName || '恋语间 用户'
-        this.setData({
-          loggedIn: true,
-          authenticating: false,
-          loginError: '',
-          displayName,
-          accountLabel: getAccountLabel(auth.username),
-          avatar: auth.avatar || '',
-          avatarError: false,
-          initial: getInitial(displayName),
-          authTitle: '微信登录已连接',
-          authNote: '登录状态有效',
-          accountState: '微信用户 · 已登录',
-        })
-        if (app && app.globalData) app.globalData.auth = auth
-      } catch (error) {
-        const storedAuth = getStoredAuth()
-        const loggedIn = Boolean(storedAuth.token)
-        this.setData({
-          loggedIn,
-          authenticating: false,
-          loginError: getErrorMessage(error),
-          authTitle: loggedIn ? '登录状态待确认' : '登录暂时不可用',
-          authNote: loggedIn ? '请重新确认当前登录状态' : '请检查网络后重试',
-          accountState: loggedIn ? '等待重新确认' : '尚未登录',
-        })
-      }
-    },
-
-    retryLogin() {
-      this.authenticate(true)
-    },
-
-    onAvatarError() {
-      if (this.data.avatar && !this.data.avatarError) {
-        this.setData({ avatarError: true })
-      }
-    },
-
-    handleAccountAction() {
-      if (!this.data.loggedIn || this.data.loginError) this.authenticate(true)
-    },
-
-    requestLogout() {
-      if (!this.data.loggedIn || this.data.loggingOut) return
-      wx.showModal({
-        title: '退出登录',
-        content: '确定退出当前微信登录状态吗？',
-        confirmText: '退出',
-        confirmColor: '#b85060',
-        success: result => {
-          if (result.confirm) this.logout()
-        },
-      })
-    },
-
-    async logout() {
-      this.setData({ loggingOut: true })
-      try {
-        await logoutWechat()
-        wx.showToast({ title: '已退出登录', icon: 'success' })
-      } catch (error) {
-        wx.showToast({ title: '本地登录状态已清除', icon: 'none' })
-      }
-      const app = getApp()
-      if (app && app.globalData) {
-        app.globalData.auth = undefined
-        app.globalData.authReady = undefined
-      }
-      this.setData({
-        loggedIn: false,
-        authenticating: false,
-        loggingOut: false,
-        loginError: '',
-        displayName: '恋语间 用户',
-        accountLabel: '微信用户',
-        avatar: '',
-        avatarError: false,
-        initial: 'A',
-        authTitle: '尚未登录',
-        authNote: '微信授权尚未完成',
-        accountState: '尚未登录',
-      })
-    },
-  },
-})
+/** 空间状态自动刷新的最小间隔：避免页面反复 show 时重复请求。 */
+const SPACE_REFRESH_INTERVAL_MS = 10000
 
 Component(withComponentPageViewTracking({
   data: {
+    /* —— 会话状态（唯一来源：utils/session-state） —— */
+    sessionStatus: SESSION_STATUS.LOADING,
+    statusLoading: true,
     loggedIn: false,
+    hasSpace: false,
+    spaceName: '',
+    spaceSummary: '',
+    /** 登录 / 空间状态错误文案：为空表示没有错误 */
+    sessionError: '',
+    /** 引导区文案 */
+    spaceStateTitle: '',
+    spaceStateNote: '',
+    spaceStateError: false,
+    /** 从受限页面被拦截跳转过来时的提示 */
+    guideNotice: '',
+
+    /* —— 账号信息 —— */
     authenticating: false,
+    loggingIn: false,
+    loggingOut: false,
     loginError: '',
     username: '',
     displayName: '恋语间 用户',
@@ -197,6 +93,8 @@ Component(withComponentPageViewTracking({
     avatarError: false,
     initial: 'A',
     passwordSet: false,
+
+    /* —— 密码面板 —— */
     passwordModalOpen: false,
     passwordSheetClosing: false,
     passwordSheetOffset: 0,
@@ -207,22 +105,199 @@ Component(withComponentPageViewTracking({
 
   lifetimes: {
     attached() {
-      this.applyAuth(getStoredAuth())
+      this.pageDisposed = false
+      // 全局状态订阅：登录 / 退出 / 创建 / 绑定 / 401 都会立即反映到「我的」页面。
+      this.unsubscribe = sessionState.subscribe(snapshot => this.applySession(snapshot))
+      this.lastSpaceRefreshAt = 0
+      this.consumeGuideFromOptions()
+      sessionState.ensureSessionReady().catch(() => undefined)
+    },
+
+    detached() {
+      this.pageDisposed = true
+      if (typeof this.unsubscribe === 'function') this.unsubscribe()
+      this.unsubscribe = undefined
+      if (this.passwordSheetCloseTimer) {
+        clearTimeout(this.passwordSheetCloseTimer)
+        this.passwordSheetCloseTimer = null
+      }
     },
   },
 
   pageLifetimes: {
     show() {
+      this.consumeGuideFromOptions()
       this.applyAuth(getStoredAuth())
-      this.authenticate(false, true)
+      const snapshot = sessionState.getSnapshot()
+      this.applySession(snapshot)
+      // 从后台 / 其它页面回来时轻量刷新一次空间状态：写操作（创建、绑定、解绑）后
+      // 全局状态已强制刷新，这里只兜底外部变化，并按间隔去重避免重复请求。
+      if (snapshot.status === SESSION_STATUS.LOADING) {
+        sessionState.ensureSessionReady().catch(() => undefined)
+        return
+      }
+      const now = Date.now()
+      if (now - (this.lastSpaceRefreshAt || 0) < SPACE_REFRESH_INTERVAL_MS) return
+      this.lastSpaceRefreshAt = now
+      sessionState.refreshSpaceStatus({ reason: 'profile:show' }).catch(() => undefined)
     },
   },
 
   methods: {
+    /* ===================== 状态应用 ===================== */
+
+    /**
+     * 把全局状态映射成页面数据。
+     *
+     * 这里是「我的」页面唯一的判断入口：Tab 之外的引导、登录入口、错误重试
+     * 全部由 sessionStatus 推导，不再各写一份 loggedIn / hasSpace 判断。
+     */
+    applySession(snapshot) {
+      if (!snapshot || this.pageDisposed) return
+      const status = snapshot.status
+      const loading = status === SESSION_STATUS.LOADING
+      const auth = snapshot.auth || getStoredAuth()
+      const displayName = (auth && auth.displayName) || '恋语间 用户'
+      const spaceLabels = describeSpace(snapshot.space)
+      const hasSpace = status === SESSION_STATUS.AUTHENTICATED_WITH_SPACE
+      const showSpaceGuide = !loading && !hasSpace
+      const stateCopy = showSpaceGuide ? describeSpaceState(status, snapshot) : null
+
+      const patch = {
+        sessionStatus: status,
+        statusLoading: loading,
+        loggedIn: Boolean(auth && auth.token),
+        hasSpace,
+        spaceName: spaceLabels.spaceName,
+        spaceSummary: spaceLabels.spaceSummary,
+        sessionError: status === SESSION_STATUS.ERROR
+          ? (snapshot.spaceError || snapshot.authError || '')
+          : '',
+        username: (auth && auth.username) || '',
+        displayName,
+        avatar: (auth && auth.avatar) || '',
+        avatarError: false,
+        initial: getInitial(displayName),
+        passwordSet: Boolean(auth && auth.passwordSet),
+      }
+      if (showSpaceGuide) {
+        patch.spaceStateTitle = stateCopy.spaceStateTitle
+        patch.spaceStateNote = stateCopy.spaceStateNote
+        patch.spaceStateError = stateCopy.spaceStateError
+      }
+      this.setData(patch)
+    },
+
+    /** 从页面 query 读取被拦截跳转的提示（guide=login / guide=space）。 */
+    consumeGuideFromOptions() {
+      let guide = ''
+      try {
+        const pages = getCurrentPages()
+        const current = pages && pages.length ? pages[pages.length - 1] : null
+        guide = current && current.options && typeof current.options.guide === 'string'
+          ? current.options.guide
+          : ''
+      } catch (error) {
+        guide = ''
+      }
+      if (!guide || guide === this.lastGuide) return
+      this.lastGuide = guide
+      const notice = guide === 'login'
+        ? '登录后才能访问这个页面'
+        : SPACE_REQUIRED_TOAST
+      this.setData({ guideNotice: notice })
+      wx.showToast({ title: notice, icon: 'none', duration: 1800 })
+      // 提示只展示一次：清掉 query，避免返回时重复弹出。
+      try {
+        const pages = getCurrentPages()
+        const current = pages && pages.length ? pages[pages.length - 1] : null
+        if (current && current.options) current.options.guide = ''
+      } catch (error) {
+        // 清理失败不影响功能。
+      }
+    },
+
+    /* ===================== 登录 ===================== */
+
+    /** 微信登录入口：登录成功后自动查询情侣空间状态并更新 Tab。 */
+    async onLogin() {
+      if (this.data.loggingIn || this.data.authenticating) return
+      this.setData({ loggingIn: true, authenticating: true, loginError: '' })
+      try {
+        const session = await ensureWechatLogin({ force: true })
+        const snapshot = await sessionState.notifyLoginSuccess(session)
+        if (this.pageDisposed) return
+        this.setData({ loggingIn: false, authenticating: false })
+        if (snapshot.status === SESSION_STATUS.AUTHENTICATED_WITH_SPACE) {
+          wx.showToast({ title: '登录成功，已恢复完整功能', icon: 'success', duration: 1500 })
+          return
+        }
+        if (snapshot.status === SESSION_STATUS.AUTHENTICATED_WITHOUT_SPACE) {
+          wx.showToast({ title: '登录成功，先创建情侣空间吧', icon: 'none', duration: 1800 })
+          return
+        }
+        // 登录成功但状态确认失败：留在本页展示错误与重试，不假装成功。
+        this.setData({ loginError: snapshot.authError || snapshot.spaceError || '登录状态确认失败' })
+      } catch (error) {
+        if (this.pageDisposed) return
+        this.setData({
+          loggingIn: false,
+          authenticating: false,
+          loginError: getErrorMessage(error),
+        })
+      }
+    },
+
+    /** 重试：未登录时重新登录，已登录时重新确认情侣空间状态。 */
+    async onRetrySession() {
+      if (this.data.authenticating) return
+      const snapshot = sessionState.getSnapshot()
+      if (snapshot.status === SESSION_STATUS.UNAUTHENTICATED) {
+        this.onLogin()
+        return
+      }
+      this.setData({ authenticating: true, loginError: '' })
+      try {
+        const next = await sessionState.refreshSession({ force: true, reason: 'profile:retry' })
+        if (this.pageDisposed) return
+        this.setData({ authenticating: false })
+        if (next.status === SESSION_STATUS.ERROR) {
+          this.setData({ loginError: next.spaceError || next.authError || '情侣空间状态仍未确认' })
+        }
+      } catch (error) {
+        if (this.pageDisposed) return
+        this.setData({ authenticating: false, loginError: getErrorMessage(error) })
+      }
+    },
+
+    /* ===================== 情侣空间入口 ===================== */
+
+    /** 创建情侣空间：统一走 access-control，先过登录态与页面权限检查。 */
+    onCreateSpace() {
+      if (this.data.authenticating) return
+      openSpaceSetup('create')
+    },
+
+    /** 绑定 / 加入情侣空间。 */
+    onBindSpace() {
+      if (this.data.authenticating) return
+      openSpaceSetup('bind')
+    },
+
+    /** 已有空间时进入情侣空间首页（会先确认当前状态）。 */
+    onOpenSpace() {
+      if (!this.data.hasSpace) return
+      wx.reLaunch({
+        url: '/pages/index/index',
+        fail: () => wx.showToast({ title: '暂时无法打开情侣空间', icon: 'none' }),
+      })
+    },
+
+    /* ===================== 账号资料 ===================== */
+
     applyAuth(auth = {}) {
       const displayName = auth.displayName || '恋语间 用户'
       this.setData({
-        loggedIn: Boolean(auth.token),
         username: auth.username || '',
         displayName,
         avatar: auth.avatar || '',
@@ -232,31 +307,20 @@ Component(withComponentPageViewTracking({
       })
     },
 
-    async authenticate(force, forceValidation = false) {
+    /** 账号摘要点击：已登录进资料编辑，未登录直接发起登录。 */
+    onAccountTap() {
       if (this.data.authenticating) return
-      this.setData({ authenticating: true, loginError: '' })
-      try {
-        const authPromise = ensureWechatLogin({ force: Boolean(force), forceValidation: Boolean(forceValidation) })
-        const app = getApp()
-        if (app && app.globalData) app.globalData.authReady = authPromise
-        const auth = await authPromise
-        this.applyAuth(auth)
-        this.setData({ authenticating: false, loginError: '' })
-        if (app && app.globalData) app.globalData.auth = auth
-      } catch (error) {
-        this.applyAuth(getStoredAuth())
-        this.setData({ authenticating: false, loginError: getErrorMessage(error) })
+      if (!this.data.loggedIn) {
+        this.onLogin()
+        return
       }
-    },
-
-    retryLogin() {
-      this.authenticate(true)
+      this.openProfileEditor()
     },
 
     openProfileEditor() {
       if (this.data.authenticating) return
       if (!this.data.loggedIn) {
-        this.authenticate(true)
+        this.onLogin()
         return
       }
       wx.navigateTo({ url: '../profile-edit/profile-edit' })
@@ -265,6 +329,46 @@ Component(withComponentPageViewTracking({
     onAvatarError() {
       if (this.data.avatar && !this.data.avatarError) this.setData({ avatarError: true })
     },
+
+    /* ===================== 退出登录 ===================== */
+
+    requestLogout() {
+      if (!this.data.loggedIn || this.data.loggingOut) return
+      wx.showModal({
+        title: '退出登录',
+        content: '退出后将无法查看情侣空间内的内容，确定退出吗？',
+        confirmText: '退出',
+        confirmColor: '#b85060',
+        success: (result) => {
+          if (result.confirm) this.logout()
+        },
+      })
+    },
+
+    /**
+     * 退出登录：先请求登出接口（失败也继续本地清理），
+     * 再通过全局状态源清空登录态与情侣空间缓存，最后 reLaunch 重建页面栈。
+     */
+    async logout() {
+      if (this.data.loggingOut) return
+      this.setData({ loggingOut: true })
+      try {
+        await require('../../utils/auth').logoutWechat()
+      } catch (error) {
+        // 服务端登出失败不影响本地清理：本地凭证已在 logoutWechat 中清除。
+      }
+      await sessionState.logoutSession()
+      if (this.pageDisposed) return
+      this.setData({ loggingOut: false, passwordModalOpen: false })
+      wx.showToast({ title: '已退出登录', icon: 'success', duration: 1200 })
+      // 重建页面栈：退出后不能通过返回键回到情侣空间相关页面。
+      wx.reLaunch({
+        url: '/pages/profile/profile',
+        fail: () => wx.reLaunch({ url: '/pages/plaza/index' }),
+      })
+    },
+
+    /* ===================== 密码相关（保持原有行为） ===================== */
 
     openPasswordModal() {
       if (this.data.authenticating || !this.data.loggedIn) return
@@ -367,7 +471,7 @@ Component(withComponentPageViewTracking({
         updateStoredProfile({ passwordSet: true })
         this.setData({ passwordSet: true, passwordModalOpen: false, passwordForm: { current: '', next: '', confirm: '' } })
         wx.showToast({ title: wasPasswordSet ? '密码已更新' : '密码已设置', icon: 'success' })
-        await this.authenticate(true)
+        await sessionState.refreshSession({ force: true, forceValidation: true, reason: 'profile:password-changed' })
       } catch (error) {
         wx.showToast({ title: getErrorMessage(error), icon: 'none' })
       } finally {
