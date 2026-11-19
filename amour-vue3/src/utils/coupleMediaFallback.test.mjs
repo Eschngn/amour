@@ -162,7 +162,8 @@ test('小程序首页移除硬编码示例图片，并提供占位视图', () =>
   assert.doesNotMatch(script, /example-photo1|example-photo2|DEFAULT_AVATAR/)
   assert.match(script, /heroPhotoOne: ''/)
   assert.match(script, /boyAvatar: ''/)
-  assert.match(script, /query-batch/)
+  assert.match(script, /space\/home\/query/)
+  assert.doesNotMatch(script, /post[^\n]*\/site-config\/query/, '首页不能再用平台默认配置覆盖空间首页数据')
 
   assert.match(template, /wx:if="\{\{heroPhotoOne\}\}"/)
   assert.match(template, /尚未上传照片/)

@@ -303,8 +303,8 @@ test('故事章节与故事节点的新增、编辑成功都派发 saved', () =>
   assert.match(nodeCatch, /nodeError\.value = message/)
   assert.doesNotMatch(nodeCatch, /emit\('saved'|nodeDialogOpen\.value = false|resetNodeForm/)
 
-  assert.match(source, /emitSimpleSaved\('章节顺序已保存'\)/)
-  assert.match(source, /emitSimpleSaved\('顺序已保存'\)/)
+  assert.match(source, /emitReorderSaved\('章节顺序已保存'\)/)
+  assert.match(source, /emitReorderSaved\('故事顺序已保存'\)/)
   assert.match(source, /emitSimpleSaved\('章节已删除'\)/)
   assert.match(source, /emitSimpleSaved\('故事已删除'\)/)
 })
@@ -330,8 +330,8 @@ test('照片分类与照片的新增、编辑成功都派发 saved', () => {
   assert.match(photoCatch, /photoError\.value = readContentErrorMessage/)
   assert.doesNotMatch(photoCatch, /emit\('saved'|photoDialogOpen\.value = false|resetPhotoForm/)
 
-  assert.match(source, /emitSimpleSaved\('分类顺序已保存'\)/)
-  assert.match(source, /emitSimpleSaved\('顺序已保存'\)/)
+  assert.match(source, /emitReorderSaved\('分类顺序已保存'\)/)
+  assert.match(source, /emitReorderSaved\('照片顺序已保存'\)/)
   assert.match(source, /emitSimpleSaved\('分类已删除'\)/)
   assert.match(source, /emitSimpleSaved\('照片已删除'\)/)
 })
@@ -350,8 +350,38 @@ test('纪念日新增、编辑、排序与删除成功都派发 saved', () => {
   assert.match(catchBlock, /error\.value = readContentErrorMessage/)
   assert.doesNotMatch(catchBlock, /emit\('saved'|dialogOpen\.value = false|resetForm/)
 
-  assert.match(source, /emitSimpleSaved\('纪念日顺序已保存'\)/)
+  assert.match(source, /emitReorderSaved\('纪念日顺序已保存'\)/)
   assert.match(source, /emitSimpleSaved\('纪念日已删除'\)/)
+})
+
+test('排序成功使用明确 action 字段并交给页面弹窗，失败不派发成功', () => {
+  const page = readSource('pages/frontend/SpaceStudioPage.vue')
+  assert.match(page, /payload\?\.action === 'reorder'/)
+  assert.match(page, /showReorderSuccess\(payload\.message\)/)
+  assert.match(page, /ElMessageBox\.alert\(text, '保存成功'/)
+  assert.match(page, /confirmButtonText: '知道了'/)
+  assert.match(page, /reorderDialogOpen/, '弹窗需防重复叠层')
+
+  for (const relativePath of [
+    'components/frontend/space-studio/SpaceStoryEditor.vue',
+    'components/frontend/space-studio/SpacePhotoEditor.vue',
+    'components/frontend/space-studio/SpaceAnniversaryEditor.vue',
+  ]) {
+    const source = readSource(relativePath)
+    assert.match(source, /action: 'reorder'/, `${relativePath} 缺少明确排序事件字段`)
+    assert.match(source, /dirtyAfterSave: dirty\.value/, `${relativePath} 排序不得改变其他草稿`)
+  }
+
+  const story = readSource('components/frontend/space-studio/SpaceStoryEditor.vue')
+  const chapterDrop = story.slice(story.indexOf("saveStoryChapterOrder({ items })"))
+  const chapterEmit = chapterDrop.indexOf("emitReorderSaved('章节顺序已保存')")
+  assert.ok(chapterDrop.indexOf('ensureSuccess(await saveStoryChapterOrder') < chapterEmit,
+    '章节排序必须先确认服务端成功再弹窗')
+
+  const photo = readSource('components/frontend/space-studio/SpacePhotoEditor.vue')
+  const photoDrop = photo.slice(photo.indexOf('savePhotoGlobalOrder({ items })'))
+  assert.ok(photoDrop.indexOf('const serverItems') < photoDrop.indexOf("emitReorderSaved('照片顺序已保存')"),
+    '照片排序失败时异常会中断，不会派发成功弹窗')
 })
 
 test('留言发布、回复、删除成功都派发 saved，失败只写行内错误', () => {

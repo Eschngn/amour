@@ -249,7 +249,7 @@
                 <span class="h-1.5 w-1.5 shrink-0 rounded-full" :style="{ backgroundColor: chapterAccentById(node.chapterId) }" aria-hidden="true" />
                 <span>{{ node.chapterName || '未分章' }}</span>
                 <span aria-hidden="true">·</span>
-                <span>{{ formatSpaceDateTime(node.happenedTime) }}</span>
+                <span>{{ formatSpaceContentDateTime(node.happenedTime, node.showTime) }}</span>
               </span>
               <span class="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-stone-400">
                 <span>{{ visibilityLabel(node.visibility) }}</span>
@@ -309,7 +309,10 @@
     >
       <form id="studio-chapter-form" class="grid gap-4" @submit.prevent="saveChapter">
         <div>
-          <label for="studio-chapter-name" class="field-label">章节名称</label>
+          <label for="studio-chapter-name" class="field-label">
+            章节名称
+            <span class="field-requirement">必填</span>
+          </label>
           <input
             id="studio-chapter-name"
             ref="chapterNameInputRef"
@@ -317,6 +320,7 @@
             maxlength="50"
             class="field-input"
             placeholder="例如「初见」"
+            aria-required="true"
           >
         </div>
         <div class="grid gap-4 md:grid-cols-2">
@@ -325,7 +329,7 @@
               v-model="chapterForm.colorCode"
               input-id="studio-chapter-color"
               label="章节主题色"
-              hint="章节导航、故事时间线与章节标签都会使用这个颜色。"
+              hint="默认使用玫瑰色，可按需调整；章节导航、故事时间线与章节标签都会使用这个颜色。"
             />
           </div>
           <div class="rounded-xl border border-stone-200 bg-white p-3.5">
@@ -342,6 +346,7 @@
             <label class="mt-3 inline-flex items-center gap-2 text-xs text-stone-600">
               <input v-model="chapterForm.isVisible" type="checkbox" class="h-4 w-4 rounded border-stone-300 text-rose-600 focus:ring-rose-400">
               在空间故事中显示该章节
+              <span class="field-requirement-optional">默认显示，可调整</span>
             </label>
           </div>
         </div>
@@ -373,7 +378,7 @@
         : '新故事默认仅空间成员可见；设为公开后需要审核。'"
       fullscreen
       :before-close="handleNodeDialogBeforeClose"
-      @opened="focusNodeTitle"
+      @opened="handleNodeDialogOpened"
       @closed="handleNodeDialogClosed"
     >
       <form id="studio-story-form" class="space-y-5" @submit.prevent="saveNode">
@@ -385,7 +390,10 @@
           </div>
           <div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             <div class="sm:col-span-2 xl:col-span-3">
-              <label for="studio-node-title" class="field-label">故事标题</label>
+              <label for="studio-node-title" class="field-label">
+                故事标题
+                <span class="field-requirement">必填</span>
+              </label>
               <input
                 id="studio-node-title"
                 ref="nodeTitleInputRef"
@@ -393,47 +401,84 @@
                 maxlength="100"
                 class="field-input"
                 placeholder="这一章故事的名字"
+                aria-required="true"
               >
             </div>
             <div>
-              <label for="studio-node-chapter" class="field-label">所属章节</label>
+              <label for="studio-node-chapter" class="field-label">
+                所属章节
+                <span class="field-requirement">必填</span>
+              </label>
               <ThemeSelect
                 v-model="nodeForm.chapterId"
                 input-id="studio-node-chapter"
                 class="mt-2"
                 placeholder="请先创建章节"
+                :required="true"
                 :options="chapterOptions"
               />
             </div>
-            <div>
-              <label for="studio-node-happened" class="field-label">发生时间</label>
+            <div class="sm:col-span-2 xl:col-span-1">
+              <label for="studio-node-happened" class="field-label">
+                发生时间
+                <span class="field-requirement">必填</span>
+              </label>
+              <div class="mt-2 flex flex-wrap gap-2" role="group" aria-label="发生时间的展示方式">
+                <button
+                  v-for="option in showTimeOptions"
+                  :key="String(option.value)"
+                  type="button"
+                  class="rounded-lg border px-3 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300"
+                  :class="nodeForm.showTime === option.value
+                    ? 'border-rose-300 bg-rose-50 text-rose-800'
+                    : 'border-stone-200 bg-white text-stone-600 hover:border-rose-200'"
+                  :aria-pressed="nodeForm.showTime === option.value"
+                  @click="setNodeShowTime(option.value)"
+                >
+                  {{ option.label }}
+                </button>
+              </div>
               <ThemeDatePicker
-                v-model="nodeForm.happenedTime"
+                :model-value="nodeDateValue"
                 input-id="studio-node-happened"
                 class="mt-2"
-                mode="datetime"
-                placeholder="选择故事发生时间"
+                :mode="nodeDateMode"
+                :required="true"
+                :enable-seconds="nodeForm.showTime"
+                :placeholder="nodeForm.showTime ? '选择故事发生日期和时间' : '选择故事发生日期'"
+                @update:model-value="onNodeHappenedInput"
               />
+              <p class="field-hint">
+                {{ nodeForm.showTime
+                  ? '未手动设置时分秒时默认使用当天 00:00:00。'
+                  : '只保存日期，列表和详情不会显示时分秒。' }}
+              </p>
             </div>
             <div>
-              <label for="studio-node-location" class="field-label">地点</label>
+              <label for="studio-node-location" class="field-label">
+                地点
+                <span class="field-requirement-optional">选填</span>
+              </label>
               <input
                 id="studio-node-location"
                 v-model="nodeForm.location"
                 maxlength="100"
                 class="field-input"
-                placeholder="发生地点（选填）"
+                placeholder="发生地点"
               >
             </div>
             <div class="sm:col-span-2 xl:col-span-3">
-              <label for="studio-node-summary" class="field-label">故事摘要</label>
+              <label for="studio-node-summary" class="field-label">
+                故事摘要
+                <span class="field-requirement-optional">选填</span>
+              </label>
               <textarea
                 id="studio-node-summary"
                 v-model="nodeForm.summary"
                 rows="2"
                 maxlength="500"
                 class="field-input resize-y leading-6"
-                placeholder="一句话概括这段故事（选填）"
+                placeholder="一句话概括这段故事"
               />
             </div>
           </div>
@@ -450,7 +495,10 @@
           </div>
           <div class="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
             <div>
-              <label for="studio-node-visibility" class="field-label">可见性</label>
+              <label for="studio-node-visibility" class="field-label">
+                可见性
+                <span class="field-requirement-optional">默认仅空间成员可见，可调整</span>
+              </label>
               <ThemeSelect
                 v-model="nodeForm.visibility"
                 input-id="studio-node-visibility"
@@ -461,6 +509,7 @@
             <label class="flex items-center gap-2 self-end rounded-lg border border-stone-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-stone-700">
               <input v-model="nodeForm.isMilestone" type="checkbox" class="h-4 w-4 rounded border-stone-300 text-rose-600 focus:ring-rose-400">
               标记为里程碑
+              <span class="field-requirement-optional">可选，默认不标记</span>
             </label>
           </div>
           <div v-if="editingNodeReview" class="mt-3 flex flex-wrap items-center gap-2 text-[11px] leading-5" role="status">
@@ -487,7 +536,10 @@
           </div>
           <div class="mt-3 grid gap-3 sm:grid-cols-2">
             <div>
-              <label for="studio-node-tag" class="field-label">标签文字</label>
+              <label for="studio-node-tag" class="field-label">
+                标签文字
+                <span class="field-requirement-optional">选填</span>
+              </label>
               <input
                 id="studio-node-tag"
                 v-model="nodeForm.tagLabel"
@@ -501,14 +553,14 @@
               input-id="studio-node-tag-color"
               label="标签颜色"
               allow-clear
-              hint="留空时使用默认玫瑰色。"
+              hint="选填；留空时使用默认玫瑰色。"
             />
           </div>
           <div class="mt-3">
             <SpaceImageField
               v-model="nodeForm.coverImage"
               input-id="studio-node-cover"
-              label="封面图片"
+              label="封面图片（选填）"
               :disabled="nodeSaving"
               @uploading="onImageUploading"
             />
@@ -519,7 +571,10 @@
         <section class="min-w-0" aria-labelledby="studio-node-content-label">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h3 id="studio-node-content-label" class="text-sm font-bold text-stone-800">正文</h3>
+              <h3 id="studio-node-content-label" class="text-sm font-bold text-stone-800">
+                正文
+                <span class="field-requirement">必填</span>
+              </h3>
               <p class="mt-0.5 text-[11px] text-stone-400">支持 Markdown，可直接粘贴图片，右侧实时预览。</p>
             </div>
             <span class="text-[11px] font-normal text-stone-400">{{ contentLength }} / {{ STORY_CONTENT_MAX_LENGTH }} 字</span>
@@ -536,6 +591,8 @@
             :disabled="nodeSaving"
             :on-upload-img="handleStoryImageUpload"
             placeholder="把那天发生的事写下来……"
+            aria-required="true"
+            aria-labelledby="studio-node-content-label"
           />
           <p
             v-if="imageUploadError"
@@ -618,7 +675,7 @@ import {
   saveStoryNodeOrder,
   uploadSpaceImage,
 } from '@/api/spaceContent'
-import { formatSpaceDateTime } from '@/utils/spaceFormat'
+import { formatSpaceContentDateTime } from '@/utils/spaceFormat'
 import {
   hasSelectedContentScope,
   resolveStorySortScope,
@@ -638,10 +695,14 @@ import { resolveSaveFeedback, resolveUnchangedFeedback } from '@/utils/saveFeedb
 import {
   buildVisibilityOptions,
   ensureSuccess,
+  normalizeShowTime,
   readContentErrorMessage,
   reviewStatusLabel,
-  toBackendDateTime,
+  SHOW_TIME_OPTIONS,
+  toBackendContentDateTime,
+  toDateInputValue,
   toDateTimeLocalInput,
+  applyDatePart,
   VISIBILITY_OPTIONS,
 } from '@/utils/spaceContent'
 
@@ -661,6 +722,7 @@ const selectedChapterId = ref('all')
 
 const chapterOptions = computed(() => chapters.value.map(chapter => ({ value: chapter.id, label: chapter.name })))
 const visibilityOptions = computed(() => buildVisibilityOptions(props.canPublish))
+const showTimeOptions = SHOW_TIME_OPTIONS
 
 const chapterForm = reactive({ id: null, name: '', colorCode: '#D94F70', isVisible: true })
 const chapterSaving = ref(false)
@@ -695,7 +757,7 @@ const chapterDrag = useDragSort({
     orderedChapters.forEach((chapter, index) => {
       chapter.sortOrder = (index + 1) * 10
     })
-    emitSimpleSaved('章节顺序已保存')
+    emitReorderSaved('章节顺序已保存')
   },
   onError: (error) => {
     chapterSortError.value = readContentErrorMessage(error, '章节排序未保存，已恢复原顺序，请重试')
@@ -735,7 +797,7 @@ const nodeDrag = useDragSort({
       ? ensureSuccess(await saveStoryNodeGlobalOrder({ items }), '故事全局排序保存失败')
       : ensureSuccess(await saveStoryNodeOrder({ chapterId: scope.chapterId, items }), '故事排序保存失败')
     applyNodeServerOrder(serverItems)
-    emitSimpleSaved('顺序已保存')
+    emitReorderSaved('故事顺序已保存')
   },
   onError: (error) => {
     nodeSortError.value = readContentErrorMessage(error, '故事排序未保存，已恢复原顺序，请重试')
@@ -841,6 +903,7 @@ function emptyNodeForm() {
     summary: '',
     content: '',
     happenedTime: '',
+    showTime: true,
     location: '',
     coverImage: '',
     tagLabel: '',
@@ -848,6 +911,23 @@ function emptyNodeForm() {
     isMilestone: false,
     visibility: 0,
   }
+}
+
+/** 日期选择器只拿到当前展示精度需要的值，隐藏时间不会被误显示或误清空。 */
+const nodeDateValue = computed(() => (
+  nodeForm.showTime ? nodeForm.happenedTime : toDateInputValue(nodeForm.happenedTime)
+))
+const nodeDateMode = computed(() => (nodeForm.showTime ? 'datetime' : 'date'))
+
+function setNodeShowTime(value) {
+  nodeForm.showTime = Boolean(value)
+}
+
+/** 仅日期模式选择日期时保留隐藏时间，服务端保存时会统一归一化为零点。 */
+function onNodeHappenedInput(value) {
+  nodeForm.happenedTime = nodeForm.showTime
+    ? String(value || '').trim()
+    : applyDatePart(nodeForm.happenedTime, value)
 }
 
 /** 故事标签的浅底 + 主题文字样式；亮色会自动压暗文字，保证可读。 */
@@ -887,6 +967,7 @@ function nodeFormSnapshot() {
     summary: nodeForm.summary.trim(),
     content: nodeForm.content.trim(),
     happenedTime: nodeForm.happenedTime,
+    showTime: Boolean(nodeForm.showTime),
     location: nodeForm.location.trim(),
     coverImage: nodeForm.coverImage.trim(),
     tagLabel,
@@ -910,6 +991,16 @@ function emitDirty() {
 function emitSimpleSaved(message) {
   emit('saved', {
     ...resolveSaveFeedback(null, message),
+    dirtyAfterSave: dirty.value,
+  })
+}
+
+/** 排序成功由页面统一弹窗反馈，使用明确 action 字段，避免匹配提示文字。 */
+function emitReorderSaved(message) {
+  emit('saved', {
+    action: 'reorder',
+    kind: 'success',
+    message,
     dirtyAfterSave: dirty.value,
   })
 }
@@ -1068,6 +1159,7 @@ function loadNodeIntoForm(node) {
   nodeForm.summary = node.summary || ''
   nodeForm.content = node.content || ''
   nodeForm.happenedTime = toDateTimeLocalInput(node.happenedTime)
+  nodeForm.showTime = normalizeShowTime(node.showTime)
   nodeForm.location = node.location || ''
   nodeForm.coverImage = node.coverImage || ''
   nodeForm.tagLabel = node.tagLabel || ''
@@ -1084,6 +1176,47 @@ function focusNodeTitle() {
   nextTick(() => {
     nodeTitleInputRef.value?.focus({ preventScroll: true })
   })
+}
+
+/** 必填校验失败时把焦点交给真实控件，而不是只显示一条错误文字。 */
+function focusById(id) {
+  nextTick(() => {
+    document.getElementById(id)?.focus?.({ preventScroll: true })
+  })
+}
+
+function focusNodeChapter() {
+  focusById('studio-node-chapter')
+}
+
+function focusNodeHappened() {
+  focusById('studio-node-happened')
+}
+
+function focusStoryContent() {
+  nextTick(() => {
+    const root = document.getElementById('studio-story-content-editor')
+    const target = root?.querySelector('textarea') || root
+    target?.focus?.({ preventScroll: true })
+  })
+}
+
+/**
+ * MdEditor 不会把 aria-required 透传到内部 textarea，
+ * 在弹窗打开后补到真实输入节点，保证读屏能知道正文必填。
+ */
+function syncStoryContentAria() {
+  const root = document.getElementById('studio-story-content-editor')
+    || document.querySelector('.story-content-editor')
+  const target = root?.querySelector('textarea') || root
+  if (!target) return
+  target.setAttribute('aria-required', 'true')
+  target.setAttribute('aria-labelledby', 'studio-node-content-label')
+}
+
+function handleNodeDialogOpened() {
+  focusNodeTitle()
+  nextTick(syncStoryContentAria)
 }
 
 async function closeNodeDialog() {
@@ -1182,6 +1315,7 @@ async function saveChapter() {
   const name = chapterForm.name.trim()
   if (!name) {
     chapterError.value = '章节名称不能为空'
+    focusChapterName()
     return
   }
   const colorCode = normalizeHexColor(chapterForm.colorCode)
@@ -1259,22 +1393,27 @@ async function saveNode() {
   nodeError.value = ''
   if (!nodeForm.chapterId) {
     nodeError.value = '请先创建并选择章节'
+    focusNodeChapter()
     return
   }
   if (!nodeForm.title.trim()) {
     nodeError.value = '故事标题不能为空'
+    focusNodeTitle()
     return
   }
   if (isStoryContentEmpty(nodeForm.content)) {
     nodeError.value = '故事正文不能为空'
+    focusStoryContent()
     return
   }
   if (isStoryContentTooLong(nodeForm.content)) {
     nodeError.value = `故事正文不能超过 ${STORY_CONTENT_MAX_LENGTH} 字`
+    focusStoryContent()
     return
   }
   if (!nodeForm.happenedTime) {
     nodeError.value = '请选择故事发生时间'
+    focusNodeHappened()
     return
   }
   const tagLabel = nodeForm.tagLabel.trim()
@@ -1304,7 +1443,8 @@ async function saveNode() {
       title: nodeForm.title.trim(),
       summary: nodeForm.summary.trim(),
       content: nodeForm.content.trim(),
-      happenedTime: toBackendDateTime(nodeForm.happenedTime),
+      happenedTime: toBackendContentDateTime(nodeForm.happenedTime, nodeForm.showTime),
+      showTime: Boolean(nodeForm.showTime),
       location: nodeForm.location.trim(),
       coverImage: nodeForm.coverImage.trim(),
       tagLabel,

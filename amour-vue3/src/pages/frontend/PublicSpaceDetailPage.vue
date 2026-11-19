@@ -190,7 +190,7 @@
 
                       <div class="min-w-0">
                         <div class="flex flex-wrap items-center gap-2 text-[11px] text-rose-600/50">
-                          <time>{{ formatSpaceDate(story.happenedTime) }}</time>
+                          <time>{{ formatSpaceContentDateTime(story.happenedTime, story.showTime, '') }}</time>
                           <span v-if="story.location" class="text-rose-200">/</span>
                           <span v-if="story.location" class="inline-flex min-w-0 items-center gap-1">
                             <svg class="h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -381,6 +381,7 @@ import {
   formatCount,
   formatMemberRole,
   formatRepeatType,
+  formatSpaceContentDateTime,
   formatSpaceDate,
   formatTogetherText,
   parseSpaceDateTime,

@@ -138,7 +138,7 @@
                           <span class="block truncate font-display text-base font-bold text-rose-950 sm:text-xl">{{ photo.title }}</span>
                           <span class="mt-2 flex items-center justify-between gap-2 text-[10px] font-semibold tracking-wider text-rose-700/45 sm:text-xs">
                             <span class="truncate">{{ photo.categoryName || '共同回忆' }}</span>
-                            <time class="shrink-0">{{ formatTakenDate(photo.takenTime) }}</time>
+                            <time class="shrink-0">{{ formatTakenDate(photo.takenTime, photo.showTime) }}</time>
                           </span>
                           <span class="page-description mt-3 text-xs leading-5 text-rose-900/45 sm:text-sm sm:leading-6">{{ photo.description || '这一页还没有写下文字。' }}</span>
                         </span>
@@ -198,7 +198,7 @@
                 <dl class="photo-detail-meta mt-5 border-y border-rose-100 py-4 text-sm">
                   <div>
                     <dt class="text-rose-800/40">拍摄时间</dt>
-                    <dd class="font-semibold text-rose-900">{{ formatTakenDate(selectedPhoto.takenTime, true) }}</dd>
+                    <dd class="font-semibold text-rose-900">{{ formatTakenDate(selectedPhoto.takenTime, selectedPhoto.showTime, true) }}</dd>
                   </div>
                   <div>
                     <dt class="text-rose-800/40">拍摄地点</dt>
@@ -219,6 +219,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import api from '@/axios'
 import CouplePageScaffold from '@/components/frontend/CouplePageScaffold.vue'
+import { formatSpaceContentDateTime } from '@/utils/spaceFormat'
 
 const pageSize = 2
 const categories = ref([])
@@ -250,10 +251,10 @@ const pageTransitionName = computed(() => turnDirection.value === 'prev' ? 'turn
 const firstVisiblePhotoNumber = computed(() => total.value ? (currentPage.value - 1) * pageSize + 1 : 0)
 const lastVisiblePhotoNumber = computed(() => Math.min(currentPage.value * pageSize, total.value))
 
-function formatTakenDate(value, full = false) {
+function formatTakenDate(value, showTime, full = false) {
   if (!value) return '日期未记录'
-  const text = String(value)
-  return full ? text.slice(0, 16) : text.slice(0, 10).replaceAll('-', '.')
+  const text = formatSpaceContentDateTime(value, showTime, '')
+  return text || '日期未记录'
 }
 
 function pageNumber(index) {
@@ -332,6 +333,7 @@ function normalizePhoto(record) {
     categoryName: record?.categoryName?.trim() || '共同回忆',
     url: record.url,
     takenTime: record?.takenTime || '',
+    showTime: record?.showTime !== false,
     location: record?.location?.trim() || '',
   }
 }

@@ -244,8 +244,8 @@ public interface PhotoMapper extends BaseMapper<PhotoDO> {
     }
 
     default int modifyPhoto(Long spaceId, Long id, String title, String description, Long categoryId,
-                            String url, LocalDateTime takenTime, String location, Integer sortOrder,
-                            boolean cover, Integer visibility, LocalDateTime updateTime) {
+                            String url, LocalDateTime takenTime, Boolean showTime, String location,
+                            Integer sortOrder, boolean cover, Integer visibility, LocalDateTime updateTime) {
         return update(null, new LambdaUpdateWrapper<PhotoDO>()
                 .eq(PhotoDO::getSpaceId, spaceId)
                 .eq(PhotoDO::getId, id)
@@ -255,6 +255,7 @@ public interface PhotoMapper extends BaseMapper<PhotoDO> {
                 .set(PhotoDO::getPhotoCategoryId, categoryId)
                 .set(PhotoDO::getUrl, url)
                 .set(PhotoDO::getTakenTime, takenTime)
+                .set(PhotoDO::getShowTime, showTime)
                 .set(PhotoDO::getLocation, location)
                 .set(PhotoDO::getSortOrder, sortOrder)
                 .set(PhotoDO::getIsCover, cover)

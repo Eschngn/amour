@@ -1,27 +1,9 @@
 import { post } from '../../utils/request'
+import { querySpaceHome } from '../../utils/space-content-api'
+import { buildHomeView } from '../../utils/space-home-view'
 import { withComponentPageViewTracking } from '../../utils/page-view-lifecycle'
 import { guardPageReady, navigateWithGuard } from '../../utils/access-control'
 import { hasFrontendQueryPermission } from '../../utils/auth'
-
-const DEFAULT_LOVE_START = '2024-05-20 18:30:00'
-
-const HOME_CONFIG_ITEMS = [
-  { configKey: 'boy_name', field: 'boyName' },
-  { configKey: 'girl_name', field: 'girlName' },
-  { configKey: 'love_start_time', field: 'loveStartTime' },
-  { configKey: 'boy_avatar', field: 'boyAvatar' },
-  { configKey: 'girl_avatar', field: 'girlAvatar' },
-  { configKey: 'home.hero_photo_1', field: 'heroPhotoOne' },
-  { configKey: 'home.hero_photo_2', field: 'heroPhotoTwo' },
-]
-
-// 管理控制台可选配置的全站默认图；未配置时首页展示首字母 / “尚未上传照片”占位。
-const DEFAULT_IMAGE_KEYS = {
-  boyAvatar: 'frontend.default_couple_avatar_boy',
-  girlAvatar: 'frontend.default_couple_avatar_girl',
-  heroPhotoOne: 'frontend.default_couple_hero_photo_1',
-  heroPhotoTwo: 'frontend.default_couple_hero_photo_2',
-}
 
 interface MilestoneStory {
   id: number
@@ -32,28 +14,10 @@ interface MilestoneStory {
 }
 
 function parseLoveStart(value: string) {
-  const timestamp = new Date(value.trim().replace(/-/g, '/').replace('T', ' ')).getTime()
-  if (Number.isFinite(timestamp)) return timestamp
-  return new Date(DEFAULT_LOVE_START.replace(/-/g, '/')).getTime()
-}
-
-/** 头像占位文字：优先昵称首字母，没有昵称时使用 HE / SHE。 */
-function initialOf(name: string, fallback: string) {
-  const text = String(name || '').trim()
-  if (!text) return fallback
-  const words = text.split(/\s+/).filter(Boolean)
-  if (words.length >= 2 && /^[a-z]/i.test(words[0])) {
-    return (words[0][0] + words[1][0]).toUpperCase()
-  }
-  return text.slice(0, /^[a-z]/i.test(text) ? 2 : 1).toUpperCase()
-}
-
-function formatLoveStartDate(value: string) {
-  const date = new Date(parseLoveStart(value))
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year} · ${month} · ${day}`
+  const text = String(value || '').trim()
+  if (!text) return 0
+  const timestamp = new Date(text.replace(/-/g, '/').replace('T', ' ')).getTime()
+  return Number.isFinite(timestamp) ? timestamp : 0
 }
 
 let timeTicker: number | undefined
@@ -85,11 +49,13 @@ Component(withComponentPageViewTracking({
     girlAvatar: '',
     boyInitial: 'HE',
     girlInitial: 'SHE',
-    loveStartTime: DEFAULT_LOVE_START,
-    loveStartDate: '2024 · 05 · 20',
+    loveStartTime: '',
+    loveStartDate: '',
     togetherDays: 0,
     /** 页面守卫检查中 / 不通过时展示占位，避免受限内容闪现 */
     pageBlocked: true,
+    /** 是否已经完成过一次首页数据加载（用于 pageLifetimes.show 刷新） */
+    homeLoadedOnce: false,
     storyStat: '等待新的章节',
     showStory: false,
     showPhoto: false,
@@ -131,6 +97,13 @@ Component(withComponentPageViewTracking({
     },
   },
 
+  pageLifetimes: {
+    show() {
+      // 从空间编辑页保存后返回：重新读取 /space/home/query，确保看到最新内容。
+      if (this.data.homeLoadedOnce && !this.data.pageBlocked) this.loadHomeData()
+    },
+  },
+
   methods: {
     hasQueryPermission(module: string) {
       return hasFrontendQueryPermission(module)
@@ -138,7 +111,7 @@ Component(withComponentPageViewTracking({
 
     updateTime() {
       const start = parseLoveStart(this.data.loveStartTime)
-      const elapsed = Math.max(0, Date.now() - start)
+      const elapsed = start ? Math.max(0, Date.now() - start) : 0
       const days = Math.floor(elapsed / 86400000)
       const hours = Math.floor((elapsed % 86400000) / 3600000)
       const minutes = Math.floor((elapsed % 3600000) / 60000)
@@ -156,50 +129,27 @@ Component(withComponentPageViewTracking({
     },
 
     async loadHomeData() {
-      await Promise.all([this.loadHomeConfig(), this.loadMilestones()])
+      await Promise.all([this.loadSpaceHome(), this.loadMilestones()])
+      if (isDetached(this)) return
+      this.setData({ homeLoadedOnce: true })
     },
 
-    async loadHomeConfig() {
-      const updates: WechatMiniprogram.IAnyObject = {}
-      await Promise.all(HOME_CONFIG_ITEMS.map(async ({ configKey, field }) => {
-        try {
-          const value = await post<string>('/site-config/query', { configKey })
-          if (typeof value === 'string' && value.trim()) updates[field] = value.trim()
-        } catch (error) {
-          console.warn(`首页配置 ${configKey} 读取失败，已使用默认值`, error)
-        }
-      }))
-
-      await this.loadDefaultImages(updates)
-      const loveStartTime = typeof updates.loveStartTime === 'string'
-        ? updates.loveStartTime
-        : this.data.loveStartTime
-      updates.loveStartDate = formatLoveStartDate(loveStartTime)
-      updates.boyInitial = initialOf(
-        typeof updates.boyName === 'string' ? updates.boyName : this.data.boyName,
-        'HE',
-      )
-      updates.girlInitial = initialOf(
-        typeof updates.girlName === 'string' ? updates.girlName : this.data.girlName,
-        'SHE',
-      )
-      this.setData(updates, () => this.updateTime())
-    },
-
-    /** 一次批量读取全站默认图片，只填补当前仍为空的字段，避免覆盖已有配置。 */
-    async loadDefaultImages(updates: WechatMiniprogram.IAnyObject) {
+    /**
+     * 读取当前情侣空间首页。
+     *
+     * 数据唯一来源是 POST /space/home/query：
+     * - 空间名 / 简介 / 恋爱开始时间来自 couple_space；
+     * - 双方展示名、头像与主视觉照片由后端按来源解析（空间配置 / 成员资料 / 平台默认）；
+     * - 不再读取 /site-config/query 并用平台默认值覆盖用户空间数据。
+     */
+    async loadSpaceHome() {
       try {
-        const defaults = await post<Record<string, string>>('/site-config/query-batch', {
-          configKeys: Object.values(DEFAULT_IMAGE_KEYS),
-        })
-        if (!defaults || typeof defaults !== 'object') return
-        Object.keys(DEFAULT_IMAGE_KEYS).forEach((field) => {
-          if (updates[field]) return
-          const value = defaults[DEFAULT_IMAGE_KEYS[field as keyof typeof DEFAULT_IMAGE_KEYS]]
-          if (typeof value === 'string' && value.trim()) updates[field] = value.trim()
-        })
+        const home = await querySpaceHome()
+        if (isDetached(this)) return
+        const view = buildHomeView(home)
+        this.setData(view, () => this.updateTime())
       } catch (error) {
-        console.warn('全站默认图片读取失败，使用占位样式', error)
+        console.warn('空间首页读取失败，已使用占位展示', error)
       }
     },
 

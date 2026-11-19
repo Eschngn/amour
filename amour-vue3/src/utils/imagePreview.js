@@ -1,4 +1,4 @@
-import { formatSpaceDate } from './spaceFormat.js'
+import { formatSpaceContentDateTime } from './spaceFormat.js'
 
 /**
  * 图片大图预览的数据归一化工具。
@@ -135,7 +135,7 @@ export function buildPublicPhotoPreviews(photos) {
       const title = rawTitle || '未命名照片'
       // 没有标题时用描述摘要作为 alt，仍为空时使用通用文本；不把内部 ID 暴露给用户。
       const alt = rawTitle || (description ? `照片描述：${description.slice(0, 80)}` : '公开照片')
-      const takenDate = formatSpaceDate(photo?.takenTime, '')
+      const takenDate = formatSpaceContentDateTime(photo?.takenTime, photo?.showTime, '')
       const location = toText(photo?.location)
       const meta = [takenDate ? `拍摄于 ${takenDate}` : '', location].filter(Boolean).join(' · ')
 

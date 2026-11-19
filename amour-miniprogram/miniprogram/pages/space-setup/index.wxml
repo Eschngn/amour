@@ -147,6 +147,13 @@
             </block>
           </view>
 
+          <view class="section-card studio-entry-card">
+            <text class="section-kicker">SPACE STUDIO</text>
+            <text class="section-title">先布置空间</text>
+            <text class="section-note">另一半加入前也可以先编辑首页、故事、留言、相册和纪念日。等待绑定阶段内容默认仅自己可见，绑定完成后对方才能看到。</text>
+            <button class="primary-button" bindtap="onOpenStudio" hover-class="button-hover">编辑空间内容</button>
+          </view>
+
           <view class="section-card">
             <text class="section-kicker">INVITE YOUR PARTNER</text>
             <text class="section-title">邀请另一半加入</text>
@@ -235,6 +242,7 @@
             <text class="section-title">空间入口</text>
             <text class="section-note">回到情侣空间首页，查看故事、相册与留言。</text>
             <button class="secondary-button" bindtap="onOpenSpaceHome" hover-class="button-hover">进入情侣空间</button>
+            <button class="secondary-button" bindtap="onOpenStudio" hover-class="button-hover">编辑空间内容</button>
           </view>
         </block>
 
@@ -267,6 +275,13 @@
       <!-- ==================== 创建 / 绑定模式（原有行为） ==================== -->
       <!-- 已创建但等待另一半加入：只展示邀请区，不再展示创建表单 -->
       <block wx:elif="{{waiting}}">
+        <view class="section-card studio-entry-card">
+          <text class="section-kicker">SPACE STUDIO</text>
+          <text class="section-title">先布置空间</text>
+          <text class="section-note">另一半加入前也可以先编辑首页、故事、留言、相册和纪念日。等待绑定阶段内容默认仅自己可见，绑定完成后对方才能看到。</text>
+          <button class="primary-button" bindtap="onOpenStudio" hover-class="button-hover">编辑空间内容</button>
+        </view>
+
         <view class="section-card">
           <text class="section-kicker">INVITE YOUR PARTNER</text>
           <text class="section-title">邀请另一半加入</text>

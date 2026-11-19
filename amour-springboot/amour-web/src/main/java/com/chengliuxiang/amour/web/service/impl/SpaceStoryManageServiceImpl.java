@@ -195,6 +195,7 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
                             .summary(node.getSummary())
                             .content(node.getContent())
                             .happenedTime(node.getHappenedTime())
+                            .showTime(node.getShowTime() == null || node.getShowTime())
                             .location(node.getLocation())
                             .coverImage(node.getCoverImage())
                             .tagLabel(node.getTagLabel())
@@ -237,6 +238,8 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
         LocalDateTime now = LocalDateTime.now();
         StoryNodeDO node;
         if (reqVO.getId() == null) {
+            boolean showTime = resolveShowTime(reqVO.getShowTime(), null);
+            LocalDateTime happenedTime = normalizeHappenedTime(reqVO.getHappenedTime(), showTime);
             // 历史公开空间先把当前公开数据固化为已发布版本，本次修改只进入待审核快照。
             spaceReviewService.prepareForPublicEdit(spaceId);
             node = StoryNodeDO.builder()
@@ -245,7 +248,8 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
                     .title(title)
                     .summary(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getSummary())))
                     .content(content)
-                    .happenedTime(reqVO.getHappenedTime())
+                    .happenedTime(happenedTime)
+                    .showTime(showTime)
                     .location(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getLocation())))
                     .coverImage(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getCoverImage())))
                     .tagLabel(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getTagLabel())))
@@ -265,8 +269,10 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
             storyNodeMapper.insertStoryNode(node);
         } else {
             StoryNodeDO current = requireNode(spaceId, reqVO.getId());
+            boolean showTime = resolveShowTime(reqVO.getShowTime(), current);
+            LocalDateTime happenedTime = normalizeHappenedTime(reqVO.getHappenedTime(), showTime);
             // 重复保存相同内容不递增版本，也不产生无意义的待审核项。
-            if (!isStoryChanged(current, reqVO, visibility)) {
+            if (!isStoryChanged(current, reqVO, visibility, showTime, happenedTime)) {
                 return Response.success(spaceReviewService.onContentUnchanged(
                         spaceId, SpaceReviewConstants.ITEM_TYPE_STORY, current.getId()));
             }
@@ -279,7 +285,8 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
                     .title(title)
                     .summary(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getSummary())))
                     .content(content)
-                    .happenedTime(reqVO.getHappenedTime())
+                    .happenedTime(happenedTime)
+                    .showTime(showTime)
                     .location(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getLocation())))
                     .coverImage(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getCoverImage())))
                     .tagLabel(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getTagLabel())))
@@ -368,19 +375,47 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
     }
 
     /**
+     * 解析时间展示精度。
+     *
+     * <p>编辑时未传字段表示旧客户端请求，必须保留原记录选项；
+     * 新建未传字段与历史记录缺失值统一按“展示日期和时间”兼容。</p>
+     */
+    private boolean resolveShowTime(Boolean requested, StoryNodeDO current) {
+        if (requested != null) {
+            return requested;
+        }
+        if (current == null || current.getShowTime() == null) {
+            return true;
+        }
+        return current.getShowTime();
+    }
+
+    /**
+     * 仅日期模式统一持久化为当天 00:00:00，避免残留的时分秒影响展示与排序。
+     */
+    private LocalDateTime normalizeHappenedTime(LocalDateTime value, boolean showTime) {
+        if (value == null) {
+            return null;
+        }
+        return showTime ? value : value.toLocalDate().atStartOfDay();
+    }
+
+    /**
      * 判断本次保存是否真正改变了工作数据。
      *
      * <p>只比较保存接口会写入的字段，忽略数据库自增 ID 与对象序列化差异；
      * 排序值也属于真实变更，因为会改变恋爱广场的故事顺序。
      * 历史故事附图不再参与保存，也不会影响变化判定。</p>
      */
-    private boolean isStoryChanged(StoryNodeDO current, StoryNodeSaveReqVO reqVO, int visibility) {
+    private boolean isStoryChanged(StoryNodeDO current, StoryNodeSaveReqVO reqVO, int visibility,
+                                   boolean showTime, LocalDateTime happenedTime) {
         String requestedTagLabel = StrUtil.nullToEmpty(StrUtil.trim(reqVO.getTagLabel()));
         return !Objects.equals(current.getChapterId(), reqVO.getChapterId())
                 || !sameText(current.getTitle(), reqVO.getTitle())
                 || !sameText(current.getSummary(), reqVO.getSummary())
                 || !sameText(current.getContent(), reqVO.getContent())
-                || !Objects.equals(current.getHappenedTime(), reqVO.getHappenedTime())
+                || !Objects.equals(current.getHappenedTime(), happenedTime)
+                || !Objects.equals(current.getShowTime() == null || current.getShowTime(), showTime)
                 || !sameText(current.getLocation(), reqVO.getLocation())
                 || !sameText(current.getCoverImage(), reqVO.getCoverImage())
                 || !sameText(current.getTagLabel(), requestedTagLabel)

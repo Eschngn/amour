@@ -160,7 +160,7 @@ test('桌面：单人创建者能看到销毁按钮，点击打开确认框、�
   try {
     const requests = trackApiRequests(page)
     await login(page, CREATOR)
-    await page.goto(`${WEB_BASE}/space/setup`, { waitUntil: 'commit' })
+    await page.goto(`${WEB_BASE}/space/setup#space-danger-zone`, { waitUntil: 'commit' })
     const destroyButton = page.locator('#space-destroy button')
     await destroyButton.waitFor({ state: 'visible', timeout: 90000 })
 
@@ -171,40 +171,31 @@ test('桌面：单人创建者能看到销毁按钮，点击打开确认框、�
     assert.ok(box && box.width > 80 && box.height > 20, '销毁按钮应有可点击尺寸')
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth), false, '桌面不应有横向溢出')
 
-    // 信息架构：危险操作在日常设置之后的页面底部，不再吸顶、不再有右侧侧栏。
-    assert.equal(await page.locator('#space-danger-zone').count(), 1, '危险操作区应渲染')
+    // 信息架构：左侧纵向分区导航 + 右侧危险操作内容，危险操作本身不再吸顶或悬浮。
+    assert.equal(await page.locator('#space-danger-zone').count(), 1, '危险操作区应通过 hash 深链渲染')
     assert.equal(await page.locator('#space-danger-zone aside').count(), 0, '危险操作区不得使用侧栏容器')
+    assert.equal(await page.locator('aside[aria-label="空间设置分区导航"]').count(), 1, '应渲染左侧分区导航')
     const layout = await page.evaluate(() => {
       const zone = document.querySelector('#space-danger-zone')
-      const basic = document.querySelector('#space-basic-info')
-      const visibility = document.querySelector('#space-visibility')
-      const content = document.querySelector('#space-content-entry')
-      const destroy = document.querySelector('#space-destroy')
-      const rect = selectors => selectors.map((selector) => {
-        const element = document.querySelector(selector)
-        return element ? element.getBoundingClientRect().top : null
-      })
+      const nav = document.querySelector('aside[aria-label="空间设置分区导航"]')
+      const rect = element => (element ? element.getBoundingClientRect() : null)
+      const navRect = rect(nav)
+      const zoneRect = rect(zone)
       return {
         zone: zone ? zone.getBoundingClientRect().top : null,
-        basic: rect(['#space-basic-info'])[0],
-        visibility: rect(['#space-visibility'])[0],
-        content: rect(['#space-content-entry'])[0],
-        destroy: destroy ? destroy.getBoundingClientRect().top : null,
         position: zone ? getComputedStyle(zone).position : null,
-        zoneWidth: zone ? zone.getBoundingClientRect().width : 0,
-        basicWidth: basic ? basic.getBoundingClientRect().width : 0,
-        visibilityWidth: visibility ? visibility.getBoundingClientRect().width : 0,
-        contentWidth: content ? content.getBoundingClientRect().width : 0,
+        navRight: navRect ? navRect.right : null,
+        zoneLeft: zoneRect ? zoneRect.left : null,
+        navWidth: navRect ? navRect.width : 0,
+        zoneWidth: zoneRect ? zoneRect.width : 0,
       }
     })
     assert.notEqual(layout.zone, null, '危险操作区必须渲染')
     assert.notEqual(layout.position, 'sticky', '危险操作区不得吸顶')
     assert.notEqual(layout.position, 'fixed', '不得出现悬浮销毁按钮')
-    assert.ok(layout.basic < layout.visibility, '基础信息应在公开与审核之前')
-    assert.ok(layout.visibility < layout.content, '公开与审核应在内容管理入口之前')
-    assert.ok(layout.content < layout.zone, '危险操作区必须在日常设置之后')
-    assert.ok(layout.zoneWidth > 0 && layout.zoneWidth === layout.basicWidth, '危险操作区与日常设置同宽')
-    assert.equal(layout.basicWidth, layout.contentWidth, '各分组卡片宽度统一')
+    assert.ok(layout.navWidth > 0 && layout.navWidth < 300, '左侧导航保持稳定窄栏')
+    assert.ok(layout.navRight <= layout.zoneLeft + 8, '右侧内容应位于导航右侧')
+    assert.ok(layout.zoneWidth > 0, '危险操作区应有可用宽度')
 
     if (!DESTROY_INTERACTION_ENABLED) return
     requests.length = 0
@@ -257,23 +248,23 @@ test('窄屏：销毁按钮可滚动到视口内且能接收点击', async (t) =
   const { context, page } = await openPage({ width: 390, height: 844 })
   try {
     await login(page, CREATOR)
-    await page.goto(`${WEB_BASE}/space/setup`, { waitUntil: 'commit' })
+    await page.goto(`${WEB_BASE}/space/setup#space-danger-zone`, { waitUntil: 'commit' })
     const destroyButton = page.locator('#space-destroy button')
     await destroyButton.waitFor({ state: 'visible', timeout: 90000 })
     await destroyButton.scrollIntoViewIfNeeded()
 
-    // 窄屏：日常管理各分组按单列堆叠，危险操作区仍可见且不被遮挡。
+    // 窄屏：左栏折叠为顶部横向导航，导航与内容都不产生横向溢出。
     const narrowLayout = await page.evaluate(() => {
-      const selectors = ['#space-basic-info', '#space-visibility', '#space-content-entry', '#space-danger-zone']
-      return selectors.map((selector) => {
-        const element = document.querySelector(selector)
-        const rect = element ? element.getBoundingClientRect() : null
-        return rect ? { top: rect.top, right: rect.right, width: rect.width } : null
-      })
+      const nav = document.querySelector('aside[aria-label="空间设置分区导航"]')
+      const zone = document.querySelector('#space-danger-zone')
+      const navRect = nav ? nav.getBoundingClientRect() : null
+      const zoneRect = zone ? zone.getBoundingClientRect() : null
+      return { nav: navRect, zone: zoneRect }
     })
-    assert.ok(narrowLayout.every(Boolean), '窄屏下各分组都必须渲染')
-    assert.ok(narrowLayout[0].top < narrowLayout[1].top, '窄屏基础信息应在公开与审核之前')
-    assert.ok(narrowLayout[2].top < narrowLayout[3].top, '窄屏危险操作区必须在内容入口之后')
+    assert.ok(narrowLayout.nav, '窄屏导航必须渲染')
+    assert.ok(narrowLayout.zone, '窄屏危险操作区必须渲染')
+    assert.ok(narrowLayout.nav.top < narrowLayout.zone.top, '窄屏导航应在内容上方')
+    assert.ok(narrowLayout.nav.width <= 390, '窄屏导航不能横向溢出')
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth), false, '窄屏不应有横向溢出')
 
     const geometry = await destroyButton.evaluate((element) => {
@@ -319,7 +310,7 @@ test('双人空间：基础信息只读、不出现编辑按钮，解绑入口�
   const { context, page } = await openPage({ width: 1440, height: 900 })
   try {
     await login(page, TWO_MEMBER)
-    await page.goto(`${WEB_BASE}/space/setup`, { waitUntil: 'commit' })
+    await page.goto(`${WEB_BASE}/space/setup#space-basic-info`, { waitUntil: 'commit' })
     await page.waitForSelector('#space-basic-info', { timeout: 90000 })
 
     const basicHtml = await page.locator('#space-basic-info').innerHTML()
@@ -327,6 +318,8 @@ test('双人空间：基础信息只读、不出现编辑按钮，解绑入口�
     assert.match(basicHtml, /另一半已经加入/, '必须说明为什么不能再修改')
 
     // 销毁入口不存在，解绑入口位于危险操作区内部。
+    await page.goto(`${WEB_BASE}/space/setup#space-danger-zone`, { waitUntil: 'commit' })
+    await page.waitForSelector('#space-danger-zone', { timeout: 90000 })
     assert.equal(await page.locator('#space-destroy').count(), 0, '双人空间不得出现销毁入口')
     assert.equal(await page.locator('#space-danger-zone #space-unbind').count(), 1, '解绑入口必须在危险操作区')
   } finally {
@@ -340,7 +333,7 @@ test('等待绑定：基础信息可编辑，取消不发请求、保存后没�
   try {
     const requests = trackApiRequests(page)
     await login(page, CREATOR)
-    await page.goto(`${WEB_BASE}/space/setup`, { waitUntil: 'commit' })
+    await page.goto(`${WEB_BASE}/space/setup#space-basic-info`, { waitUntil: 'commit' })
     const editButton = page.locator('#space-basic-info button:has-text("编辑空间信息")')
     await editButton.waitFor({ state: 'visible', timeout: 90000 })
 

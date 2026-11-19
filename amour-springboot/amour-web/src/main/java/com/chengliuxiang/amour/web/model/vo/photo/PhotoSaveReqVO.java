@@ -34,6 +34,12 @@ public class PhotoSaveReqVO {
 
     private LocalDateTime takenTime;
 
+    /**
+     * 时间展示精度：true-展示日期和时间 false-仅展示日期。
+     * 编辑时不传表示保留原记录选项；新建时不传默认 true。
+     */
+    private Boolean showTime;
+
     @Size(max = 100, message = "拍摄地点不能超过 100 个字符")
     private String location;
 

@@ -25,6 +25,7 @@ const {
   PLAZA_ROUTE,
   LOGIN_ROUTE,
   SPACE_SETUP_ROUTE,
+  SPACE_STUDIO_ROUTE,
   SPACE_REQUIRED_TOAST,
   SESSION_LOG_PREFIX,
 } = require('./session-constants')
@@ -236,6 +237,18 @@ function openSpaceSetup(action) {
 }
 
 /**
+ * 打开空间内容编辑工作台。
+ *
+ * 该页面属于「必须存在情侣空间」的页面：无空间 / 未登录时由统一守卫拦截，
+ * 不在各个入口重复实现判断。
+ *
+ * @returns {boolean} 是否已发起跳转
+ */
+function openSpaceStudio() {
+  return navigateWithGuard(SPACE_STUDIO_ROUTE)
+}
+
+/**
  * 全局导航守卫（应用启动时绑定一次）。
  *
  * 页面自身的 onLoad / attached 守卫覆盖了“进入页面”的路径；
@@ -279,5 +292,6 @@ module.exports = {
   redirectToGuidedProfile,
   redirectToLogin,
   openSpaceSetup,
+  openSpaceStudio,
   resolveCurrentRoute,
 }

@@ -17,13 +17,11 @@ import { renderToString } from 'vue/server-renderer'
  *   （`@/` 别名、Tailwind class、Element Plus 组件都由 Vite 解析），
  *   再用 vue/server-renderer 渲染成真实 HTML，断言分区结构、展示条件与可访问性属性。
  *
- * 本次信息架构重构后的覆盖范围：
- * - 区域顺序：概览 → 基础信息 → 成员与邀请（插槽）→ 公开与审核 → 内容管理 → 危险操作；
- * - 单人创建者仅有销毁资格时，页面底部的销毁区仍必须渲染（不依赖解绑 / 恢复条件）；
- * - 危险操作不再位于右侧吸顶侧栏：没有 <aside>、没有 lg:sticky；
- * - 恢复独立成卡片且不与销毁混在一起；销毁区为浅色边框 + 危险色按钮；
- * - 双人空间基础信息只读并给出原因，且没有「编辑空间信息」入口；
- * - 冻结 / 归档 / 已销毁 / 已解绑 / 无空间等状态不回归；
+ * 重构后的覆盖范围：
+ * - 桌面端左侧纵向分区导航 + 右侧单分区内容；移动端导航可横向滚动；
+ * - 按空间状态禁用不适用分区并给出原因（邀请 / 成员 / 内容管理 / 危险操作）；
+ * - 单人创建者仅有销毁资格时，危险分区仍能真实渲染出销毁按钮；
+ * - 冻结/归档恢复入口、双人空间只读基础信息、终态空间不出现失效操作；
  * - 表单标签、错误提示、aria 属性与按钮 disabled / aria-busy 完整。
  */
 
@@ -89,9 +87,10 @@ function stubAxios(server) {
  * @param {object} options
  * @param {object|null} options.space 空间状态（写进全局 useFrontendSpace 的 spaceStatus）
  * @param {boolean} [options.withSlot] 是否提供 after-overview 插槽内容
+ * @param {string} [options.initialSection] 初始分区（overview / basic-info / invite-partner / members / visibility / content-entry / danger）
  * @returns {Promise<{ html: string, requests: Array, restore: () => void }>}
  */
-async function renderPanel({ space, withSlot = false }) {
+async function renderPanel({ space, withSlot = false, initialSection = '' }) {
   const server = await getServer()
   const axiosStub = await stubAxios(server)
   try {
@@ -105,7 +104,7 @@ async function renderPanel({ space, withSlot = false }) {
       render() {
         return h(
           panel.default,
-          null,
+          { initialSection },
           withSlot
             ? { 'after-overview': () => h('section', { id: 'space-invite-partner' }, '邀请另一半加入') }
             : {},
@@ -163,6 +162,24 @@ function sliceById(html, id, tagName = '') {
   return html.slice(openStart)
 }
 
+/** 截取左侧分区导航。 */
+function sliceNav(html) {
+  const start = html.indexOf('aria-label="空间设置分区"')
+  if (start < 0) return ''
+  const navStart = html.lastIndexOf('<nav', start)
+  const navEnd = html.indexOf('</nav>', start)
+  return navStart >= 0 && navEnd > navStart ? html.slice(navStart, navEnd + 6) : ''
+}
+
+/** 截取导航中包含指定文案的那个按钮。 */
+function sliceNavButton(nav, label) {
+  const labelIndex = nav.indexOf(label)
+  if (labelIndex < 0) return ''
+  const buttonStart = nav.lastIndexOf('<button', labelIndex)
+  const buttonEnd = nav.indexOf('</button>', labelIndex)
+  return buttonStart >= 0 && buttonEnd > labelIndex ? nav.slice(buttonStart, buttonEnd + 9) : ''
+}
+
 /** 断言元素 a 在元素 b 之前出现（区域顺序）。 */
 function assertBefore(html, firstId, secondId, message) {
   const first = html.indexOf(`id="${firstId}"`)
@@ -215,10 +232,85 @@ function twoMemberSpace(overrides = {}) {
   }
 }
 
-// ===================== 1. 单人创建者：销毁入口必须真实渲染 =====================
+// ===================== 1. 左右布局与分区导航 =====================
+
+test('桌面端使用左侧纵向分区导航，右侧只渲染当前分区', async () => {
+  const { html, restore } = await renderPanel({ space: singleCreatorSpace(), initialSection: 'overview' })
+  try {
+    assert.match(html, /<aside\b/, '必须渲染左侧分区导航')
+    assert.match(html, /aria-label="空间设置分区导航"/)
+    assert.match(html, /lg:grid-cols-\[16rem_minmax\(0,1fr\)\]/, '桌面端两栏布局')
+    assert.match(html, /lg:sticky/, '桌面端导航保持可见')
+    assert.match(html, /lg:flex-col/, '桌面端导航纵向排列')
+    assert.match(html, /overflow-x-auto/, '移动端导航可横向滚动')
+
+    const nav = sliceNav(html)
+    assert.ok(nav.length > 0, '缺少分区导航')
+    const labels = ['空间概况', '邀请另一半', '公开与审核', '空间操作']
+    let lastIndex = -1
+    labels.forEach((label) => {
+      const index = nav.indexOf(label)
+      assert.ok(index > lastIndex, `导航顺序错误：${label}`)
+      lastIndex = index
+    })
+    assert.match(nav, /aria-current="page"/, '当前分区要有明确的当前语义')
+    assert.doesNotMatch(nav, /disabled/, '可用分区不应保留灰色禁用项')
+    assert.doesNotMatch(nav, /空间成员/, '等待绑定时不出现成员导航')
+
+    // 空间概况按层级渲染概览、基础信息与内容入口，其他分区不提前渲染。
+    assert.ok(html.includes('id="space-overview"'))
+    assert.ok(html.includes('id="space-basic-info"'))
+    assert.ok(html.includes('id="space-content-entry"'))
+    assert.ok(!html.includes('id="space-danger-zone"'))
+  } finally {
+    restore()
+  }
+})
+
+test('邀请与成员共用一个导航位置：等待绑定只见邀请，已绑定只见成员', async () => {
+  const waiting = await renderPanel({ space: singleCreatorSpace(), withSlot: true, initialSection: 'invite-partner' })
+  try {
+    const nav = sliceNav(waiting.html)
+    assert.match(nav, /邀请另一半/, '等待绑定时显示邀请导航')
+    assert.doesNotMatch(nav, /空间成员/, '不得同时保留成员导航')
+    assert.doesNotMatch(nav, /disabled/, '邀请可用时不能显示为禁用')
+    assert.ok(waiting.html.includes('id="space-invite-partner"'), '邀请分区可正常渲染')
+  } finally {
+    waiting.restore()
+  }
+
+  const bound = await renderPanel({ space: twoMemberSpace(), initialSection: 'members' })
+  try {
+    const nav = sliceNav(bound.html)
+    assert.match(nav, /空间成员/)
+    assert.doesNotMatch(nav, /邀请另一半/, '已绑定时不得保留邀请导航')
+    assert.doesNotMatch(nav, /disabled/)
+    assert.ok(bound.html.includes('id="space-members"'))
+    assert.doesNotMatch(bound.html, /已按当前状态隐藏/)
+  } finally {
+    bound.restore()
+  }
+})
+
+test('直接从 hash 对应的分区打开时，分区内容与锚点都存在', async () => {
+  const { html, restore } = await renderPanel({ space: singleCreatorSpace(), initialSection: 'danger' })
+  try {
+    assert.ok(html.includes('id="space-danger-zone"'), '危险分区必须渲染')
+    assert.ok(html.includes('id="space-destroy"'), '销毁锚点必须存在')
+    assert.match(html, /space-danger-zone-heading/)
+  } finally {
+    restore()
+  }
+})
+
+// ===================== 2. 单人创建者：销毁入口必须真实渲染 =====================
 
 test('单人创建者：真实渲染出可点击的「销毁并清空空间」按钮', async () => {
-  const { html, requests, restore } = await renderPanel({ space: singleCreatorSpace(), withSlot: true })
+  const { html, requests, restore } = await renderPanel({
+    space: singleCreatorSpace(),
+    withSlot: true,
+    initialSection: 'danger',
+  })
   try {
     // 1) 危险操作区与销毁入口必须渲染（历史 bug：父级条件漏了 showDestroySection）。
     assert.ok(html.includes('id="space-danger-zone"'), '危险操作区没有渲染出来')
@@ -258,33 +350,27 @@ test('单人创建者：真实渲染出可点击的「销毁并清空空间」�
   }
 })
 
-test('单人创建者：危险操作区仍在，但整块位于日常设置之后', async () => {
-  const { html, restore } = await renderPanel({ space: singleCreatorSpace(), withSlot: true })
+test('危险操作分区包含恢复 / 解绑 / 销毁的独立入口', async () => {
+  const space = twoMemberSpace()
+  const { html, restore } = await renderPanel({ space, initialSection: 'danger' })
   try {
-    assert.ok(html.includes('id="space-invite-partner"'), '邀请区插槽内容必须照常渲染')
-    assert.ok(html.includes('id="space-destroy"'), '销毁区必须与邀请区同时渲染')
-    // 区域顺序：概览 → 基础信息 → 邀请 → 公开与审核 → 内容管理 → 危险操作。
-    assertBefore(html, 'space-overview', 'space-basic-info')
-    assertBefore(html, 'space-basic-info', 'space-invite-partner')
-    assertBefore(html, 'space-invite-partner', 'space-visibility')
-    assertBefore(html, 'space-visibility', 'space-content-entry')
-    assertBefore(html, 'space-content-entry', 'space-danger-zone')
-    assertBefore(html, 'space-danger-zone', 'space-destroy', '销毁入口必须位于页面底部的危险操作区')
+    assert.ok(html.includes('id="space-danger-zone"'))
+    assert.ok(html.includes('id="space-unbind"'), '双人空间应渲染解绑入口')
+    assert.ok(!html.includes('id="space-destroy"'), '另一半已加入时不得出现销毁入口')
+    assertBefore(html, 'space-danger-zone', 'space-unbind', '解绑入口必须位于危险操作区内部')
   } finally {
     restore()
   }
 })
 
-test('危险操作区不再使用右侧吸顶侧栏', async () => {
-  const { html, restore } = await renderPanel({ space: singleCreatorSpace() })
+test('危险操作内容不再作为独立侧栏，按钮保持窄屏纵向堆叠', async () => {
+  const { html, restore } = await renderPanel({ space: singleCreatorSpace(), initialSection: 'danger' })
   try {
-    // 不能出现 <aside> 侧栏，也不能有 sticky 定位（避免覆盖表单或形成空侧栏）。
-    assert.ok(!html.includes('<aside'), '危险操作不应再放在 <aside> 侧栏里')
-    assert.doesNotMatch(html, /lg:sticky/)
-    assert.doesNotMatch(html, /lg:top-24/)
-    // 只有一个内容列：不再出现「内容 + 20rem 侧栏」的栅格。
-    assert.doesNotMatch(html, /lg:grid-cols-\[minmax\(0,1fr\)_20rem\]/)
-    // 销毁按钮不使用 w-full 铺满整列侧栏，而是右侧操作位（窄屏纵向堆叠）。
+    const zoneHtml = sliceById(html, 'space-danger-zone')
+    // 左侧 aside 只承担分区导航；危险操作内容本身不能是侧栏或吸附容器。
+    assert.doesNotMatch(zoneHtml, /<aside\b/)
+    assert.doesNotMatch(zoneHtml, /lg:sticky/)
+    assert.doesNotMatch(zoneHtml, /lg:top-24/)
     const destroyHtml = sliceById(html, 'space-destroy')
     assert.doesNotMatch(destroyHtml, /whitespace-nowrap/, '窄屏不允许强制不换行')
     assert.match(destroyHtml, /flex-col/, '窄屏必须自然纵向排列')
@@ -295,14 +381,12 @@ test('危险操作区不再使用右侧吸顶侧栏', async () => {
 })
 
 test('销毁区使用克制的浅色边框与危险色按钮，不使用大面积高饱和红色', async () => {
-  const { html, restore } = await renderPanel({ space: singleCreatorSpace() })
+  const { html, restore } = await renderPanel({ space: singleCreatorSpace(), initialSection: 'danger' })
   try {
     const destroyHtml = sliceById(html, 'space-destroy')
-    // 浅色边框 + 浅底（rose-200/80 + rose-50/40），不是 bg-rose-600 这类大面积高饱和铺色。
     assert.match(destroyHtml, /border-rose-200\/80/)
     assert.match(destroyHtml, /bg-rose-50\/40/)
     assert.doesNotMatch(destroyHtml, /bg-rose-600|bg-rose-700/)
-    // 按钮沿用全局 btn-danger（白底 + 危险色文字与边框）。
     const buttonTag = /<button[^>]*>/.exec(destroyHtml)?.[0] || ''
     assert.match(buttonTag, /btn-danger/)
   } finally {
@@ -313,6 +397,7 @@ test('销毁区使用克制的浅色边框与危险色按钮，不使用大面�
 test('旧版单人正常状态（status=1 但只有一名成员）同样能看到销毁入口', async () => {
   const { html, restore } = await renderPanel({
     space: singleCreatorSpace({ status: 1, memberCount: 1 }),
+    initialSection: 'danger',
   })
   try {
     assert.ok(html.includes('id="space-destroy"'), '历史上单人正常状态也允许销毁')
@@ -325,6 +410,7 @@ test('旧版单人正常状态（status=1 但只有一名成员）同样能看�
 test('存在待处理解绑申请时展示入口但禁用，并给出可用原因', async () => {
   const { html, restore } = await renderPanel({
     space: singleCreatorSpace({ unbindPending: true, unbindRequestedByMe: true }),
+    initialSection: 'danger',
   })
   try {
     const destroyHtml = sliceById(html, 'space-destroy')
@@ -338,20 +424,18 @@ test('存在待处理解绑申请时展示入口但禁用，并给出可用原�
   }
 })
 
-// ===================== 2. 基础信息分组 =====================
+// ===================== 3. 基础信息分组 =====================
 
 test('等待绑定且符合规则时展示基础信息摘要与「编辑空间信息」入口', async () => {
-  const { html, restore } = await renderPanel({ space: singleCreatorSpace() })
+  const { html, restore } = await renderPanel({ space: singleCreatorSpace(), initialSection: 'basic-info' })
   try {
     const basicHtml = sliceById(html, 'space-basic-info')
     assert.ok(basicHtml.length > 0, '基础信息区域必须渲染')
     assert.match(basicHtml, /id="space-basic-info-heading"/)
-    // 默认展示只读摘要（名称、简介、恋爱开始时间），而不是常驻表单。
     assert.match(basicHtml, /我们的故事/)
     assert.match(basicHtml, /只属于两个人的简介/)
     assert.match(basicHtml, /2024\.05\.20 19:30/)
     assert.match(basicHtml, /<button[^>]*>\s*编辑空间信息/, '必须提供编辑按钮')
-    // 摘要态不渲染输入控件。
     assert.doesNotMatch(basicHtml, /id="space-basic-info-name"/)
   } finally {
     restore()
@@ -359,22 +443,26 @@ test('等待绑定且符合规则时展示基础信息摘要与「编辑空间�
 })
 
 test('基础信息编辑入口与内容编辑入口使用不同名称，避免混淆', async () => {
-  const { html, restore } = await renderPanel({ space: singleCreatorSpace() })
+  const basic = await renderPanel({ space: singleCreatorSpace(), initialSection: 'basic-info' })
   try {
-    const basicHtml = sliceById(html, 'space-basic-info')
-    const contentHtml = sliceById(html, 'space-content-entry')
-    assert.match(basicHtml, /编辑空间信息/, '基础信息入口文案')
-    assert.match(contentHtml, /去内容编辑/, '内容管理入口文案')
-    assert.ok(!contentHtml.includes('编辑空间信息'), '内容入口不能使用与基础信息相同的文案')
-    assert.ok(!basicHtml.includes('去内容编辑'), '基础信息入口不能使用内容编辑文案')
-    assert.match(contentHtml, /\/space\/studio/, '内容入口必须仍指向空间内容编辑页')
+    assert.match(basic.html, /编辑空间信息/, '基础信息入口文案')
+    assert.ok(!sliceById(basic.html, 'space-basic-info').includes('去内容编辑'))
   } finally {
-    restore()
+    basic.restore()
+  }
+
+  const content = await renderPanel({ space: singleCreatorSpace(), initialSection: 'content-entry' })
+  try {
+    assert.ok(content.html.includes('id="space-content-entry"'))
+    assert.match(content.html, /去内容编辑/, '内容管理入口文案')
+    assert.match(content.html, /\/space\/studio/, '内容入口必须仍指向空间内容编辑页')
+  } finally {
+    content.restore()
   }
 })
 
 test('双人空间：基础信息只读并给出原因，不出现可执行编辑入口', async () => {
-  const { html, restore } = await renderPanel({ space: twoMemberSpace() })
+  const { html, restore } = await renderPanel({ space: twoMemberSpace(), initialSection: 'basic-info' })
   try {
     const basicHtml = sliceById(html, 'space-basic-info')
     assert.ok(basicHtml.length > 0, '双人空间仍要展示基础信息摘要')
@@ -387,23 +475,26 @@ test('双人空间：基础信息只读并给出原因，不出现可执行编�
   }
 })
 
-// ===================== 3. 非创建者 / 双人空间：危险入口 =====================
+// ===================== 4. 非创建者 / 双人空间：危险入口 =====================
 
 test('非创建者：不会渲染可执行的销毁入口', async () => {
   const { html, restore } = await renderPanel({
     space: singleCreatorSpace({ creator: false, currentUserRole: 2 }),
+    initialSection: 'danger',
   })
   try {
     assert.ok(!html.includes('id="space-destroy"'), '非创建者不得看到销毁区域')
-    // 单人空间没有另一名成员，解绑也不出现，整块危险区都不应渲染。
     assert.ok(!html.includes('id="space-danger-zone"'), '没有可执行危险操作时不应保留空区域')
+    const nav = sliceNav(html)
+    assert.doesNotMatch(nav, /空间操作/, '不可用的空间操作整体隐藏，不保留灰色导航')
+    assert.doesNotMatch(nav, /disabled/)
   } finally {
     restore()
   }
 })
 
 test('两名有效成员：不出现销毁入口，解绑区域正常渲染', async () => {
-  const { html, restore } = await renderPanel({ space: twoMemberSpace() })
+  const { html, restore } = await renderPanel({ space: twoMemberSpace(), initialSection: 'danger' })
   try {
     assert.ok(!html.includes('id="space-destroy"'), '另一半已加入时不得出现销毁区域')
     assert.doesNotMatch(html, /销毁并清空空间/)
@@ -414,8 +505,6 @@ test('两名有效成员：不出现销毁入口，解绑区域正常渲染', as
     const unbindButton = /<button[^>]*>\s*申请解绑/.exec(unbindHtml)
     assert.ok(unbindButton, '解绑按钮必须渲染')
     assert.doesNotMatch(unbindButton[0].slice(0, unbindButton[0].indexOf('>') + 1), /\sdisabled(\s|>|=)/)
-    // 危险区仍在（解绑属于危险操作），且位于日常设置之后。
-    assertBefore(html, 'space-content-entry', 'space-danger-zone')
   } finally {
     restore()
   }
@@ -424,6 +513,7 @@ test('两名有效成员：不出现销毁入口，解绑区域正常渲染', as
 test('另一半已加入但状态未刷新（memberCount=2, status=0）：销毁入口隐藏，解绑可用', async () => {
   const { html, restore } = await renderPanel({
     space: twoMemberSpace({ status: 0 }),
+    initialSection: 'danger',
   })
   try {
     assert.ok(!html.includes('id="space-destroy"'))
@@ -433,18 +523,18 @@ test('另一半已加入但状态未刷新（memberCount=2, status=0）：销毁
   }
 })
 
-// ===================== 4. 冻结 / 归档：恢复区域与禁用规则 =====================
+// ===================== 5. 冻结 / 归档：恢复区域与禁用规则 =====================
 
 test('冻结空间：恢复区域独立渲染，销毁入口不出现', async () => {
   const { html, restore } = await renderPanel({
     space: twoMemberSpace({ status: 2, visibility: 0 }),
+    initialSection: 'danger',
   })
   try {
     assert.ok(html.includes('id="space-restore"'), '冻结空间必须展示恢复区域')
     assert.match(html, /id="space-restore-heading"/)
     assert.match(html, /确认恢复空间/)
     assert.ok(!html.includes('id="space-destroy"'), '冻结空间不得出现销毁入口')
-    // 恢复与销毁是两个独立卡片：恢复卡片内不含销毁文案。
     const restoreHtml = sliceById(html, 'space-restore')
     assert.doesNotMatch(restoreHtml, /销毁并清空空间/)
     assert.match(restoreHtml, /border-stone-200/, '恢复使用中性视觉层级，不使用危险色')
@@ -456,6 +546,7 @@ test('冻结空间：恢复区域独立渲染，销毁入口不出现', async ()
 test('归档空间：恢复区域正常渲染，恢复按钮可用', async () => {
   const { html, restore } = await renderPanel({
     space: twoMemberSpace({ status: 3, visibility: 0 }),
+    initialSection: 'danger',
   })
   try {
     const restoreHtml = sliceById(html, 'space-restore')
@@ -470,6 +561,7 @@ test('归档空间：恢复区域正常渲染，恢复按钮可用', async () =>
 test('单人创建者的冻结空间：展示销毁入口但禁用并给出原因（不绕过状态规则）', async () => {
   const { html, restore } = await renderPanel({
     space: singleCreatorSpace({ status: 2 }),
+    initialSection: 'danger',
   })
   try {
     const destroyHtml = sliceById(html, 'space-destroy')
@@ -477,18 +569,18 @@ test('单人创建者的冻结空间：展示销毁入口但禁用并给出原�
     assert.match(destroyHtml, /冻结或归档的空间不能直接销毁/, '必须展示禁用原因')
     const buttonTag = /<button[^>]*>/.exec(destroyHtml)?.[0] || ''
     assert.match(buttonTag, /\sdisabled(\s|>|=)/, '冻结空间不得允许提交销毁')
-    // 冻结区域本身仍按原规则展示恢复入口。
     assert.match(html, /id="space-restore"/)
   } finally {
     restore()
   }
 })
 
-// ===================== 5. 终态 / 无空间：不展示失效的操作 =====================
+// ===================== 6. 终态 / 无空间：不展示失效的操作 =====================
 
 test('已销毁空间（status=6）：面板不渲染任何空间生命周期操作', async () => {
   const { html, restore } = await renderPanel({
     space: singleCreatorSpace({ status: 6, memberCount: 0, currentUserRole: null }),
+    initialSection: 'danger',
   })
   try {
     const hasAnyLifecycle = html.includes('id="space-destroy"')
@@ -504,6 +596,7 @@ test('已销毁空间（status=6）：面板不渲染任何空间生命周期操
 test('已解绑空间（status=5）：面板不展示销毁/解绑/恢复入口', async () => {
   const { html, restore } = await renderPanel({
     space: singleCreatorSpace({ status: 5, memberCount: 0, currentUserRole: null }),
+    initialSection: 'danger',
   })
   try {
     assert.ok(!html.includes('id="space-destroy"'), '已解绑空间不得出现销毁入口')
@@ -516,7 +609,10 @@ test('已解绑空间（status=5）：面板不展示销毁/解绑/恢复入口'
 
 test('冻结 / 归档空间不出现基础信息编辑入口', async () => {
   for (const status of [2, 3]) {
-    const { html, restore } = await renderPanel({ space: twoMemberSpace({ status, visibility: 0 }) })
+    const { html, restore } = await renderPanel({
+      space: twoMemberSpace({ status, visibility: 0 }),
+      initialSection: 'basic-info',
+    })
     try {
       const basicHtml = sliceById(html, 'space-basic-info')
       assert.ok(basicHtml.length > 0, `status=${status} 仍要展示基础信息`)
@@ -529,23 +625,20 @@ test('冻结 / 归档空间不出现基础信息编辑入口', async () => {
 })
 
 test('没有空间时设置面板本身不渲染（父页面 showSpacePanel 守卫）', async () => {
-  // SpaceSettingsPanel 假定 spaceStatus 非空；
-  // 因此「没有空间」必须由父页面 SpaceSetupPage 的 showSpacePanel = hasLiveSpace() 拦在外面。
   const { readFile } = await import('node:fs/promises')
   const setupPage = await readFile(new URL('../pages/frontend/SpaceSetupPage.vue', import.meta.url), 'utf8')
   assert.match(setupPage, /const showSpacePanel = computed\(\(\) => hasLiveSpace\(spaceStatus\.value\)\)/)
   assert.match(setupPage, /<SpaceSettingsPanel v-else-if="showSpacePanel"/)
-  // hasLiveSpace 必须排除 status=5 / status=6。
   const spaceState = await readFile(new URL('./spaceState.js', import.meta.url), 'utf8')
   assert.match(spaceState, /export function hasLiveSpace/)
   assert.match(spaceState, /!isUnboundSpace\(spaceStatus\)/)
   assert.match(spaceState, /!isDestroyedSpace\(spaceStatus\)/)
 })
 
-// ===================== 6. 可访问性与窄屏防护 =====================
+// ===================== 7. 可访问性与窄屏防护 =====================
 
 test('概览保留名称、状态、成员、必要时间与刷新入口，且不重复大段说明', async () => {
-  const { html, restore } = await renderPanel({ space: singleCreatorSpace() })
+  const { html, restore } = await renderPanel({ space: singleCreatorSpace(), initialSection: 'overview' })
   try {
     const overviewHtml = sliceById(html, 'space-overview')
     assert.match(overviewHtml, /id="space-settings-summary"/)
@@ -554,9 +647,7 @@ test('概览保留名称、状态、成员、必要时间与刷新入口，且�
     assert.match(overviewHtml, /刷新状态/, '必须保留刷新入口')
     assert.match(overviewHtml, /恋爱开始/)
     assert.match(overviewHtml, /待接受邀请/)
-    // 概览不再使用四格卡片（原来会挤占首屏）。
     assert.doesNotMatch(overviewHtml, /sm:grid-cols-2 lg:grid-cols-4/)
-    // 名称必须允许换行，长空间名不能溢出。
     assert.match(overviewHtml, /break-words/)
   } finally {
     restore()
@@ -564,15 +655,13 @@ test('概览保留名称、状态、成员、必要时间与刷新入口，且�
 })
 
 test('危险操作区与销毁按钮具备完整可访问性属性', async () => {
-  const { html, restore } = await renderPanel({ space: singleCreatorSpace() })
+  const { html, restore } = await renderPanel({ space: singleCreatorSpace(), initialSection: 'danger' })
   try {
     assert.match(html, /id="space-danger-zone-heading"/)
     const destroyHtml = sliceById(html, 'space-destroy')
-    // 标题通过 aria-labelledby 关联，按钮禁用原因通过 aria-describedby 关联。
     assert.match(destroyHtml, /aria-labelledby="space-destroy-heading"/)
     assert.match(destroyHtml, /aria-describedby="space-destroy-desc"/)
     assert.match(destroyHtml, /aria-busy="false"/)
-    // 危险区标题使用二级标题语义（页面主标题是 h1）。
     assert.match(html, /<h2[^>]*id="space-danger-zone-heading"/)
   } finally {
     restore()
@@ -588,7 +677,7 @@ test('概览中的刷新按钮禁用态带 aria-busy，长错误提示可换行'
     spaceModule.spaceError.value = '网络连接不稳定，请稍后重试'
     spaceModule.spaceLoading.value = true
     const panel = await server.ssrLoadModule('/src/components/frontend/SpaceSettingsPanel.vue')
-    const app = createSSRApp({ render: () => h(panel.default) })
+    const app = createSSRApp({ render: () => h(panel.default, { initialSection: 'overview' }) })
     app.component('RouterLink', {
       props: { to: { type: [String, Object], default: '' } },
       setup: () => () => h('a'),
@@ -598,7 +687,6 @@ test('概览中的刷新按钮禁用态带 aria-busy，长错误提示可换行'
     assert.match(html, /aria-busy="true"/, '加载中必须标记 aria-busy')
     assert.match(html, /刷新中…/)
     assert.match(html, /空间状态刷新失败：网络连接不稳定/)
-    // 长错误提示位于带 role="status" 的块里，并允许换行（不强制 nowrap）。
     const errorBlock = /空间状态刷新失败[\s\S]{0,200}?<\/p>/.exec(html)?.[0] || ''
     assert.match(errorBlock, /空间状态刷新失败/)
     assert.doesNotMatch(errorBlock, /whitespace-nowrap/)
@@ -610,18 +698,18 @@ test('概览中的刷新按钮禁用态带 aria-busy，长错误提示可换行'
   }
 })
 
-test('成员卡片只在两名成员都加入时出现，等待绑定不重复「成员与邀请」分组', async () => {
-  const single = await renderPanel({ space: singleCreatorSpace(), withSlot: true })
+test('成员导航只在两名成员都加入时出现', async () => {
+  const single = await renderPanel({ space: singleCreatorSpace(), withSlot: true, initialSection: 'members' })
   try {
-    assert.ok(!single.html.includes('id="space-members"'), '等待绑定时不应再补一张只含自己的成员卡')
-    // 「成员与邀请」在等待绑定时由父页面插槽（真实邀请区）承担，面板不再自己补成员卡。
+    assert.ok(!single.html.includes('id="space-members"'), '等待绑定时不应渲染成员卡片')
+    assert.match(sliceNav(single.html), /邀请另一半/, '等待绑定时同一位置展示邀请')
     const { readFile } = await import('node:fs/promises')
     const setupPage = await readFile(new URL('../pages/frontend/SpaceSetupPage.vue', import.meta.url), 'utf8')
     assert.match(setupPage, /<p class="section-kicker">成员与邀请<\/p>/, '邀请区承担「成员与邀请」分组标题')
   } finally {
     single.restore()
   }
-  const two = await renderPanel({ space: twoMemberSpace() })
+  const two = await renderPanel({ space: twoMemberSpace(), initialSection: 'members' })
   try {
     assert.ok(two.html.includes('id="space-members"'), '双人空间应展示成员卡片')
     assert.match(two.html, /两位成员都已加入/)
@@ -637,21 +725,17 @@ test('基础信息表单具备完整的标签、错误容器与输入约束', as
     new URL('../components/frontend/space-settings/SpaceBasicInfoSection.vue', import.meta.url),
     'utf8',
   )
-  // 每个输入都有显式 label（for/id 对应），不依赖占位符。
   assert.match(source, /<label for="space-basic-info-name"/)
   assert.match(source, /id="space-basic-info-name"/)
   assert.match(source, /<label for="space-basic-info-love-start"/)
   assert.match(source, /input-id="space-basic-info-love-start"/)
   assert.match(source, /<label for="space-basic-info-description"/)
   assert.match(source, /id="space-basic-info-description"/)
-  // 长度限制与后端一致。
   assert.match(source, /:maxlength="SPACE_NAME_MAX_LENGTH"/)
   assert.match(source, /:maxlength="DESCRIPTION_MAX_LENGTH"/)
-  // 错误提示使用 role="alert"，保存按钮有 aria-busy，禁用态与提交锁联动。
   assert.match(source, /role="alert"/)
   assert.match(source, /:aria-busy="saving \? 'true' : 'false'"/)
   assert.match(source, /:disabled="busy \|\| locked"/)
-  // 焦点可见样式沿用全局 field-input（focus:ring），不在本地关闭 outline。
   const mainCss = await readFile(new URL('../assets/main.css', import.meta.url), 'utf8')
   assert.match(mainCss, /\.field-input[\s\S]*?focus:border-rose-400/)
   assert.match(mainCss, /\.field-input[\s\S]*?focus:ring-2/)
@@ -663,17 +747,14 @@ test('保存成功但同步失败：保留草稿与编辑态，提示中不含�
     new URL('../components/frontend/space-settings/SpaceBasicInfoSection.vue', import.meta.url),
     'utf8',
   )
-  // 同步失败提示必须在表单外层，退出编辑态后仍可见。
   const noticeIndex = source.indexOf('v-if="syncNotice"')
   const formCloseIndex = source.indexOf('</form>')
   assert.ok(noticeIndex > formCloseIndex, '同步失败提示必须渲染在 </form> 之后')
   assert.match(source, /空间信息已保存，但状态同步失败/)
   assert.doesNotMatch(source, /保存失败，但状态同步/)
-  // 失败分支不退出编辑态：不清空用户输入。
   const submitBlock = source.slice(source.indexOf('async function submit()'))
   const syncFailIndex = submitBlock.indexOf('空间信息已保存，但状态同步失败')
   assert.ok(syncFailIndex > -1)
-  // 只看 syncNotice 所在的 else 分支：成功分支的 editing=false 不算。
   const elseIndex = submitBlock.lastIndexOf('} else {', syncFailIndex)
   assert.ok(elseIndex > -1, '同步失败分支必须位于 else 中')
   assert.doesNotMatch(
@@ -681,7 +762,6 @@ test('保存成功但同步失败：保留草稿与编辑态，提示中不含�
     /editing\.value = false/,
     '同步失败时不能退出编辑态（否则丢弃草稿）',
   )
-  // 重试入口只刷新状态，不重新提交更新。
   const retryBlock = source.slice(source.indexOf('async function retrySync()'), source.indexOf('async function submit()'))
   assert.match(retryBlock, /refreshSpaceStatusAfterLifecycleAction/)
   assert.doesNotMatch(retryBlock, /updateCoupleSpace/)

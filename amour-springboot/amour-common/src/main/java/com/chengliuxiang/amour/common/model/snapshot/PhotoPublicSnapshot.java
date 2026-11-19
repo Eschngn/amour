@@ -28,6 +28,9 @@ public class PhotoPublicSnapshot {
 
     private String takenTime;
 
+    /** 时间展示精度：历史快照缺失时按 true（展示日期和时间）兼容。 */
+    private Boolean showTime;
+
     private String location;
 
     private Integer sortOrder;

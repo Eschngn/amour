@@ -116,6 +116,8 @@ const PLAZA_ROUTE = '/pages/plaza/index'
 const SPACE_SETUP_ROUTE = '/pages/space-setup/index'
 /** 情侣空间首页（完整 Tab 的首屏）。 */
 const SPACE_HOME_ROUTE = '/pages/index/index'
+/** 空间内容编辑工作台（首页 / 故事 / 留言 / 相册 / 纪念日）。 */
+const SPACE_STUDIO_ROUTE = '/pages/space-studio/index'
 
 /** 本地缓存键：用户主动退出登录标记（为 true 时启动不做静默微信登录）。 */
 const LOGGED_OUT_KEY = 'amour_logged_out'
@@ -144,6 +146,7 @@ module.exports = {
   PLAZA_ROUTE,
   SPACE_SETUP_ROUTE,
   SPACE_HOME_ROUTE,
+  SPACE_STUDIO_ROUTE,
   LOGGED_OUT_KEY,
   SESSION_LOG_PREFIX,
   SPACE_STATUS_ERROR_MESSAGE,

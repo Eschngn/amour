@@ -45,6 +45,7 @@ export const SPACE_STATUS: {
   ARCHIVED: 3
   DELETING: 4
   DELETED: 5
+  DESTROYED: 6
 }
 
 export const TAB_ID: {
@@ -71,6 +72,7 @@ export const PROFILE_ROUTE: string
 export const PLAZA_ROUTE: string
 export const SPACE_SETUP_ROUTE: string
 export const SPACE_HOME_ROUTE: string
+export const SPACE_STUDIO_ROUTE: string
 export const LOGGED_OUT_KEY: string
 export const SESSION_LOG_PREFIX: string
 export const SPACE_STATUS_ERROR_MESSAGE: string

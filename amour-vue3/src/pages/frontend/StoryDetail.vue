@@ -157,6 +157,7 @@ import {
   withReturnState,
 } from '@/utils/listViewState'
 import { useDetailReturnTarget } from '@/composables/useDetailReturnTarget'
+import { formatSpaceContentDateTime } from '@/utils/spaceFormat'
 import api from '@/axios'
 
 const route = useRoute()
@@ -215,7 +216,7 @@ const readTime = computed(() => {
 
 const formattedDate = computed(() => {
   if (!story.value?.happenedTime) return ''
-  return story.value.happenedTime.split(' ')[0]
+  return formatSpaceContentDateTime(story.value.happenedTime, story.value.showTime, '')
 })
 
 /** 上一篇/下一篇继续携带来源信息（hop 递增），连续翻篇后仍能回到最初的列表。 */

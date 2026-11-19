@@ -353,6 +353,21 @@ test('「我的」页面：有空间时点「空间设置」→ navigateTo ?mode
   assert.equal(last.url, '/pages/space-setup/index?mode=settings')
 })
 
+test('「我的」页面：有空间时点「编辑空间内容」→ navigateTo 空间编辑页', async () => {
+  await loginWithSpace()
+  const page = createProfile()
+  page.applySession(sessionState.getSnapshot())
+  navigations.length = 0
+
+  assert.equal(typeof page.onOpenSpaceStudio, 'function', '应存在内容编辑入口的处理函数')
+  page.onOpenSpaceStudio()
+
+  const last = navigations[navigations.length - 1]
+  assert.ok(last, '应发起跳转')
+  assert.equal(last.type, 'navigateTo')
+  assert.equal(last.url, '/pages/space-studio/index')
+})
+
 test('「我的」页面：空间设置入口保留「进入情侣空间」原有行为（reLaunch 首页）', async () => {
   await loginWithSpace()
   const page = createProfile()

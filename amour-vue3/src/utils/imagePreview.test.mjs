@@ -136,7 +136,7 @@ test('公开照片描述完整透传，空描述保持空字符串且不引入�
 
   assert.equal(previews.length, 2)
   assert.equal(previews[0].description, '一起做的第一顿早餐。')
-  assert.equal(previews[0].meta, '拍摄于 2024.05.20 · 杭州')
+  assert.equal(previews[0].meta, '拍摄于 2024.05.20 09:00:00 · 杭州')
   assert.equal(previews[1].description, '')
   assert.deepEqual(
     Object.keys(previews[0]).sort(),

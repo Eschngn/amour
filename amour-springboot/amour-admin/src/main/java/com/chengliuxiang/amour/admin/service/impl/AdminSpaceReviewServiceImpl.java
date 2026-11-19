@@ -1009,6 +1009,8 @@ public class AdminSpaceReviewServiceImpl implements AdminSpaceReviewService {
                     after == null ? null : after.getUrl());
             addDiff(diffs, "拍摄时间", before == null ? null : before.getTakenTime(),
                     after == null ? null : after.getTakenTime());
+            addDiff(diffs, "时间展示", timePrecisionText(before == null ? null : before.getShowTime()),
+                    timePrecisionText(after == null ? null : after.getShowTime()));
             addDiff(diffs, "地点", before == null ? null : before.getLocation(),
                     after == null ? null : after.getLocation());
             addDiff(diffs, "排序", numberText(before == null ? null : before.getSortOrder()),
@@ -1053,6 +1055,8 @@ public class AdminSpaceReviewServiceImpl implements AdminSpaceReviewService {
         addDiff(diffs, "发生时间",
                 text(before == null ? null : before.getHappenedTime()),
                 text(after == null ? null : after.getHappenedTime()));
+        addDiff(diffs, "时间展示", timePrecisionText(before == null ? null : before.getShowTime()),
+                timePrecisionText(after == null ? null : after.getShowTime()));
         addDiff(diffs, "地点",
                 text(before == null ? null : before.getLocation()),
                 text(after == null ? null : after.getLocation()));
@@ -1092,6 +1096,11 @@ public class AdminSpaceReviewServiceImpl implements AdminSpaceReviewService {
 
     private String milestoneText(Boolean milestone) {
         return Boolean.TRUE.equals(milestone) ? "是" : "否";
+    }
+
+    /** 历史快照缺少 showTime 时按“日期和时间”兼容展示。 */
+    private String timePrecisionText(Boolean showTime) {
+        return Boolean.FALSE.equals(showTime) ? "仅日期" : "日期和时间";
     }
 
     private String numberText(Integer value) {

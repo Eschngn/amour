@@ -9,8 +9,13 @@ const {
   parseStoryContent,
 } = require('../../utils/story-content')
 
-function formatDate(value) {
-  return value ? String(value).slice(0, 10).replace(/-/g, '.') : '日期未记录'
+function formatDate(value, showTime) {
+  if (!value) return '日期未记录'
+  const text = String(value)
+  const date = text.slice(0, 10).replace(/-/g, '.')
+  if (showTime === false) return date
+  const clock = text.slice(11, 19)
+  return clock ? `${date} ${clock}` : date
 }
 
 function normalizeStory(story) {
@@ -40,7 +45,7 @@ function buildStoryContext(story) {
     contentImages: collectContentImages(blocks),
     totalWords,
     readTime: formatStoryReadTime(totalWords),
-    formattedDate: formatDate(normalizedStory.happenedTime),
+    formattedDate: formatDate(normalizedStory.happenedTime, normalizedStory.showTime),
   }
 }
 

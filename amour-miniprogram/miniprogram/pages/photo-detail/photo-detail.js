@@ -1,11 +1,18 @@
-function formatDateTime(value) {
+function formatDateTime(value, showTime) {
   if (!value) return '拍摄时间未记录'
+  if (showTime === false) return formatDateOnly(value)
   const text = String(value)
   const datePart = text.slice(0, 10)
-  const timePart = text.slice(11, 16)
+  const timePart = text.slice(11, 19)
   const parts = datePart.split('-')
   const date = parts.length === 3 ? `${parts[0]}年${parts[1]}月${parts[2]}日` : datePart
   return `${date}${timePart ? ` ${timePart}` : ''}`
+}
+
+function formatDateOnly(value) {
+  const text = String(value)
+  const parts = text.slice(0, 10).split('-')
+  return parts.length === 3 ? `${parts[0]}年${parts[1]}月${parts[2]}日` : text.slice(0, 10)
 }
 
 function formatPhoto(photo) {
@@ -73,7 +80,7 @@ Page(withPageViewTracking({
     }
     const safeIndex = Math.min(Math.max(0, index), validPhotos.length - 1)
     const photo = validPhotos[safeIndex]
-    const formattedDateTime = formatDateTime(photo.takenTime)
+    const formattedDateTime = formatDateTime(photo.takenTime, photo.showTime)
     // 切换照片后回到页面顶部，让新照片的卡片完整露出：
     // 滑动过渡期间相邻面板已锚定在当前可视窗口（top = 当前滚动偏移），
     // 过渡结束时新照片的卡片正位于屏幕顶部，此时 scrollTop 归零是"隐形"的，
@@ -189,7 +196,7 @@ Page(withPageViewTracking({
     this.setData({
       detailOffset: displayOffset,
       adjacentPhoto,
-      adjacentFormattedDateTime: adjacentPhoto ? formatDateTime(adjacentPhoto.takenTime) : '',
+      adjacentFormattedDateTime: adjacentPhoto ? formatDateTime(adjacentPhoto.takenTime, adjacentPhoto.showTime) : '',
       adjacentIndexNumber: hasAdjacentPhoto ? String(adjacentIndex + 1).padStart(2, '0') : '',
       adjacentOffset: hasAdjacentPhoto ? displayOffset + (offsetX < 0 ? windowWidth : -windowWidth) : 0,
       // 方向判定前后可能产生少量纵向滚动，随手指移动刷新锚点，保证面板始终落在可视窗口内

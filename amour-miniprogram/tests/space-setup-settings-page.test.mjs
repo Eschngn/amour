@@ -243,6 +243,24 @@ test('设置模式 + 等待另一半（status=0）：停留本页，不跳首页
   assert.ok(requests.some(item => item.path === '/space/invitation/create'))
 })
 
+test('设置模式提供内容编辑入口：等待绑定与已绑定都可进入空间编辑工作台', async () => {
+  await loginWithSpace(WAITING_SPACE)
+  const waitingPage = await openPage({ mode: 'settings' })
+  navigations.length = 0
+  waitingPage.onOpenStudio()
+  const waitingNav = navigations[navigations.length - 1]
+  assert.equal(waitingNav.type, 'navigateTo')
+  assert.equal(waitingNav.url, '/pages/space-studio/index')
+
+  await loginWithSpace(NORMAL_SPACE)
+  const readyPage = await openPage({ mode: 'settings' })
+  navigations.length = 0
+  readyPage.onOpenStudio()
+  const readyNav = navigations[navigations.length - 1]
+  assert.equal(readyNav.type, 'navigateTo')
+  assert.equal(readyNav.url, '/pages/space-studio/index')
+})
+
 test('设置模式 + 另一半已加入（status=1, memberCount=2）：停留本页，不能销毁且给出明确原因', async () => {
   await loginWithSpace(NORMAL_SPACE)
 

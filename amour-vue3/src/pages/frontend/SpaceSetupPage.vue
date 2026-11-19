@@ -116,8 +116,8 @@
 
         <!--
           已登录且已拿到空间状态：统一渲染空间设置面板。
-          等待绑定（status=0）时邀请区通过 after-overview 插槽交给面板定位，
-          面板负责「基础信息 → 成员与邀请 → 公开与审核 → 内容管理 → 危险操作」的顺序。
+          等待绑定（status=0）时邀请区通过 after-overview 插槽交给面板，
+          面板以左侧四组导航组织「空间概况 / 邀请或成员 / 公开与审核 / 空间操作」。
         -->
         <SpaceSettingsPanel v-else-if="showSpacePanel" class="mt-6">
           <template #after-overview>
@@ -1076,7 +1076,12 @@ async function createSpace() {
       // 新建空间必然处于等待绑定，直接留在本页展示邀请区，而不是跳走。
       await loadPendingInvitations()
       await nextTick()
-      document.getElementById('space-invite-partner')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      // 设置面板按 hash 切换分区：显式指向邀请分区，确保深链与滚动都落到正确位置。
+      if (route.hash !== '#space-invite-partner') {
+        await router.replace({ query: { ...route.query }, hash: '#space-invite-partner' })
+      } else {
+        document.getElementById('space-invite-partner')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
     } else if (isSpaceReady.value) {
       router.replace('/')
     }

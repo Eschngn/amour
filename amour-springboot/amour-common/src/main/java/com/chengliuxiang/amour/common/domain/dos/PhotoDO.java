@@ -32,6 +32,12 @@ public class PhotoDO {
 
     private LocalDateTime takenTime;
 
+    /**
+     * 时间展示精度：true-展示日期和时间 false-仅展示日期。
+     * 历史记录与旧客户端未传字段时统一按 true 处理。
+     */
+    private Boolean showTime;
+
     private String location;
 
     /**

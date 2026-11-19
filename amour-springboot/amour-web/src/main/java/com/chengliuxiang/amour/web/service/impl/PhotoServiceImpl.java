@@ -119,6 +119,7 @@ public class PhotoServiceImpl implements PhotoService {
                 .categoryName(category == null ? "未分类" : category.getCategoryName())
                 .url(photo.getUrl())
                 .takenTime(photo.getTakenTime())
+                .showTime(photo.getShowTime() == null || photo.getShowTime())
                 .location(photo.getLocation())
                 .build();
     }

@@ -45,7 +45,7 @@
           </view>
           <view class="together-copy"><text class="together-label">TOGETHER</text><text class="together-days">{{togetherDays}} DAYS</text></view>
         </view>
-        <view class="since-note"><text class="since-label">SINCE</text><text class="since-date">{{loveStartDate}}</text></view>
+        <view class="since-note"><text class="since-label">SINCE</text><text class="since-date">{{loveStartDate || '开始日期待补充'}}</text></view>
       </view>
     </view>
 

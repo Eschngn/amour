@@ -27,6 +27,9 @@ public class GalleryStoryDetailVO {
 
     private LocalDateTime happenedTime;
 
+    /** 时间展示精度：false 表示仅展示日期。 */
+    private Boolean showTime;
+
     private String location;
 
     private String coverImage;

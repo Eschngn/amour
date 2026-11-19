@@ -133,6 +133,7 @@ test('首页只透出模板需要的故事字段', () => {
     title: '标题',
     summary: '摘要',
     happenedTime: '2024-05-20 18:30:00',
+    showTime: true,
     coverImage: 'https://cdn.example.com/a.jpg',
   })
 })

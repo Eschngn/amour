@@ -65,6 +65,7 @@ export function normalizeHomeStory(story) {
     title: story?.title || '',
     summary: story?.summary || '',
     happenedTime: story?.happenedTime || '',
+    showTime: story?.showTime !== false,
     coverImage: story?.coverImage || '',
   }
 }

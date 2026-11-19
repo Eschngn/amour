@@ -11,6 +11,7 @@
       class="sr-only"
       tabindex="-1"
       :disabled="disabled || uploading"
+      :aria-required="required ? 'true' : 'false'"
       @change="onFileChange"
     >
 
@@ -40,17 +41,28 @@
         <button type="button" class="btn-secondary" :disabled="disabled || uploading" @click="openPreview">
           预览
         </button>
-        <button type="button" class="btn-secondary" :disabled="disabled || uploading" @click="fileInputRef?.click()">
+        <button
+          type="button"
+          class="btn-secondary"
+          :data-image-field-trigger="inputId"
+          :disabled="disabled || uploading"
+          @click="fileInputRef?.click()"
+        >
           {{ uploading ? '上传中…' : '重新上传' }}
-        </button>
-        <button type="button" class="btn-ghost" :disabled="disabled || uploading" @click="clearImage">
+        </button>        <button type="button" class="btn-ghost" :disabled="disabled || uploading" @click="clearImage">
           清除
         </button>
       </div>
     </div>
 
     <div v-else class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
-      <button type="button" class="btn-secondary w-fit" :disabled="disabled || uploading" @click="fileInputRef?.click()">
+      <button
+        type="button"
+        class="btn-secondary w-fit"
+        :data-image-field-trigger="inputId"
+        :disabled="disabled || uploading"
+        @click="fileInputRef?.click()"
+      >
         {{ uploading ? '上传中…' : '上传图片' }}
       </button>
       <span class="text-[11px] text-stone-400">从本地选择图片</span>
@@ -86,6 +98,7 @@ const props = defineProps({
   inputId: { type: String, required: true },
   hint: { type: String, default: '' },
   disabled: { type: Boolean, default: false },
+  required: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:modelValue', 'uploading'])

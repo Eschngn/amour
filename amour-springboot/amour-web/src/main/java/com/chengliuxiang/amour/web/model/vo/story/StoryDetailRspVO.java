@@ -23,6 +23,8 @@ public class StoryDetailRspVO {
 
     private LocalDateTime happenedTime;
 
+    private Boolean showTime;
+
     private String location;
 
     private String coverImage;

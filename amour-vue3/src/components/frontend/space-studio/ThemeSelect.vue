@@ -14,6 +14,7 @@
       <ListboxButton
         :id="inputId"
         type="button"
+        :aria-required="required ? 'true' : 'false'"
         class="group flex w-full items-center justify-between gap-2 rounded-lg border border-stone-200 bg-white text-left text-stone-800 outline-none transition hover:border-stone-300 focus-visible:border-rose-400 focus-visible:ring-2 focus-visible:ring-rose-100"
         :class="[
           size === 'sm' ? 'px-3 py-2 text-xs font-semibold' : 'px-3.5 py-2.5 text-sm',
@@ -103,6 +104,7 @@ const props = defineProps({
   placeholder: { type: String, default: '请选择' },
   size: { type: String, default: 'md' },
   disabled: { type: Boolean, default: false },
+  required: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:modelValue'])

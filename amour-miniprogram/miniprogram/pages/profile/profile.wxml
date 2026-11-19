@@ -73,9 +73,10 @@
         </view>
         <view class="space-card-actions">
           <button class="primary-button" bindtap="onOpenSpace" hover-class="button-hover">进入情侣空间</button>
+          <button class="secondary-button" bindtap="onOpenSpaceStudio" hover-class="button-hover">编辑空间内容</button>
           <button class="secondary-button" bindtap="onOpenSpaceSettings" hover-class="button-hover">空间设置</button>
         </view>
-        <text class="space-card-tip">在「空间设置」里可以管理邀请、修改空间信息，或在另一半加入前销毁空间。</text>
+        <text class="space-card-tip">可以随时编辑空间内容；在「空间设置」里管理邀请、修改空间信息，或在另一半加入前销毁空间。</text>
       </view>
 
       <!-- 账号同步错误提示 -->

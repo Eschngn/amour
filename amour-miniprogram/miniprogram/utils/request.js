@@ -179,6 +179,25 @@ function post(path, data = {}) {
   }).then(result => handleResponse(result.response, result.baseUrl))
 }
 
+/**
+ * GET 请求。
+ *
+ * 后端的查询接口（例如 /space/review/status）只接受 GET；
+ * 需要 query 参数时直接拼进 path（与现有 /message/page 的调用方式一致）。
+ */
+function get(path, data = {}) {
+  const header = buildAuthHeader()
+  const envVersion = getWechatEnvVersion()
+  return requestWithFallback({
+    candidates: getApiBaseUrlCandidates(),
+    path,
+    method: 'GET',
+    data,
+    header,
+    timeout: resolveRequestTimeout(envVersion),
+  }).then(result => handleResponse(result.response, result.baseUrl))
+}
+
 function uploadFile(path, filePath, name = 'file') {
   // uploadFile 不支持自动切换候选地址（文件流不便重放），固定用首选地址。
   const header = buildAuthHeader()
@@ -214,6 +233,7 @@ module.exports = {
   ApiError,
   getApiBaseUrl,
   getApiBaseUrlCandidates,
+  get,
   post,
   uploadFile,
 }

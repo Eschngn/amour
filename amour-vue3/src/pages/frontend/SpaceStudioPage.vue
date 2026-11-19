@@ -82,56 +82,62 @@
 
         <SpaceSaveFeedback class="mt-3" :notice="saveFeedback" @close="saveFeedback = null" />
 
-        <div class="mt-6 space-y-5">
-          <!-- 栏目导航：全宽横排，位于审核状态卡与编辑内容之间 -->
-          <div class="rounded-2xl border border-stone-200/80 bg-white p-2">
-            <div class="flex flex-wrap items-center justify-between gap-2 px-3 pb-1.5 pt-1">
-              <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-stone-400">编辑栏目</p>
-              <p v-if="dirty" class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-700" role="status">
-                <span class="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true" />
-                有未保存的修改
-              </p>
-              <p v-else class="hidden text-[11px] text-stone-400 sm:block">切换栏目时会先确认未保存的修改。</p>
-            </div>
+        <!--
+          桌面端：左侧纵向栏目导航 + 右侧当前编辑器。
+          移动端：导航变为顶部横向滚动条，编辑内容自然落在下方，避免横向溢出。
+          审核卡与保存反馈位于两栏之上，不会遮住导航或编辑内容。
+        -->
+        <div class="mt-6 grid gap-5 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
+          <aside class="min-w-0 lg:sticky lg:top-24" aria-label="空间编辑导航">
+            <div class="rounded-2xl border border-stone-200/80 bg-white p-2">
+              <div class="flex flex-wrap items-center justify-between gap-2 px-3 pb-1.5 pt-1">
+                <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-stone-400">编辑栏目</p>
+                <p v-if="dirty" class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-700" role="status">
+                  <span class="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true" />
+                  有未保存的修改
+                </p>
+                <p v-else class="hidden text-[11px] text-stone-400 lg:block">切换前会确认未保存修改。</p>
+              </div>
 
-            <nav
-              class="flex gap-1.5 overflow-x-auto px-1 py-1 sm:flex-wrap sm:overflow-visible"
-              aria-label="空间编辑栏目"
-            >
-              <button
-                v-for="tab in visibleTabs"
-                :key="tab.key"
-                type="button"
-                class="group flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300"
-                :class="activeTab === tab.key
-                  ? 'bg-rose-50 text-rose-800 ring-1 ring-inset ring-rose-200'
-                  : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'"
-                :aria-current="activeTab === tab.key ? 'page' : undefined"
-                @click="switchTab(tab.key)"
+              <nav
+                class="flex gap-1.5 overflow-x-auto px-1 py-1 lg:flex-col lg:overflow-visible"
+                aria-label="空间编辑栏目"
               >
-                <span
-                  class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition"
+                <button
+                  v-for="tab in visibleTabs"
+                  :key="tab.key"
+                  type="button"
+                  class="group flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 lg:w-full"
                   :class="activeTab === tab.key
-                    ? 'border-rose-200 bg-white text-rose-600'
-                    : 'border-stone-200 bg-white text-stone-400 group-hover:text-rose-500'"
-                  aria-hidden="true"
+                    ? 'bg-rose-50 text-rose-800 ring-1 ring-inset ring-rose-200'
+                    : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'"
+                  :aria-current="activeTab === tab.key ? 'page' : undefined"
+                  @click="switchTab(tab.key)"
                 >
-                  <component :is="tab.icon" class="h-4 w-4" />
-                </span>
-                <span class="min-w-0">
-                  <span class="block text-sm font-semibold">{{ tab.label }}</span>
-                  <span class="mt-0.5 hidden truncate text-[11px] text-stone-400 xl:block">{{ tab.hint }}</span>
-                </span>
-              </button>
-            </nav>
-          </div>
+                  <span
+                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition"
+                    :class="activeTab === tab.key
+                      ? 'border-rose-200 bg-white text-rose-600'
+                      : 'border-stone-200 bg-white text-stone-400 group-hover:text-rose-500'"
+                    aria-hidden="true"
+                  >
+                    <component :is="tab.icon" class="h-4 w-4" />
+                  </span>
+                  <span class="min-w-0">
+                    <span class="block text-sm font-semibold">{{ tab.label }}</span>
+                    <span class="mt-0.5 hidden truncate text-[11px] text-stone-400 lg:block">{{ tab.hint }}</span>
+                  </span>
+                </button>
+              </nav>
+            </div>
+          </aside>
 
-          <section v-if="!visibleTabs.length" class="studio-empty">
+          <section v-if="!visibleTabs.length" class="studio-empty min-w-0">
             <p class="text-sm font-semibold text-stone-800">当前账号没有可用的内容管理权限</p>
             <p class="mt-1 text-xs leading-5 text-stone-500">请联系管理员开通故事、相册、留言或纪念日的查询权限。</p>
           </section>
 
-          <div v-else class="min-w-0">
+          <section v-else class="min-w-0" role="region" :aria-label="activeTabLabel">
             <SpaceHomeEditor
               v-if="activeTab === 'home'"
               @update:dirty="setDirty"
@@ -163,7 +169,7 @@
               @update:dirty="setDirty"
               @saved="onContentSaved"
             />
-          </div>
+          </section>
         </div>
       </template>
     </main>
@@ -173,6 +179,8 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
+import { ElMessageBox } from 'element-plus'
+import 'element-plus/es/components/message-box/style/css'
 import { Calendar, ChatDotRound, House, Notebook, Picture } from '@element-plus/icons-vue'
 import CouplePageScaffold from '@/components/frontend/CouplePageScaffold.vue'
 import FrontendPageHeader from '@/components/frontend/FrontendPageHeader.vue'
@@ -188,6 +196,11 @@ import { hasFrontendQueryPermission } from '@/utils/auth'
 import { canEditSpaceContent, SPACE_STATUS } from '@/utils/spaceState'
 import { confirmDiscardChanges } from '@/utils/unsavedChanges'
 import { SAVE_FEEDBACK_KIND } from '@/utils/saveFeedback'
+import {
+  isStudioTabAllowed,
+  resolveStudioTab,
+  resolveVisibleStudioTabs,
+} from '@/utils/spaceStudioTabs'
 
 const route = useRoute()
 const router = useRouter()
@@ -198,13 +211,14 @@ const {
   refreshSpaceStatus,
 } = useFrontendSpace()
 
-const TABS = [
-  { key: 'home', label: '首页', hint: '空间名称与首页展示', module: 'home', icon: House },
-  { key: 'story', label: '故事', hint: '章节与故事内容', module: 'story', icon: Notebook },
-  { key: 'message', label: '留言', hint: '留言与回复管理', module: 'message', icon: ChatDotRound },
-  { key: 'photo', label: '相册', hint: '分类与照片内容', module: 'photo', icon: Picture },
-  { key: 'anniversary', label: '纪念日', hint: '重要日期与提醒', module: 'anniversary', icon: Calendar },
-]
+/** 栏目图标只属于视图层，栏目定义与可见性规则由 spaceStudioTabs 统一维护。 */
+const TAB_ICONS = {
+  home: House,
+  story: Notebook,
+  message: ChatDotRound,
+  photo: Picture,
+  anniversary: Calendar,
+}
 
 const statusLoading = computed(() => spaceLoading.value && !spaceStatus.value)
 const statusError = computed(() => Boolean(spaceError.value) && !spaceStatus.value)
@@ -222,9 +236,10 @@ function onReviewSubmitted(payload) {
 
 // 首页编辑属于空间基础能力，沿用现有首页的准入方式（有效成员即可）；
 // 故事/留言/相册/纪念日仍按各自模块的查询权限展示，避免绕过模块权限。
-const visibleTabs = computed(() => TABS.filter(tab => (
-  tab.key === 'home' || hasFrontendQueryPermission(tab.module)
-)))
+const visibleTabs = computed(() => (
+  resolveVisibleStudioTabs(hasFrontendQueryPermission)
+    .map(tab => ({ ...tab, icon: TAB_ICONS[tab.key] }))
+))
 
 const statusBadge = computed(() => (
   isWaiting.value
@@ -233,6 +248,9 @@ const statusBadge = computed(() => (
 ))
 
 const activeTab = ref('home')
+const activeTabLabel = computed(() => (
+  visibleTabs.value.find(tab => tab.key === activeTab.value)?.label || '内容编辑'
+))
 const dirty = ref(false)
 const saveFeedback = ref(null)
 let saveFeedbackSeq = 0
@@ -252,11 +270,41 @@ function onContentSaved(payload) {
   if (typeof payload?.dirtyAfterSave === 'boolean') {
     dirty.value = payload.dirtyAfterSave
   }
+  // 排序成功使用独立弹窗反馈，不再占用内嵌提示卡片，避免重复提示。
+  if (payload?.action === 'reorder') {
+    saveFeedback.value = null
+    showReorderSuccess(payload.message)
+    return
+  }
   // 保存可能新增或撤回待审核项（例如改回公开版本），刷新状态卡展示真实审核状态。
   if (payload?.reviewStatus || payload?.kind === SAVE_FEEDBACK_KIND.RESTORED) {
     reviewRefreshKey.value += 1
   }
   showSaveFeedback(payload)
+}
+
+/** 同一时间只允许一个排序成功弹窗，连续操作不叠层。 */
+let reorderDialogOpen = false
+
+function showReorderSuccess(message) {
+  const text = typeof message === 'string' ? message.trim() : ''
+  if (!text || reorderDialogOpen || typeof document === 'undefined') return
+  reorderDialogOpen = true
+  const previousFocus = document.activeElement
+  const restoreFocus = () => {
+    reorderDialogOpen = false
+    if (previousFocus instanceof HTMLElement && previousFocus.isConnected) {
+      // 关闭弹窗后回到触发排序的位置，不改变当前分页、筛选与滚动位置。
+      previousFocus.focus({ preventScroll: true })
+    }
+  }
+  ElMessageBox.alert(text, '保存成功', {
+    confirmButtonText: '知道了',
+    showClose: false,
+    closeOnClickModal: false,
+    closeOnPressEscape: false,
+    autofocus: true,
+  }).then(restoreFocus, restoreFocus)
 }
 
 /** 页面级保存反馈：编辑器保存与重新提交审核共用同一条提示通道。 */
@@ -273,13 +321,11 @@ function showSaveFeedback(payload) {
 }
 
 function isTabAllowed(key) {
-  return visibleTabs.value.some(tab => tab.key === key)
+  return isStudioTabAllowed(key, visibleTabs.value)
 }
 
 function resolveInitialTab() {
-  const requested = typeof route.query.tab === 'string' ? route.query.tab : ''
-  if (requested && isTabAllowed(requested)) return requested
-  return visibleTabs.value[0]?.key || ''
+  return resolveStudioTab(route.query.tab, visibleTabs.value)
 }
 
 async function confirmDiscard(message) {

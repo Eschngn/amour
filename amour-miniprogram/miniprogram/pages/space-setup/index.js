@@ -11,7 +11,7 @@
  * - 成功后不自行改写全局状态，必须重新拉取 /space/status（后端为准）；
  * - 失败保留当前输入与页面状态，展示明确错误和重试入口。
  */
-const { guardPageReady, openSpaceSetup } = require('../../utils/access-control')
+const { guardPageReady, navigateWithGuard, openSpaceSetup } = require('../../utils/access-control')
 const { withPageViewTracking } = require('../../utils/page-view-lifecycle')
 const {
   createCoupleSpace,
@@ -1436,6 +1436,16 @@ Page(withPageViewTracking({
       url: SPACE_HOME_ROUTE,
       fail: () => wx.reLaunch({ url: PROFILE_ROUTE }),
     })
+  },
+
+  /**
+   * 进入空间内容编辑工作台。
+   *
+   * 新页面按 SPACE 级别守卫，无空间 / 未登录时由统一入口拦截；
+   * 创建成功后的等待绑定阶段也可以直接进入，提前布置内容。
+   */
+  onOpenStudio() {
+    navigateWithGuard('/pages/space-studio/index')
   },
 
   /** 设置模式未登录时的登录入口（守卫通常已经先跳登录页，这里只做兜底）。 */

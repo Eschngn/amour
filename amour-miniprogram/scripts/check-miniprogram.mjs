@@ -44,7 +44,7 @@ const VOID_TAGS = new Set([
 ])
 
 /** 极简 WXML 扫描：返回带行号的标签序列。 */
-function scanTags(file, source) {
+function scanTags(file, source, failFn = fail) {
   const tags = []
   let index = 0
   while (index < source.length) {
@@ -53,7 +53,7 @@ function scanTags(file, source) {
     if (source.startsWith('<!--', open)) {
       const close = source.indexOf('-->', open + 4)
       if (close === -1) {
-        fail(`${file}: 注释未闭合`)
+        failFn(`${file}: 注释未闭合`)
         break
       }
       index = close + 3
@@ -61,7 +61,7 @@ function scanTags(file, source) {
     }
     const close = source.indexOf('>', open)
     if (close === -1) {
-      fail(`${file}: 标签未闭合`)
+      failFn(`${file}: 标签未闭合`)
       break
     }
     let raw = source.slice(open + 1, close)
@@ -77,9 +77,18 @@ function scanTags(file, source) {
   return tags
 }
 
-function checkWxml(file) {
-  const source = readFileSync(file, 'utf8')
-  const tags = scanTags(file, source)
+/**
+ * 分析一段 WXML 的结构问题（纯函数，供静态检查与回归自检共用）。
+ *
+ * 关键规则：`wx:for` 与 `wx:if / wx:elif / wx:else` 不能声明在同一个元素上。
+ * 微信编译器会把带 `wx:for` 的节点视为循环作用域，同级 `wx:else` 找不到 `wx:if`，
+ * 直接报 `Bad attr wx:else ... wx:if not found`。正确写法是：
+ * `<block wx:if="..."><view wx:for="...">...</view></block><view wx:else>...</view>`。
+ */
+export function analyzeWxml(file, source) {
+  const found = []
+  const failFn = message => found.push(message)
+  const tags = scanTags(file, source, failFn)
   const stack = []
   // 同级 if/elif/else 链：栈顶记录父节点的“上一个同级是否属于条件链”
   const parents = [{ lastWasIfChain: false }]
@@ -90,11 +99,11 @@ function checkWxml(file) {
       if (isVoid) return
       const top = stack.pop()
       if (!top) {
-        fail(`${file}:${tag.line} 多余的闭合标签 </${tag.name}>`)
+        failFn(`${file}:${tag.line} 多余的闭合标签 </${tag.name}>`)
         return
       }
       if (top.name !== tag.name) {
-        fail(`${file}:${tag.line} 闭合标签不匹配：期望 </${top.name}>（第 ${top.line} 行），实际 </${tag.name}>`)
+        failFn(`${file}:${tag.line} 闭合标签不匹配：期望 </${top.name}>（第 ${top.line} 行），实际 </${tag.name}>`)
       }
       // 关闭节点后弹回父层级
       if (parents.length > 1) parents.pop()
@@ -105,9 +114,16 @@ function checkWxml(file) {
     const hasIf = /\swx:if=/.test(tag.source)
     const hasElif = /\swx:elif=/.test(tag.source)
     const hasElse = /\swx:else(?=[\s/>])/.test(tag.source)
+    const hasFor = /\swx:for=/.test(tag.source)
+
+    if (hasFor && (hasIf || hasElif || hasElse)) {
+      const attr = hasIf ? 'if' : (hasElif ? 'elif' : 'else')
+      failFn(`${file}:${tag.line} wx:for 不能与 wx:${attr} 声明在同一元素上；`
+        + '请用 <block wx:if="..."> 包裹独立的循环节点，并把 wx:else 放在 block 之后')
+    }
 
     if ((hasElif || hasElse) && !parent.lastWasIfChain) {
-      fail(`${file}:${tag.line} wx:${hasElif ? 'elif' : 'else'} 前没有同级相邻的 wx:if / wx:elif`)
+      failFn(`${file}:${tag.line} wx:${hasElif ? 'elif' : 'else'} 前没有同级相邻的 wx:if / wx:elif`)
     }
 
     // 记录条件链：if/elif 延续链，else 结束链
@@ -126,10 +142,39 @@ function checkWxml(file) {
   })
 
   stack.forEach((tag) => {
-    fail(`${file}:${tag.line} 标签 <${tag.name}> 未闭合`)
+    failFn(`${file}:${tag.line} 标签 <${tag.name}> 未闭合`)
   })
 
+  return found
+}
+
+function checkWxml(file) {
+  const source = readFileSync(file, 'utf8')
+  analyzeWxml(file, source).forEach(item => fail(item))
   return source
+}
+
+/** 结构规则自检：坏写法必须报错，block 包裹的正确写法必须通过。 */
+function runStructureSelfTest() {
+  const bad = '<view><view wx:if="{{list.length}}" wx:for="{{list}}" wx:key="id"></view><view wx:else></view></view>'
+  const good = '<view><block wx:if="{{list.length}}"><view wx:for="{{list}}" wx:key="id"></view></block>'
+    + '<view wx:else></view></view>'
+  const badErrors = analyzeWxml('self-test-bad.wxml', bad)
+  const goodErrors = analyzeWxml('self-test-good.wxml', good)
+  if (!badErrors.some(item => item.includes('wx:for 不能与 wx:if'))) {
+    console.error('结构自检失败：未识别 wx:for 与 wx:if 同节点的错误写法')
+    process.exit(1)
+  }
+  if (goodErrors.length) {
+    console.error(`结构自检失败：正确写法被误报 -> ${goodErrors.join('; ')}`)
+    process.exit(1)
+  }
+  console.log('结构自检通过：wx:for 与条件链同节点会被拒绝。')
+}
+
+if (process.argv.includes('--self-test-structure')) {
+  runStructureSelfTest()
+  process.exit(0)
 }
 
 /** 逐行提取方法名，避免正则跨行误吞整段代码。 */

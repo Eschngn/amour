@@ -94,6 +94,7 @@ function privateStory(overrides = {}) {
       '![合影](https://cdn.example.com/story.jpg)',
     ].join('\n'),
     happenedTime: '2024-05-20 19:30:00',
+    showTime: true,
     location: '杭州',
     coverImage: '',
     tagLabel: '初见',
@@ -154,6 +155,13 @@ test('私有故事详情：仍调用私有接口并渲染正文块', async () =>
   assert.deepEqual(page.data.contentImages, ['https://cdn.example.com/story.jpg'])
   assert.equal(page.data.readTime, '约 1 分钟')
   assert.ok(page.data.totalWords > 0)
+  assert.equal(page.data.formattedDate, '2024.05.20 19:30:00')
+})
+
+test('私有故事详情：仅日期模式不展示时分秒', async () => {
+  responseHandler = (options) => options.success(okBody(privateStory({ showTime: false })))
+  const page = createPage({ id: '8001' })
+  await flush()
   assert.equal(page.data.formattedDate, '2024.05.20')
 })
 

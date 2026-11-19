@@ -227,6 +227,7 @@ public class SpaceArchiveSnapshot {
         private String summary;
         private String content;
         private String happenedTime;
+        private Boolean showTime;
         private String location;
         private String coverImage;
         private String tagLabel;
@@ -286,6 +287,7 @@ public class SpaceArchiveSnapshot {
         private String description;
         private String url;
         private String takenTime;
+        private Boolean showTime;
         private String location;
         private Integer sortOrder;
         private Integer globalSortOrder;

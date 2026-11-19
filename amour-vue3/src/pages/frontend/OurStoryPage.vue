@@ -178,6 +178,7 @@ import {
 } from '@/utils/listViewState'
 import { restoreScrollPosition } from '@/utils/scrollRestore'
 import { useListViewSnapshot } from '@/composables/useListViewSnapshot'
+import { formatSpaceContentDateTime } from '@/utils/spaceFormat'
 import api from '@/axios'
 
 const route = useRoute()
@@ -260,7 +261,7 @@ async function fetchStoriesByChapterId(chapterId) {
         globalIdx++
         return {
           id: node.id,
-          date: formatDate(node.happenedTime),
+          date: formatSpaceContentDateTime(node.happenedTime, node.showTime, ''),
           location: node.location,
           title: node.title,
           tag: node.tagLabel,

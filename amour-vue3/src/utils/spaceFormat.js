@@ -37,6 +37,20 @@ export function formatSpaceDateTime(value, fallback = '—') {
   return `${formatSpaceDate(date)} ${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
+/**
+ * 空间内容时间展示：按 showTime 精度输出。
+ *
+ * - showTime=false（仅日期）只展示日期，不出现时分秒；
+ * - showTime=true（历史默认）展示到秒，显式零点与“仅日期”保持不同语义。
+ */
+export function formatSpaceContentDateTime(value, showTime = true, fallback = '—') {
+  const date = parseSpaceDateTime(value)
+  if (!date) return fallback
+  const dateText = `${date.getFullYear()}.${pad(date.getMonth() + 1)}.${pad(date.getDate())}`
+  if (showTime === false) return dateText
+  return `${dateText} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+}
+
 /** 按自然日计算已经相伴的完整天数。 */
 export function getDaysTogether(value) {
   const start = parseSpaceDateTime(value)

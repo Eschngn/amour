@@ -300,6 +300,8 @@ CREATE TABLE `story_node` (
     `content` TEXT NOT NULL,
     -- 事件发生时间
     `happened_time` TEXT NOT NULL,
+    -- 时间展示精度：1-展示日期和时间 0-仅展示日期
+    `show_time` INTEGER NOT NULL DEFAULT 1,
     -- 发生地点
     `location` TEXT NOT NULL DEFAULT '',
     -- 封面图片URL
@@ -395,6 +397,8 @@ CREATE TABLE `photo` (
     `url` TEXT NOT NULL,
     -- 照片拍摄时间
     `taken_time` TEXT DEFAULT NULL,
+    -- 时间展示精度：1-展示日期和时间 0-仅展示日期
+    `show_time` INTEGER NOT NULL DEFAULT 1,
     -- 拍摄地点
     `location` TEXT NOT NULL DEFAULT '',
     -- 分类内排序值

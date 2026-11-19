@@ -251,7 +251,7 @@
                 <p class="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-stone-500">
                   <span class="truncate">{{ photo.categoryName || '未分类' }}</span>
                   <span v-if="photo.takenTime" aria-hidden="true">·</span>
-                  <span v-if="photo.takenTime">{{ String(photo.takenTime).slice(0, 10) }}</span>
+                  <span v-if="photo.takenTime">{{ formatSpaceContentDateTime(photo.takenTime, photo.showTime) }}</span>
                   <span class="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold text-stone-500">{{ visibilityLabel(photo.visibility) }}</span>
                   <span
                     v-if="reviewStatusLabel(photo.reviewStatus)"
@@ -331,7 +331,10 @@
       <form id="studio-category-form" class="space-y-4" @submit.prevent="saveCategory">
         <div class="grid gap-4">
           <div>
-            <label for="studio-category-name" class="field-label">分类名称</label>
+            <label for="studio-category-name" class="field-label">
+              分类名称
+              <span class="field-requirement">必填</span>
+            </label>
             <input
               id="studio-category-name"
               ref="categoryNameInputRef"
@@ -339,12 +342,27 @@
               maxlength="50"
               class="field-input"
               placeholder="例如「日常」"
+              aria-required="true"
+            >
+          </div>
+          <div>
+            <label for="studio-category-remark" class="field-label">
+              备注
+              <span class="field-requirement-optional">选填</span>
+            </label>
+            <input
+              id="studio-category-remark"
+              v-model="categoryForm.remark"
+              maxlength="200"
+              class="field-input"
+              placeholder="给这个分类补一句说明"
             >
           </div>
         </div>
         <label class="flex w-fit items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2.5 text-xs font-semibold text-stone-700">
           <input v-model="categoryForm.isEnabled" type="checkbox" class="h-4 w-4 rounded border-stone-300 text-rose-600 focus:ring-rose-400">
           启用该分类
+          <span class="field-requirement-optional">默认启用，可调整</span>
         </label>
         <p class="field-hint">
           {{ categoryForm.id ? '保存后保留当前顺序，可在列表中调整顺序。' : '保存后默认添加到列表末尾，可在列表中调整顺序。' }}
@@ -381,27 +399,59 @@
         <div class="space-y-4">
           <div class="grid gap-4 sm:grid-cols-2">
             <div>
-              <label for="studio-photo-category" class="field-label">所属分类</label>
+              <label for="studio-photo-category" class="field-label">
+                所属分类
+                <span class="field-requirement">必填</span>
+              </label>
               <ThemeSelect
                 v-model="photoForm.categoryId"
                 input-id="studio-photo-category"
                 class="mt-2"
                 placeholder="请选择分类"
+                :required="true"
                 :options="categoryOptions"
               />
             </div>
             <div>
-              <label for="studio-photo-taken" class="field-label">拍摄时间</label>
+              <label for="studio-photo-taken" class="field-label">
+                拍摄时间
+                <span class="field-requirement-optional">选填</span>
+              </label>
+              <div class="mt-2 flex flex-wrap gap-2" role="group" aria-label="拍摄时间的展示方式">
+                <button
+                  v-for="option in showTimeOptions"
+                  :key="String(option.value)"
+                  type="button"
+                  class="rounded-lg border px-3 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300"
+                  :class="photoForm.showTime === option.value
+                    ? 'border-rose-300 bg-rose-50 text-rose-800'
+                    : 'border-stone-200 bg-white text-stone-600 hover:border-rose-200'"
+                  :aria-pressed="photoForm.showTime === option.value"
+                  @click="setPhotoShowTime(option.value)"
+                >
+                  {{ option.label }}
+                </button>
+              </div>
               <ThemeDatePicker
-                v-model="photoForm.takenTime"
+                :model-value="photoDateValue"
                 input-id="studio-photo-taken"
                 class="mt-2"
-                mode="datetime"
-                placeholder="选择拍摄时间"
+                :mode="photoDateMode"
+                :enable-seconds="photoForm.showTime"
+                :placeholder="photoForm.showTime ? '选择拍摄日期和时间' : '选择拍摄日期'"
+                @update:model-value="onPhotoTakenInput"
               />
+              <p class="field-hint">
+                {{ photoForm.showTime
+                  ? '未手动设置时分秒时默认使用当天 00:00:00。'
+                  : '只保存日期，列表和详情不会显示时分秒。' }}
+              </p>
             </div>
             <div class="sm:col-span-2">
-              <label for="studio-photo-title" class="field-label">标题</label>
+              <label for="studio-photo-title" class="field-label">
+                标题
+                <span class="field-requirement-optional">选填</span>
+              </label>
               <input
                 id="studio-photo-title"
                 ref="photoTitleInputRef"
@@ -412,19 +462,25 @@
               >
             </div>
             <div class="sm:col-span-2">
-              <label for="studio-photo-desc" class="field-label">描述</label>
+              <label for="studio-photo-desc" class="field-label">
+                描述
+                <span class="field-requirement-optional">选填</span>
+              </label>
               <textarea
                 id="studio-photo-desc"
                 v-model="photoForm.description"
                 rows="2"
                 maxlength="500"
                 class="field-input resize-y leading-6"
-                placeholder="这张照片背后的故事（选填）"
+                placeholder="这张照片背后的故事"
               />
             </div>
             <div class="sm:col-span-2">
-              <label for="studio-photo-location" class="field-label">地点</label>
-              <input id="studio-photo-location" v-model="photoForm.location" maxlength="100" class="field-input" placeholder="拍摄地点（选填）">
+              <label for="studio-photo-location" class="field-label">
+                地点
+                <span class="field-requirement-optional">选填</span>
+              </label>
+              <input id="studio-photo-location" v-model="photoForm.location" maxlength="100" class="field-input" placeholder="拍摄地点">
             </div>
           </div>
 
@@ -436,7 +492,10 @@
             <p class="text-xs font-bold text-stone-500">展示设置</p>
             <div class="mt-3 grid gap-3 sm:grid-cols-2">
               <div>
-                <label for="studio-photo-visibility" class="field-label">可见性</label>
+                <label for="studio-photo-visibility" class="field-label">
+                  可见性
+                  <span class="field-requirement-optional">默认仅空间成员可见，可调整</span>
+                </label>
                 <ThemeSelect
                   v-model="photoForm.visibility"
                   input-id="studio-photo-visibility"
@@ -447,6 +506,7 @@
               <label class="flex items-center gap-2 self-end rounded-lg border border-stone-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-stone-700">
                 <input v-model="photoForm.isCover" type="checkbox" class="h-4 w-4 rounded border-stone-300 text-rose-600 focus:ring-rose-400">
                 设为相册封面
+                <span class="field-requirement-optional">可选，默认不设</span>
               </label>
             </div>
           </div>
@@ -454,8 +514,9 @@
           <SpaceImageField
             v-model="photoForm.url"
             input-id="studio-photo-url"
-            label="照片"
+            label="照片（必填）"
             hint="支持 JPG、PNG、WebP、GIF，最大 5MB。"
+            :required="true"
             :disabled="photoSaving"
             @uploading="uploading = $event"
           />
@@ -550,15 +611,19 @@ import {
 import {
   buildVisibilityOptions,
   ensureSuccess,
+  normalizeShowTime,
   readContentErrorMessage,
   reviewStatusLabel,
-  toBackendDateTime,
+  SHOW_TIME_OPTIONS,
+  toBackendContentDateTime,
+  toDateInputValue,
   toDateTimeLocalInput,
+  applyDatePart,
   VISIBILITY_OPTIONS,
 } from '@/utils/spaceContent'
 import { createFormSnapshot, isFormDirty, shouldSkipUnchangedSave } from '@/utils/formBaseline'
 import { isPreviewableImageSrc } from '@/utils/imagePreview'
-import { formatSpaceDate } from '@/utils/spaceFormat'
+import { formatSpaceContentDateTime } from '@/utils/spaceFormat'
 import { confirmDiscardChanges } from '@/utils/unsavedChanges'
 import {
   hasSelectedContentScope,
@@ -588,8 +653,9 @@ const filterCategoryId = ref('all')
 
 const categoryOptions = computed(() => categories.value.map(category => ({ value: category.id, label: category.categoryName })))
 const visibilityOptions = computed(() => buildVisibilityOptions(props.canPublish))
+const showTimeOptions = SHOW_TIME_OPTIONS
 
-const categoryForm = reactive({ id: null, name: '', isEnabled: true })
+const categoryForm = reactive({ id: null, name: '', remark: '', isEnabled: true })
 const categorySaving = ref(false)
 const categoryError = ref('')
 const categoryDialogOpen = ref(false)
@@ -641,7 +707,7 @@ const categoryDrag = useDragSort({
     orderedCategories.forEach((category, index) => {
       category.sortOrder = (index + 1) * 10
     })
-    emitSimpleSaved('分类顺序已保存')
+    emitReorderSaved('分类顺序已保存')
   },
   onError: (error) => {
     categorySortError.value = readContentErrorMessage(error, '分类排序未保存，已恢复原顺序，请重试')
@@ -695,7 +761,7 @@ const photoDrag = useDragSort({
       : ensureSuccess(await savePhotoOrder({ categoryId: scope.categoryId, items }), '照片排序保存失败')
     sortBuffer.value = Array.isArray(serverItems) ? serverItems : merged
     applyPhotoServerOrder(serverItems)
-    emitSimpleSaved('顺序已保存')
+    emitReorderSaved('照片顺序已保存')
   },
   onError: (error) => {
     photoSortError.value = readContentErrorMessage(error, '照片排序未保存，已恢复原顺序，请重试')
@@ -804,10 +870,27 @@ function emptyPhotoForm() {
     description: '',
     url: '',
     takenTime: '',
+    showTime: true,
     location: '',
     isCover: false,
     visibility: 0,
   }
+}
+
+const photoDateValue = computed(() => (
+  photoForm.showTime ? photoForm.takenTime : toDateInputValue(photoForm.takenTime)
+))
+const photoDateMode = computed(() => (photoForm.showTime ? 'datetime' : 'date'))
+
+function setPhotoShowTime(value) {
+  photoForm.showTime = Boolean(value)
+}
+
+/** 仅日期模式选择日期时保留隐藏时间；保存时前后端都会归一化为零点。 */
+function onPhotoTakenInput(value) {
+  photoForm.takenTime = photoForm.showTime
+    ? String(value || '').trim()
+    : applyDatePart(photoForm.takenTime, value)
 }
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / PAGE_SIZE)))
@@ -816,6 +899,7 @@ const totalPages = computed(() => Math.max(1, Math.ceil(total.value / PAGE_SIZE)
 function categoryFormSnapshot() {
   return {
     name: categoryForm.name.trim(),
+    remark: categoryForm.remark.trim(),
     isEnabled: Boolean(categoryForm.isEnabled),
   }
 }
@@ -828,6 +912,7 @@ function photoFormSnapshot() {
     description: photoForm.description.trim(),
     url: photoForm.url.trim(),
     takenTime: photoForm.takenTime,
+    showTime: Boolean(photoForm.showTime),
     location: photoForm.location.trim(),
     isCover: Boolean(photoForm.isCover),
     visibility: Number(photoForm.visibility),
@@ -848,6 +933,16 @@ function emitDirty() {
 function emitSimpleSaved(message) {
   emit('saved', {
     ...resolveSaveFeedback(null, message),
+    dirtyAfterSave: dirty.value,
+  })
+}
+
+/** 排序成功由页面统一弹窗反馈，使用明确 action 字段，避免匹配提示文字。 */
+function emitReorderSaved(message) {
+  emit('saved', {
+    action: 'reorder',
+    kind: 'success',
+    message,
     dirtyAfterSave: dirty.value,
   })
 }
@@ -874,9 +969,9 @@ function visibilityLabel(value) {
   return VISIBILITY_OPTIONS.find(option => option.value === Number(value))?.label || '仅空间成员可见'
 }
 
-/** 编辑模式元信息：分类、拍摄日期、地点、可见性与审核状态，不包含后台内部字段。 */
+/** 编辑模式元信息：分类、拍摄时间、地点、可见性与审核状态，不包含后台内部字段。 */
 function buildPhotoPreviewMeta(photo) {
-  const date = photo?.takenTime ? formatSpaceDate(photo.takenTime, '') : ''
+  const date = photo?.takenTime ? formatSpaceContentDateTime(photo.takenTime, photo.showTime, '') : ''
   return [
     String(photo?.categoryName || '').trim() || '未分类',
     date ? `拍摄于 ${date}` : '',
@@ -897,6 +992,7 @@ function reviewStatusClass(status) {
 function resetCategoryForm() {
   categoryForm.id = null
   categoryForm.name = ''
+  categoryForm.remark = ''
   categoryForm.isEnabled = true
   categoryError.value = ''
   captureCategoryBaseline()
@@ -959,6 +1055,7 @@ async function editCategory(category, event) {
   categoryDialogTrigger = rememberDialogTrigger(event)
   categoryForm.id = category.id
   categoryForm.name = category.categoryName || ''
+  categoryForm.remark = category.remark || ''
   categoryForm.isEnabled = category.isEnabled !== false
   categoryError.value = ''
   categoryDialogOpen.value = true
@@ -991,6 +1088,15 @@ async function startNewPhoto(event) {
 function focusPhotoTitle() {
   nextTick(() => {
     photoTitleInputRef.value?.focus({ preventScroll: true })
+  })
+}
+
+/** 必填校验失败时把焦点交给真实控件（含自定义选择器与上传入口）。 */
+function focusById(id) {
+  nextTick(() => {
+    const target = document.querySelector(`[data-image-field-trigger="${id}"]`)
+      || document.getElementById(id)
+    target?.focus?.({ preventScroll: true })
   })
 }
 
@@ -1073,6 +1179,7 @@ async function editPhoto(photo, event) {
   photoForm.description = photo.description || ''
   photoForm.url = photo.url || ''
   photoForm.takenTime = toDateTimeLocalInput(photo.takenTime)
+  photoForm.showTime = normalizeShowTime(photo.showTime)
   photoForm.location = photo.location || ''
   photoForm.isCover = photo.isCover === true
   photoForm.visibility = Number(photo.visibility) || 0
@@ -1163,6 +1270,7 @@ async function saveCategory() {
   const name = categoryForm.name.trim()
   if (!name) {
     categoryError.value = '分类名称不能为空'
+    focusCategoryName()
     return
   }
   // 编辑已有分类但没有任何改动：不调用保存接口。
@@ -1184,6 +1292,7 @@ async function saveCategory() {
       id: categoryForm.id,
       categoryName: name,
       isEnabled: categoryForm.isEnabled,
+      remark: categoryForm.remark.trim(),
     }), '分类保存失败')
     const feedback = resolveSaveFeedback(null, categoryForm.id ? '分类已更新' : '分类已创建')
     // 保存成功后重建分类表单基线，保留照片表单里未保存的内容。
@@ -1228,10 +1337,12 @@ async function savePhoto() {
   photoError.value = ''
   if (!photoForm.categoryId) {
     photoError.value = '请先创建并选择分类'
+    focusById('studio-photo-category')
     return
   }
   if (!photoForm.url.trim()) {
     photoError.value = '请上传照片'
+    focusById('studio-photo-url')
     return
   }
   if (photoForm.isCover && Number(photoForm.visibility) === 2) {
@@ -1259,7 +1370,8 @@ async function savePhoto() {
       title: photoForm.title.trim(),
       description: photoForm.description.trim(),
       url: photoForm.url.trim(),
-      takenTime: toBackendDateTime(photoForm.takenTime),
+      takenTime: toBackendContentDateTime(photoForm.takenTime, photoForm.showTime),
+      showTime: Boolean(photoForm.showTime),
       location: photoForm.location.trim(),
       isCover: photoForm.isCover,
       visibility: Number(photoForm.visibility),

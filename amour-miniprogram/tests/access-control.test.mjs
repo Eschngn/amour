@@ -140,6 +140,7 @@ test('未登录访问相册详情 / 留言：全部被拦截', async () => {
     'pages/photo-detail/photo-detail',
     'pages/message/message',
     'pages/story-detail/story-detail',
+    'pages/space-studio/index',
   ]) {
     navigations.length = 0
     const allowed = await accessControl.guardPageReady(route)
@@ -193,6 +194,7 @@ test('已有情侣空间时受限页面全部放行', async () => {
   await setWithSpace()
   for (const route of [
     'pages/index/index',
+    'pages/space-studio/index',
     'pages/story/story',
     'pages/story-detail/story-detail',
     'pages/photo/photo',

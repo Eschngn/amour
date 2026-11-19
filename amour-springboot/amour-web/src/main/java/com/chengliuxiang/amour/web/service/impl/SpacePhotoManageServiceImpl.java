@@ -200,6 +200,7 @@ public class SpacePhotoManageServiceImpl implements SpacePhotoManageService {
                             .categoryName(category == null ? "未分类" : category.getCategoryName())
                             .url(photo.getUrl())
                             .takenTime(photo.getTakenTime())
+                            .showTime(photo.getShowTime() == null || photo.getShowTime())
                             .location(photo.getLocation())
                             .sortOrder(photo.getSortOrder())
                             .globalSortOrder(photo.getGlobalSortOrder())
@@ -262,6 +263,8 @@ public class SpacePhotoManageServiceImpl implements SpacePhotoManageService {
 
         LocalDateTime now = LocalDateTime.now();
         if (reqVO.getId() == null) {
+            boolean showTime = resolveShowTime(reqVO.getShowTime(), null);
+            LocalDateTime takenTime = normalizeTakenTime(reqVO.getTakenTime(), showTime);
             if (isCover) {
                 photoMapper.clearOtherCovers(spaceId, null, now);
             }
@@ -271,7 +274,8 @@ public class SpacePhotoManageServiceImpl implements SpacePhotoManageService {
                     .title(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getTitle())))
                     .description(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getDescription())))
                     .url(url)
-                    .takenTime(reqVO.getTakenTime())
+                    .takenTime(takenTime)
+                    .showTime(showTime)
                     .location(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getLocation())))
                     .sortOrder(resolveNewPhotoSortOrder(spaceId, reqVO.getPhotoCategoryId(), reqVO.getSortOrder()))
                     // 新照片追加到全部照片末尾，分类内排序仍由 sortOrder 单独维护。
@@ -291,13 +295,15 @@ public class SpacePhotoManageServiceImpl implements SpacePhotoManageService {
         }
 
         PhotoDO current = requirePhoto(spaceId, reqVO.getId());
+        boolean showTime = resolveShowTime(reqVO.getShowTime(), current);
+        LocalDateTime takenTime = normalizeTakenTime(reqVO.getTakenTime(), showTime);
         if (isCover) {
             photoMapper.clearOtherCovers(spaceId, current.getId(), now);
         }
         int updated = photoMapper.modifyPhoto(spaceId, current.getId(),
                 StrUtil.nullToEmpty(StrUtil.trim(reqVO.getTitle())),
                 StrUtil.nullToEmpty(StrUtil.trim(reqVO.getDescription())),
-                reqVO.getPhotoCategoryId(), url, reqVO.getTakenTime(),
+                reqVO.getPhotoCategoryId(), url, takenTime, showTime,
                 StrUtil.nullToEmpty(StrUtil.trim(reqVO.getLocation())),
                 // 改分类时追加到目标分类末尾；未改分类时保留原分类内顺序。
                 resolveUpdatedPhotoSortOrder(spaceId, current, reqVO),
@@ -372,6 +378,25 @@ public class SpacePhotoManageServiceImpl implements SpacePhotoManageService {
             throw new BizException(ResponseCodeEnum.SPACE_CONTENT_PUBLISH_NOT_ALLOWED);
         }
         return visibility;
+    }
+
+    /** 未传精度时保留原记录；旧数据与新建未传时统一按展示时间兼容。 */
+    private boolean resolveShowTime(Boolean requested, PhotoDO current) {
+        if (requested != null) {
+            return requested;
+        }
+        if (current == null || current.getShowTime() == null) {
+            return true;
+        }
+        return current.getShowTime();
+    }
+
+    /** 仅日期模式的拍摄时间统一持久化为当天 00:00:00；拍摄时间本身仍可为空。 */
+    private LocalDateTime normalizeTakenTime(LocalDateTime value, boolean showTime) {
+        if (value == null) {
+            return null;
+        }
+        return showTime ? value : value.toLocalDate().atStartOfDay();
     }
 
     private Map<Long, PhotoCategoryDO> loadCategoryMap(Long spaceId, List<PhotoDO> photos) {

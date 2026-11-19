@@ -191,7 +191,7 @@ import 'md-editor-v3/lib/style.css'
 import CouplePageScaffold from '@/components/frontend/CouplePageScaffold.vue'
 import StoryReturnBar from '@/components/frontend/StoryReturnBar.vue'
 import { fetchPublicStoryDetail } from '@/api/gallery'
-import { formatSpaceDate } from '@/utils/spaceFormat'
+import { formatSpaceContentDateTime } from '@/utils/spaceFormat'
 import {
   DEFAULT_THEME_COLOR,
   accentTextColor,
@@ -263,7 +263,11 @@ const tagPillStyle = computed(() => ({
   color: accentTextColor(tagAccent.value),
 }))
 
-const formattedDate = computed(() => formatSpaceDate(story.value?.happenedTime, ''))
+const formattedDate = computed(() => formatSpaceContentDateTime(
+  story.value?.happenedTime,
+  story.value?.showTime,
+  '',
+))
 const contentLengthText = computed(() => {
   const count = Number(story.value?.contentLength)
   if (!Number.isFinite(count) || count <= 0) return '还没有正文'
@@ -279,6 +283,7 @@ function toPublicStory(detail) {
     content: detail.content || '',
     contentLength: String(detail.content || '').replace(/\s/g, '').length,
     happenedTime: detail.happenedTime || '',
+    showTime: detail.showTime !== false,
     location: detail.location || '',
     coverImage: detail.coverImage || '',
     tagLabel: detail.tagLabel || '',

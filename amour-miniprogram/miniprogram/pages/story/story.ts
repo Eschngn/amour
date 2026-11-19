@@ -24,13 +24,19 @@ interface StoryNode {
   title: string
   summary: string
   happenedTime: string
+  showTime?: boolean
   location: string
   coverImage: string
   tagLabel: string
 }
 
-function formatDate(value: string) {
-  return value ? value.slice(0, 10).replace(/-/g, '.') : '日期未记录'
+function formatDate(value: string, showTime?: boolean) {
+  if (!value) return '日期未记录'
+  const date = value.slice(0, 10).replace(/-/g, '.')
+  // 仅日期模式不展示时分秒；历史数据默认展示到秒。
+  if (showTime === false) return date
+  const clock = value.slice(11, 19)
+  return clock ? `${date} ${clock}` : date
 }
 
 function formatPeriod(start: string, end: string) {
@@ -123,7 +129,7 @@ Component(withComponentPageViewTracking({
           id: node.id,
           title: node.title || '未命名故事',
           summary: node.summary || '这一段故事，等你慢慢打开。',
-          date: formatDate(node.happenedTime),
+          date: formatDate(node.happenedTime, node.showTime),
           location: node.location || '',
           coverImage: node.coverImage || '',
           tag: node.tagLabel || '',

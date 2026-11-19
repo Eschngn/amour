@@ -12,7 +12,7 @@ const {
   SPACE_REQUIRED_TOAST,
 } = require('../../utils/session-constants')
 const { isWaitingForPartner, deriveHasSpace } = require('../../utils/session-rules')
-const { openSpaceSetup } = require('../../utils/access-control')
+const { openSpaceSetup, openSpaceStudio } = require('../../utils/access-control')
 
 function getInitial(value) {
   const normalized = String(value || '').trim()
@@ -302,6 +302,12 @@ Component(withComponentPageViewTracking({
     onOpenSpaceSettings() {
       if (this.data.authenticating) return
       openSpaceSetup('settings')
+    },
+
+    /** 已有空间时进入内容编辑工作台（首页 / 故事 / 留言 / 相册 / 纪念日）。 */
+    onOpenSpaceStudio() {
+      if (this.data.authenticating) return
+      openSpaceStudio()
     },
 
     /* ===================== 账号资料 ===================== */

@@ -117,6 +117,11 @@ public final class SpaceSnapshotComparator {
             }
             fields.put(entry.getKey(), value);
         }
+        // 时间展示精度是后加字段：历史快照缺失时按“展示日期和时间”兼容，
+        // 避免旧公开内容因为补字段而被动产生一次无意义的重新审核。
+        if (root && !ignoredFields.contains("showTime") && !fields.containsKey("showTime")) {
+            fields.put("showTime", "true");
+        }
         StringBuilder builder = new StringBuilder("{");
         boolean first = true;
         for (Map.Entry<String, String> entry : fields.entrySet()) {

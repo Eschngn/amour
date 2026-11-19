@@ -30,6 +30,8 @@ export function redirectToGuidedProfile(
 export function redirectToLogin(redirectPath?: string): void
 /** 打开情侣空间页；返回是否已发起跳转。 */
 export function openSpaceSetup(action?: SpaceSetupAction): boolean
+/** 打开空间内容编辑工作台；返回是否已发起跳转。 */
+export function openSpaceStudio(): boolean
 /** 全局导航守卫：绑定一次，处理“停留期间状态变化 / 历史栈恢复”的拦截。 */
 export function bindSessionNavigationGuard(): () => void
 /** 当前页面栈顶路由。 */

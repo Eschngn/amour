@@ -27,5 +27,8 @@ public class PhotoPageItemVO {
 
     private LocalDateTime takenTime;
 
+    /** 时间展示精度：true-日期和时间 false-仅日期。 */
+    private Boolean showTime;
+
     private String location;
 }

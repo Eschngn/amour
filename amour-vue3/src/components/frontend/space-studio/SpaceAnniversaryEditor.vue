@@ -186,7 +186,10 @@
         <div class="space-y-4">
           <div class="grid gap-4 sm:grid-cols-2">
             <div class="sm:col-span-2">
-              <label for="studio-anniversary-title" class="field-label">名称</label>
+              <label for="studio-anniversary-title" class="field-label">
+                名称
+                <span class="field-requirement">必填</span>
+              </label>
               <input
                 id="studio-anniversary-title"
                 ref="titleInputRef"
@@ -194,20 +197,29 @@
                 maxlength="100"
                 class="field-input"
                 placeholder="例如：在一起一周年"
+                aria-required="true"
               >
             </div>
             <div>
-              <label for="studio-anniversary-date" class="field-label">日期</label>
+              <label for="studio-anniversary-date" class="field-label">
+                日期
+                <span class="field-requirement">必填</span>
+              </label>
               <ThemeDatePicker
                 v-model="form.anniversaryDate"
                 input-id="studio-anniversary-date"
                 class="mt-2"
                 mode="date"
+                :required="true"
                 placeholder="选择纪念日期"
               />
+              <p class="field-hint">纪念日只保存日期，不包含时分秒。</p>
             </div>
             <div>
-              <label for="studio-anniversary-repeat" class="field-label">重复方式</label>
+              <label for="studio-anniversary-repeat" class="field-label">
+                重复方式
+                <span class="field-requirement-optional">默认每年重复，可调整</span>
+              </label>
               <ThemeSelect
                 v-model="form.repeatType"
                 input-id="studio-anniversary-repeat"
@@ -216,7 +228,10 @@
               />
             </div>
             <div>
-              <label for="studio-anniversary-category" class="field-label">分类</label>
+              <label for="studio-anniversary-category" class="field-label">
+                分类
+                <span class="field-requirement-optional">默认恋爱，可调整</span>
+              </label>
               <ThemeSelect
                 v-model="form.category"
                 input-id="studio-anniversary-category"
@@ -225,7 +240,10 @@
               />
             </div>
             <div>
-              <label for="studio-anniversary-visibility" class="field-label">可见性</label>
+              <label for="studio-anniversary-visibility" class="field-label">
+                可见性
+                <span class="field-requirement-optional">默认仅空间成员可见，可调整</span>
+              </label>
               <ThemeSelect
                 v-model="form.visibility"
                 input-id="studio-anniversary-visibility"
@@ -234,24 +252,30 @@
               />
             </div>
             <div>
-              <label for="studio-anniversary-location" class="field-label">地点</label>
+              <label for="studio-anniversary-location" class="field-label">
+                地点
+                <span class="field-requirement-optional">选填</span>
+              </label>
               <input
                 id="studio-anniversary-location"
                 v-model="form.location"
                 maxlength="100"
                 class="field-input"
-                placeholder="纪念地点（选填）"
+                placeholder="纪念地点"
               >
             </div>
             <div class="sm:col-span-2">
-              <label for="studio-anniversary-desc" class="field-label">描述</label>
+              <label for="studio-anniversary-desc" class="field-label">
+                描述
+                <span class="field-requirement-optional">选填</span>
+              </label>
               <textarea
                 id="studio-anniversary-desc"
                 v-model="form.description"
                 rows="2"
                 maxlength="500"
                 class="field-input resize-y leading-6"
-                placeholder="写一句关于这个日子的记忆（选填）"
+                placeholder="写一句关于这个日子的记忆"
               />
             </div>
           </div>
@@ -265,7 +289,7 @@
               v-model="form.colorCode"
               input-id="studio-anniversary-color"
               label="卡片主题色"
-              hint="纪念日卡片、日期块与年历圆点都会使用这个颜色。"
+              hint="默认使用玫瑰色，可按需调整；纪念日卡片、日期块与年历圆点都会使用这个颜色。"
             />
             <div class="mt-3 flex flex-wrap items-center gap-3 rounded-lg border bg-white px-3 py-2.5" :style="{ borderColor: previewBorderColor }">
               <span class="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-lg text-center" :style="previewDateTileStyle" aria-hidden="true">
@@ -376,7 +400,7 @@ const dragSort = useDragSort({
     orderedItems.forEach((item, index) => {
       item.sortOrder = (index + 1) * 10
     })
-    emitSimpleSaved('纪念日顺序已保存')
+    emitReorderSaved('纪念日顺序已保存')
   },
   onError: (err) => {
     sortError.value = readContentErrorMessage(err, '纪念日排序未保存，已恢复原顺序，请重试')
@@ -478,6 +502,16 @@ function emitSimpleSaved(message) {
   })
 }
 
+/** 排序成功由页面统一弹窗反馈，使用明确 action 字段，避免匹配提示文字。 */
+function emitReorderSaved(message) {
+  emit('saved', {
+    action: 'reorder',
+    kind: 'success',
+    message,
+    dirtyAfterSave: dirty.value,
+  })
+}
+
 watch(dirty, () => emit('update:dirty', dirty.value))
 
 /** 统一的覆盖前确认：只有真正 dirty 时才询问。 */
@@ -540,6 +574,13 @@ async function startNew(event) {
 function focusTitle() {
   nextTick(() => {
     titleInputRef.value?.focus({ preventScroll: true })
+  })
+}
+
+/** 必填校验失败时聚焦真实控件。 */
+function focusById(id) {
+  nextTick(() => {
+    document.getElementById(id)?.focus?.({ preventScroll: true })
   })
 }
 
@@ -616,10 +657,12 @@ async function save() {
   error.value = ''
   if (!form.title.trim()) {
     error.value = '纪念日名称不能为空'
+    focusTitle()
     return
   }
   if (!form.anniversaryDate) {
     error.value = '请选择纪念日期'
+    focusById('studio-anniversary-date')
     return
   }
   const colorCode = normalizeHexColor(form.colorCode)

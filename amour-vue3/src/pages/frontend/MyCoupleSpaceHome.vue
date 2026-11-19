@@ -236,7 +236,7 @@
                   <span class="absolute left-3 top-3 rounded-full bg-white/85 px-3 py-1 text-[10px] font-bold tracking-wider text-rose-500 shadow-sm backdrop-blur-sm">CHAPTER {{ String(i + 1).padStart(2, '0') }}</span>
                 </div>
                 <div class="flex flex-col p-4 sm:p-5">
-                  <time class="text-xs font-bold tracking-[0.14em] text-rose-400">{{ formatTime(item.happenedTime) }}</time>
+                  <time class="text-xs font-bold tracking-[0.14em] text-rose-400">{{ formatTime(item.happenedTime, item.showTime) }}</time>
                   <h3 class="mt-3 font-display text-xl font-bold text-rose-950 sm:text-2xl">{{ item.title }}</h3>
                   <p class="mt-3 line-clamp-3 text-sm leading-7 text-rose-800/55">{{ item.summary || '这一天的故事，被我们认真地收藏了起来。' }}</p>
                   <span class="mt-auto inline-flex items-center gap-2 pt-6 text-xs font-bold text-rose-500">
@@ -406,7 +406,7 @@ import CoupleHeroPhoto from '@/components/frontend/CoupleHeroPhoto.vue'
 import api from '@/axios'
 import { hasFrontendQueryPermission } from '@/utils/auth'
 import { useFrontendSpace } from '@/composables/useFrontendSpace'
-import { formatSpaceDateTime } from '@/utils/spaceFormat'
+import { formatSpaceDateTime, formatSpaceContentDateTime } from '@/utils/spaceFormat'
 import { SPACE_STATUS, hasLiveSpace, isUnbindPendingForPartner } from '@/utils/spaceState'
 import { dismissUnbindPrompt, isUnbindPromptDismissed } from '@/utils/spaceUnbindPrompt'
 import { HOME_STORY_LIMIT, loadSpaceHomeStories } from '@/utils/spaceHomeStories'
@@ -678,13 +678,8 @@ async function loadHomeConfig() {
   }
 }
 
-function formatTime(iso) {
-  if (!iso) return ''
-  const d = new Date(iso)
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}.${m}.${day}`
+function formatTime(iso, showTime) {
+  return formatSpaceContentDateTime(iso, showTime, '')
 }
 
 /**

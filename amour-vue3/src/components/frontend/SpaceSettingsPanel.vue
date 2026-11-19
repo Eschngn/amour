@@ -1,77 +1,127 @@
 <template>
-  <div class="space-y-6">
-    <SpaceSettingsOverview />
-
+  <div class="grid gap-5 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
     <!--
-      日常管理区：按「基础信息 → 成员与邀请 → 公开与审核 → 内容管理」分组。
-      等待绑定时父页面通过 after-overview 插槽在这里插入邀请区（成员与邀请组的核心内容）。
+      桌面端：左侧纵向分区导航，右侧只渲染当前分区。
+      移动端：导航变为顶部横向滚动条，分区内容落在下方，不产生横向溢出。
     -->
-    <div class="space-y-6">
-      <SpaceBasicInfoSection
-        ref="basicInfoRef"
-        :can-edit="canEditSpaceInfo"
-        :read-only-reason="readOnlyReason"
-        @saved="onBasicInfoSaved"
-      />
+    <aside class="min-w-0 lg:sticky lg:top-24" aria-label="空间设置分区导航">
+      <div class="rounded-2xl border border-stone-200/80 bg-white p-2 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
+        <p class="px-3 pb-1.5 pt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-stone-400">设置分区</p>
 
-      <slot name="after-overview" />
-
-      <div
-        v-if="members.length > 1"
-        id="space-members"
-        class="panel scroll-mt-24"
-        aria-labelledby="space-members-heading"
-      >
-        <header class="panel-header">
-          <div class="min-w-0">
-            <p class="section-kicker">成员与邀请</p>
-            <h2 id="space-members-heading" class="mt-1 section-title">空间成员</h2>
-            <p class="mt-1 text-xs leading-5 text-stone-500">
-              {{ membersHint }}
-            </p>
-          </div>
-        </header>
-
-        <ul class="divide-y divide-stone-100 px-5 sm:px-6">
-          <li
-            v-for="member in members"
-            :key="member.amourId || member.displayName"
-            class="flex items-center gap-3 py-3"
+        <nav
+          class="flex gap-1.5 overflow-x-auto px-1 py-1 lg:flex-col lg:overflow-visible"
+          aria-label="空间设置分区"
+        >
+          <button
+            v-for="section in availableSections"
+            :key="section.key"
+            type="button"
+            class="group flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 lg:w-full"
+            :class="activeSection === section.key
+              ? 'bg-rose-50 text-rose-800 ring-1 ring-inset ring-rose-200'
+              : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'"
+            :aria-current="activeSection === section.key ? 'page' : undefined"
+            @click="selectSection(section.key)"
           >
-            <span class="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-rose-100 text-xs font-bold text-rose-700">
-              {{ memberInitial(member) }}
-              <img
-                v-if="member.avatar"
-                :src="member.avatar"
-                alt=""
-                class="absolute inset-0 h-full w-full object-cover"
-                @error="$event.currentTarget.style.display = 'none'"
-              >
+            <span
+              class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-[10px] font-bold"
+              :class="activeSection === section.key
+                ? 'border-rose-200 bg-white text-rose-600'
+                : 'border-stone-200 bg-white text-stone-400 group-hover:text-rose-500'"
+              aria-hidden="true"
+            >
+              {{ sectionIndex(section.key) }}
             </span>
-            <div class="min-w-0">
-              <p class="truncate text-sm font-semibold text-stone-900">{{ member.displayName || '恋人' }}</p>
-              <p class="text-[11px] text-stone-500">
-                {{ memberRoleText(member) }}
-                <span v-if="member.amourId"> · 恋语 ID {{ member.amourId }}</span>
-              </p>
-            </div>
-          </li>
-        </ul>
+            <span class="min-w-0">
+              <span class="block whitespace-nowrap text-sm font-semibold">{{ section.label }}</span>
+              <span class="mt-0.5 hidden truncate text-[11px] text-stone-400 lg:block">{{ section.hint }}</span>
+            </span>
+          </button>
+        </nav>
+      </div>
+    </aside>
+
+    <div class="min-w-0 space-y-5" role="region" :aria-label="activeSectionLabel">
+      <!-- 空间概况：概览、基础信息、内容编辑入口按层级排列在同一分区内。 -->
+      <div v-if="activeSection === 'overview'" class="space-y-5">
+        <SpaceSettingsOverview />
+        <SpaceBasicInfoSection
+          ref="basicInfoRef"
+          :can-edit="canEditSpaceInfo"
+          :read-only-reason="readOnlyReason"
+          @saved="onBasicInfoSaved"
+        />
+        <SpaceContentEntrySection :can-open-studio="canOpenStudio" />
       </div>
 
-      <SpaceVisibilitySection @changed="onChildChanged" />
+      <!-- 邀请与成员共用一个导航位置：由服务器返回的绑定状态动态选择内容。 -->
+      <template v-else-if="activeSection === 'partner'">
+        <slot v-if="showInviteSection" name="after-overview" />
+        <div
+          v-else
+          id="space-members"
+          class="panel scroll-mt-24"
+          aria-labelledby="space-members-heading"
+        >
+          <header class="panel-header">
+            <div class="min-w-0">
+              <p class="section-kicker">成员与邀请</p>
+              <h2 id="space-members-heading" class="mt-1 section-title">空间成员</h2>
+              <p class="mt-1 text-xs leading-5 text-stone-500">
+                {{ membersHint }}
+              </p>
+            </div>
+          </header>
 
-      <SpaceContentEntrySection :can-open-studio="canOpenStudio" />
+          <ul class="divide-y divide-stone-100 px-5 sm:px-6">
+            <li
+              v-for="member in members"
+              :key="member.amourId || member.displayName"
+              class="flex items-center gap-3 py-3"
+            >
+              <span class="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-rose-100 text-xs font-bold text-rose-700">
+                {{ memberInitial(member) }}
+                <img
+                  v-if="member.avatar"
+                  :src="member.avatar"
+                  alt=""
+                  class="absolute inset-0 h-full w-full object-cover"
+                  @error="$event.currentTarget.style.display = 'none'"
+                >
+              </span>
+              <div class="min-w-0">
+                <p class="truncate text-sm font-semibold text-stone-900">{{ member.displayName || '恋人' }}</p>
+                <p class="text-[11px] text-stone-500">
+                  {{ memberRoleText(member) }}
+                  <span v-if="member.amourId"> · 恋语 ID {{ member.amourId }}</span>
+                </p>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </template>
+
+      <SpaceVisibilitySection
+        v-else-if="activeSection === 'visibility'"
+        @changed="onChildChanged"
+      />
+
+      <SpaceDangerZone
+        v-else-if="activeSection === 'danger'"
+        @changed="onChildChanged"
+      />
+
+      <section v-else class="studio-empty">
+        <p class="text-sm font-semibold text-stone-800">当前没有可用的设置分区</p>
+        <p class="mt-1 text-xs leading-5 text-stone-500">请刷新空间状态，或返回恋爱广场后再试。</p>
+      </section>
     </div>
-
-    <!-- 危险操作区固定在日常设置之后，独立成区，不再吸顶或悬浮 -->
-    <SpaceDangerZone @changed="onChildChanged" />
   </div>
 </template>
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import 'element-plus/es/components/message/style/css'
 import SpaceSettingsOverview from '@/components/frontend/space-settings/SpaceSettingsOverview.vue'
@@ -81,27 +131,44 @@ import SpaceContentEntrySection from '@/components/frontend/space-settings/Space
 import SpaceDangerZone from '@/components/frontend/space-settings/SpaceDangerZone.vue'
 import { useFrontendSpace } from '@/composables/useFrontendSpace'
 import { formatMemberRole } from '@/utils/spaceFormat'
+import { confirmDiscardChanges } from '@/utils/unsavedChanges'
 import {
   canEditSpaceBasicInfo,
   canEditSpaceContent,
   spaceBasicInfoReadOnlyReason,
 } from '@/utils/spaceState'
+import {
+  buildSpaceSettingsSections,
+  canShowInviteSection,
+  canShowMembersSection,
+  resolveAvailableSettingsSection,
+  resolveSettingsHashSection,
+  settingsSectionHash,
+} from '@/utils/spaceSettingsSections'
 
 /**
  * 空间设置面板（信息架构入口）。
  *
- * 页面结构：
- * 1. 顶部概览：名称、状态、成员、必要时间、刷新；
- * 2. 日常管理：基础信息 → 成员与邀请（等待绑定时由父页面插槽注入邀请区）→ 公开与审核 → 内容管理；
- * 3. 危险操作：恢复 / 解绑 / 销毁，位于日常设置之后，不再使用右侧吸顶栏。
+ * 结构（四组）：
+ * - 空间概况：概览、基础信息与内容编辑入口；
+ * - 邀请另一半 / 空间成员：共用同一导航位置，由服务器绑定状态动态决定；
+ * - 公开与审核：公开状态、审核状态与现有操作；
+ * - 空间操作：恢复、解绑、销毁。
  *
- * 本组件只做编排与共享状态读取，具体写操作由各分组组件自己持有提交锁
- * （useSpaceSettingsWriteLock 是模块级共享锁，因此跨组件的写操作天然互斥）。
+ * 桌面端左侧纵向导航 + 右侧按层级组织的内容；移动端导航横向滚动。
+ * 分区可用性由 spaceSettingsSections 统一推导，不可用分区直接隐藏；
+ * 本组件只做编排与共享状态读取，具体写操作由各分组组件自己持有提交锁。
  */
+const props = defineProps({
+  /** 测试 / 受控场景可直接指定初始分区；留空时按 URL hash 解析。 */
+  initialSection: { type: String, default: '' },
+})
+
 const emit = defineEmits(['changed'])
 
 const { spaceStatus } = useFrontendSpace()
 const route = useRoute()
+const router = useRouter()
 
 const basicInfoRef = ref(null)
 
@@ -111,12 +178,38 @@ const members = computed(() => (
 const canEditSpaceInfo = computed(() => canEditSpaceBasicInfo(spaceStatus.value))
 const readOnlyReason = computed(() => spaceBasicInfoReadOnlyReason(spaceStatus.value))
 const canOpenStudio = computed(() => canEditSpaceContent(spaceStatus.value))
-/**
- * 成员卡片只在真正有两名成员时出现。
- *
- * 等待绑定时「成员与邀请」的内容已经是父页面注入的邀请区，
- * 再补一张只含自己的成员卡会重复分组标题、拉长页面。
- */
+
+const sections = computed(() => buildSpaceSettingsSections(spaceStatus.value))
+/** 导航只展示可用分区，不再保留灰色禁用项或用说明重复占位。 */
+const availableSections = computed(() => sections.value.filter(section => section.available))
+const showInviteSection = computed(() => canShowInviteSection(spaceStatus.value)
+  && !canShowMembersSection(spaceStatus.value))
+
+/** 兼容测试 / 旧调用传入的旧分区 key，统一归并到四组。 */
+function normalizeInitialSection(value) {
+  const key = String(value || '').trim()
+  if (!key) return resolveSettingsHashSection(route?.hash)
+  if (key === 'overview' || key === 'partner' || key === 'visibility' || key === 'danger') return key
+  if (key === 'basic-info' || key === 'content-entry') return 'overview'
+  if (key === 'invite-partner' || key === 'members') return 'partner'
+  return resolveSettingsHashSection(key.startsWith('#') ? key : `#${key}`)
+}
+
+function resolveInitialSection() {
+  const requested = normalizeInitialSection(props.initialSection)
+  return resolveAvailableSettingsSection(requested || 'overview', sections.value) || 'overview'
+}
+
+const activeSection = ref(resolveInitialSection())
+const activeSectionLabel = computed(() => (
+  sections.value.find(section => section.key === activeSection.value)?.label || '空间设置'
+))
+
+function sectionIndex(key) {
+  const index = availableSections.value.findIndex(section => section.key === key)
+  return index < 0 ? '' : String(index + 1).padStart(2, '0')
+}
+
 const membersHint = computed(() => '两位成员都已加入，空间内容对双方可见。')
 
 function memberInitial(member) {
@@ -125,6 +218,42 @@ function memberInitial(member) {
 
 function memberRoleText(member) {
   return formatMemberRole(member?.memberRole ?? member?.role)
+}
+
+/** 同步地址栏 hash，便于刷新 / 分享时回到同一个分区。 */
+function syncSectionHash(section) {
+  if (!section || typeof router?.replace !== 'function') return
+  const hash = settingsSectionHash(section.key, sections.value)
+  if (!hash || route?.hash === hash) return
+  router.replace({ query: route?.query || {}, hash })
+}
+
+/**
+ * 切换分区。
+ *
+ * 空间概况包含可能处于编辑态的基础信息：离开前按未保存修改规则确认，
+ * 避免点击导航时静默丢失草稿。
+ */
+async function selectSection(key) {
+  const section = sections.value.find(item => item.key === key)
+  if (!section || !section.available) return
+  if (key === activeSection.value) {
+    scrollToSection(section.anchor)
+    return
+  }
+  if (activeSection.value === 'overview' && basicInfoRef.value?.hasUnsavedChanges?.()) {
+    const confirmed = await confirmDiscardChanges('切换分区会丢失当前未保存的空间信息修改，确定继续吗？')
+    if (!confirmed) return
+  }
+  activeSection.value = key
+  syncSectionHash(section)
+  await nextTick()
+  scrollToSection(section.anchor)
+}
+
+function scrollToSection(anchor) {
+  if (typeof document === 'undefined' || !anchor) return
+  document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 function onBasicInfoSaved(payload) {
@@ -138,49 +267,42 @@ function onChildChanged(payload) {
 }
 
 /**
- * 保留既有 hash 锚点定位行为。
- *
- * 外部入口仍在使用这些锚点：
+ * 旧 hash 深链仍可直接打开对应分区：
  * - `#space-unbind`：情侣空间首页的解绑提醒跳转；
- * - `#space-invite-partner`：空间内容编辑页「去邀请另一半」；
- * - `#space-destroy` / `#space-basic-info`：旧入口与文档链接。
- *
- * 重构后危险操作区在页面底部，锚点目标依旧存在，因此这里只需按 hash 滚动，
- * 不再需要每个区域自己监听。
+ * - `#space-invite-partner`：空间编辑页「邀请另一半」；
+ * - `#space-destroy` / `#space-basic-info`：旧入口与文档链接；
+ * - 危险操作内部的锚点在打开危险分区后继续按元素定位。
  */
-const HASH_SCROLL_TARGETS = new Set([
-  'space-overview',
-  'space-basic-info',
-  'space-invite-partner',
-  'space-members',
-  'space-visibility',
-  'space-content-entry',
-  'space-danger-zone',
-  'space-restore',
-  'space-unbind',
-  'space-destroy',
-])
-
 async function scrollToHash() {
-  if (typeof document === 'undefined') return
+  if (typeof document === 'undefined') return false
   const hash = String(route?.hash || '').replace(/^#/, '')
-  if (!HASH_SCROLL_TARGETS.has(hash)) return
+  const sectionKey = resolveSettingsHashSection(hash)
+  if (!sectionKey) return false
+  const section = sections.value.find(item => item.key === sectionKey)
+  if (!section?.available) return false
   await nextTick()
-  const target = document.getElementById(hash)
-  if (!target) return false
-  target.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  return true
+  const rawTarget = document.getElementById(hash)
+  if (rawTarget) {
+    rawTarget.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    return true
+  }
+  // 邀请 / 成员共用分区：另一种状态的目标不存在时，落到当前实际内容的锚点。
+  if (hash === 'space-invite-partner' || hash === 'space-members') {
+    const fallback = document.getElementById(section.anchor)
+    if (!fallback) return false
+    fallback.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    return true
+  }
+  // 概览 / 危险操作的子锚点尚未渲染时返回 false，保留重试，避免只滚到分区顶部。
+  return false
 }
 
 /**
  * 首屏定位需要重试：
- * - 面板内的审核状态卡等区域是异步加载的，加载完成后上方内容变高，
- *   一次性滚动可能在高度稳定前就被「顶回去」；
- * - 直接打开 /space/setup#hash 时，空间状态也可能比面板挂载稍晚到达。
- *
- * 因此在短时间内重试若干次，命中后即停止；页面卸载时清理定时器。
+ * - 直接打开 /space/setup#hash 时，空间状态可能比面板挂载稍晚到达；
+ * - 分区切换后内容高度变化，一次滚动可能被后续渲染顶回去。
  */
-const HASH_SCROLL_RETRY_DELAYS = [0, 250, 700, 1500]
+const HASH_SCROLL_RETRY_DELAYS = [0, 250, 700, 1500, 2500]
 let hashScrollTimers = []
 
 function scheduleHashScroll() {
@@ -197,7 +319,56 @@ function clearHashScrollTimers() {
   hashScrollTimers = []
 }
 
-onMounted(() => {
+/**
+ * hash 变化时切换到对应分区；不可用时保持当前分区。
+ *
+ * 浏览器前进 / 后退或手动改 hash 同样可能离开基础信息编辑态，
+ * 因此与点击导航一样先确认未保存修改，拒绝时把地址栏恢复到当前分区。
+ */
+async function applyHashSection({ initial = false } = {}) {
+  const sectionKey = resolveSettingsHashSection(route?.hash)
+  if (!sectionKey) return false
+  const section = sections.value.find(item => item.key === sectionKey)
+  if (!section?.available) return false
+  if (activeSection.value === sectionKey) return true
+  if (!initial && activeSection.value === 'overview' && basicInfoRef.value?.hasUnsavedChanges?.()) {
+    const confirmed = await confirmDiscardChanges('切换分区会丢失当前未保存的空间信息修改，确定继续吗？')
+    if (!confirmed) {
+      const current = sections.value.find(item => item.key === activeSection.value)
+      if (current) syncSectionHash(current)
+      return false
+    }
+  }
+  activeSection.value = sectionKey
+  return true
+}
+
+watch(() => route?.hash, async () => {
+  await applyHashSection()
+  scheduleHashScroll()
+})
+
+/** 空间状态变化后，当前分区可能不再适用：回落到第一个可用分区。 */
+watch(sections, (next) => {
+  const resolved = resolveAvailableSettingsSection(activeSection.value, next)
+  if (resolved && resolved !== activeSection.value) activeSection.value = resolved
+  // 仅邀请 ↔ 成员切换需要同步锚点；概览子锚点与危险操作子锚点必须保留原始定位。
+  const current = next.find(section => section.key === activeSection.value)
+  const hash = String(route?.hash || '')
+  if (current?.key === 'partner'
+    && (hash === '#space-invite-partner' || hash === '#space-members')
+    && hash !== `#${current.anchor}`) {
+    syncSectionHash(current)
+  }
+  // 空间状态到达后，子区域才真正渲染；继续按原 hash 定位。
+  if (hash) scheduleHashScroll()
+})
+
+onMounted(async () => {
+  await applyHashSection({ initial: true })
+  const sectionKey = resolveSettingsHashSection(route?.hash)
+  if (!sectionKey) return
+  await nextTick()
   scheduleHashScroll()
 })
 
@@ -205,20 +376,12 @@ onBeforeUnmount(() => {
   clearHashScrollTimers()
 })
 
-watch(() => route?.hash, () => {
-  scheduleHashScroll()
-})
-
-// 空间状态刷新后区域可能才出现（例如刷新后才渲染出解绑入口），补一次定位。
-watch(
-  () => spaceStatus.value?.revision,
-  () => { scheduleHashScroll() },
-)
-
 /** 兼容旧调用：父页面/测试可以要求直接打开基础信息编辑。 */
-function focusBasicInfo() {
+async function focusBasicInfo() {
+  await selectSection('overview')
+  await nextTick()
   basicInfoRef.value?.startEditing?.()
 }
 
-defineExpose({ focusBasicInfo })
+defineExpose({ focusBasicInfo, selectSection, activeSection })
 </script>

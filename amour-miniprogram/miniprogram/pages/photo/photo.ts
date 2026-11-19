@@ -18,6 +18,7 @@ interface PhotoRecord {
   categoryName: string
   url: string
   takenTime: string
+  showTime?: boolean
   location: string
 }
 
@@ -30,6 +31,15 @@ interface PhotoPageResult {
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback
+}
+
+/** 仅日期模式隐藏时分秒；其余（含历史缺失字段）展示到秒。 */
+function formatPhotoDate(value: string, showTime?: boolean) {
+  if (!value) return '日期未记录'
+  const date = value.slice(0, 10).replace(/-/g, '.')
+  if (showTime === false) return date
+  const clock = value.slice(11, 19)
+  return clock ? `${date} ${clock}` : date
 }
 
 Component(withComponentPageViewTracking({
@@ -107,7 +117,7 @@ Component(withComponentPageViewTracking({
           title: item.title || '未命名照片',
           description: item.description || '这一页还没有写下文字。',
           categoryName: item.categoryName || '共同回忆',
-          date: item.takenTime ? item.takenTime.slice(0, 10).replace(/-/g, '.') : '日期未记录',
+          date: formatPhotoDate(item.takenTime, item.showTime),
           location: item.location || '',
           number: String((currentPage - 1) * PAGE_SIZE + index + 1).padStart(2, '0'),
         }))

@@ -360,6 +360,7 @@ test('验收 13：已有情侣空间的老用户功能不受影响（完整 Tab 
     'pages/story/story',
     'pages/photo/photo',
     'pages/message/message',
+    'pages/space-studio/index',
   ]) {
     navigations.length = 0
     const allowed = await accessControl.guardPageReady(route)

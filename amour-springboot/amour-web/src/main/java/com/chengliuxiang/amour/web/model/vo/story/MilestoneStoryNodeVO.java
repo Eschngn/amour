@@ -17,5 +17,6 @@ public class MilestoneStoryNodeVO {
     private String title;
     private String summary;
     private LocalDateTime happenedTime;
+    private Boolean showTime;
     private String coverImage;
 }

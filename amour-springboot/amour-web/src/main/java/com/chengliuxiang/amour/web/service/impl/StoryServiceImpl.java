@@ -43,6 +43,7 @@ public class StoryServiceImpl implements StoryService {
                         .title(storyNodeDO.getTitle())
                         .summary(storyNodeDO.getSummary())
                         .happenedTime(storyNodeDO.getHappenedTime())
+                        .showTime(storyNodeDO.getShowTime() == null || storyNodeDO.getShowTime())
                         .coverImage(storyNodeDO.getCoverImage())
                         .build())
                 .collect(Collectors.toList());
@@ -119,6 +120,7 @@ public class StoryServiceImpl implements StoryService {
                         .content(storyNodeDO.getContent())
                         .coverImage(storyNodeDO.getCoverImage())
                         .happenedTime(storyNodeDO.getHappenedTime())
+                        .showTime(storyNodeDO.getShowTime() == null || storyNodeDO.getShowTime())
                         .location(storyNodeDO.getLocation())
                         .isMilestone(storyNodeDO.getIsMilestone())
                         .tagLabel(storyNodeDO.getTagLabel())
@@ -170,6 +172,7 @@ public class StoryServiceImpl implements StoryService {
                 .content(current.getContent())
                 .coverImage(current.getCoverImage())
                 .happenedTime(current.getHappenedTime())
+                .showTime(current.getShowTime() == null || current.getShowTime())
                 .location(current.getLocation())
                 .isMilestone(current.getIsMilestone())
                 .tagLabel(current.getTagLabel())
