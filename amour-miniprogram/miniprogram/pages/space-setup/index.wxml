@@ -43,8 +43,26 @@
           </view>
         </block>
 
-        <!-- 已有空间 + 等待另一半加入：邀请管理 + 销毁入口 -->
+        <!-- 已有空间 + 等待另一半加入：空间摘要 → 基础信息 → 邀请 → 内容编辑 → 危险操作 -->
         <block wx:elif="{{settingsView === 'waiting'}}">
+          <view class="section-card space-summary-card">
+            <text class="section-kicker">SPACE</text>
+            <text class="section-title">{{spaceName || '你们的情侣空间'}}</text>
+            <view class="summary-row">
+              <text class="summary-label">当前成员</text>
+              <text class="summary-value">{{memberCount ? memberCount + ' 位' : '等待加入'}}</text>
+            </view>
+            <view class="summary-row">
+              <text class="summary-label">空间状态</text>
+              <text class="summary-value">{{spaceStatusText || '等待绑定'}}</text>
+            </view>
+            <view class="summary-row">
+              <text class="summary-label">你的身份</text>
+              <text class="summary-value">{{space.creator ? '空间创建者' : '空间成员'}}</text>
+            </view>
+            <button class="secondary-button" bindtap="onOpenSpaceHome" hover-class="button-hover">进入情侣空间</button>
+          </view>
+
           <!--
             空间基础信息：等待另一半加入（status=0 且只有 1 名有效成员）时可编辑，
             另一半已加入后由后端拒绝（20064），页面只展示只读摘要。
@@ -65,10 +83,6 @@
             <!-- 只读摘要（非编辑态 / 不可编辑态） -->
             <block wx:if="{{!editingSpaceInfo}}">
               <view class="summary-row">
-                <text class="summary-label">空间名称</text>
-                <text class="summary-value">{{spaceInfo.spaceName || '我们的故事'}}</text>
-              </view>
-              <view class="summary-row">
                 <text class="summary-label">空间简介</text>
                 <text class="summary-value {{spaceInfo.description ? '' : 'is-placeholder'}}">{{spaceInfo.description || '还没有写简介'}}</text>
               </view>
@@ -76,7 +90,7 @@
                 <text class="summary-label">恋爱开始时间</text>
                 <text class="summary-value {{spaceInfo.loveStartTimeText ? '' : 'is-placeholder'}}">{{spaceInfo.loveStartTimeText || '未设置'}}</text>
               </view>
-              <text wx:if="{{!spaceInfoEditable}}" class="inline-note">另一半已经加入，空间名称、简介和恋爱开始时间不能再修改。</text>
+              <text wx:if="{{!spaceInfoEditable}}" class="inline-note">这里的基础信息只在等待另一半加入时可修改；展示内容仍可在「编辑空间内容 → 首页」更新。</text>
               <button
                 wx:if="{{spaceInfoEditable}}"
                 class="secondary-button"
@@ -147,15 +161,8 @@
             </block>
           </view>
 
-          <view class="section-card studio-entry-card">
-            <text class="section-kicker">SPACE STUDIO</text>
-            <text class="section-title">先布置空间</text>
-            <text class="section-note">另一半加入前也可以先编辑首页、故事、留言、相册和纪念日。等待绑定阶段内容默认仅自己可见，绑定完成后对方才能看到。</text>
-            <button class="primary-button" bindtap="onOpenStudio" hover-class="button-hover">编辑空间内容</button>
-          </view>
-
           <view class="section-card">
-            <text class="section-kicker">INVITE YOUR PARTNER</text>
+            <text class="section-kicker">INVITE</text>
             <text class="section-title">邀请另一半加入</text>
             <text class="section-note">生成邀请令牌后发给 Ta；对方在「我的 → 绑定情侣空间」中粘贴即可加入。</text>
             <view wx:if="{{createdInvitationLink}}" class="token-box">
@@ -166,21 +173,27 @@
             <block wx:if="{{canManageInvitations}}">
               <view wx:if="{{invitationLinkLoading}}" class="inline-loading"><view class="state-spinner small"></view><text>正在生成邀请…</text></view>
               <view wx:else class="button-row">
-                <button class="primary-button" bindtap="onCopyInvitation" hover-class="button-hover">复制邀请令牌</button>
-                <button class="secondary-button" bindtap="generateInvitationLink" hover-class="button-hover">{{invitationLinkError ? '重试生成邀请' : (createdInvitationLink ? '重新生成' : '生成邀请令牌')}}</button>
+                <button wx:if="{{createdInvitationLink}}" class="primary-button" bindtap="onCopyInvitation" hover-class="button-hover">复制邀请令牌</button>
+                <button class="{{createdInvitationLink ? 'secondary-button' : 'primary-button'}}" bindtap="generateInvitationLink" hover-class="button-hover">{{invitationLinkError ? '重试生成' : (createdInvitationLink ? '重新生成' : '生成邀请令牌')}}</button>
               </view>
             </block>
             <view wx:else class="inline-note">当前状态不能生成邀请：只有空间创建者、且成员人数不足 2 人时可以生成。</view>
+          </view>
+
+          <view class="section-card studio-entry-card">
+            <text class="section-kicker">SPACE STUDIO</text>
+            <text class="section-title">先布置空间</text>
+            <text class="section-note">可以编辑首页、故事、留言、相册和纪念日。等待绑定阶段内容仅自己可见，另一半加入后双方看到同一份内容。</text>
+            <button class="primary-button" bindtap="onOpenStudio" hover-class="button-hover">编辑空间内容</button>
           </view>
 
           <!--
             创建者销毁入口：仅在「当前用户是创建者 + 另一半尚未加入」时展示。
             前端隐藏只用于体验；服务端会再次校验创建者身份与成员关系，另一半已加入时拒绝。
           -->
-          <view wx:if="{{showDestroyEntry}}" class="section-card destroy-card">
-            <text class="section-kicker">DESTROY</text>
-            <text class="section-title">销毁并清空空间</text>
-            <text class="section-note">在另一半加入之前，你可以销毁并清空这个空间。销毁后双方都看不到空间和内容，用户侧不能自行恢复，只有平台管理员可以协助恢复。</text>
+          <view wx:if="{{showDestroyEntry}}" class="section-card danger-group">
+            <text class="danger-title">危险操作</text>
+            <text class="danger-note">另一半加入前可以销毁并清空空间。销毁后双方都看不到空间和内容，用户侧不能自行恢复，只有平台管理员可以协助恢复。</text>
             <view wx:if="{{destroyBlockReason}}" class="inline-note">{{destroyBlockReason}}</view>
             <view wx:if="{{destroyError}}" class="inline-error">{{destroyError}}</view>
             <button
@@ -194,9 +207,10 @@
         </block>
 
         <!-- 已有空间且另一半已加入：只读摘要 + 明确说明为什么不能销毁 -->
+        <!-- 已有空间且另一半已加入：一份摘要承载成员、状态、基础信息与入口 -->
         <block wx:elif="{{settingsView === 'ready'}}">
-          <view class="section-card">
-            <text class="section-kicker">SPACE SUMMARY</text>
+          <view class="section-card space-summary-card">
+            <text class="section-kicker">SPACE</text>
             <text class="section-title">{{spaceName || '你们的情侣空间'}}</text>
             <view class="summary-row">
               <text class="summary-label">当前成员</text>
@@ -210,12 +224,9 @@
               <text class="summary-label">你的身份</text>
               <text class="summary-value">{{space.creator ? '空间创建者' : '空间成员'}}</text>
             </view>
-          </view>
 
-          <!-- 空间基础信息：另一半已加入后只读，不出现编辑入口 -->
-          <view class="section-card space-info-card">
-            <text class="section-kicker">SPACE INFO</text>
-            <text class="section-title">空间信息</text>
+            <view class="card-divider"></view>
+
             <view class="summary-row">
               <text class="summary-label">空间名称</text>
               <text class="summary-value">{{spaceInfo.spaceName || '我们的故事'}}</text>
@@ -228,21 +239,14 @@
               <text class="summary-label">恋爱开始时间</text>
               <text class="summary-value {{spaceInfo.loveStartTimeText ? '' : 'is-placeholder'}}">{{spaceInfo.loveStartTimeText || '未设置'}}</text>
             </view>
-            <text class="inline-note">另一半已经加入，空间名称、简介和恋爱开始时间不能再修改。</text>
-          </view>
 
-          <view class="section-card destroy-card">
-            <text class="section-kicker">DESTROY</text>
-            <text class="section-title">不能销毁这个空间</text>
-            <text class="section-note">{{destroyBlockReason || '当前状态不支持销毁这个空间。'}}</text>
-            <view class="inline-note">另一半已经加入后，请通过解绑流程处理双方关系；销毁只在另一半加入前可用。</view>
-          </view>
+            <text class="inline-note">这里的基础信息只在等待另一半加入时可修改；另一半加入后，展示内容仍可在「编辑空间内容 → 首页」更新。</text>
 
-          <view class="section-card">
-            <text class="section-title">空间入口</text>
-            <text class="section-note">回到情侣空间首页，查看故事、相册与留言。</text>
-            <button class="secondary-button" bindtap="onOpenSpaceHome" hover-class="button-hover">进入情侣空间</button>
-            <button class="secondary-button" bindtap="onOpenStudio" hover-class="button-hover">编辑空间内容</button>
+            <view class="button-row">
+              <button class="primary-button" bindtap="onOpenStudio" hover-class="button-hover">编辑空间内容</button>
+              <button class="secondary-button" bindtap="onOpenSpaceHome" hover-class="button-hover">进入情侣空间</button>
+            </view>
+            <text class="danger-hint">{{destroyBlockReason || '另一半已加入，当前不能销毁空间；如需结束关系，请通过解绑流程处理。'}}</text>
           </view>
         </block>
 
@@ -273,17 +277,10 @@
       </block>
 
       <!-- ==================== 创建 / 绑定模式（原有行为） ==================== -->
-      <!-- 已创建但等待另一半加入：只展示邀请区，不再展示创建表单 -->
+      <!-- 已创建但等待另一半加入：只展示邀请与内容准备，不再展示创建表单 -->
       <block wx:elif="{{waiting}}">
-        <view class="section-card studio-entry-card">
-          <text class="section-kicker">SPACE STUDIO</text>
-          <text class="section-title">先布置空间</text>
-          <text class="section-note">另一半加入前也可以先编辑首页、故事、留言、相册和纪念日。等待绑定阶段内容默认仅自己可见，绑定完成后对方才能看到。</text>
-          <button class="primary-button" bindtap="onOpenStudio" hover-class="button-hover">编辑空间内容</button>
-        </view>
-
         <view class="section-card">
-          <text class="section-kicker">INVITE YOUR PARTNER</text>
+          <text class="section-kicker">INVITE</text>
           <text class="section-title">邀请另一半加入</text>
           <text class="section-note">生成邀请令牌后发给 Ta；对方在「我的 → 绑定情侣空间」中粘贴即可加入。</text>
           <view wx:if="{{invitationLinkLoading}}" class="inline-loading"><view class="state-spinner small"></view><text>正在生成邀请…</text></view>
@@ -294,26 +291,26 @@
             </view>
             <view wx:if="{{invitationLinkError}}" class="inline-error">{{invitationLinkError}}</view>
             <view class="button-row">
-              <button class="primary-button" bindtap="onCopyInvitation" hover-class="button-hover">复制邀请令牌</button>
-              <button class="secondary-button" bindtap="generateInvitationLink" loading="{{invitationLinkLoading}}" hover-class="button-hover">重新生成</button>
+              <button wx:if="{{createdInvitationLink}}" class="primary-button" bindtap="onCopyInvitation" hover-class="button-hover">复制邀请令牌</button>
+              <button class="{{createdInvitationLink ? 'secondary-button' : 'primary-button'}}" bindtap="generateInvitationLink" loading="{{invitationLinkLoading}}" hover-class="button-hover">{{createdInvitationLink ? '重新生成' : '生成邀请令牌'}}</button>
             </view>
           </block>
         </view>
-        <view class="section-card">
-          <text class="section-kicker">NEXT STEP</text>
-          <text class="section-title">先自己逛逛吧</text>
-          <text class="section-note">另一半加入后，故事、相册、留言等完整功能会自动出现在底部导航里。</text>
-          <button class="secondary-button" bindtap="goProfile" hover-class="button-hover">去「我的」看看</button>
+
+        <view class="section-card studio-entry-card">
+          <text class="section-kicker">SPACE STUDIO</text>
+          <text class="section-title">先布置空间</text>
+          <text class="section-note">可以编辑首页、故事、留言、相册和纪念日。等待绑定阶段内容仅自己可见，另一半加入后双方看到同一份内容。</text>
+          <button class="primary-button" bindtap="onOpenStudio" hover-class="button-hover">编辑空间内容</button>
         </view>
 
         <!--
           创建者销毁入口：仅在「当前用户是创建者 + 另一半尚未加入」时展示。
           前端隐藏只用于体验；服务端会再次校验创建者身份与成员关系，另一半已加入时拒绝。
         -->
-        <view wx:if="{{showDestroyEntry}}" class="section-card destroy-card">
-          <text class="section-kicker">DESTROY</text>
-          <text class="section-title">销毁并清空空间</text>
-          <text class="section-note">在另一半加入之前，你可以销毁并清空这个空间。销毁后双方都看不到空间和内容，用户侧不能自行恢复，只有平台管理员可以协助恢复。</text>
+        <view wx:if="{{showDestroyEntry}}" class="section-card danger-group">
+          <text class="danger-title">危险操作</text>
+          <text class="danger-note">另一半加入前可以销毁并清空空间。销毁后双方都看不到空间和内容，用户侧不能自行恢复，只有平台管理员可以协助恢复。</text>
           <view wx:if="{{destroyBlockReason}}" class="inline-note">{{destroyBlockReason}}</view>
           <view wx:if="{{destroyError}}" class="inline-error">{{destroyError}}</view>
           <button
@@ -341,11 +338,11 @@
           <text class="section-note">创建后你将成为空间发起人，另一半需要通过邀请加入。</text>
           <view class="field">
             <text class="field-label">空间名称</text>
-            <input class="field-input" value="{{form.spaceName}}" maxlength="30" placeholder="例如：我们的故事" placeholder-class="field-placeholder" bindinput="onNameInput" />
+            <input class="field-input" value="{{form.spaceName}}" maxlength="30" cursor-spacing="120" placeholder="例如：我们的故事" placeholder-class="field-placeholder" bindinput="onNameInput" />
           </view>
           <view class="field">
             <text class="field-label">空间简介</text>
-            <textarea class="field-textarea" value="{{form.description}}" maxlength="500" placeholder="写一句只属于你们的话（可留空）" placeholder-class="field-placeholder" bindinput="onDescriptionInput"></textarea>
+            <textarea class="field-textarea" value="{{form.description}}" maxlength="500" cursor-spacing="120" auto-height placeholder="写一句只属于你们的话（可留空）" placeholder-class="field-placeholder" bindinput="onDescriptionInput"></textarea>
           </view>
           <view wx:if="{{createError}}" class="inline-error">{{createError}}</view>
           <button class="primary-button" bindtap="onCreate" loading="{{creating}}" disabled="{{creating}}" hover-class="button-hover">{{creating ? '正在创建…' : '创建情侣空间'}}</button>
@@ -358,7 +355,7 @@
           <text class="section-note">粘贴另一半发来的邀请链接或邀请令牌，确认后即可加入。</text>
           <view class="field">
             <text class="field-label">邀请链接或令牌</text>
-            <input class="field-input" value="{{invitationCode}}" placeholder="粘贴邀请链接或邀请令牌" placeholder-class="field-placeholder" bindinput="onInvitationInput" />
+            <input class="field-input" value="{{invitationCode}}" cursor-spacing="120" placeholder="粘贴邀请链接或邀请令牌" placeholder-class="field-placeholder" bindinput="onInvitationInput" />
           </view>
           <view wx:if="{{bindError}}" class="inline-error">{{bindError}}</view>
           <view wx:if="{{bindInfo}}" class="inline-note">{{bindInfo}}</view>

@@ -32,6 +32,20 @@ function formatLoveStartDate(value) {
 }
 
 /**
+ * 首页照片：只保留真实存在的地址。
+ *
+ * 两张都为空时不返回空壳项；只有一张时列表长度为 1，由 WXML 自然排布。
+ */
+function buildHeroPhotos(primary, secondary) {
+  const list = []
+  const first = trimText(primary)
+  const second = trimText(secondary)
+  if (first) list.push({ key: 'hero-1', url: first })
+  if (second) list.push({ key: 'hero-2', url: second })
+  return list
+}
+
+/**
  * SpaceHomeVO → 首页展示数据。
  *
  * 未配置时直接使用后端返回值（可能是成员资料、平台默认或空字符串），
@@ -42,16 +56,22 @@ function buildHomeView(home) {
   const boyName = trimText(source.boyName) || 'HE'
   const girlName = trimText(source.girlName) || 'SHE'
   const loveStartTime = trimText(source.loveStartTime)
+  const heroPhotoOne = trimText(source.heroPhoto1)
+  const heroPhotoTwo = trimText(source.heroPhoto2)
   return {
     spaceName: trimText(source.spaceName),
+    description: trimText(source.description),
+    canEdit: source.canEdit === true,
     boyName,
     girlName,
     boyAvatar: trimText(source.boyAvatar),
     girlAvatar: trimText(source.girlAvatar),
-    heroPhotoOne: trimText(source.heroPhoto1),
-    heroPhotoTwo: trimText(source.heroPhoto2),
+    heroPhotoOne,
+    heroPhotoTwo,
+    heroPhotos: buildHeroPhotos(heroPhotoOne, heroPhotoTwo),
     loveStartTime,
     loveStartDate: formatLoveStartDate(loveStartTime),
+    hasLoveStart: Boolean(loveStartTime),
     boyInitial: initialOf(boyName, 'HE'),
     girlInitial: initialOf(girlName, 'SHE'),
   }

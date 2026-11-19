@@ -25,6 +25,10 @@ test('空间首页直接使用 /space/home/query 返回值与来源字段', () =
   })
 
   assert.equal(view.spaceName, '我们的故事')
+  assert.equal(view.description, '只属于两个人')
+  assert.equal(view.canEdit, false, '缺少 canEdit 时不能默认开启编辑入口')
+  assert.equal(view.hasLoveStart, true)
+  assert.deepEqual(view.heroPhotos, [{ key: 'hero-1', url: 'https://cdn.example.com/hero.png' }])
   assert.equal(view.boyName, '橙子')
   assert.equal(view.girlName, '子怡')
   assert.equal(view.boyAvatar, 'https://cdn.example.com/boy.png')
@@ -57,7 +61,33 @@ test('未配置时使用后端默认名 HE / SHE，并保持日期为空', () =>
 test('空响应不会抛错，返回可用于占位的默认视图', () => {
   const view = buildHomeView(null)
   assert.equal(view.spaceName, '')
+  assert.equal(view.description, '')
+  assert.equal(view.canEdit, false)
   assert.equal(view.boyAvatar, '')
   assert.equal(view.heroPhotoOne, '')
+  assert.deepEqual(view.heroPhotos, [])
+  assert.equal(view.hasLoveStart, false)
   assert.equal(view.loveStartDate, '')
+})
+
+test('简介与展示字段会去除首尾空白，canEdit 只接受 true', () => {
+  const view = buildHomeView({
+    spaceName: '  小窝  ',
+    description: '  一起生活  ',
+    canEdit: true,
+    heroPhoto1: '  https://cdn.example.com/a.png  ',
+    heroPhoto2: 'https://cdn.example.com/b.png',
+  })
+  assert.equal(view.spaceName, '小窝')
+  assert.equal(view.description, '一起生活')
+  assert.equal(view.canEdit, true)
+  assert.deepEqual(view.heroPhotos, [
+    { key: 'hero-1', url: 'https://cdn.example.com/a.png' },
+    { key: 'hero-2', url: 'https://cdn.example.com/b.png' },
+  ])
+})
+
+test('只有一张照片时不生成空照片项', () => {
+  const view = buildHomeView({ heroPhoto1: '', heroPhoto2: 'https://cdn.example.com/only.png' })
+  assert.deepEqual(view.heroPhotos, [{ key: 'hero-2', url: 'https://cdn.example.com/only.png' }])
 })

@@ -2,11 +2,14 @@
 
 <scroll-view class="page-scroll" scroll-y bounces="{{false}}" type="list" enhanced show-scrollbar="false">
   <view class="studio-page">
-    <view class="studio-hero">
-      <text class="hero-kicker">SPACE STUDIO</text>
-      <text class="hero-title">{{spaceName || '我们的故事'}}</text>
-      <text class="hero-copy">{{canEditContent ? '首页、故事、留言、相册和纪念日都在这里编辑；保存后会同步到你们的空间。' : '先确认空间状态，再开始编辑内容。'}}</text>
+    <view class="studio-header">
+      <view class="studio-heading">
+        <text class="studio-kicker">空间编辑</text>
+        <text class="studio-title">{{spaceName || '我们的故事'}}</text>
+      </view>
+      <text class="studio-state {{canEditContent ? 'is-ok' : 'is-warn'}}">{{canEditContent ? '可编辑' : '暂不可编辑'}}</text>
     </view>
+    <text class="studio-note">{{canEditContent ? '选择一个栏目开始编辑；保存后会同步到你们的空间。' : '先确认空间状态，再开始编辑内容。'}}</text>
 
     <view wx:if="{{loading}}" class="state-card">
       <view class="state-spinner"></view>
@@ -66,32 +69,41 @@
           <button class="retry-button" bindtap="onRetryReview">重试</button>
         </view>
 
-        <view wx:if="{{review}}" class="section-card review-card">
-          <view class="section-head">
-            <text class="section-kicker">PUBLIC REVIEW</text>
-            <text class="section-title">公开审核状态</text>
+        <view wx:if="{{review}}" class="review-card {{reviewNeedsAttention ? 'is-attention' : ''}}">
+          <view class="review-head" bindtap="onToggleReview" hover-class="review-hover" aria-role="button" aria-label="展开或收起公开审核详情">
+            <view class="review-copy">
+              <text class="review-title">公开审核</text>
+              <text class="review-summary">{{reviewSummary}}</text>
+            </view>
+            <text class="review-toggle">{{reviewExpanded ? '收起' : '详情'}}</text>
           </view>
-          <view class="summary-row">
-            <text class="summary-label">空间展示</text>
-            <text class="summary-value">{{review.visibilityText || (review.visibility === 1 ? '公开中' : '私密')}}</text>
+
+          <view wx:if="{{reviewExpanded}}" class="review-details">
+            <view class="summary-row">
+              <text class="summary-label">空间展示</text>
+              <text class="summary-value">{{review.visibilityText || (review.visibility === 1 ? '公开中' : '私密')}}</text>
+            </view>
+            <view class="summary-row">
+              <text class="summary-label">审核进度</text>
+              <text class="summary-value">{{review.pending ? '有待审核的修改' : (review.lastReviewStatusText || '暂无待审核内容')}}</text>
+            </view>
+            <text wx:if="{{review.message}}" class="inline-note">{{review.message}}</text>
+            <text wx:if="{{review.restoredToPublished}}" class="inline-note">最近一次提交已恢复为当前公开版本，没有待审核项。</text>
+            <view wx:if="{{review.rejectedItems && review.rejectedItems.length}}" class="reject-list">
+              <text wx:for="{{review.rejectedItems}}" wx:key="itemId" class="reject-item">· {{item.itemTypeText || item.itemType}}：{{item.title || '内容'}} — {{item.rejectReason || '未通过审核'}}</text>
+            </view>
           </view>
-          <view class="summary-row">
-            <text class="summary-label">审核进度</text>
-            <text class="summary-value">{{review.pending ? '有待审核的修改' : (review.lastReviewStatusText || '暂无待审核内容')}}</text>
+
+          <!-- 待审核 / 驳回时把重新提交入口放在折叠区之外，保证始终可发现 -->
+          <view wx:if="{{review.canResubmit}}" class="review-actions">
+            <button
+              class="primary-button small"
+              bindtap="onResubmitReview"
+              loading="{{resubmitting}}"
+              disabled="{{resubmitting}}"
+              hover-class="button-hover"
+            >{{resubmitting ? '正在提交…' : '重新提交公开审核'}}</button>
           </view>
-          <text wx:if="{{review.message}}" class="inline-note">{{review.message}}</text>
-          <text wx:if="{{review.restoredToPublished}}" class="inline-note">最近一次提交已恢复为当前公开版本，没有待审核项。</text>
-          <view wx:if="{{review.rejectedItems && review.rejectedItems.length}}" class="reject-list">
-            <text wx:for="{{review.rejectedItems}}" wx:key="itemId" class="reject-item">· {{item.itemTypeText || item.itemType}}：{{item.title || '内容'}} — {{item.rejectReason || '未通过审核'}}</text>
-          </view>
-          <button
-            wx:if="{{review.canResubmit}}"
-            class="primary-button"
-            bindtap="onResubmitReview"
-            loading="{{resubmitting}}"
-            disabled="{{resubmitting}}"
-            hover-class="button-hover"
-          >{{resubmitting ? '正在提交…' : '重新提交公开审核'}}</button>
         </view>
 
         <!-- ==================== 首页 ==================== -->
@@ -109,105 +121,118 @@
 
           <view wx:else class="section-card">
             <view class="section-head">
-              <text class="section-kicker">HOME</text>
-              <text class="section-title">空间首页与双方展示</text>
-              <text class="section-note">空间公开后，这些修改会先进入审核；审核期间恋爱广场继续展示上一次通过的版本。</text>
+              <text class="section-title">首页内容</text>
+              <text class="section-note">空间公开后，修改会先进入审核；审核期间恋爱广场继续展示上一次通过的版本。</text>
             </view>
 
-            <view class="field">
-              <text class="field-label">空间名称</text>
-              <input class="field-input" value="{{homeForm.spaceName}}" maxlength="30" placeholder="例如：我们的故事" placeholder-class="field-placeholder" data-form="homeForm" data-field="spaceName" bindinput="onFormInput" />
-            </view>
-
-            <view class="field">
-              <text class="field-label">空间简介</text>
-              <textarea class="field-textarea" value="{{homeForm.description}}" maxlength="500" auto-height placeholder="写一句只属于你们的话（可留空）" placeholder-class="field-placeholder" data-form="homeForm" data-field="description" bindinput="onFormInput"></textarea>
-            </view>
-
-            <view class="field">
-              <text class="field-label">恋爱开始时间</text>
-              <view class="picker-row">
-                <picker mode="date" value="{{homeForm.loveDate}}" data-form="homeForm" data-field="loveDate" bindchange="onFormDateTimeChange" class="picker-cell">
-                  <view class="picker-value {{homeForm.loveDate ? '' : 'is-placeholder'}}">{{homeForm.loveDate || '选择日期'}}</view>
-                </picker>
-                <picker mode="time" value="{{homeForm.loveTime}}" data-form="homeForm" data-field="loveTime" bindchange="onFormDateTimeChange" class="picker-cell">
-                  <view class="picker-value {{homeForm.loveTime ? '' : 'is-placeholder'}}">{{homeForm.loveTime || '选择时间'}}</view>
-                </picker>
-                <button class="clear-button" data-form="homeForm" data-date-field="loveDate" data-time-field="loveTime" bindtap="onClearFormDateTime" hover-class="button-hover">清空</button>
-              </view>
-            </view>
-
-            <view class="field">
-              <text class="field-label">首页照片一</text>
-              <view class="image-field">
-                <image wx:if="{{homeForm.heroPhoto1}}" class="image-preview" src="{{homeForm.heroPhoto1}}" mode="aspectFill"></image>
-                <view wx:else class="image-placeholder"><text>尚未上传照片</text></view>
-                <view class="image-actions">
-                  <button
-                    class="secondary-button small"
-                    data-form="homeForm"
-                    data-field="heroPhoto1"
-                    data-uploading="homeUploadingField"
-                    bindtap="onChooseImage"
-                    loading="{{homeUploadingField === 'heroPhoto1'}}"
-                    hover-class="button-hover"
-                  >{{homeForm.heroPhoto1 ? '更换照片一' : '上传照片一'}}</button>
-                  <button wx:if="{{homeForm.heroPhoto1}}" class="text-button" data-form="homeForm" data-field="heroPhoto1" bindtap="onClearImage">清除</button>
-                </view>
-              </view>
-            </view>
-
-            <view class="field">
-              <text class="field-label">首页照片二</text>
-              <view class="image-field">
-                <image wx:if="{{homeForm.heroPhoto2}}" class="image-preview" src="{{homeForm.heroPhoto2}}" mode="aspectFill"></image>
-                <view wx:else class="image-placeholder"><text>尚未上传照片</text></view>
-                <view class="image-actions">
-                  <button
-                    class="secondary-button small"
-                    data-form="homeForm"
-                    data-field="heroPhoto2"
-                    data-uploading="homeUploadingField"
-                    bindtap="onChooseImage"
-                    loading="{{homeUploadingField === 'heroPhoto2'}}"
-                    hover-class="button-hover"
-                  >{{homeForm.heroPhoto2 ? '更换照片二' : '上传照片二'}}</button>
-                  <button wx:if="{{homeForm.heroPhoto2}}" class="text-button" data-form="homeForm" data-field="heroPhoto2" bindtap="onClearImage">清除</button>
-                </view>
-              </view>
-            </view>
-
-            <view class="field-grid">
+            <!-- 分组一：空间信息 -->
+            <view class="form-section">
+              <text class="form-section-title">空间信息</text>
               <view class="field">
-                <text class="field-label">发起人展示名</text>
-                <input class="field-input" value="{{homeForm.boyName}}" maxlength="30" placeholder="留空使用个人昵称" placeholder-class="field-placeholder" data-form="homeForm" data-field="boyName" bindinput="onFormInput" />
+                <text class="field-label">空间名称</text>
+                <input class="field-input" value="{{homeForm.spaceName}}" maxlength="30" cursor-spacing="120" placeholder="例如：我们的故事" placeholder-class="field-placeholder" data-form="homeForm" data-field="spaceName" bindinput="onFormInput" />
               </view>
-              <view class="field">
-                <text class="field-label">另一半展示名</text>
-                <input class="field-input" value="{{homeForm.girlName}}" maxlength="30" placeholder="留空使用个人昵称" placeholder-class="field-placeholder" data-form="homeForm" data-field="girlName" bindinput="onFormInput" />
-              </view>
-            </view>
 
-            <view class="field">
-              <text class="field-label">发起人头像</text>
-              <view class="image-field compact">
-                <image wx:if="{{homeForm.boyAvatar}}" class="avatar-preview" src="{{homeForm.boyAvatar}}" mode="aspectFill"></image>
-                <view wx:else class="avatar-placeholder">头像</view>
-                <view class="image-actions">
-                  <button class="secondary-button small" data-form="homeForm" data-field="boyAvatar" data-uploading="homeUploadingField" bindtap="onChooseImage" loading="{{homeUploadingField === 'boyAvatar'}}" hover-class="button-hover">上传头像</button>
-                  <button wx:if="{{homeForm.boyAvatar}}" class="text-button" data-form="homeForm" data-field="boyAvatar" bindtap="onClearImage">清除</button>
+              <view class="field">
+                <text class="field-label">空间简介</text>
+                <textarea class="field-textarea" value="{{homeForm.description}}" maxlength="500" cursor-spacing="160" auto-height placeholder="写一句只属于你们的话（可留空）" placeholder-class="field-placeholder" data-form="homeForm" data-field="description" bindinput="onFormInput"></textarea>
+              </view>
+
+              <view class="field">
+                <text class="field-label">恋爱开始时间</text>
+                <view class="picker-row">
+                  <picker mode="date" value="{{homeForm.loveDate}}" data-form="homeForm" data-field="loveDate" bindchange="onFormDateTimeChange" class="picker-cell">
+                    <view class="picker-value {{homeForm.loveDate ? '' : 'is-placeholder'}}">{{homeForm.loveDate || '选择日期'}}</view>
+                  </picker>
+                  <picker mode="time" value="{{homeForm.loveTime}}" data-form="homeForm" data-field="loveTime" bindchange="onFormDateTimeChange" class="picker-cell">
+                    <view class="picker-value {{homeForm.loveTime ? '' : 'is-placeholder'}}">{{homeForm.loveTime || '选择时间'}}</view>
+                  </picker>
+                  <button class="clear-button" data-form="homeForm" data-date-field="loveDate" data-time-field="loveTime" bindtap="onClearFormDateTime" hover-class="button-hover">清空</button>
                 </view>
               </view>
             </view>
 
-            <view class="field">
-              <text class="field-label">另一半头像</text>
-              <view class="image-field compact">
-                <image wx:if="{{homeForm.girlAvatar}}" class="avatar-preview" src="{{homeForm.girlAvatar}}" mode="aspectFill"></image>
-                <view wx:else class="avatar-placeholder">头像</view>
-                <view class="image-actions">
-                  <button class="secondary-button small" data-form="homeForm" data-field="girlAvatar" data-uploading="homeUploadingField" bindtap="onChooseImage" loading="{{homeUploadingField === 'girlAvatar'}}" hover-class="button-hover">上传头像</button>
-                  <button wx:if="{{homeForm.girlAvatar}}" class="text-button" data-form="homeForm" data-field="girlAvatar" bindtap="onClearImage">清除</button>
+            <!-- 分组二：双方展示 -->
+            <view class="form-section">
+              <text class="form-section-title">双方展示</text>
+              <view class="field-grid">
+                <view class="field">
+                  <text class="field-label">发起人展示名</text>
+                  <input class="field-input" value="{{homeForm.boyName}}" maxlength="30" cursor-spacing="120" placeholder="留空使用个人昵称" placeholder-class="field-placeholder" data-form="homeForm" data-field="boyName" bindinput="onFormInput" />
+                </view>
+                <view class="field">
+                  <text class="field-label">另一半展示名</text>
+                  <input class="field-input" value="{{homeForm.girlName}}" maxlength="30" cursor-spacing="120" placeholder="留空使用个人昵称" placeholder-class="field-placeholder" data-form="homeForm" data-field="girlName" bindinput="onFormInput" />
+                </view>
+              </view>
+
+              <view class="field">
+                <text class="field-label">发起人头像</text>
+                <view class="image-field compact">
+                  <image wx:if="{{homeForm.boyAvatar}}" class="avatar-preview" src="{{homeForm.boyAvatar}}" mode="aspectFill"></image>
+                  <view wx:else class="avatar-placeholder">头像</view>
+                  <view class="image-actions">
+                    <button class="secondary-button small" data-form="homeForm" data-field="boyAvatar" data-uploading="homeUploadingField" bindtap="onChooseImage" loading="{{homeUploadingField === 'boyAvatar'}}" disabled="{{homeUploadingField === 'boyAvatar'}}" hover-class="button-hover">{{homeUploadingField === 'boyAvatar' ? '上传中…' : (homeForm.boyAvatar ? '更换头像' : '上传头像')}}</button>
+                    <button wx:if="{{homeForm.boyAvatar}}" class="text-button" data-form="homeForm" data-field="boyAvatar" bindtap="onClearImage">清除</button>
+                  </view>
+                </view>
+              </view>
+
+              <view class="field">
+                <text class="field-label">另一半头像</text>
+                <view class="image-field compact">
+                  <image wx:if="{{homeForm.girlAvatar}}" class="avatar-preview" src="{{homeForm.girlAvatar}}" mode="aspectFill"></image>
+                  <view wx:else class="avatar-placeholder">头像</view>
+                  <view class="image-actions">
+                    <button class="secondary-button small" data-form="homeForm" data-field="girlAvatar" data-uploading="homeUploadingField" bindtap="onChooseImage" loading="{{homeUploadingField === 'girlAvatar'}}" disabled="{{homeUploadingField === 'girlAvatar'}}" hover-class="button-hover">{{homeUploadingField === 'girlAvatar' ? '上传中…' : (homeForm.girlAvatar ? '更换头像' : '上传头像')}}</button>
+                    <button wx:if="{{homeForm.girlAvatar}}" class="text-button" data-form="homeForm" data-field="girlAvatar" bindtap="onClearImage">清除</button>
+                  </view>
+                </view>
+              </view>
+            </view>
+
+            <!-- 分组三：首页照片 -->
+            <view class="form-section">
+              <text class="form-section-title">首页照片</text>
+              <view class="field">
+                <text class="field-label">首页照片一</text>
+                <view class="image-field">
+                  <image wx:if="{{homeForm.heroPhoto1}}" class="image-preview" src="{{homeForm.heroPhoto1}}" mode="aspectFill"></image>
+                  <view wx:else class="image-placeholder"><text>尚未上传照片</text></view>
+                  <view class="image-actions">
+                    <button
+                      class="secondary-button small"
+                      data-form="homeForm"
+                      data-field="heroPhoto1"
+                      data-uploading="homeUploadingField"
+                      bindtap="onChooseImage"
+                      loading="{{homeUploadingField === 'heroPhoto1'}}"
+                      disabled="{{homeUploadingField === 'heroPhoto1'}}"
+                      hover-class="button-hover"
+                    >{{homeUploadingField === 'heroPhoto1' ? '上传中…' : (homeForm.heroPhoto1 ? '更换照片一' : '上传照片一')}}</button>
+                    <button wx:if="{{homeForm.heroPhoto1}}" class="text-button" data-form="homeForm" data-field="heroPhoto1" bindtap="onClearImage">清除</button>
+                  </view>
+                </view>
+              </view>
+
+              <view class="field">
+                <text class="field-label">首页照片二</text>
+                <view class="image-field">
+                  <image wx:if="{{homeForm.heroPhoto2}}" class="image-preview" src="{{homeForm.heroPhoto2}}" mode="aspectFill"></image>
+                  <view wx:else class="image-placeholder"><text>尚未上传照片</text></view>
+                  <view class="image-actions">
+                    <button
+                      class="secondary-button small"
+                      data-form="homeForm"
+                      data-field="heroPhoto2"
+                      data-uploading="homeUploadingField"
+                      bindtap="onChooseImage"
+                      loading="{{homeUploadingField === 'heroPhoto2'}}"
+                      disabled="{{homeUploadingField === 'heroPhoto2'}}"
+                      hover-class="button-hover"
+                    >{{homeUploadingField === 'heroPhoto2' ? '上传中…' : (homeForm.heroPhoto2 ? '更换照片二' : '上传照片二')}}</button>
+                    <button wx:if="{{homeForm.heroPhoto2}}" class="text-button" data-form="homeForm" data-field="heroPhoto2" bindtap="onClearImage">清除</button>
+                  </view>
                 </view>
               </view>
             </view>
@@ -215,9 +240,17 @@
             <text wx:if="{{homeError}}" class="inline-error">{{homeError}}</text>
             <button wx:if="{{homeError}}" class="secondary-button small" bindtap="onRetryHome" hover-class="button-hover">重新加载首页</button>
 
-            <view class="button-row">
-              <button class="primary-button" bindtap="onSaveHome" loading="{{homeSaving}}" disabled="{{homeSaving}}" hover-class="button-hover">{{homeSaving ? '正在保存…' : '保存首页'}}</button>
-              <button class="secondary-button" bindtap="onResetHome" disabled="{{homeSaving}}" hover-class="button-hover">重置</button>
+            <view wx:if="{{homeSyncError}}" class="sync-band">
+              <view class="sync-copy">
+                <text class="sync-title">{{homeSyncError}}</text>
+                <text class="sync-note">首页已经保存成功，只是空间状态还没同步；不需要重新保存。</text>
+              </view>
+              <button class="retry-button" bindtap="onRetryHomeSync" loading="{{homeSyncing}}" disabled="{{homeSyncing}}">{{homeSyncing ? '同步中…' : '重试同步'}}</button>
+            </view>
+
+            <view class="form-actions">
+              <button class="primary-button" bindtap="onSaveHome" loading="{{homeSaving}}" disabled="{{homeSaving || homeUploadingField}}" hover-class="button-hover">{{homeSaving ? '正在保存…' : '保存首页'}}</button>
+              <button class="secondary-button" bindtap="onResetHome" disabled="{{homeSaving || homeUploadingField}}" hover-class="button-hover">重置</button>
             </view>
           </view>
         </view>
@@ -242,7 +275,7 @@
               <text class="form-title">{{chapterForm.id ? '编辑章节' : '新建章节'}}</text>
               <view class="field">
                 <text class="field-label">章节名称</text>
-                <input class="field-input" value="{{chapterForm.name}}" maxlength="50" placeholder="例如：初见" placeholder-class="field-placeholder" data-form="chapterForm" data-field="name" bindinput="onFormInput" />
+                <input class="field-input" value="{{chapterForm.name}}" maxlength="50" cursor-spacing="120" placeholder="例如：初见" placeholder-class="field-placeholder" data-form="chapterForm" data-field="name" bindinput="onFormInput" />
               </view>
               <view class="field-grid">
                 <view class="field">
@@ -266,11 +299,13 @@
             <block wx:elif="{{chapters.length}}">
               <text class="form-title">章节</text>
               <view class="list-row" wx:for="{{chapters}}" wx:key="id">
-                <view class="row-copy">
-                  <text class="row-title">{{item.name || '未命名章节'}}</text>
-                  <text class="row-meta">{{item.nodeCount}} 个故事 · {{item.statusText}}</text>
+                <view class="row-main">
+                  <view class="row-copy">
+                    <text class="row-title">{{item.name || '未命名章节'}}</text>
+                    <text class="row-meta">{{item.nodeCount}} 个故事 · {{item.statusText}}</text>
+                  </view>
                 </view>
-                <view class="row-actions">
+                <view class="row-actions bar">
                   <button class="text-button" data-index="{{index}}" bindtap="onEditChapter">编辑</button>
                   <button class="text-button" data-index="{{index}}" data-direction="up" bindtap="onMoveChapter" disabled="{{storySorting}}">上移</button>
                   <button class="text-button" data-index="{{index}}" data-direction="down" bindtap="onMoveChapter" disabled="{{storySorting}}">下移</button>
@@ -302,15 +337,15 @@
               </view>
               <view class="field">
                 <text class="field-label">故事标题</text>
-                <input class="field-input" value="{{nodeForm.title}}" maxlength="100" placeholder="给这段故事起个名字" placeholder-class="field-placeholder" data-form="nodeForm" data-field="title" bindinput="onFormInput" />
+                <input class="field-input" value="{{nodeForm.title}}" maxlength="100" cursor-spacing="120" placeholder="给这段故事起个名字" placeholder-class="field-placeholder" data-form="nodeForm" data-field="title" bindinput="onFormInput" />
               </view>
               <view class="field">
                 <text class="field-label">摘要</text>
-                <textarea class="field-textarea" value="{{nodeForm.summary}}" maxlength="500" auto-height placeholder="一两句话概括这段故事" placeholder-class="field-placeholder" data-form="nodeForm" data-field="summary" bindinput="onFormInput"></textarea>
+                <textarea class="field-textarea" value="{{nodeForm.summary}}" maxlength="500" cursor-spacing="160" auto-height placeholder="一两句话概括这段故事" placeholder-class="field-placeholder" data-form="nodeForm" data-field="summary" bindinput="onFormInput"></textarea>
               </view>
               <view class="field">
                 <text class="field-label">正文</text>
-                <textarea class="field-textarea body" value="{{nodeForm.content}}" maxlength="20000" auto-height placeholder="写下完整故事…" placeholder-class="field-placeholder" data-form="nodeForm" data-field="content" bindinput="onFormInput"></textarea>
+                <textarea class="field-textarea body" value="{{nodeForm.content}}" maxlength="20000" cursor-spacing="200" auto-height placeholder="写下完整故事…" placeholder-class="field-placeholder" data-form="nodeForm" data-field="content" bindinput="onFormInput"></textarea>
               </view>
               <view class="field">
                 <text class="field-label">发生时间</text>
@@ -367,18 +402,20 @@
             <block wx:if="{{visibleNodes.length}}">
               <text class="form-title">故事列表</text>
               <view class="story-card" wx:for="{{visibleNodes}}" wx:key="id">
-                <image wx:if="{{item.coverImage}}" class="story-cover" src="{{item.coverImage}}" mode="aspectFill"></image>
-                <view class="story-copy">
-                  <text class="row-title">{{item.title || '未命名故事'}}</text>
-                  <text class="row-meta">{{item.chapterName || '未分章'}}{{item.happenedText ? ' · ' + item.happenedText : ''}}</text>
-                  <text wx:if="{{item.summary}}" class="row-summary">{{item.summary}}</text>
-                  <view class="tag-row">
-                    <text wx:if="{{item.milestoneText}}" class="tag">{{item.milestoneText}}</text>
-                    <text class="tag">{{item.visibilityText}}</text>
-                    <text wx:if="{{item.reviewText}}" class="tag review">{{item.reviewText}}</text>
+                <view class="story-main">
+                  <image wx:if="{{item.coverImage}}" class="story-cover" src="{{item.coverImage}}" mode="aspectFill"></image>
+                  <view class="story-copy">
+                    <text class="row-title">{{item.title || '未命名故事'}}</text>
+                    <text class="row-meta">{{item.chapterName || '未分章'}}{{item.happenedText ? ' · ' + item.happenedText : ''}}</text>
+                    <text wx:if="{{item.summary}}" class="row-summary">{{item.summary}}</text>
+                    <view class="tag-row">
+                      <text wx:if="{{item.milestoneText}}" class="tag">{{item.milestoneText}}</text>
+                      <text class="tag">{{item.visibilityText}}</text>
+                      <text wx:if="{{item.reviewText}}" class="tag review">{{item.reviewText}}</text>
+                    </view>
                   </view>
                 </view>
-                <view class="row-actions vertical">
+                <view class="row-actions bar">
                   <button class="text-button" data-index="{{index}}" bindtap="onEditNode">编辑</button>
                   <button class="text-button" data-index="{{index}}" data-direction="up" bindtap="onMoveNode" disabled="{{storySorting}}">上移</button>
                   <button class="text-button" data-index="{{index}}" data-direction="down" bindtap="onMoveNode" disabled="{{storySorting}}">下移</button>
@@ -414,11 +451,11 @@
               <text class="form-title">{{categoryForm.id ? '编辑分类' : '新建分类'}}</text>
               <view class="field">
                 <text class="field-label">分类名称</text>
-                <input class="field-input" value="{{categoryForm.categoryName}}" maxlength="50" placeholder="例如：日常" placeholder-class="field-placeholder" data-form="categoryForm" data-field="categoryName" bindinput="onFormInput" />
+                <input class="field-input" value="{{categoryForm.categoryName}}" maxlength="50" cursor-spacing="120" placeholder="例如：日常" placeholder-class="field-placeholder" data-form="categoryForm" data-field="categoryName" bindinput="onFormInput" />
               </view>
               <view class="field">
                 <text class="field-label">备注</text>
-                <input class="field-input" value="{{categoryForm.remark}}" maxlength="200" placeholder="选填" placeholder-class="field-placeholder" data-form="categoryForm" data-field="remark" bindinput="onFormInput" />
+                <input class="field-input" value="{{categoryForm.remark}}" maxlength="200" cursor-spacing="120" placeholder="选填" placeholder-class="field-placeholder" data-form="categoryForm" data-field="remark" bindinput="onFormInput" />
               </view>
               <view class="field">
                 <text class="field-label">启用分类</text>
@@ -433,11 +470,13 @@
 
             <block wx:if="{{photoCategories.length}}">
               <view class="list-row" wx:for="{{photoCategories}}" wx:key="id">
-                <view class="row-copy">
-                  <text class="row-title">{{item.categoryName || '未命名分类'}}</text>
-                  <text class="row-meta">{{item.isEnabled === false ? '已停用' : '启用中'}}{{item.remark ? ' · ' + item.remark : ''}}</text>
+                <view class="row-main">
+                  <view class="row-copy">
+                    <text class="row-title">{{item.categoryName || '未命名分类'}}</text>
+                    <text class="row-meta">{{item.isEnabled === false ? '已停用' : '启用中'}}{{item.remark ? ' · ' + item.remark : ''}}</text>
+                  </view>
                 </view>
-                <view class="row-actions">
+                <view class="row-actions bar">
                   <button class="text-button" data-index="{{index}}" bindtap="onEditCategory">编辑</button>
                   <button class="text-button" data-index="{{index}}" data-direction="up" bindtap="onMoveCategory" disabled="{{photoSorting}}">上移</button>
                   <button class="text-button" data-index="{{index}}" data-direction="down" bindtap="onMoveCategory" disabled="{{photoSorting}}">下移</button>
@@ -465,17 +504,18 @@
                   <image wx:if="{{photoForm.url}}" class="image-preview" src="{{photoForm.url}}" mode="aspectFill"></image>
                   <view wx:else class="image-placeholder"><text>尚未上传照片</text></view>
                   <view class="image-actions">
-                    <button class="secondary-button small" data-form="photoForm" data-field="url" data-uploading="photoUploading" bindtap="onChooseImage" loading="{{photoUploading}}" hover-class="button-hover">选择并上传照片</button>
+                    <button class="secondary-button small" data-form="photoForm" data-field="url" data-uploading="photoUploading" bindtap="onChooseImage" loading="{{photoUploading}}" disabled="{{photoUploading}}" hover-class="button-hover">{{photoUploading ? '上传中…' : (photoForm.url ? '更换照片' : '选择并上传照片')}}</button>
+                    <button wx:if="{{photoForm.url}}" class="text-button" data-form="photoForm" data-field="url" bindtap="onClearImage">清除</button>
                   </view>
                 </view>
               </view>
               <view class="field">
                 <text class="field-label">照片标题</text>
-                <input class="field-input" value="{{photoForm.title}}" maxlength="100" placeholder="选填" placeholder-class="field-placeholder" data-form="photoForm" data-field="title" bindinput="onFormInput" />
+                <input class="field-input" value="{{photoForm.title}}" maxlength="100" cursor-spacing="120" placeholder="选填" placeholder-class="field-placeholder" data-form="photoForm" data-field="title" bindinput="onFormInput" />
               </view>
               <view class="field">
                 <text class="field-label">照片描述</text>
-                <textarea class="field-textarea" value="{{photoForm.description}}" maxlength="500" auto-height placeholder="选填" placeholder-class="field-placeholder" data-form="photoForm" data-field="description" bindinput="onFormInput"></textarea>
+                <textarea class="field-textarea" value="{{photoForm.description}}" maxlength="500" cursor-spacing="160" auto-height placeholder="选填" placeholder-class="field-placeholder" data-form="photoForm" data-field="description" bindinput="onFormInput"></textarea>
               </view>
               <view class="field">
                 <text class="field-label">拍摄时间</text>
@@ -492,7 +532,7 @@
               <view class="field-grid">
                 <view class="field">
                   <text class="field-label">拍摄地点</text>
-                  <input class="field-input" value="{{photoForm.location}}" maxlength="100" placeholder="选填" placeholder-class="field-placeholder" data-form="photoForm" data-field="location" bindinput="onFormInput" />
+                  <input class="field-input" value="{{photoForm.location}}" maxlength="100" cursor-spacing="120" placeholder="选填" placeholder-class="field-placeholder" data-form="photoForm" data-field="location" bindinput="onFormInput" />
                 </view>
                 <view class="field">
                   <text class="field-label">设为封面</text>
@@ -575,7 +615,7 @@
               <text class="form-title">{{anniversaryForm.id ? '编辑纪念日' : '新建纪念日'}}</text>
               <view class="field">
                 <text class="field-label">纪念日名称</text>
-                <input class="field-input" value="{{anniversaryForm.title}}" maxlength="100" placeholder="例如：在一起一周年" placeholder-class="field-placeholder" data-form="anniversaryForm" data-field="title" bindinput="onFormInput" />
+                <input class="field-input" value="{{anniversaryForm.title}}" maxlength="100" cursor-spacing="120" placeholder="例如：在一起一周年" placeholder-class="field-placeholder" data-form="anniversaryForm" data-field="title" bindinput="onFormInput" />
               </view>
               <view class="field">
                 <text class="field-label">日期</text>
@@ -600,16 +640,16 @@
               <view class="field-grid">
                 <view class="field">
                   <text class="field-label">主题色</text>
-                  <input class="field-input" value="{{anniversaryForm.colorCode}}" maxlength="20" placeholder="#D94F70" placeholder-class="field-placeholder" data-form="anniversaryForm" data-field="colorCode" bindinput="onFormInput" />
+                  <input class="field-input" value="{{anniversaryForm.colorCode}}" maxlength="20" cursor-spacing="120" placeholder="#D94F70" placeholder-class="field-placeholder" data-form="anniversaryForm" data-field="colorCode" bindinput="onFormInput" />
                 </view>
                 <view class="field">
                   <text class="field-label">地点</text>
-                  <input class="field-input" value="{{anniversaryForm.location}}" maxlength="100" placeholder="选填" placeholder-class="field-placeholder" data-form="anniversaryForm" data-field="location" bindinput="onFormInput" />
+                  <input class="field-input" value="{{anniversaryForm.location}}" maxlength="100" cursor-spacing="120" placeholder="选填" placeholder-class="field-placeholder" data-form="anniversaryForm" data-field="location" bindinput="onFormInput" />
                 </view>
               </view>
               <view class="field">
                 <text class="field-label">描述</text>
-                <textarea class="field-textarea" value="{{anniversaryForm.description}}" maxlength="500" auto-height placeholder="选填" placeholder-class="field-placeholder" data-form="anniversaryForm" data-field="description" bindinput="onFormInput"></textarea>
+                <textarea class="field-textarea" value="{{anniversaryForm.description}}" maxlength="500" cursor-spacing="160" auto-height placeholder="选填" placeholder-class="field-placeholder" data-form="anniversaryForm" data-field="description" bindinput="onFormInput"></textarea>
               </view>
               <view class="field">
                 <text class="field-label">可见性</text>
@@ -628,16 +668,18 @@
 
             <block wx:elif="{{anniversaries.length}}">
               <view class="list-row" wx:for="{{anniversaries}}" wx:key="id">
-                <view class="date-chip"><text class="date-day">{{item.dateText}}</text></view>
-                <view class="row-copy">
-                  <text class="row-title">{{item.title || '未命名纪念日'}}</text>
-                  <text class="row-meta">{{item.categoryText}} · {{item.repeatText}}{{item.location ? ' · ' + item.location : ''}}</text>
-                  <view class="tag-row">
-                    <text class="tag">{{item.visibilityText}}</text>
-                    <text wx:if="{{item.reviewText}}" class="tag review">{{item.reviewText}}</text>
+                <view class="row-main">
+                  <view class="date-chip"><text class="date-day">{{item.dateText}}</text></view>
+                  <view class="row-copy">
+                    <text class="row-title">{{item.title || '未命名纪念日'}}</text>
+                    <text class="row-meta">{{item.categoryText}} · {{item.repeatText}}{{item.location ? ' · ' + item.location : ''}}</text>
+                    <view class="tag-row">
+                      <text class="tag">{{item.visibilityText}}</text>
+                      <text wx:if="{{item.reviewText}}" class="tag review">{{item.reviewText}}</text>
+                    </view>
                   </view>
                 </view>
-                <view class="row-actions vertical">
+                <view class="row-actions bar">
                   <button class="text-button" data-index="{{index}}" bindtap="onEditAnniversary">编辑</button>
                   <button class="text-button" data-index="{{index}}" data-direction="up" bindtap="onMoveAnniversary" disabled="{{anniversarySorting}}">上移</button>
                   <button class="text-button" data-index="{{index}}" data-direction="down" bindtap="onMoveAnniversary" disabled="{{anniversarySorting}}">下移</button>
@@ -663,7 +705,7 @@
             </view>
 
             <view class="composer">
-              <textarea class="field-textarea" value="{{messageDraft}}" maxlength="500" auto-height placeholder="今天想对 Ta 说……" placeholder-class="field-placeholder" bindinput="onMessageDraftInput"></textarea>
+              <textarea class="field-textarea" value="{{messageDraft}}" maxlength="500" cursor-spacing="200" auto-height placeholder="今天想对 Ta 说……" placeholder-class="field-placeholder" bindinput="onMessageDraftInput"></textarea>
               <view class="composer-footer">
                 <text class="input-note">{{messageDraftLength}} / 500</text>
                 <button class="primary-button small" bindtap="onPublishMessage" loading="{{publishing}}" disabled="{{publishing}}" hover-class="button-hover">{{publishing ? '发布中…' : '发布留言'}}</button>
@@ -702,7 +744,7 @@
                 </view>
 
                 <view wx:if="{{replyTargetId === item.messageId}}" class="reply-composer">
-                  <textarea class="field-textarea" value="{{replyDraft}}" maxlength="500" auto-height placeholder="回复这条留言…" placeholder-class="field-placeholder" bindinput="onReplyInput"></textarea>
+                  <textarea class="field-textarea" value="{{replyDraft}}" maxlength="500" cursor-spacing="200" auto-height placeholder="回复这条留言…" placeholder-class="field-placeholder" bindinput="onReplyInput"></textarea>
                   <view class="button-row">
                     <button class="primary-button small" data-id="{{item.messageId}}" bindtap="onReplySubmit" loading="{{replying}}" disabled="{{replying}}" hover-class="button-hover">{{replying ? '发送中…' : '发送回复'}}</button>
                     <button class="secondary-button small" bindtap="onReplyCancel" disabled="{{replying}}" hover-class="button-hover">取消</button>

@@ -82,6 +82,29 @@ test('审核中的保存不能被描述成已公开', () => {
   assert.equal(rules.describeSaveReview({ changed: false }, '已保存').kind, 'stale')
 })
 
+test('审核摘要保持待审核与驳回状态可发现', () => {
+  const pending = rules.describeReview({ visibility: 1, pending: true, rejectedItems: [] })
+  assert.equal(pending.visibility, '公开中')
+  assert.match(pending.summary, /公开中/)
+  assert.match(pending.summary, /有待审核/)
+  assert.equal(pending.needsAttention, true)
+
+  const rejected = rules.describeReview({
+    visibilityText: '公开中',
+    pending: false,
+    rejectedItems: [{ itemId: 1 }, { itemId: 2 }],
+  })
+  assert.match(rejected.summary, /2 项未通过审核/)
+  assert.equal(rejected.hasRejected, true)
+  assert.equal(rejected.needsAttention, true)
+
+  const normal = rules.describeReview({ visibility: 0, lastReviewStatusText: '已公开' })
+  assert.equal(normal.summary, '私密 · 已公开')
+  assert.equal(normal.needsAttention, false)
+
+  assert.equal(rules.describeReview(null).summary, '私密 · 暂无待审核内容')
+})
+
 test('首页表单只回填空间配置本身，不把成员资料 / 平台默认值写成用户配置', () => {
   const form = rules.buildHomeForm({
     spaceName: '我们的故事',

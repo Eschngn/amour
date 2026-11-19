@@ -138,10 +138,13 @@ Page(withPageViewTracking({
     feedback: null,
     visibilityOptions: [],
 
-    /* 公开审核 */
+    /* 公开审核：默认只展示一行摘要，展开后再看驳回原因与详情 */
     review: null,
     reviewLoading: false,
     reviewError: '',
+    reviewExpanded: false,
+    reviewSummary: '',
+    reviewNeedsAttention: false,
     resubmitting: false,
 
     /* 首页 */
@@ -151,6 +154,9 @@ Page(withPageViewTracking({
     homeLoaded: false,
     homeForm: { ...EMPTY_HOME_FORM },
     homeUploadingField: '',
+    /** 首页保存成功但全局空间状态刷新失败：只提示并允许重试同步，不重复提交保存 */
+    homeSyncError: '',
+    homeSyncing: false,
 
     /* 故事 */
     storyLoading: true,
@@ -341,7 +347,16 @@ Page(withPageViewTracking({
       this.draftDirty = false
       // 让旧空间在途的审核状态响应失效，避免覆盖新空间。
       this.reviewRequestSeq += 1
-      this.setData({ draftDirty: false, feedback: null, review: null, reviewError: '' })
+      this.setData({
+        draftDirty: false,
+        feedback: null,
+        review: null,
+        reviewError: '',
+        reviewExpanded: false,
+        reviewSummary: '',
+        reviewNeedsAttention: false,
+        homeSyncError: '',
+      })
       this.loadReview()
       this.loadTab(activeTab)
       return
@@ -482,7 +497,13 @@ Page(withPageViewTracking({
     try {
       const review = await api.fetchSpaceReviewStatus()
       if (this.pageDisposed || requestId !== this.reviewRequestSeq) return
-      this.setData({ reviewLoading: false, review })
+      const summary = rules.describeReview(review)
+      this.setData({
+        reviewLoading: false,
+        review,
+        reviewSummary: summary.summary,
+        reviewNeedsAttention: summary.needsAttention,
+      })
     } catch (error) {
       if (this.pageDisposed || requestId !== this.reviewRequestSeq) return
       this.setData({
@@ -496,6 +517,11 @@ Page(withPageViewTracking({
     this.loadReview()
   },
 
+  /** 审核摘要展开 / 收起：详细原因按需查看，待审核与驳回状态始终在摘要中可见。 */
+  onToggleReview() {
+    this.setData({ reviewExpanded: !this.data.reviewExpanded })
+  },
+
   async onResubmitReview() {
     if (this.data.resubmitting) return
     if (!this.data.review || this.data.review.canResubmit !== true) return
@@ -505,7 +531,13 @@ Page(withPageViewTracking({
     try {
       const review = await api.resubmitSpaceReview()
       if (this.pageDisposed) return
-      this.setData({ resubmitting: false, review })
+      const summary = rules.describeReview(review)
+      this.setData({
+        resubmitting: false,
+        review,
+        reviewSummary: summary.summary,
+        reviewNeedsAttention: summary.needsAttention,
+      })
       const message = (review && (review.reviewMessage || review.message))
         || '已重新提交公开审核'
       this.showFeedback(review && review.changed === false ? 'stale' : 'success', message)
@@ -564,6 +596,8 @@ Page(withPageViewTracking({
     const field = String(dataset.field || '')
     if (!form || !field) return
     const uploadingKey = dataset.uploading || ''
+    // 同一字段上传期间不再重复唤起选择 / 上传，避免写入旧地址或重复提交。
+    if (uploadingKey && this.data[uploadingKey]) return
     const handleFile = async (filePath) => {
       if (!filePath) return
       if (uploadingKey) this.setData({ [uploadingKey]: true })
@@ -669,12 +703,17 @@ Page(withPageViewTracking({
 
   async onSaveHome() {
     if (!this.data.canEditContent || this.data.homeSaving) return
+    // 上传期间保存会把旧地址写回服务端，这里直接阻止并提示等待。
+    if (this.data.homeUploadingField) {
+      this.setData({ homeError: '图片正在上传，请等上传完成后再保存' })
+      return
+    }
     const validationError = rules.validateHomeForm(this.data.homeForm)
     if (validationError) {
       this.setData({ homeError: validationError })
       return
     }
-    this.setData({ homeSaving: true, homeError: '' })
+    this.setData({ homeSaving: true, homeError: '', homeSyncError: '' })
     try {
       const result = await api.saveSpaceHome(
         rules.buildHomePayload(this.data.homeForm, this.homeBaselineLoveStartTime),
@@ -693,16 +732,58 @@ Page(withPageViewTracking({
       const feedback = rules.describeSaveReview(result, '空间首页已保存')
       this.showFeedback(feedback.kind, feedback.message)
       this.loadReview()
-      // 空间名称 / 简介变化会影响全局空间上下文，保存后静默刷新。
-      sessionState.refreshAfterSpaceChange('space-studio:home-saved')
-        .then(snapshot => this.applySession(snapshot))
-        .catch(() => undefined)
+      // 空间名称 / 简介变化会影响全局空间上下文：刷新失败单独提示，不误报保存失败。
+      this.syncHomeStateAfterSave()
     } catch (error) {
       if (this.pageDisposed) return
       this.setData({
         homeSaving: false,
         homeError: this.handleContentError(error, '空间首页保存失败，请稍后重试'),
       })
+    }
+  },
+
+  /**
+   * 首页保存成功后的全局状态同步。
+   *
+   * 与保存写请求严格分开：失败只提示「已保存，状态同步失败」并提供重试，
+   * 绝不把已成功的保存说成失败，也不要求用户重新提交 /space/home/save。
+   */
+  async syncHomeStateAfterSave() {
+    if (this.data.homeSyncing) return
+    this.setData({ homeSyncing: true })
+    try {
+      const snapshot = await sessionState.refreshAfterSpaceChange('space-studio:home-saved')
+      if (this.pageDisposed) return
+      if (!snapshot || snapshot.status === SESSION_STATUS.ERROR) {
+        this.setData({ homeSyncing: false, homeSyncError: '已保存，状态同步失败' })
+        return
+      }
+      this.setData({ homeSyncing: false, homeSyncError: '' })
+      this.applySession(snapshot)
+    } catch (error) {
+      if (this.pageDisposed) return
+      this.setData({ homeSyncing: false, homeSyncError: '已保存，状态同步失败' })
+    }
+  },
+
+  /** 只重试状态同步，不重新提交首页保存。 */
+  async onRetryHomeSync() {
+    if (this.data.homeSyncing) return
+    this.setData({ homeSyncError: '', homeSyncing: true })
+    try {
+      const snapshot = await sessionState.refreshAfterSpaceChange('space-studio:home-sync-retry')
+      if (this.pageDisposed) return
+      if (!snapshot || snapshot.status === SESSION_STATUS.ERROR) {
+        this.setData({ homeSyncing: false, homeSyncError: '已保存，状态同步失败' })
+        return
+      }
+      this.setData({ homeSyncing: false })
+      wx.showToast({ title: '状态已同步', icon: 'success', duration: 1200 })
+      this.applySession(snapshot)
+    } catch (error) {
+      if (this.pageDisposed) return
+      this.setData({ homeSyncing: false, homeSyncError: '已保存，状态同步失败' })
     }
   },
 

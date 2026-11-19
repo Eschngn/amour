@@ -329,6 +329,38 @@ test('图片选择后先上传，表单只写入服务器返回的 URL', async (
   }
 })
 
+test('图片上传期间不重复上传，也不允许保存旧地址', async () => {
+  prepareSession(WAITING_SPACE, [])
+  handlers.set('/space/home/query', options => options.success(ok(HOME_DATA)))
+  handlers.set('/space/review/status', options => options.success(ok({ pending: false })))
+
+  const page = createPage()
+  page.onLoad({})
+  await settle()
+  try {
+    page.setData({ homeUploadingField: 'heroPhoto1' })
+    requests.length = 0
+    uploadCount = 0
+
+    page.onChooseImage({
+      currentTarget: {
+        dataset: { form: 'homeForm', field: 'heroPhoto1', uploading: 'homeUploadingField' },
+      },
+    })
+    assert.equal(uploadCount, 0, '同一字段上传中不能重复触发上传')
+
+    await page.onSaveHome()
+    assert.equal(
+      requests.some(item => item.path === '/space/home/save'),
+      false,
+      '上传中禁止保存，避免提交旧图片地址',
+    )
+    assert.match(page.data.homeError, /正在上传/)
+  } finally {
+    page.destroy()
+  }
+})
+
 test('状态刷新不会把用户从当前栏目拉回 URL 初始栏目；确认放弃后首页草稿被还原', async () => {
   prepareSession(NORMAL_SPACE, [
     'frontend:story:query',

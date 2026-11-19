@@ -76,7 +76,7 @@
           <button class="secondary-button" bindtap="onOpenSpaceStudio" hover-class="button-hover">编辑空间内容</button>
           <button class="secondary-button" bindtap="onOpenSpaceSettings" hover-class="button-hover">空间设置</button>
         </view>
-        <text class="space-card-tip">可以随时编辑空间内容；在「空间设置」里管理邀请、修改空间信息，或在另一半加入前销毁空间。</text>
+        <text class="space-card-tip">可以随时编辑空间内容；在「空间设置」里管理邀请与空间状态。空间名称、简介等基础信息在另一半加入前可修改。</text>
       </view>
 
       <!-- 账号同步错误提示 -->

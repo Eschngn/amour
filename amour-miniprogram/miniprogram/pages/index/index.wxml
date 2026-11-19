@@ -1,78 +1,197 @@
-<navigation-bar title="恋语间" back="{{false}}" color="#572c37" background="#fcf8f5"></navigation-bar>
+<navigation-bar title="我的空间" back="{{false}}" color="#4a3439" background="#fdf9f6"></navigation-bar>
 
-<scroll-view class="scrollarea" scroll-y bounces="{{false}}" type="list" enhanced show-scrollbar="false">
-  <view wx:if="{{pageBlocked}}" class="home-blocked">
-    <view class="blocked-spinner"></view>
-    <text class="blocked-note">正在确认情侣空间状态…</text>
+<scroll-view class="page-scroll" scroll-y bounces="{{false}}" type="list" enhanced show-scrollbar="false">
+  <view wx:if="{{pageBlocked}}" class="page-blocked">
+    <view class="state-spinner"></view>
+    <text class="state-text">正在确认情侣空间状态…</text>
   </view>
+
   <view wx:else class="home-page">
-    <view class="hero-section">
-      <view class="hero-copy">
-        <view class="eyebrow"><text class="eyebrow-dot"></text><text>{{boyName}} · {{girlName}} / OUR LITTLE UNIVERSE</text></view>
-        <text class="hero-title">把普通的日子，
-          <text class="hero-title-accent">过成两个人的纪念册</text>
-        </text>
-        <text class="hero-description">从相遇的那一刻起，时间有了温度，日常也有了值得反复翻阅的意义。</text>
-        <button wx:if="{{showStory}}" class="primary-button" bindtap="openStory" hover-class="button-hover">
-          <text>翻阅我们的故事</text><text class="button-arrow">→</text>
-        </button>
-      </view>
-
-      <view class="hero-visual">
-        <view class="orbit orbit-large"></view>
-        <view class="orbit orbit-small"></view>
-        <view class="photo-frame photo-frame-main">
-          <image wx:if="{{heroPhotoOne}}" class="hero-photo" src="{{heroPhotoOne}}" data-source="primary" mode="aspectFill" lazy-load="true" binderror="onPhotoError"></image>
-          <view wx:else class="hero-photo hero-photo-empty">
-            <text class="hero-photo-empty-heart">♥</text>
-            <text class="hero-photo-empty-text">尚未上传照片</text>
-          </view>
-          <view class="photo-caption"><text class="caption-label">OUR FAVORITE</text><text class="caption-title">Love in every frame</text><text class="caption-heart">♥</text></view>
-        </view>
-        <view class="photo-frame photo-frame-small">
-          <image wx:if="{{heroPhotoTwo}}" class="hero-photo" src="{{heroPhotoTwo}}" data-source="secondary" mode="aspectFill" lazy-load="true" binderror="onPhotoError"></image>
-          <view wx:else class="hero-photo hero-photo-empty">
-            <text class="hero-photo-empty-heart">♥</text>
-            <text class="hero-photo-empty-text">尚未上传照片</text>
-          </view>
-        </view>
-        <view class="together-badge">
-          <view class="avatar-stack">
-            <image wx:if="{{boyAvatar}}" class="mini-avatar" src="{{boyAvatar}}" mode="aspectFill" binderror="onAvatarError" data-source="boy"></image>
-            <view wx:else class="mini-avatar mini-avatar-fallback">{{boyInitial}}</view>
-            <image wx:if="{{girlAvatar}}" class="mini-avatar mini-avatar-overlap" src="{{girlAvatar}}" mode="aspectFill" binderror="onAvatarError" data-source="girl"></image>
-            <view wx:else class="mini-avatar mini-avatar-overlap mini-avatar-fallback">{{girlInitial}}</view>
-          </view>
-          <view class="together-copy"><text class="together-label">TOGETHER</text><text class="together-days">{{togetherDays}} DAYS</text></view>
-        </view>
-        <view class="since-note"><text class="since-label">SINCE</text><text class="since-date">{{loveStartDate || '开始日期待补充'}}</text></view>
-      </view>
+    <view wx:if="{{homeLoading && !homeLoaded}}" class="state-card">
+      <view class="state-spinner"></view>
+      <text class="state-text">正在读取空间信息…</text>
     </view>
 
-    <view class="time-section">
-      <view class="section-heading"><view><text class="section-kicker">OUR TIME</text><text class="section-title">我们已经一起走过</text></view><text class="section-aside">每一秒都值得被记住</text></view>
-      <view class="time-grid">
-        <view class="time-unit" wx:for="{{elapsedUnits}}" wx:key="label"><text class="time-value">{{item.value}}</text><text class="time-label">{{item.label}}</text></view>
-      </view>
+    <!-- 首次加载失败：给出可见说明与重试，而不是只写日志 -->
+    <view wx:elif="{{homeError && !homeLoaded}}" class="error-card">
+      <text class="error-title">空间信息加载失败</text>
+      <text class="error-note">{{homeError}}</text>
+      <button class="primary-button" bindtap="onRetryHome" hover-class="button-hover">重新加载</button>
     </view>
 
-    <view class="explore-section">
-      <view class="section-heading explore-heading"><view><text class="section-kicker">OUR CORNERS</text><text class="section-title">收藏每一种心动</text></view><text class="section-aside">故事、照片和想对彼此说的话</text></view>
-      <view class="quick-grid">
-        <view wx:if="{{showStory}}" class="quick-card quick-card-story" data-section="story" bindtap="openSection" hover-class="card-hover" aria-role="button" aria-label="查看我们的故事">
-          <view class="card-icon">✦</view><text class="card-title">我们的故事</text><text class="card-description">沿着时间线，重温一路走来的重要章节。</text><text class="card-link">{{storyStat}} <text>→</text></text>
+    <block wx:else>
+      <!-- 已有内容后的刷新失败：保留页面内容，只提供轻量重试 -->
+      <view wx:if="{{refreshError}}" class="refresh-band">
+        <view class="refresh-copy">
+          <text class="refresh-title">刷新失败，正在展示上次的内容</text>
+          <text class="refresh-note">{{refreshError}}</text>
         </view>
-        <view wx:if="{{showPhoto}}" class="quick-card quick-card-photo" data-section="photo" bindtap="openSection" hover-class="card-hover" aria-role="button" aria-label="打开恋爱相册">
-          <view class="card-icon">◫</view><text class="card-title">恋爱相册</text><text class="card-description">把旅行、日常和彼此的笑容装进同一本相册。</text><text class="card-link">打开相册 <text>→</text></text>
+        <button class="retry-button" bindtap="onRetryHome" loading="{{refreshing}}" disabled="{{refreshing}}">{{refreshing ? '重试中…' : '重试'}}</button>
+      </view>
+
+      <!-- ==================== 空间概览 ==================== -->
+      <view class="space-card">
+        <view class="space-head">
+          <view class="space-copy">
+            <text class="space-kicker">我们的空间</text>
+            <text class="space-name">{{spaceName || '我们的故事'}}</text>
+            <text class="space-meta">{{waitingForPartner ? '等待另一半加入' : (memberCount ? memberCount + ' 位成员' : '空间成员')}}</text>
+          </view>
+          <view class="space-avatars">
+            <image wx:if="{{boyAvatar}}" class="space-avatar" src="{{boyAvatar}}" mode="aspectFill" binderror="onAvatarError" data-source="boy"></image>
+            <view wx:else class="space-avatar avatar-fallback">{{boyInitial}}</view>
+            <block wx:if="{{waitingForPartner}}">
+              <view class="space-avatar avatar-overlap avatar-waiting">＋</view>
+            </block>
+            <block wx:else>
+              <image wx:if="{{girlAvatar}}" class="space-avatar avatar-overlap" src="{{girlAvatar}}" mode="aspectFill" binderror="onAvatarError" data-source="girl"></image>
+              <view wx:else class="space-avatar avatar-overlap avatar-fallback">{{girlInitial}}</view>
+            </block>
+          </view>
         </view>
-        <view wx:if="{{showMessage}}" class="quick-card quick-card-note" data-section="message" bindtap="openSection" hover-class="card-hover" aria-role="button" aria-label="打开悄悄话">
-          <view class="card-icon">♡</view><text class="card-title">悄悄话</text><text class="card-description">写下此刻想说的话，让温柔一直有迹可循。</text><text class="card-link">留一句话 <text>→</text></text>
+
+        <text class="space-description {{description ? '' : 'is-placeholder'}}">{{description || '还没有写简介。'}}</text>
+
+        <view class="member-row">
+          <view class="member-item">
+            <text class="member-name">{{boyName}}</text>
+            <text class="member-role">发起人</text>
+          </view>
+          <view class="member-heart">♥</view>
+          <view class="member-item">
+            <text class="member-name {{waitingForPartner ? 'is-waiting' : ''}}">{{waitingForPartner ? '等待 Ta 加入' : girlName}}</text>
+            <text class="member-role">{{waitingForPartner ? '邀请中' : '另一半'}}</text>
+          </view>
+        </view>
+
+        <view wx:if="{{waitingForPartner}}" class="waiting-band">
+          <view class="waiting-copy">
+            <text class="waiting-title">等待另一半加入</text>
+            <text class="waiting-note">邀请通过后，故事、相册和悄悄话就会一起解锁。</text>
+          </view>
+          <button class="secondary-button small" bindtap="onOpenInvite" hover-class="button-hover">管理邀请</button>
+        </view>
+
+        <view class="space-actions">
+          <button wx:if="{{canEdit}}" class="primary-button" bindtap="onEditSpace" hover-class="button-hover">编辑空间</button>
+          <button class="secondary-button" bindtap="onOpenSettings" hover-class="button-hover">空间设置</button>
+        </view>
+        <text wx:if="{{!canEdit}}" class="space-readonly-note">当前空间状态暂不支持编辑，可先在「空间设置」里确认状态。</text>
+      </view>
+
+      <!-- ==================== 在一起的时间 ==================== -->
+      <view class="time-card">
+        <text class="section-kicker">在一起</text>
+        <block wx:if="{{hasLoveStart}}">
+          <view class="time-main">
+            <text class="time-days">{{togetherDays}}</text>
+            <text class="time-unit">天</text>
+          </view>
+          <text class="time-since">从 {{loveStartDate}} 开始</text>
+          <view class="time-extra">
+            <view class="time-extra-item" wx:for="{{elapsedUnits}}" wx:key="label">
+              <text class="time-extra-value">{{item.value}}</text>
+              <text class="time-extra-label">{{item.label}}</text>
+            </view>
+          </view>
+        </block>
+        <block wx:else>
+          <text class="time-empty-title">尚未设置开始时间</text>
+          <text class="time-empty-note">设置后，这里会显示你们在一起的天数。</text>
+          <button wx:if="{{canEdit}}" class="secondary-button small" bindtap="onEditSpace" hover-class="button-hover">去设置</button>
+        </block>
+      </view>
+
+      <!-- ==================== 常用内容入口 ==================== -->
+      <view class="content-section">
+        <view class="section-head">
+          <text class="section-title">常用内容</text>
+          <text class="section-note">故事、照片和想说的话</text>
+        </view>
+
+        <view class="entry-list">
+          <view wx:if="{{showStory}}" class="entry-row" data-section="story" bindtap="openSection" hover-class="entry-hover" aria-role="button" aria-label="查看我们的故事">
+            <view class="entry-icon icon-story">✦</view>
+            <view class="entry-copy">
+              <text class="entry-title">我们的故事</text>
+              <text class="entry-note">{{storyStat}}</text>
+            </view>
+            <text class="entry-arrow">›</text>
+          </view>
+          <view wx:if="{{showPhoto}}" class="entry-row" data-section="photo" bindtap="openSection" hover-class="entry-hover" aria-role="button" aria-label="打开恋爱相册">
+            <view class="entry-icon icon-photo">◫</view>
+            <view class="entry-copy">
+              <text class="entry-title">恋爱相册</text>
+              <text class="entry-note">把旅行、日常和彼此的笑容收在一起</text>
+            </view>
+            <text class="entry-arrow">›</text>
+          </view>
+          <view wx:if="{{showMessage}}" class="entry-row" data-section="message" bindtap="openSection" hover-class="entry-hover" aria-role="button" aria-label="打开悄悄话">
+            <view class="entry-icon icon-message">♡</view>
+            <view class="entry-copy">
+              <text class="entry-title">悄悄话</text>
+              <text class="entry-note">写下此刻想对 Ta 说的话</text>
+            </view>
+            <text class="entry-arrow">›</text>
+          </view>
+          <view wx:if="{{showAnniversary && canEdit}}" class="entry-row" bindtap="onOpenAnniversary" hover-class="entry-hover" aria-role="button" aria-label="管理纪念日">
+            <view class="entry-icon icon-anniversary">♥</view>
+            <view class="entry-copy">
+              <text class="entry-title">纪念日</text>
+              <text class="entry-note">把重要的日子记下来，不再错过</text>
+            </view>
+            <text class="entry-arrow">›</text>
+          </view>
+        </view>
+
+        <view wx:if="{{!showStory && !showPhoto && !showMessage && !(showAnniversary && canEdit)}}" class="empty-state">
+          <text class="empty-title">暂无内容入口</text>
+          <text class="empty-note">当前账号还没有内容查询权限，请联系管理员开通。</text>
         </view>
       </view>
-    </view>
 
-    <view class="quote-section"><text class="quote-mark">“</text><text class="quote-text">时间会把答案写在我们一起走过的每一天里。</text><text class="quote-author">— FOR US, ALWAYS</text></view>
+      <!-- ==================== 空间照片 ==================== -->
+      <view class="content-section">
+        <view class="section-head">
+          <text class="section-title">空间照片</text>
+          <text wx:if="{{canEdit}}" class="section-link" bindtap="onEditSpace">去编辑</text>
+        </view>
+
+        <view wx:if="{{homePhotos.length}}" class="photo-grid {{homePhotos.length === 1 ? 'is-single' : ''}}">
+          <view
+            class="photo-cell"
+            wx:for="{{homePhotos}}"
+            wx:key="key"
+            data-index="{{index}}"
+            bindtap="onPreviewPhoto"
+            hover-class="photo-hover"
+          >
+            <image
+              wx:if="{{!item.failed}}"
+              class="photo-image"
+              src="{{item.url}}"
+              mode="aspectFill"
+              lazy-load="true"
+              data-index="{{index}}"
+              binderror="onPhotoError"
+            ></image>
+            <view wx:else class="photo-failed">
+              <text class="photo-failed-title">照片暂时无法显示</text>
+              <text class="photo-failed-note">可到「编辑空间」重新上传</text>
+            </view>
+          </view>
+        </view>
+
+        <view wx:else class="photos-empty">
+          <text class="photos-empty-title">还没有首页照片</text>
+          <text class="photos-empty-note">上传两张照片，让空间更像你们。</text>
+          <button wx:if="{{canEdit}}" class="secondary-button small" bindtap="onEditSpace" hover-class="button-hover">去上传</button>
+        </view>
+      </view>
+    </block>
+
     <view class="safe-bottom"></view>
   </view>
 </scroll-view>
+
 <bottom-nav current="home"></bottom-nav>

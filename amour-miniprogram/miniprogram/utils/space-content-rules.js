@@ -133,6 +133,38 @@ function reviewStatusLabel(status) {
 }
 
 /**
+ * 公开审核摘要（编辑页默认只展示一行）。
+ *
+ * 待审核 / 未通过必须出现在摘要里，保证折叠时仍然可发现；
+ * 详细原因、驳回条目与重新提交入口由页面按需展开。
+ */
+function describeReview(review) {
+  const source = review && typeof review === 'object' ? review : {}
+  const visibilityText = trimText(source.visibilityText)
+  const visibility = visibilityText || (Number(source.visibility) === 1 ? '公开中' : '私密')
+  const rejectedItems = Array.isArray(source.rejectedItems) ? source.rejectedItems : []
+  const pending = source.pending === true
+  const hasRejected = rejectedItems.length > 0
+  let progress = ''
+  if (pending) {
+    progress = '有待审核的修改'
+  } else if (hasRejected) {
+    progress = `${rejectedItems.length} 项未通过审核`
+  } else {
+    progress = trimText(source.lastReviewStatusText) || '暂无待审核内容'
+  }
+  return {
+    visibility,
+    progress,
+    summary: `${visibility} · ${progress}`,
+    pending,
+    hasRejected,
+    /** 需要保持可发现的异常状态（待审核 / 驳回） */
+    needsAttention: pending || hasRejected,
+  }
+}
+
+/**
  * 保存公开内容后的提示。
  *
  * 关键：审核中的编辑不能被说成“已公开”。
@@ -564,6 +596,7 @@ module.exports = {
   validateVisibility,
   REVIEW_STATUS_LABELS,
   reviewStatusLabel,
+  describeReview,
   describeSaveReview,
   HOME_CONFIG_KEYS,
   buildHomeForm,

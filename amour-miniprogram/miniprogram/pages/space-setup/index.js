@@ -1522,8 +1522,4 @@ Page(withPageViewTracking({
     this.setData({ loading: false })
     this.applySnapshot(snapshot)
   },
-
-  goProfile() {
-    wx.reLaunch({ url: PROFILE_ROUTE })
-  },
 }, 'pages/space-setup/index'))
