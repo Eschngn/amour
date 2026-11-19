@@ -34,6 +34,7 @@ const {
   resolveAccessRedirect,
   normalizeRoute,
 } = require('./session-rules')
+const { buildSpaceSetupUrl } = require('./space-setup-route')
 
 /** 从当前页面栈顶取路由（不含 query）。 */
 function resolveCurrentRoute() {
@@ -195,11 +196,17 @@ function redirectWithGuard(url, options) {
 }
 
 /**
- * 打开情侣空间创建 / 绑定页。
+ * 打开情侣空间页（创建 / 绑定 / 空间设置）。
  *
- * 入口统一走这里：先确认登录态，未登录先去登录，登录后回到本页继续创建 / 绑定。
+ * 入口统一走这里：先确认登录态，未登录先去登录，登录后回到本页。
  *
- * @param {'create'|'bind'|''} [action] 进入后默认展开的分区
+ * 三种入口：
+ * - 'create'：进入后默认展开创建分区；
+ * - 'bind'：进入后默认展开绑定分区；
+ * - 'settings'：已有空间的用户进入「空间设置」，停留本页管理邀请 / 销毁等，
+ *   不再被自动跳回情侣空间首页。
+ *
+ * @param {'create'|'bind'|'settings'|''} [action] 进入后默认展开的视图 / 分区
  * @returns {boolean} 是否已发起跳转
  */
 function openSpaceSetup(action) {
@@ -209,16 +216,16 @@ function openSpaceSetup(action) {
     toast('正在确认登录状态，请稍候')
     return false
   }
+  const url = buildSpaceSetupUrl(action)
   if (snapshot.status === SESSION_STATUS.UNAUTHENTICATED) {
     redirectToLogin(SPACE_SETUP_ROUTE)
     return true
   }
-  const suffix = action === 'create' || action === 'bind' ? `?action=${action}` : ''
   try {
     wx.navigateTo({
-      url: `${SPACE_SETUP_ROUTE}${suffix}`,
+      url,
       fail() {
-        relaunch(`${SPACE_SETUP_ROUTE}${suffix}`)
+        relaunch(url)
       },
     })
   } catch (error) {

@@ -77,6 +77,20 @@ public interface CoupleInvitationMapper extends BaseMapper<CoupleInvitationDO> {
                 .gt(CoupleInvitationDO::getExpiresAt, now));
     }
 
+    /**
+     * 统计空间内「曾被接受过」的邀请数量（status=1 已接受且有接受时间）。
+     *
+     * <p>销毁只允许发生在「另一半从未加入」的单人空间。成员行是最直接的证据，
+     * 但历史数据可能存在成员行被清理、只留下已接受邀请的情况；此时邀请接受记录
+     * 同样证明「曾经有另一半加入过」，销毁必须保守拒绝，而不是当成从未加入。</p>
+     */
+    default Long countAcceptedBySpaceId(Long spaceId) {
+        return selectCount(new LambdaQueryWrapper<CoupleInvitationDO>()
+                .eq(CoupleInvitationDO::getSpaceId, spaceId)
+                .eq(CoupleInvitationDO::getStatus, 1)
+                .isNotNull(CoupleInvitationDO::getAcceptedAt));
+    }
+
     default int insertInvitation(CoupleInvitationDO invitation) {
         return insert(invitation);
     }

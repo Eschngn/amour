@@ -425,3 +425,143 @@ page {
   opacity: 0.55;
   color: @rose-faint;
 }
+
+/* ============================================================
+   空间设置模式
+   - 空间摘要（成员 / 状态 / 身份）
+   - 返回兜底按钮
+   ============================================================ */
+
+.summary-row {
+  display: flex;
+  align-items: center;
+  margin-top: @space-3;
+  padding-top: @space-3;
+  border-top: 1rpx solid @rose-line;
+}
+
+.summary-label {
+  flex: none;
+  color: @rose-muted;
+  font-size: @font-sm;
+}
+
+.summary-value {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  color: @text-primary;
+  font-size: @font-sm;
+  font-weight: 600;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.back-row {
+  display: flex;
+  justify-content: center;
+  padding-top: @space-3;
+}
+
+.back-button {
+  padding: 0 @space-5;
+  border: 1rpx solid @rose-line-strong;
+  border-radius: @radius-pill;
+  background: transparent;
+  color: @rose-muted;
+  font-size: @font-xs;
+  line-height: 68rpx;
+}
+
+.back-button::after { border: 0; }
+
+/* ============================================================
+   空间基础信息（名称 / 简介 / 恋爱开始时间）
+   - 只读摘要沿用 .summary-row
+   - 编辑态用原生 picker，避免手输字符串造成的格式 / 时区问题
+   ============================================================ */
+
+.space-info-card .summary-value.is-placeholder { color: @rose-faint; font-weight: 500; }
+
+.field-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.field-counter {
+  flex: none;
+  margin-left: @space-2;
+  color: @rose-faint;
+  font-size: @font-xs;
+}
+
+.field-hint {
+  display: block;
+  margin-top: @space-1;
+  color: @rose-faint;
+  font-size: @font-xs;
+  line-height: 1.5;
+}
+
+/* 编辑态 textarea 自适应高度，避免软键盘弹出时被遮挡（只作用于空间信息卡片，
+   创建表单的 textarea 保持原有固定高度） */
+.space-info-card .field-textarea {
+  max-height: 320rpx;
+  min-height: 150rpx;
+}
+
+.picker-row {
+  display: flex;
+  align-items: center;
+  margin-top: @space-2;
+}
+
+.picker-cell { flex: 1; min-width: 0; }
+
+.picker-value {
+  height: 82rpx;
+  padding: 0 @space-3;
+  border: 1rpx solid @rose-line-strong;
+  border-radius: @radius-sm;
+  background: @bg-soft;
+  color: @text-primary;
+  font-size: @font-md;
+  line-height: 82rpx;
+  box-sizing: border-box;
+}
+
+.picker-value.is-placeholder { color: @rose-faint; }
+
+.picker-row .picker-cell + .picker-cell { margin-left: @space-2; }
+
+.clear-time-button {
+  width: 108rpx;
+  height: 82rpx;
+  flex: none;
+  margin: 0 0 0 @space-2;
+  padding: 0;
+  border: 1rpx solid @rose-line-strong;
+  border-radius: @radius-sm;
+  background: transparent;
+  color: @rose-muted;
+  font-size: @font-xs;
+  line-height: 80rpx;
+}
+
+.clear-time-button::after { border: 0; }
+
+/* 保存成功但状态同步失败：提示色，避免被误读成「保存失败」 */
+.space-info-sync-band {
+  display: flex;
+  align-items: center;
+  margin-top: @space-3;
+  padding: @space-3;
+  border: 1rpx solid @rose-primary-light;
+  border-radius: @radius-md;
+  background: @bg-rose-soft;
+  box-sizing: border-box;
+}
+
+.space-info-sync-band .error-title { color: @rose-primary-dark; }

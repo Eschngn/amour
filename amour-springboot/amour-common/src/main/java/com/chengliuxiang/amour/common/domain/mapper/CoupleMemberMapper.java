@@ -85,9 +85,6 @@ public interface CoupleMemberMapper extends BaseMapper<CoupleMemberDO> {
     }
 
     /**
-     * 统计用户当前有效加入的空间数量。
-     */
-    /**
      * 查询用户在「未解绑且未销毁空间」中的有效成员关系。
      *
      * <p>status=5（已解绑）与 status=6（已销毁）的历史残留都会被排除：
@@ -102,10 +99,22 @@ public interface CoupleMemberMapper extends BaseMapper<CoupleMemberDO> {
                 .orderByDesc(CoupleMemberDO::getId));
     }
 
+    /**
+     * 统计用户「仍然存在的情侣空间」中的有效成员关系数量（不限空间状态）。
+     *
+     * <p>与 {@link #selectActiveInLiveSpaces(Long)} 的区别：这里包含 status=5（已解绑）与
+     * status=6（已销毁）的空间，用于把「空间已解绑」「空间已销毁」区分成稳定错误码，
+     * 而不是统一返回「空间不存在」。</p>
+     *
+     * <p>必须排除指向不存在空间的孤儿成员行：孤儿行是关联关系断裂的脏数据，
+     * 若被计入，用户会被误判为「已有可用空间」，从而既不能创建新空间也不能销毁任何空间。
+     * 这类行应由数据治理脚本标记为已退出，查询侧也必须防御。</p>
+     */
     default Long countActiveByUserId(Long userId) {
         return selectCount(new LambdaQueryWrapper<CoupleMemberDO>()
                 .eq(CoupleMemberDO::getUserId, userId)
-                .eq(CoupleMemberDO::getStatus, 1));
+                .eq(CoupleMemberDO::getStatus, 1)
+                .apply("space_id IN (SELECT id FROM couple_space)"));
     }
 
     default int insertMember(CoupleMemberDO member) {
@@ -228,6 +237,33 @@ public interface CoupleMemberMapper extends BaseMapper<CoupleMemberDO> {
         return selectCount(new LambdaQueryWrapper<CoupleMemberDO>()
                 .eq(CoupleMemberDO::getUserId, userId)
                 .apply("space_id IN (SELECT id FROM couple_space WHERE status = {0})", spaceStatus));
+    }
+
+    /**
+     * 查询空间内「创建者以外、且曾经正式加入过」的成员历史。
+     *
+     * <p>销毁只允许发生在「另一半从未加入」的单人空间。仅按当前有效成员数判断，
+     * 会把「另一半加入后又退出」的空间误判成从未加入，因此必须结合成员历史。</p>
+     *
+     * <p>成员行语义：{@code status=0} 是占位邀请（尚未真正加入，{@code joined_at} 为空），
+     * 其余状态（1 有效 / 2 暂停 / 3 已退出 / 4 已移除）都代表该用户曾经正式加入过。
+     * 这里同时用 {@code joined_at IS NOT NULL} 兜底：即使历史数据状态异常，
+     * 只要写过加入时间就视为「曾加入」，宁可拒绝销毁也不误判。</p>
+     *
+     * @param spaceId  目标空间
+     * @param creatorUserId 空间创建者用户 ID（其自身的成员行不算历史）
+     * @return 曾加入过的其他成员行；从未有人加入时为空列表
+     */
+    default List<CoupleMemberDO> selectEverJoinedNonCreatorMembers(Long spaceId, Long creatorUserId) {
+        if (spaceId == null || creatorUserId == null) {
+            return Collections.emptyList();
+        }
+        return selectList(new LambdaQueryWrapper<CoupleMemberDO>()
+                .eq(CoupleMemberDO::getSpaceId, spaceId)
+                .ne(CoupleMemberDO::getUserId, creatorUserId)
+                .and(wrapper -> wrapper.isNotNull(CoupleMemberDO::getJoinedAt)
+                        .or().ne(CoupleMemberDO::getStatus, 0))
+                .orderByAsc(CoupleMemberDO::getId));
     }
 
 }

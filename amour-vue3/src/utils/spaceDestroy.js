@@ -18,6 +18,10 @@ export const DESTROY_ERROR_CODE = Object.freeze({
   DESTROYED: '20096',
   NOT_MEMBER: '20034',
   MEMBERSHIP_CONFLICT: '20089',
+  /** 另一半曾加入过该空间（历史成员关系），不能按「尚未加入」销毁。 */
+  PARTNER_HISTORY: '20102',
+  /** 客户端传的 spaceId 已不是当前空间：延迟到达的旧销毁请求，必须刷新后重试。 */
+  TARGET_CHANGED: '20103',
 })
 
 function spaceLabel(space = {}) {
@@ -96,6 +100,12 @@ export function buildDestroyErrorMessage(responseBody, error, fallback = '销毁
   if (code === DESTROY_ERROR_CODE.DESTROYED) {
     return '这个情侣空间已被销毁，只有平台管理员可以协助恢复。'
   }
+  if (code === DESTROY_ERROR_CODE.TARGET_CHANGED) {
+    return '空间已变化，请刷新后重试。'
+  }
+  if (code === DESTROY_ERROR_CODE.PARTNER_HISTORY) {
+    return '另一半曾加入过该空间，无法按「尚未加入」销毁，请联系管理员。'
+  }
   const message = responseBody?.message || error?.response?.data?.message
   if (typeof message === 'string' && message.trim()) return message.trim()
   return fallback
@@ -105,13 +115,47 @@ export function buildDestroyErrorMessage(responseBody, error, fallback = '销毁
  * 服务端是否以「状态已过期」为由拒绝销毁。
  *
  * 这类结果必须触发强制刷新，让页面与服务器保持一致；不能只依赖入口隐藏。
+ * 20102（另一半曾加入）与 20103（目标空间已变化）同样意味着页面展示的成员/空间事实已经过期。
  */
 export function isDestroyStateConflict(responseBody, error) {
   const code = readDestroyErrorCode(responseBody, error)
   return code === DESTROY_ERROR_CODE.PARTNER_JOINED
     || code === DESTROY_ERROR_CODE.STATUS_NOT_ALLOWED
     || code === DESTROY_ERROR_CODE.NOT_CREATOR
+    || code === DESTROY_ERROR_CODE.PARTNER_HISTORY
+    || code === DESTROY_ERROR_CODE.TARGET_CHANGED
 }
+
+/**
+ * 服务端明确返回销毁成功后，用刷新到的 /space/status 结果决定页面下一步。
+ *
+ * 三种结果必须严格区分，绝不能把「刷新失败」报成「销毁失败」：
+ * - refresh-failed：刷新失败，服务端结果未知；保留旧状态、提示重新读取，不自动重发销毁；
+ * - space-still-present：刷新成功但服务端仍返回空间（例如另一半刚加入导致销毁未生效）；
+ *   展示服务器真实状态，不本地伪造已销毁；
+ * - no-space：刷新成功且确实没有空间；此时才清理本地缓存、清空共享状态并离开页面。
+ */
+export const DESTROY_SETTLE_RESULT = Object.freeze({
+  NO_SPACE: 'no-space',
+  SPACE_STILL_PRESENT: 'space-still-present',
+  REFRESH_FAILED: 'refresh-failed',
+})
+
+/**
+ * @param {{ space?: object|null, spaceError?: string }} state 刷新后的共享空间状态
+ * @returns {string} {@link DESTROY_SETTLE_RESULT} 中的一种
+ */
+export function resolveDestroySettleResult(state = {}) {
+  const spaceError = typeof state?.spaceError === 'string' ? state.spaceError.trim() : ''
+  if (spaceError) return DESTROY_SETTLE_RESULT.REFRESH_FAILED
+  return state?.space ? DESTROY_SETTLE_RESULT.SPACE_STILL_PRESENT : DESTROY_SETTLE_RESULT.NO_SPACE
+}
+
+/** 销毁已提交但状态刷新失败时的提示：不能出现「销毁失败」字样。 */
+export const DESTROY_REFRESH_FAILED_MESSAGE = '销毁已提交，但状态刷新失败，请重新读取状态后再离开页面'
+
+/** 销毁已提交但服务端仍返回空间时的提示：以服务端结果为准，不本地伪造已销毁。 */
+export const DESTROY_SPACE_STILL_PRESENT_MESSAGE = '销毁已提交，但服务端仍返回该空间，请刷新后确认最新状态'
 
 /**
  * 销毁成功后需要清理的本地缓存键前缀。
@@ -121,6 +165,18 @@ export function isDestroyStateConflict(responseBody, error) {
  */
 export const DESTROY_LOCAL_STORAGE_KEYS = Object.freeze([
   'amour_space_unbind_prompt_dismissed',
+])
+
+/**
+ * 登录态相关存储键：销毁只清理空间偏好，这些键必须原样保留。
+ * 单独导出是为了让测试能显式断言「销毁不会清除登录态」。
+ */
+export const AUTH_LOCAL_STORAGE_KEYS = Object.freeze([
+  'amour_token',
+  'amour_username',
+  'amour_display_name',
+  'amour_avatar',
+  'amour_permissions',
 ])
 
 /**

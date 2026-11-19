@@ -304,7 +304,7 @@ import {
   hasFrontendQueryPermission,
 } from '@/utils/auth'
 import { useFrontendSpace } from '@/composables/useFrontendSpace'
-import { canEditSpaceContent, isUnboundSpace } from '@/utils/spaceState'
+import { canEditSpaceContent, hasLiveSpace } from '@/utils/spaceState'
 import { resolveSiteNavState } from '@/utils/siteNav'
 
 const router = useRouter()
@@ -338,8 +338,10 @@ const isHomeSection = computed(() => navState.value.homeActive)
 
 /**
  * 空间状态与空间设置已合并到 /space/setup：
- * - 有未解绑空间时显示“空间设置”；
- * - 没有有效空间或已完成解绑时显示“创建/绑定情侣空间”。
+ * - 有仍然属于用户的空间时显示“空间设置”；
+ * - 没有有效空间、已完成解绑或已被销毁时显示“创建/绑定情侣空间”。
+ *
+ * status=5/6 都是用户侧的终态：不能再把人带进一个没有可用操作的空间设置面板。
  */
 const showSpaceEntry = computed(() => {
   if (!frontendLoggedIn.value) return false
@@ -347,9 +349,7 @@ const showSpaceEntry = computed(() => {
   return hasCoupleSpace.value || !spaceStatus.value
 })
 const spaceEntryLabel = computed(() => (
-  hasCoupleSpace.value && !isUnboundSpace(spaceStatus.value)
-    ? '空间设置'
-    : '创建/绑定情侣空间'
+  hasLiveSpace(spaceStatus.value) ? '空间设置' : '创建/绑定情侣空间'
 ))
 // 等待绑定与正常状态的有效成员可以进入空间内容编辑。
 const canOpenStudio = computed(() => (

@@ -5,6 +5,7 @@ import com.chengliuxiang.amour.web.model.vo.space.AcceptInvitationReqVO;
 import com.chengliuxiang.amour.web.model.vo.space.CreateInvitationReqVO;
 import com.chengliuxiang.amour.web.model.vo.space.CreateInvitationRspVO;
 import com.chengliuxiang.amour.web.model.vo.space.CreateSpaceReqVO;
+import com.chengliuxiang.amour.web.model.vo.space.DestroySpaceReqVO;
 import com.chengliuxiang.amour.web.model.vo.space.InvitationIdReqVO;
 import com.chengliuxiang.amour.web.model.vo.space.InvitationPreviewVO;
 import com.chengliuxiang.amour.web.model.vo.space.InvitationTokenReqVO;
@@ -109,12 +110,21 @@ public interface SpaceService {
     /**
      * 创建者在「另一半尚未加入」时销毁并清空情侣空间。
      *
-     * <p>服务端根据登录身份与数据库成员关系重新校验：操作者是空间创建者、另一半尚未加入、
-     * 空间仍处于等待绑定状态。销毁不做物理删除，而是写入完整留档并把空间标记为 status=6，
+     * <p>服务端根据登录身份与数据库成员关系重新校验：操作者是空间创建者、另一半从未加入、
+     * 空间仍处于可销毁状态。「另一半从未加入」以成员历史判断，不能只看当前有效成员数：
+     * 另一半曾加入后又退出的空间不是单人空间，会返回业务错误码 20102。</p>
+     *
+     * <p>销毁不做物理删除，而是写入完整留档并把空间标记为 status=6，
      * 之后空间对普通用户完全不可见、不可访问，只有平台管理员可以从留档恢复。</p>
+     *
+     * <p>请求体可选：携带 {@code spaceId} / {@code expectedRevision} 时，服务端额外校验
+     * 「请求发起时的目标空间」与「当前推导出的目标空间」一致，不一致返回 20103 并拒绝整笔操作，
+     * 避免延迟到达的旧请求误操作用户随后创建的新空间。不传时按原有语义处理，兼容老客户端。</p>
      *
      * <p>重复提交按幂等处理：已销毁时返回当前留档信息且 {@code destroyed=false}，
      * 不会重复销毁或重复写入留档。</p>
+     *
+     * @param reqVO 可选的目标空间一致性参数，可为 null
      */
-    Response<SpaceDestroyVO> destroySpace();
+    Response<SpaceDestroyVO> destroySpace(DestroySpaceReqVO reqVO);
 }

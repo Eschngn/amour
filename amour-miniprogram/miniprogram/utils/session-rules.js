@@ -61,6 +61,10 @@ const SPACE_DESTROY_ERROR_CODE = Object.freeze({
   STATUS_NOT_ALLOWED: '20095',
   DESTROYED: '20096',
   NOT_MEMBER: '20034',
+  /** 另一半曾加入过该空间（后又退出）：不能按「尚未加入」销毁。 */
+  PARTNER_HISTORY: '20102',
+  /** 请求携带的目标空间与服务端推导出的空间不一致：必须刷新后重试。 */
+  TARGET_CHANGED: '20103',
 })
 
 /**
@@ -112,8 +116,8 @@ function destroyBlockReason(space) {
 /**
  * 判断销毁请求失败是否属于「服务端拒绝且需要刷新状态」的场景。
  *
- * 另一半已加入 / 状态已变化都意味着本地状态过期，必须重新读取服务器状态，
- * 不能只依赖入口隐藏来保证安全。
+ * 另一半已加入 / 另一半曾加入 / 目标空间已变化 / 状态已变化都意味着本地状态过期，
+ * 必须重新读取服务器状态，不能只依赖入口隐藏来保证安全。
  */
 function isDestroyRejectedByServer(error) {
   if (!error) return false
@@ -121,6 +125,8 @@ function isDestroyRejectedByServer(error) {
   return code === SPACE_DESTROY_ERROR_CODE.PARTNER_JOINED
     || code === SPACE_DESTROY_ERROR_CODE.STATUS_NOT_ALLOWED
     || code === SPACE_DESTROY_ERROR_CODE.NOT_CREATOR
+    || code === SPACE_DESTROY_ERROR_CODE.PARTNER_HISTORY
+    || code === SPACE_DESTROY_ERROR_CODE.TARGET_CHANGED
 }
 
 /** 空间是否处于“等待另一半加入”状态（已创建但只有一个人）。 */

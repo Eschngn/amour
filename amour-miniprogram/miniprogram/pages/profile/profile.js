@@ -293,6 +293,17 @@ Component(withComponentPageViewTracking({
       })
     },
 
+    /**
+     * 已有空间时进入「空间设置」。
+     *
+     * 统一走 access-control 的 openSpaceSetup('settings')：未登录时由它先重定向登录页，
+     * 登录后回跳；导航与失败兜底也不在本页重复实现。
+     */
+    onOpenSpaceSettings() {
+      if (this.data.authenticating) return
+      openSpaceSetup('settings')
+    },
+
     /* ===================== 账号资料 ===================== */
 
     applyAuth(auth = {}) {

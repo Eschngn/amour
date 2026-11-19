@@ -119,6 +119,20 @@ public enum ResponseCodeEnum implements BaseExceptionInterface {
     SPACE_ARCHIVE_SNAPSHOT_INVALID("20099", "空间留档数据损坏，无法恢复"),
     SPACE_ARCHIVE_RESTORE_CONFLICT("20100", "恢复冲突：空间或成员数据与留档不一致"),
     SPACE_ARCHIVE_DATA_MISSING("20101", "恢复失败：留档中的部分数据已不存在"),
+    /**
+     * 另一半曾经加入过该空间（历史成员关系里存在已退出的另一方）。
+     *
+     * <p>销毁只允许发生在「另一半从未加入」的单人空间。仅按当前有效成员数=1 判断会把
+     * 「另一半加入后又退出」的空间误判成从未加入，因此必须结合成员历史。</p>
+     */
+    SPACE_DESTROY_PARTNER_HISTORY("20102", "另一半曾加入过该情侣空间，不能按「尚未加入」销毁"),
+    /**
+     * 延迟到达的旧销毁请求指向的情侣空间已不是当前空间。
+     *
+     * <p>客户端可以带上发起销毁时展示的 spaceId；服务端据此拒绝已经过期的目标，
+     * 避免旧请求误操作用户随后创建的新空间。</p>
+     */
+    SPACE_DESTROY_TARGET_CHANGED("20103", "销毁目标已变化，请刷新空间状态后重试"),
 
     ;
 

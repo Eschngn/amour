@@ -6,6 +6,7 @@ import com.chengliuxiang.amour.web.model.vo.space.AcceptInvitationReqVO;
 import com.chengliuxiang.amour.web.model.vo.space.CreateInvitationReqVO;
 import com.chengliuxiang.amour.web.model.vo.space.CreateInvitationRspVO;
 import com.chengliuxiang.amour.web.model.vo.space.CreateSpaceReqVO;
+import com.chengliuxiang.amour.web.model.vo.space.DestroySpaceReqVO;
 import com.chengliuxiang.amour.web.model.vo.space.InvitationIdReqVO;
 import com.chengliuxiang.amour.web.model.vo.space.InvitationPreviewVO;
 import com.chengliuxiang.amour.web.model.vo.space.InvitationTokenReqVO;
@@ -132,8 +133,9 @@ public class SpaceController {
 
     @ApiOperationLog(description = "创建者销毁情侣空间（另一半未加入）")
     @PostMapping("/destroy")
-    public Response<SpaceDestroyVO> destroySpace() {
-        return spaceService.destroySpace();
+    public Response<SpaceDestroyVO> destroySpace(
+            @Valid @RequestBody(required = false) DestroySpaceReqVO reqVO) {
+        return spaceService.destroySpace(reqVO);
     }
 
     @ApiOperationLog(description = "设置情侣空间公开状态")

@@ -154,6 +154,42 @@ test('网络异常回退到服务端/默认文案，不误判为另一半已加�
   assert.equal(destroy.isDestroyStateConflict(networkError), false)
 })
 
+test('20102（另一半曾加入）与 20103（目标空间已变化）都有准确文案，且都要求刷新状态', () => {
+  // 20102：另一半曾加入过后又退出，不能按「对方尚未加入」销毁。
+  const partnerHistory = Object.assign(new Error('另一半曾加入过该空间'), { errorCode: '20102' })
+  // 20103：请求携带的 spaceId 与服务端当前目标空间不一致，必须先刷新。
+  const targetChanged = Object.assign(new Error('目标空间已变化'), { errorCode: '20103' })
+
+  const historyMessage = destroy.buildDestroyErrorMessage(partnerHistory)
+  assert.match(historyMessage, /曾经加入/)
+  assert.doesNotMatch(historyMessage, /20102/)
+
+  const changedMessage = destroy.buildDestroyErrorMessage(targetChanged)
+  assert.match(changedMessage, /发生变化|刷新/)
+  assert.doesNotMatch(changedMessage, /20103/)
+
+  // 两个错误码都必须触发强制状态刷新。
+  assert.equal(destroy.isDestroyStateConflict(partnerHistory), true)
+  assert.equal(destroy.isDestroyStateConflict(targetChanged), true)
+
+  // 错误码常量与 session-rules 侧保持同一套值。
+  assert.equal(destroy.DESTROY_ERROR_CODE.PARTNER_HISTORY, '20102')
+  assert.equal(destroy.DESTROY_ERROR_CODE.TARGET_CHANGED, '20103')
+  assert.equal(rules.SPACE_DESTROY_ERROR_CODE.PARTNER_HISTORY, '20102')
+  assert.equal(rules.SPACE_DESTROY_ERROR_CODE.TARGET_CHANGED, '20103')
+
+  // 页面用的判定同样涵盖这两个码。
+  assert.equal(rules.isDestroyRejectedByServer(partnerHistory), true)
+  assert.equal(rules.isDestroyRejectedByServer(targetChanged), true)
+  assert.equal(rules.isDestroyRejectedByServer({ errorCode: '20096' }), false)
+})
+
+test('服务端 message 优先于默认文案（未知错误码时仍展示可理解提示）', () => {
+  const unknown = Object.assign(new Error('服务端自定义说明'), { errorCode: '29999' })
+  assert.equal(destroy.buildDestroyErrorMessage(unknown), '服务端自定义说明')
+  assert.equal(destroy.isDestroyStateConflict(unknown), false)
+})
+
 test('幂等响应（destroyed=false）也按成功处理', () => {
   // 后端重复提交返回 success=true + destroyed=false，页面必须视为成功而不是失败。
   const repeatResponse = { success: true, data: { spaceId: 4101, status: 6, destroyed: false } }

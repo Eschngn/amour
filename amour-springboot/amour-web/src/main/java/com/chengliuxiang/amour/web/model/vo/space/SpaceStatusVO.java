@@ -62,6 +62,15 @@ public class SpaceStatusVO {
     private Integer memberCount;
 
     /**
+     * 空间工作版本号。
+     *
+     * <p>空间基础信息 / 首页配置保存成功后递增。客户端可以用它作为
+     * {@code POST /space/destroy} 的 {@code expectedRevision}，让服务端识别
+     * 「请求飞行期间空间已被改写」的过期请求（另一半刚好加入等），返回 20103 而不是误操作。</p>
+     */
+    private Integer revision;
+
+    /**
      * 当前用户在空间中的身份，未加入时为 null。
      */
     private Integer currentUserRole;

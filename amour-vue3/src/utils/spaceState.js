@@ -79,6 +79,19 @@ export function isDestroyedSpace(spaceStatus) {
   return Boolean(spaceStatus) && Number(spaceStatus.status) === SPACE_STATUS.DESTROYED
 }
 
+/**
+ * 是否仍然是「用户侧还拥有」的空间：有空间身份，且不处于已解绑 / 已销毁这类终态。
+ *
+ * status=5 与 status=6 都意味着用户已经没有可用的情侣空间：入口文案、个人设置页
+ * 与服务端 /space/status（这类空间返回 data=null）必须保持一致，
+ * 不能再展示「打开空间设置」，否则会把人带进一个没有可用操作的面板。
+ */
+export function hasLiveSpace(spaceStatus) {
+  return hasSpaceIdentity(spaceStatus)
+    && !isUnboundSpace(spaceStatus)
+    && !isDestroyedSpace(spaceStatus)
+}
+
 /** 后端销毁相关业务错误码。前端只用于提示与状态处理，不据此绕过服务端校验。 */
 export const SPACE_DESTROY_ERROR = Object.freeze({
   /** 只有空间创建者才能销毁。 */
@@ -89,6 +102,10 @@ export const SPACE_DESTROY_ERROR = Object.freeze({
   STATUS_NOT_ALLOWED: '20095',
   /** 空间已销毁。 */
   DESTROYED: '20096',
+  /** 另一半曾加入过该空间（历史成员），不能按「尚未加入」销毁。 */
+  PARTNER_HISTORY: '20102',
+  /** 客户端绑定的目标空间已变化：延迟到达的旧销毁请求。 */
+  TARGET_CHANGED: '20103',
 })
 
 /**
@@ -152,14 +169,16 @@ export function destroyBlockReason(spaceStatus) {
 /**
  * 判断销毁请求失败是否属于「服务端拒绝且需要刷新状态」的场景。
  *
- * 另一半已加入 / 状态已变化都意味着页面状态过期，必须重新读取服务器状态，
- * 不能仅依赖入口隐藏来保证安全。
+ * 另一半已加入 / 另一半曾加入 / 状态已变化 / 目标空间已变化都意味着页面状态过期，
+ * 必须重新读取服务器状态，不能仅依赖入口隐藏来保证安全。
  */
 export function isDestroyRejectedByServer(responseBody, error) {
   const code = readSpaceErrorCode(responseBody, error)
   return code === SPACE_DESTROY_ERROR.PARTNER_JOINED
     || code === SPACE_DESTROY_ERROR.STATUS_NOT_ALLOWED
     || code === SPACE_DESTROY_ERROR.NOT_CREATOR
+    || code === SPACE_DESTROY_ERROR.PARTNER_HISTORY
+    || code === SPACE_DESTROY_ERROR.TARGET_CHANGED
 }
 
 /**
@@ -264,6 +283,44 @@ export function canEditSpaceContent(spaceStatus) {
   if (!hasActiveSpaceMembership(spaceStatus)) return false
   const status = Number(spaceStatus.status)
   return status === SPACE_STATUS.WAITING || status === SPACE_STATUS.NORMAL
+}
+
+/**
+ * 是否允许编辑空间基础信息（名称 / 简介 / 恋爱开始时间）。
+ *
+ * 与后端 `POST /space/update` 的准入条件保持一致：
+ * - 当前用户是该空间的有效成员；
+ * - 空间仍处于等待绑定（status=0）；
+ * - 有效成员恰好一人（另一半尚未加入）。
+ *
+ * 前端只用它控制入口；服务端仍会按登录态与数据库成员关系再次校验（20064 / 20034）。
+ */
+export function canEditSpaceBasicInfo(spaceStatus) {
+  if (!hasActiveSpaceMembership(spaceStatus)) return false
+  if (Number(spaceStatus?.status) !== SPACE_STATUS.WAITING) return false
+  return activeSpaceMemberCount(spaceStatus) < 2
+}
+
+/**
+ * 基础信息「只读」时给用户的说明；允许编辑时返回空字符串。
+ *
+ * 分成三种情况，避免用一句笼统的「不可修改」掩盖真实原因：
+ * - 另一半已加入：这是后端规则下的正常结果，讲清楚为什么；
+ * - 冻结 / 归档：需要先恢复；
+ * - 其它状态（已解绑、已销毁等）：面板通常已经不渲染，这里只做兜底。
+ */
+export function spaceBasicInfoReadOnlyReason(spaceStatus) {
+  if (canEditSpaceBasicInfo(spaceStatus)) return ''
+  if (!hasActiveSpaceMembership(spaceStatus)) return '你不是这个空间的有效成员，无法编辑空间信息。'
+  const status = Number(spaceStatus?.status)
+  // 冻结 / 归档优先给出可执行的下一步（先恢复），比「另一半已加入」更贴近当前阻碍。
+  if (status === SPACE_STATUS.FROZEN || status === SPACE_STATUS.ARCHIVED) {
+    return '冻结或归档的空间需先恢复，才能编辑空间信息。'
+  }
+  if (activeSpaceMemberCount(spaceStatus) >= 2) {
+    return '另一半已经加入，空间名称、简介和恋爱开始时间不能再修改。'
+  }
+  return '当前空间状态不允许编辑空间信息。'
 }
 
 /**

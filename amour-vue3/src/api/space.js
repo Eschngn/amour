@@ -212,14 +212,38 @@ export function leaveCoupleSpace() {
 }
 
 /**
+ * 读取空间工作版本号。
+ *
+ * 只接受非负整数（数字或纯数字字符串）：空串 / null / NaN 都会被 `Number()` 静默转成 0，
+ * 小数或负数也不可能是后端写入的 revision。把这类脏值当版本发出去，
+ * 服务端会把本来有效的空间判成「已变化」而误拒销毁。
+ *
+ * @param {unknown} value
+ * @returns {number|null}
+ */
+function readRevision(value) {
+  const revision = typeof value === 'number'
+    ? value
+    : (typeof value === 'string' && /^\d+$/.test(value.trim()) ? Number(value.trim()) : NaN)
+  if (!Number.isInteger(revision) || revision < 0) return null
+  return revision
+}
+
+/**
  * 创建者在「另一半尚未加入」时销毁并清空情侣空间。
  *
- * 对应后端 POST /space/destroy：无请求体。目标空间与操作者身份完全由服务端按登录态与
- * 数据库成员关系推导，客户端不能指定 spaceId / userId。
+ * 对应后端 POST /space/destroy：请求体可选 `{ spaceId?: number, expectedRevision?: number }`。
+ * 操作者身份与最终的权限 / 成员关系校验仍由服务端按登录态与数据库推导，
+ * 客户端传参只用于绑定「发起销毁时页面所展示的那个空间」，不是授权依据。
+ *
+ * 传 spaceId 的意义：销毁是延迟到达也可能生效的写操作，如果用户在请求飞行期间
+ * 新建/切换了空间，服务端必须能识别出这是指向旧空间的过期请求并返回 20103，
+ * 而不是误销毁用户当前的新空间。
  *
  * 服务端行为：
- * - 只有空间创建者、且另一半尚未加入（有效成员恰好 1 人）、空间仍可销毁时才成功；
- * - 另一半已加入返回 20094，非创建者返回 20093，状态不允许返回 20095；
+ * - 只有空间创建者、且另一半从未加入（有效成员恰好 1 人且无历史成员）、空间仍可销毁时才成功；
+ * - 另一半已加入返回 20094，非创建者返回 20093，状态不允许返回 20095，
+ *   另一半曾加入过（历史成员）返回 20102，目标空间已变化返回 20103；
  * - 重复提交 / 网络重试按幂等处理：已销毁时返回同一份结果，`destroyed=false`；
  * - 销毁不是物理删除：服务端写入完整留档，空间对普通用户不可见、不可访问，
  *   只有平台管理员可以从留档恢复。
@@ -230,10 +254,20 @@ export function leaveCoupleSpace() {
  * 成功后必须强制刷新 /space/status（此时应返回 data=null），
  * 不能把网络失败误判为已销毁，也不能在本地伪造 status=6。
  *
+ * @param {object|null} [space] 当前页面展示的 SpaceStatusVO；用于绑定销毁目标。
  * @returns {Promise<import('axios').AxiosResponse>}
  */
-export function destroyCoupleSpace() {
-  return api.post('/space/destroy')
+export function destroyCoupleSpace(space) {
+  const payload = {}
+  const spaceId = Number(space?.spaceId)
+  if (Number.isFinite(spaceId) && spaceId > 0) {
+    payload.spaceId = spaceId
+    // revision 缺失（旧后端 VO 不返回）时不传，服务端只按 spaceId 与实时成员关系校验。
+    const revision = readRevision(space?.revision)
+    if (revision !== null) payload.expectedRevision = revision
+  }
+  // 拿不到目标空间时退化为空对象：保持与旧版「无请求体」等价的后端兼容路径。
+  return api.post('/space/destroy', payload)
 }
 
 /**

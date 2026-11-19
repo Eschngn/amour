@@ -385,6 +385,18 @@ const unavailablePrompt = computed(() => {
       canCreate: true,
     }
   }
+  if (status === SPACE_STATUS.DESTROYED) {
+    // 已销毁（status=6）对普通用户没有可用操作：只能等管理员从留档恢复，或重新创建/加入。
+    return {
+      icon: '♡',
+      iconClass: 'bg-stone-100 text-stone-500',
+      badge: 'Destroyed',
+      title: '情侣空间已销毁',
+      description: '空间与内容已从用户侧移除，只有平台管理员可以从留档协助恢复。',
+      canRetry: false,
+      canCreate: true,
+    }
+  }
   return {
     icon: '!',
     iconClass: 'bg-sky-100 text-sky-500',

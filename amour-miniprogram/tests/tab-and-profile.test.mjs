@@ -325,6 +325,62 @@ test('「我的」页面：已有情侣空间时展示空间摘要', () => {
   assert.ok(page.data.spaceSummary.length > 0)
 })
 
+// ============================ 「我的」：空间设置入口 ============================
+
+/** 用真实状态机把全局状态推进到“已登录且存在情侣空间”。 */
+async function loginWithSpace() {
+  storage.set('amour_token', 'token-a')
+  handlers.set('/user/profile', options => options.success(ok({
+    username: 'u', displayName: '测试用户', avatar: '', passwordSet: false, permissions: [],
+  })))
+  handlers.set('/space/status', options => options.success(ok({ spaceId: 5, status: 1, spaceName: '我们的小屋', memberCount: 2 })))
+  await sessionState.ensureSessionReady()
+  assert.equal(sessionState.getSnapshot().status, SESSION_STATUS.AUTHENTICATED_WITH_SPACE)
+}
+
+test('「我的」页面：有空间时点「空间设置」→ navigateTo ?mode=settings', async () => {
+  await loginWithSpace()
+  const page = createProfile()
+  page.applySession(sessionState.getSnapshot())
+  navigations.length = 0
+
+  assert.equal(typeof page.onOpenSpaceSettings, 'function', '应存在空间设置入口的处理函数')
+  page.onOpenSpaceSettings()
+
+  const last = navigations[navigations.length - 1]
+  assert.ok(last, '应发起跳转')
+  assert.equal(last.type, 'navigateTo')
+  assert.equal(last.url, '/pages/space-setup/index?mode=settings')
+})
+
+test('「我的」页面：空间设置入口保留「进入情侣空间」原有行为（reLaunch 首页）', async () => {
+  await loginWithSpace()
+  const page = createProfile()
+  page.applySession(sessionState.getSnapshot())
+
+  navigations.length = 0
+  page.onOpenSpace()
+
+  const last = navigations[navigations.length - 1]
+  assert.equal(last.type, 'reLaunch')
+  assert.equal(last.url, '/pages/index/index')
+})
+
+test('「我的」页面：没有空间时点「空间设置」不会跳进设置页（仍走登录态检查）', () => {
+  storage.clear()
+  sessionState.resetForTests()
+  sessionState.handleAuthCleared('test')
+  const page = createProfile()
+  page.applySession(sessionOf(SESSION_STATUS.UNAUTHENTICATED))
+  navigations.length = 0
+
+  page.onOpenSpaceSettings()
+
+  const last = navigations[navigations.length - 1]
+  assert.ok(last, '应发起跳转')
+  assert.ok(last.url.indexOf('/pages/login/login') !== -1, `未登录应先跳登录页，实际：${last.url}`)
+})
+
 /** 用真实状态机把全局状态推进到“已登录但没有情侣空间”。 */
 async function loginWithoutSpace() {
   storage.set('amour_token', 'token-a')

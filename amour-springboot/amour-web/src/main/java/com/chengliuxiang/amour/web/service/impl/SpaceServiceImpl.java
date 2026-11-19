@@ -26,6 +26,7 @@ import com.chengliuxiang.amour.web.model.vo.space.AcceptInvitationReqVO;
 import com.chengliuxiang.amour.web.model.vo.space.CreateInvitationReqVO;
 import com.chengliuxiang.amour.web.model.vo.space.CreateInvitationRspVO;
 import com.chengliuxiang.amour.web.model.vo.space.CreateSpaceReqVO;
+import com.chengliuxiang.amour.web.model.vo.space.DestroySpaceReqVO;
 import com.chengliuxiang.amour.web.model.vo.space.InvitationIdReqVO;
 import com.chengliuxiang.amour.web.model.vo.space.InvitationPreviewVO;
 import com.chengliuxiang.amour.web.model.vo.space.InvitationTokenReqVO;
@@ -403,13 +404,18 @@ public class SpaceServiceImpl implements SpaceService {
                 && (currentUserId == null
                 || (Boolean.TRUE.equals(inviteeMatched) && !alreadyMember && !inOtherSpace));
 
+        // 已销毁 / 已解绑的空间：邀请必然已失效，不能再泄露空间简介、封面等内容信息。
+        // 仍返回明确原因，让持有旧链接的人看到稳定提示而不是“空间不存在”。
+        boolean spaceUnavailable = Objects.equals(space.getStatus(), SPACE_STATUS_DESTROYED)
+                || isDeletedSpace(space);
+
         return Response.success(InvitationPreviewVO.builder()
                 .invitationId(invitation.getId())
                 .spaceId(space.getId())
-                .spaceCode(space.getSpaceCode())
-                .spaceName(space.getSpaceName())
-                .description(space.getDescription())
-                .coverImage(space.getCoverImage())
+                .spaceCode(spaceUnavailable ? "" : space.getSpaceCode())
+                .spaceName(spaceUnavailable ? "" : space.getSpaceName())
+                .description(spaceUnavailable ? "" : space.getDescription())
+                .coverImage(spaceUnavailable ? "" : space.getCoverImage())
                 .inviterAmourId(inviter == null ? "" : StrUtil.blankToDefault(inviter.getAmourId(), ""))
                 .inviterName(inviter == null ? "恋人" : StrUtil.blankToDefault(inviter.getDisplayName(), "恋人"))
                 .status(status)
@@ -893,26 +899,38 @@ public class SpaceServiceImpl implements SpaceService {
     }
 
     @Override
-    public Response<SpaceDestroyVO> destroySpace() {
+    public Response<SpaceDestroyVO> destroySpace(DestroySpaceReqVO reqVO) {
         Long userId = currentUserId();
+        DestroySpaceReqVO request = reqVO == null ? new DestroySpaceReqVO() : reqVO;
         ReentrantLock userLock = userLock(userId);
         userLock.lock();
         try {
             // 幂等：用户已没有可用空间，但历史上销毁过自己创建的空间时，重复点击 / 网络重试
             // 必须返回与首次一致的结果，而不是「你不是空间成员」这类误导性错误。
-            Response<SpaceDestroyVO> replayed = replayDestroyedSpace(userId);
+            // 注意：请求携带的目标空间与「当前空间」不一致时不能走幂等重放，
+            // 否则延迟到达的旧请求会被当成新空间的重放结果而误导用户。
+            Long requestedSpaceId = request.getSpaceId();
+            Response<SpaceDestroyVO> replayed = replayDestroyedSpace(userId, requestedSpaceId);
             if (replayed != null) {
                 return replayed;
             }
-            // 先按当前登录用户的有效成员关系定位目标空间，绝不接受客户端传入 spaceId / userId。
+            // 先按当前登录用户的有效成员关系定位目标空间，绝不接受客户端传入的 userId。
             // 加锁顺序保持 userLock → spaceLock，与解绑、恢复等生命周期写操作一致。
             Long spaceId = resolveDestroyTargetSpaceId(userId);
+            // 目标一致性：客户端发起销毁时展示的空间必须仍是服务端推导出的目标空间。
+            // 这层校验只用于拒绝「延迟到达的旧请求」，鉴权仍然完全依赖登录态与数据库。
+            if (requestedSpaceId != null && !Objects.equals(requestedSpaceId, spaceId)) {
+                log.info("用户 {} 的销毁请求目标空间 {} 已不是当前空间 {}，拒绝按过期目标执行",
+                        userId, requestedSpaceId, spaceId);
+                throw new BizException(ResponseCodeEnum.SPACE_DESTROY_TARGET_CHANGED);
+            }
             ReentrantLock spaceLock = spaceLock(spaceId);
             spaceLock.lock();
             try {
                 // 事务必须在锁内提交：否则并发接受邀请可能在提交前读到旧成员关系，
                 // 造成「检查时未加入、提交时已加入」的竞态。
-                return transactionTemplate.execute(status -> doDestroySpace(userId, spaceId));
+                return transactionTemplate.execute(
+                        status -> doDestroySpace(userId, spaceId, request.getExpectedRevision()));
             } finally {
                 spaceLock.unlock();
             }
@@ -927,8 +945,14 @@ public class SpaceServiceImpl implements SpaceService {
      * <p>销毁会把成员关系标记为已退出，因此第二次请求已经找不到「有效成员关系」。
      * 这里按「当前用户创建、status=6、留有未恢复留档」识别重放，返回同一份结果。
      * 用户销毁后新建了别的空间时，仍会优先走正常销毁流程（见调用顺序）。</p>
+     *
+     * <p>请求显式指定了目标空间、而命中重放的空间不是它时，不按幂等返回：
+     * 那说明客户端手里的旧空间已经被替换，返回幂等结果会让用户误以为新空间不需要处理。</p>
+     *
+     * @param userId            当前登录用户
+     * @param requestedSpaceId  客户端指定的目标空间，可为 null（旧客户端）
      */
-    private Response<SpaceDestroyVO> replayDestroyedSpace(Long userId) {
+    private Response<SpaceDestroyVO> replayDestroyedSpace(Long userId, Long requestedSpaceId) {
         if (!coupleMemberMapper.selectActiveInLiveSpaces(userId).isEmpty()) {
             return null;
         }
@@ -951,6 +975,13 @@ public class SpaceServiceImpl implements SpaceService {
         }
         if (space == null) {
             return null;
+        }
+        // 客户端指定了目标空间，但命中重放的是另一个已销毁空间：说明用户手里的空间已经被替换。
+        // 此时不返回幂等结果，交给调用方按「目标已变化」处理，避免误导用户以为当前空间已处理。
+        if (requestedSpaceId != null && !Objects.equals(requestedSpaceId, space.getId())) {
+            log.info("用户 {} 的销毁请求目标空间 {} 与幂等命中空间 {} 不一致，按过期目标拒绝",
+                    userId, requestedSpaceId, space.getId());
+            throw new BizException(ResponseCodeEnum.SPACE_DESTROY_TARGET_CHANGED);
         }
         return Response.success(SpaceDestroyVO.builder()
                 .spaceId(space.getId())
@@ -993,7 +1024,7 @@ public class SpaceServiceImpl implements SpaceService {
      * <ol>
      *     <li>目标空间由登录用户的有效成员关系推导；</li>
      *     <li>当前用户必须是空间创建者（created_by 且成员身份为发起人）；</li>
-     *     <li>另一半尚未加入：有效成员数必须恰好为 1，且不允许存在其他有效成员；</li>
+     *     <li>另一半从未加入：有效成员数恰好为 1，且成员历史里没有「创建者以外曾加入过」的行；</li>
      *     <li>空间仍处于可销毁状态（等待绑定，或历史上单人正常状态）；</li>
      *     <li>空间尚未被销毁（status != 6）。</li>
      * </ol>
@@ -1004,8 +1035,11 @@ public class SpaceServiceImpl implements SpaceService {
      *
      * <p>留档：在同一事务内采集完整快照并写入 couple_space_archive，
      * 不物理删除任何业务数据，也不删除对象存储文件。</p>
+     *
+     * @param expectedRevision 客户端发起销毁时展示的空间工作版本，可为 null；
+     *                         非空时与当前版本不一致说明空间在请求飞行期间被改写，按状态不允许处理
      */
-    private Response<SpaceDestroyVO> doDestroySpace(Long userId, Long spaceId) {
+    private Response<SpaceDestroyVO> doDestroySpace(Long userId, Long spaceId, Integer expectedRevision) {
         // 空间行锁：与接受邀请等写操作共用，作为多实例下的最终防线。
         coupleSpaceMapper.lockById(spaceId);
 
@@ -1034,7 +1068,25 @@ public class SpaceServiceImpl implements SpaceService {
             throw new BizException(ResponseCodeEnum.SPACE_DESTROY_NOT_ALLOWED);
         }
 
-        // 3. 空间必须仍处于可销毁状态。
+        // 3. 成员历史校验：另一半曾经加入又退出时，空间不是「从未加入」的单人空间。
+        //    只按当前有效成员数判断会误判这种历史空间，因此额外查成员历史。
+        List<CoupleMemberDO> everJoined = coupleMemberMapper
+                .selectEverJoinedNonCreatorMembers(spaceId, space.getCreatedBy());
+        if (CollUtil.isNotEmpty(everJoined)) {
+            log.info("空间 {} 存在创建者以外曾加入过的成员历史 {}，拒绝按「另一半尚未加入」销毁",
+                    spaceId, everJoined.stream().map(CoupleMemberDO::getUserId)
+                            .collect(Collectors.toList()));
+            throw new BizException(ResponseCodeEnum.SPACE_DESTROY_PARTNER_HISTORY);
+        }
+        // 已接受过的邀请同样证明曾有另一半加入：成员行被外部清理时也不能误判成从未加入。
+        Long acceptedInvitations = coupleInvitationMapper.countAcceptedBySpaceId(spaceId);
+        if (acceptedInvitations != null && acceptedInvitations > 0) {
+            log.info("空间 {} 存在 {} 条已接受的邀请，拒绝按「另一半尚未加入」销毁",
+                    spaceId, acceptedInvitations);
+            throw new BizException(ResponseCodeEnum.SPACE_DESTROY_PARTNER_HISTORY);
+        }
+
+        // 4. 空间必须仍处于可销毁状态。
         if (!isDestroyableStatus(space.getStatus())) {
             if (isRestorableStatus(space.getStatus())) {
                 throw new BizException(ResponseCodeEnum.SPACE_DESTROY_STATUS_NOT_ALLOWED);
@@ -1042,7 +1094,14 @@ public class SpaceServiceImpl implements SpaceService {
             throw new BizException(ResponseCodeEnum.SPACE_DESTROY_STATUS_NOT_ALLOWED);
         }
 
-        // 4. 采集完整留档快照（空间、成员、配置、故事/章节/图片、相册/照片、纪念日、留言/回复、
+        // 5. 工作版本号一致性：仅在客户端显式传入时校验。
+        //    与接受邀请、编辑空间信息共用 revision，可识别「请求飞行期间另一半刚好加入」的过期请求。
+        if (expectedRevision != null && space.getRevision() != null
+                && !Objects.equals(space.getRevision(), expectedRevision)) {
+            throw new BizException(ResponseCodeEnum.SPACE_DESTROY_STATUS_NOT_ALLOWED);
+        }
+
+        // 6. 采集完整留档快照（空间、成员、配置、故事/章节/图片、相册/照片、纪念日、留言/回复、
         //    审核与已发布版本）。快照与随后的状态写入处于同一事务，保证一致视图。
         LocalDateTime now = LocalDateTime.now();
         SpaceArchiveSnapshot snapshot = spaceArchiveSnapshotService.capture(space);
@@ -1075,13 +1134,13 @@ public class SpaceServiceImpl implements SpaceService {
                 .build();
         coupleSpaceArchiveMapper.insertArchive(archive);
 
-        // 5. 条件更新空间状态；失败说明并发下成员关系或状态已变化，整体回滚（含已写入的留档）。
+        // 7. 条件更新空间状态；失败说明并发下成员关系或状态已变化，整体回滚（含已写入的留档）。
         int destroyed = coupleSpaceMapper.destroyByCreator(spaceId, userId, now);
         if (destroyed == 0) {
             throw resolveDestroyFailure(spaceId, userId);
         }
 
-        // 6. 成员关系标记为已退出（保留行，不物理删除）：任何依赖「有效成员」的查询都不再返回该空间，
+        // 8. 成员关系标记为已退出（保留行，不物理删除）：任何依赖「有效成员」的查询都不再返回该空间，
         //    即使有代码路径漏判 status=6，成员维度也已经无法继续使用空间。
         int left = coupleMemberMapper.leaveAllActiveForDestroy(
                 spaceId, MEMBER_STATUS_LEFT, now, now);
@@ -1090,7 +1149,7 @@ public class SpaceServiceImpl implements SpaceService {
             throw new BizException(ResponseCodeEnum.SPACE_DESTROY_PARTNER_JOINED);
         }
 
-        // 7. 销毁后撤销待处理邀请、清理恢复确认与解绑申请；内容表一律不做任何改动。
+        // 9. 销毁后撤销待处理邀请、清理恢复确认与解绑申请；内容表一律不做任何改动。
         coupleInvitationMapper.revokePendingBySpaceId(spaceId, now);
         restoreConfirmMapper.deleteBySpaceId(spaceId);
         unbindRequestMapper.cancelPendingBySpaceId(spaceId, userId, now);
@@ -1104,7 +1163,7 @@ public class SpaceServiceImpl implements SpaceService {
     }
 
     /**
-     * 条件更新失败的稳定错误：优先区分「另一半已加入」，其余按状态不允许处理。
+     * 条件更新失败的稳定错误：优先区分「另一半已加入 / 曾经加入」，其余按状态不允许处理。
      */
     private BizException resolveDestroyFailure(Long spaceId, Long userId) {
         CoupleSpaceDO latest = coupleSpaceMapper.findById(spaceId);
@@ -1121,6 +1180,11 @@ public class SpaceServiceImpl implements SpaceService {
         }
         if (!Objects.equals(latest.getCreatedBy(), userId)) {
             return new BizException(ResponseCodeEnum.SPACE_DESTROY_NOT_CREATOR);
+        }
+        // 条件更新里的「成员历史」子查询同样可能失败：区分出来，避免误导成「状态不允许」。
+        if (CollUtil.isNotEmpty(coupleMemberMapper
+                .selectEverJoinedNonCreatorMembers(spaceId, latest.getCreatedBy()))) {
+            return new BizException(ResponseCodeEnum.SPACE_DESTROY_PARTNER_HISTORY);
         }
         return new BizException(ResponseCodeEnum.SPACE_DESTROY_STATUS_NOT_ALLOWED);
     }
@@ -1315,6 +1379,13 @@ public class SpaceServiceImpl implements SpaceService {
         if (status != INVITATION_STATUS_PENDING) {
             return invitationStatusText(status);
         }
+        // 空间级终态优先于邀请状态：已销毁 / 已解绑的空间邀请一律不可用。
+        if (Objects.equals(space.getStatus(), SPACE_STATUS_DESTROYED)) {
+            return "该情侣空间已被创建者销毁，邀请已失效";
+        }
+        if (isDeletedSpace(space)) {
+            return "该情侣空间已完成解绑，邀请已失效";
+        }
         if (space.getStatus() != SPACE_STATUS_WAITING) {
             return "空间当前不可加入";
         }
@@ -1404,6 +1475,8 @@ public class SpaceServiceImpl implements SpaceService {
                 .createTime(space.getCreateTime())
                 .memberLimit(MEMBER_LIMIT)
                 .memberCount(memberCount)
+                // 工作版本号随空间基础信息 / 首页配置保存递增，客户端可用于销毁目标的一致性校验。
+                .revision(space.getRevision())
                 .currentUserRole(currentMembership == null ? null : currentMembership.getMemberRole())
                 .creator(Objects.equals(space.getCreatedBy(), currentUserId))
                 .canInvite(space.getStatus() == SPACE_STATUS_WAITING && memberCount < MEMBER_LIMIT)
@@ -1750,6 +1823,8 @@ public class SpaceServiceImpl implements SpaceService {
                 return "删除等待期";
             case 5:
                 return "已解绑";
+            case SPACE_STATUS_DESTROYED:
+                return "已销毁";
             default:
                 return "未知状态";
         }

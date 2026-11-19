@@ -21,7 +21,7 @@
             </p>
           </div>
           <RouterLink
-            v-if="hasSpaceIdentity(spaceStatus) && !isUnboundSpace(spaceStatus)"
+            v-if="hasLiveSpace(spaceStatus)"
             to="/space/setup"
             class="btn-primary shrink-0"
           >
@@ -126,7 +126,7 @@ import FrontendPageHeader from '@/components/frontend/FrontendPageHeader.vue'
 import { clearFrontendSession, setFrontendAvatar, setFrontendProfile } from '@/utils/auth'
 import { encryptPassword } from '@/utils/loginCrypto'
 import { useFrontendSpace } from '@/composables/useFrontendSpace'
-import { hasSpaceIdentity, isUnboundSpace } from '@/utils/spaceState'
+import { hasLiveSpace, isDestroyedSpace, isUnboundSpace } from '@/utils/spaceState'
 
 const USERNAME_PATTERN = /^[A-Za-z0-9_]{4,20}$/
 const router = useRouter()
@@ -135,7 +135,10 @@ const spaceSettingsHint = computed(() => {
   if (isUnboundSpace(spaceStatus.value)) {
     return '情侣空间已解除绑定，你可以重新创建或加入情侣空间。'
   }
-  if (hasSpaceIdentity(spaceStatus.value)) {
+  if (isDestroyedSpace(spaceStatus.value)) {
+    return '情侣空间已销毁，如有需要请联系管理员协助恢复。你也可以重新创建或加入情侣空间。'
+  }
+  if (hasLiveSpace(spaceStatus.value)) {
     return '查看空间状态、公开设置与解绑申请。'
   }
   return hasCoupleSpace.value

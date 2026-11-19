@@ -193,9 +193,10 @@ test('编辑页统一承接审核重新提交反馈，不额外弹出成功提�
   assert.match(studio, /function showSaveFeedback\(payload\)[\s\S]*?saveFeedback\.value = \{/)
   assert.doesNotMatch(studio, /ElMessage\.success/)
 
-  const settings = readSource('components/frontend/SpaceSettingsPanel.vue')
-  assert.match(settings, /function onReviewSubmitted\(payload\)[\s\S]*?payload\?\.message/)
-  assert.match(settings, /payload\?\.kind === 'unchanged' \? 'info' : 'success'/)
+  // 审核反馈到设置页后统一由公开设置分组承接（信息架构重构后从面板搬到子组件）。
+  const visibilitySection = readSource('components/frontend/space-settings/SpaceVisibilitySection.vue')
+  assert.match(visibilitySection, /function onReviewSubmitted\(payload\)[\s\S]*?payload\?\.message/)
+  assert.match(visibilitySection, /payload\?\.kind === 'unchanged' \? 'info' : 'success'/)
 })
 
 test('后端重新提交审核时比较当前快照，无变化不创建新的审核记录', () => {

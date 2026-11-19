@@ -96,6 +96,7 @@ public class AdminSpaceServiceImpl implements AdminSpaceService {
     private static final int SPACE_STATUS_FROZEN = 2;
     private static final int SPACE_STATUS_ARCHIVED = 3;
     private static final int SPACE_STATUS_DELETED = 5;
+    private static final int SPACE_STATUS_DESTROYED = 6;
 
     private static final int MEMBER_ROLE_CREATOR = 1;
     private static final int MEMBER_ROLE_PARTNER = 2;
@@ -747,8 +748,9 @@ public class AdminSpaceServiceImpl implements AdminSpaceService {
     }
 
     private void validateFilters(AdminSpacePageReqVO reqVO) {
+        // 允许查询到 6（已销毁）：管理员需要在空间列表里定位已销毁空间，再跳转留档视图处理。
         if (reqVO.getStatus() != null
-                && (reqVO.getStatus() < 0 || reqVO.getStatus() > SPACE_STATUS_DELETED)) {
+                && (reqVO.getStatus() < 0 || reqVO.getStatus() > SPACE_STATUS_DESTROYED)) {
             throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID);
         }
         if (reqVO.getVisibility() != null
@@ -1190,6 +1192,8 @@ public class AdminSpaceServiceImpl implements AdminSpaceService {
                 return "删除等待期";
             case SPACE_STATUS_DELETED:
                 return "双方已解绑";
+            case SPACE_STATUS_DESTROYED:
+                return "已销毁";
             default:
                 return "未知状态";
         }

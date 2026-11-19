@@ -6,6 +6,7 @@ import {
   SPACE_VIEW_MODE,
   canArchiveSpace,
   canCancelUnbind,
+  canEditSpaceBasicInfo,
   canEditSpaceContent,
   canHandleUnbindAsPartner,
   canPublishSpace,
@@ -13,8 +14,12 @@ import {
   canShowUnbindSection,
   deriveExpectedViewModeAfterLifecycleAction,
   hasActiveSpaceMembership,
+  hasLiveSpace,
+  isDestroyedSpace,
   isRestorableSpace,
   isSpacePublic,
+  isUnboundSpace,
+  spaceBasicInfoReadOnlyReason,
   unbindRequestBlockReason,
   visibilityBlockReason,
 } from '../utils/spaceState.js'
@@ -42,6 +47,45 @@ function space(overrides = {}) {
     ...overrides,
   }
 }
+
+// ============================== canEditSpaceBasicInfo ==============================
+
+test('基础信息编辑：只有等待绑定且有效成员不足两人时允许', () => {
+  assert.equal(canEditSpaceBasicInfo(space({ status: SPACE_STATUS.WAITING, memberCount: 1, currentUserRole: 1 })), true)
+  assert.equal(canEditSpaceBasicInfo(space({ status: '0', memberCount: '1' })), true)
+})
+
+test('基础信息编辑：另一半已加入后不再允许（与后端 20064 一致）', () => {
+  assert.equal(canEditSpaceBasicInfo(space({ status: SPACE_STATUS.WAITING, memberCount: 2 })), false)
+  assert.equal(canEditSpaceBasicInfo(space({ status: SPACE_STATUS.NORMAL, memberCount: 2 })), false)
+  // 历史单人正常状态同样不允许：后端只放开 status=0。
+  assert.equal(canEditSpaceBasicInfo(space({ status: SPACE_STATUS.NORMAL, memberCount: 1 })), false)
+})
+
+test('基础信息编辑：冻结 / 归档 / 已解绑 / 已销毁与非成员都不允许', () => {
+  for (const status of [SPACE_STATUS.FROZEN, SPACE_STATUS.ARCHIVED, SPACE_STATUS.DELETING, SPACE_STATUS.DELETED, SPACE_STATUS.DESTROYED]) {
+    assert.equal(canEditSpaceBasicInfo(space({ status, memberCount: 1 })), false, `status=${status}`)
+  }
+  assert.equal(canEditSpaceBasicInfo(null), false)
+  assert.equal(canEditSpaceBasicInfo({}), false)
+  assert.equal(canEditSpaceBasicInfo(space({ status: SPACE_STATUS.WAITING, memberCount: 1, currentUserRole: null })), false)
+})
+
+test('只读原因：按「已加入 / 需先恢复 / 非成员」给出可执行说明', () => {
+  assert.equal(spaceBasicInfoReadOnlyReason(space({ status: SPACE_STATUS.WAITING, memberCount: 1 })), '')
+  assert.match(
+    spaceBasicInfoReadOnlyReason(space({ status: SPACE_STATUS.NORMAL, memberCount: 2 })),
+    /另一半已经加入/,
+  )
+  assert.match(
+    spaceBasicInfoReadOnlyReason(space({ status: SPACE_STATUS.FROZEN, memberCount: 2 })),
+    /需先恢复/,
+  )
+  assert.match(
+    spaceBasicInfoReadOnlyReason(space({ status: SPACE_STATUS.WAITING, memberCount: 1, currentUserRole: null })),
+    /不是这个空间的有效成员/,
+  )
+})
 
 // ============================== canEditSpaceContent ==============================
 
@@ -304,4 +348,40 @@ test('未知状态既不能公开也不能解绑，且给出可展示原因', ()
   assert.equal(canRequestUnbind(space), false)
   assert.match(visibilityBlockReason(space), /不允许公开/)
   assert.match(unbindRequestBlockReason(space), /不允许解绑/)
+})
+
+
+// ============================== status=6 已销毁（用户侧终态） ==============================
+
+test('status=6 已销毁不是「用户仍然拥有」的空间', () => {
+  const destroyed = { spaceId: 3001, status: SPACE_STATUS.DESTROYED, memberCount: 1, currentUserRole: 1 }
+
+  assert.equal(isDestroyedSpace(destroyed), true)
+  assert.equal(isUnboundSpace(destroyed), false)
+  assert.equal(hasLiveSpace(destroyed), false)
+  // 销毁后成员关系理论上已退出，即便脏数据残留成员行也不能算有效成员。
+  assert.equal(hasActiveSpaceMembership(destroyed), false)
+
+  // status=5 已完成解绑同样不是可用的空间。
+  const unbound = { spaceId: 3002, status: SPACE_STATUS.DELETED, memberCount: 1, currentUserRole: 1 }
+  assert.equal(hasLiveSpace(unbound), false)
+
+  // 只有 0/1/2/3 这类非终态才算用户仍然拥有的空间。
+  for (const status of [SPACE_STATUS.WAITING, SPACE_STATUS.NORMAL, SPACE_STATUS.FROZEN, SPACE_STATUS.ARCHIVED]) {
+    assert.equal(hasLiveSpace({ spaceId: 3003, status }), true, `status=${status}`)
+  }
+  // 没有空间身份时不成立。
+  assert.equal(hasLiveSpace(null), false)
+  assert.equal(hasLiveSpace({}), false)
+  assert.equal(hasLiveSpace({ status: SPACE_STATUS.DESTROYED }), false)
+})
+
+test('status=6 既不能公开，也不能解绑或进入内容编辑', () => {
+  for (const status of [SPACE_STATUS.DELETED, SPACE_STATUS.DESTROYED]) {
+    const space = { spaceId: 2001, status, memberCount: 2, currentUserRole: 1, visibility: 0 }
+    assert.equal(canPublishSpace(space), false, `status=${status}`)
+    assert.equal(canRequestUnbind(space), false, `status=${status}`)
+    assert.equal(canEditSpaceContent(space), false, `status=${status}`)
+    assert.equal(isRestorableSpace(space), false, `status=${status}`)
+  }
 })

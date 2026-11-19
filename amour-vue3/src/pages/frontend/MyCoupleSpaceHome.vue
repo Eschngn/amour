@@ -268,7 +268,7 @@
             <p class="mx-auto mt-3 max-w-xl text-sm leading-7 text-rose-800/60">
               {{ statusView.description }}
             </p>
-            <p v-if="spaceStatus?.spaceName && !isUnboundSpace(spaceStatus)" class="mt-4 inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/80 bg-white/70 px-3 py-1.5 text-xs font-semibold text-rose-700">
+            <p v-if="spaceStatus?.spaceName && hasLiveSpace(spaceStatus)" class="mt-4 inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/80 bg-white/70 px-3 py-1.5 text-xs font-semibold text-rose-700">
               <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-rose-400" aria-hidden="true" />
               <span class="truncate">当前空间 · {{ spaceStatus.spaceName }}</span>
             </p>
@@ -407,7 +407,7 @@ import api from '@/axios'
 import { hasFrontendQueryPermission } from '@/utils/auth'
 import { useFrontendSpace } from '@/composables/useFrontendSpace'
 import { formatSpaceDateTime } from '@/utils/spaceFormat'
-import { SPACE_STATUS, isUnbindPendingForPartner, isUnboundSpace } from '@/utils/spaceState'
+import { SPACE_STATUS, hasLiveSpace, isUnbindPendingForPartner } from '@/utils/spaceState'
 import { dismissUnbindPrompt, isUnbindPromptDismissed } from '@/utils/spaceUnbindPrompt'
 import { HOME_STORY_LIMIT, loadSpaceHomeStories } from '@/utils/spaceHomeStories'
 
@@ -529,6 +529,20 @@ const statusView = computed(() => {
       eyebrowClass: 'text-rose-500',
       showSetup: true,
       setupLabel: '创建或绑定情侣空间',
+    }
+  }
+  if (status === SPACE_STATUS.DESTROYED) {
+    // 已销毁（status=6）：用户侧没有任何可操作入口，恢复只能由平台管理员从留档完成。
+    return {
+      icon: '♡',
+      eyebrow: 'Space Destroyed',
+      title: '情侣空间已销毁',
+      description: '空间与内容已从用户侧移除。如需恢复，请联系平台管理员从留档处理。',
+      iconClass: 'bg-stone-100 text-stone-500',
+      panelClass: 'border-stone-200 bg-stone-50/80',
+      eyebrowClass: 'text-stone-500',
+      showSetup: true,
+      setupLabel: '重新创建情侣空间',
     }
   }
   return {

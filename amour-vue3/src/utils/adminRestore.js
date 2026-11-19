@@ -83,6 +83,27 @@ export function groupRestoreConflicts(conflictSpaces = []) {
 }
 
 /**
+ * 把「HTTP 200 + success=false」的业务失败包装成带 response 语义的异常。
+ *
+ * 后端 BusinessException 统一以 HTTP 200 + `{ success: false, errorCode, message }` 返回，
+ * 页面如果只 throw 一个普通 Error，就会丢掉 errorCode，导致「冲突 / 状态已变化」这类
+ * 必须重新拉取详情与列表的失败分支被跳过，继续展示过期的恢复资格。
+ * 统一包装后，业务失败与 Axios 异常走同一套 `e.response?.data?.errorCode` 刷新逻辑。
+ *
+ * @param {object|null} payload 业务失败响应体
+ * @param {string} [fallback] 缺失 message 时的兜底文案
+ * @returns {Error & { response: { data: object } }}
+ */
+export function createAdminRestoreFailureError(payload, fallback = '恢复失败，请稍后重试') {
+  const message = typeof payload?.message === 'string' && payload.message.trim()
+    ? payload.message.trim()
+    : fallback
+  const error = new Error(message)
+  error.response = { data: payload && typeof payload === 'object' ? payload : {} }
+  return error
+}
+
+/**
  * 从「销毁留档」恢复的确认弹窗正文。
  *
  * 与解绑恢复不同：销毁只发生在一人空间，恢复后回到「等待绑定」状态，
@@ -128,10 +149,16 @@ export function buildArchiveRestorePromptMessage(archive = {}) {
  */
 export function buildArchiveRestoreSuccessMessage(payload = null) {
   if (payload?.alreadyRestored) {
-    return '该留档已恢复，无需重复操作'
+    // 幂等重放：服务端不会再改写任何数据，也不能据此宣称空间当前状态。
+    return '该留档此前已恢复，本次未重复写入；列表与详情已刷新为最新状态'
   }
   const label = spaceLabel(payload || {})
   const members = toCount(payload?.restoredMemberCount)
+  const statusText = typeof payload?.statusText === 'string' && payload.statusText.trim()
+    ? payload.statusText.trim()
+    : '等待绑定'
   const suffix = members > 0 ? `，已恢复 ${members} 名成员` : ''
-  return `“${label}”已从留档恢复为等待绑定状态${suffix}`
+  const content = toCount(payload?.restoredContentCount)
+  const contentSuffix = content > 0 ? `，补齐 ${content} 条内容` : ''
+  return `“${label}”已从留档恢复为${statusText}状态${suffix}${contentSuffix}`
 }

@@ -1,11 +1,11 @@
-<navigation-bar title="情侣空间" back="{{true}}" color="#3b2c30" background="#fdf9f6"></navigation-bar>
+<navigation-bar title="{{pageTitle}}" back="{{true}}" color="#3b2c30" background="#fdf9f6" bind:back="onNavBack"></navigation-bar>
 
 <scroll-view class="page-scroll" scroll-y bounces="{{false}}" type="list" enhanced show-scrollbar="false">
   <view class="setup-page">
     <view class="setup-hero">
-      <text class="hero-kicker">OUR SPACE</text>
-      <text class="hero-title">{{waiting ? '等待另一半加入' : '开启你们的情侣空间'}}</text>
-      <text class="hero-copy">{{waiting ? '把邀请令牌发给 Ta，Ta 在「我的 → 绑定情侣空间」输入后即可加入。' : '创建属于两个人的空间，把故事、照片和悄悄话都收在这里。'}}</text>
+      <text class="hero-kicker">{{heroKicker}}</text>
+      <text class="hero-title">{{heroTitle}}</text>
+      <text class="hero-copy">{{heroCopy}}</text>
     </view>
 
     <view wx:if="{{loading}}" class="state-card">
@@ -31,8 +31,242 @@
         <button class="retry-button" bindtap="onRetrySync" loading="{{syncing}}" disabled="{{syncing}}">{{syncing ? '同步中…' : '重试同步'}}</button>
       </view>
 
+      <!-- ==================== 空间设置模式 ==================== -->
+      <block wx:if="{{isSettingsMode}}">
+        <!-- 未登录：守卫会先跳登录页，这里兜底展示可理解的说明与登录入口 -->
+        <block wx:if="{{settingsView === 'guest'}}">
+          <view class="section-card">
+            <text class="section-kicker">SIGN IN</text>
+            <text class="section-title">登录后管理空间</text>
+            <text class="section-note">空间设置需要先登录；登录完成后会回到这里继续管理你的情侣空间。</text>
+            <button class="primary-button" bindtap="onGoLogin" hover-class="button-hover">去登录</button>
+          </view>
+        </block>
+
+        <!-- 已有空间 + 等待另一半加入：邀请管理 + 销毁入口 -->
+        <block wx:elif="{{settingsView === 'waiting'}}">
+          <!--
+            空间基础信息：等待另一半加入（status=0 且只有 1 名有效成员）时可编辑，
+            另一半已加入后由后端拒绝（20064），页面只展示只读摘要。
+          -->
+          <view class="section-card space-info-card">
+            <text class="section-kicker">SPACE INFO</text>
+            <text class="section-title">空间信息</text>
+
+            <!-- 保存成功但全局状态刷新失败：与「保存失败」严格区分，只提供重试同步入口 -->
+            <view wx:if="{{spaceInfoSyncError}}" class="space-info-sync-band">
+              <view class="error-copy">
+                <text class="error-title">{{spaceInfoSyncError}}</text>
+                <text class="error-note">信息已经保存成功，只是页面状态还没同步；可以只重试同步，不需要重新提交。</text>
+              </view>
+              <button class="retry-button" bindtap="retrySpaceInfoSync" loading="{{syncingSpaceInfo}}" disabled="{{syncingSpaceInfo}}">{{syncingSpaceInfo ? '同步中…' : '重试同步'}}</button>
+            </view>
+
+            <!-- 只读摘要（非编辑态 / 不可编辑态） -->
+            <block wx:if="{{!editingSpaceInfo}}">
+              <view class="summary-row">
+                <text class="summary-label">空间名称</text>
+                <text class="summary-value">{{spaceInfo.spaceName || '我们的故事'}}</text>
+              </view>
+              <view class="summary-row">
+                <text class="summary-label">空间简介</text>
+                <text class="summary-value {{spaceInfo.description ? '' : 'is-placeholder'}}">{{spaceInfo.description || '还没有写简介'}}</text>
+              </view>
+              <view class="summary-row">
+                <text class="summary-label">恋爱开始时间</text>
+                <text class="summary-value {{spaceInfo.loveStartTimeText ? '' : 'is-placeholder'}}">{{spaceInfo.loveStartTimeText || '未设置'}}</text>
+              </view>
+              <text wx:if="{{!spaceInfoEditable}}" class="inline-note">另一半已经加入，空间名称、简介和恋爱开始时间不能再修改。</text>
+              <button
+                wx:if="{{spaceInfoEditable}}"
+                class="secondary-button"
+                bindtap="onEditSpaceInfo"
+                hover-class="button-hover"
+              >编辑空间信息</button>
+            </block>
+
+            <!-- 编辑态：名称 / 简介 / 恋爱开始时间（原生 picker，不手输） -->
+            <block wx:else>
+              <view class="field">
+                <view class="field-head">
+                  <text class="field-label">空间名称</text>
+                  <text class="field-counter">{{spaceInfoNameCount}}/{{spaceInfoNameMax}}</text>
+                </view>
+                <input
+                  class="field-input"
+                  value="{{spaceInfoForm.spaceName}}"
+                  maxlength="{{spaceInfoNameMax}}"
+                  cursor-spacing="120"
+                  placeholder="例如：我们的故事"
+                  placeholder-class="field-placeholder"
+                  bindinput="onSpaceInfoNameInput"
+                />
+                <text class="field-hint">留空会使用默认名称「我们的故事」。</text>
+              </view>
+
+              <view class="field">
+                <view class="field-head">
+                  <text class="field-label">空间简介</text>
+                  <text class="field-counter">{{spaceInfoDescriptionCount}}/{{spaceInfoDescriptionMax}}</text>
+                </view>
+                <textarea
+                  class="field-textarea"
+                  value="{{spaceInfoForm.description}}"
+                  maxlength="{{spaceInfoDescriptionMax}}"
+                  cursor-spacing="120"
+                  auto-height="{{true}}"
+                  placeholder="写一句只属于你们的话（可留空）"
+                  placeholder-class="field-placeholder"
+                  bindinput="onSpaceInfoDescriptionInput"
+                ></textarea>
+              </view>
+
+              <view class="field">
+                <view class="field-head">
+                  <text class="field-label">恋爱开始时间</text>
+                  <text wx:if="{{spaceInfoForm.loveDate && spaceInfoForm.loveTime}}" class="field-counter">{{spaceInfoForm.loveDate}} {{spaceInfoForm.loveTime}}</text>
+                </view>
+                <view class="picker-row">
+                  <picker mode="date" value="{{spaceInfoForm.loveDate}}" bindchange="onLoveDateChange" class="picker-cell">
+                    <view class="picker-value {{spaceInfoForm.loveDate ? '' : 'is-placeholder'}}">{{spaceInfoForm.loveDate || '选择日期'}}</view>
+                  </picker>
+                  <picker mode="time" value="{{spaceInfoForm.loveTime}}" bindchange="onLoveTimeChange" class="picker-cell">
+                    <view class="picker-value {{spaceInfoForm.loveTime ? '' : 'is-placeholder'}}">{{spaceInfoForm.loveTime || '选择时间'}}</view>
+                  </picker>
+                  <button class="clear-time-button" bindtap="onClearLoveStartTime" hover-class="button-hover">清空</button>
+                </view>
+                <text class="field-hint">不设置也可以，之后想补上再回来选。只精确到分钟，秒数保持原样。</text>
+              </view>
+
+              <view wx:if="{{spaceInfoError}}" class="inline-error">{{spaceInfoError}}</view>
+
+              <view class="button-row">
+                <button class="primary-button" bindtap="onSaveSpaceInfo" loading="{{savingSpaceInfo}}" disabled="{{savingSpaceInfo || destroying}}" hover-class="button-hover">{{savingSpaceInfo ? '正在保存…' : '保存空间信息'}}</button>
+                <button class="secondary-button" bindtap="onCancelSpaceInfo" disabled="{{savingSpaceInfo}}" hover-class="button-hover">取消</button>
+              </view>
+            </block>
+          </view>
+
+          <view class="section-card">
+            <text class="section-kicker">INVITE YOUR PARTNER</text>
+            <text class="section-title">邀请另一半加入</text>
+            <text class="section-note">生成邀请令牌后发给 Ta；对方在「我的 → 绑定情侣空间」中粘贴即可加入。</text>
+            <view wx:if="{{createdInvitationLink}}" class="token-box">
+              <text class="token-label">邀请令牌</text>
+              <text class="token-value">{{createdInvitationLink}}</text>
+            </view>
+            <view wx:if="{{invitationLinkError}}" class="inline-error">{{invitationLinkError}}</view>
+            <block wx:if="{{canManageInvitations}}">
+              <view wx:if="{{invitationLinkLoading}}" class="inline-loading"><view class="state-spinner small"></view><text>正在生成邀请…</text></view>
+              <view wx:else class="button-row">
+                <button class="primary-button" bindtap="onCopyInvitation" hover-class="button-hover">复制邀请令牌</button>
+                <button class="secondary-button" bindtap="generateInvitationLink" hover-class="button-hover">{{invitationLinkError ? '重试生成邀请' : (createdInvitationLink ? '重新生成' : '生成邀请令牌')}}</button>
+              </view>
+            </block>
+            <view wx:else class="inline-note">当前状态不能生成邀请：只有空间创建者、且成员人数不足 2 人时可以生成。</view>
+          </view>
+
+          <!--
+            创建者销毁入口：仅在「当前用户是创建者 + 另一半尚未加入」时展示。
+            前端隐藏只用于体验；服务端会再次校验创建者身份与成员关系，另一半已加入时拒绝。
+          -->
+          <view wx:if="{{showDestroyEntry}}" class="section-card destroy-card">
+            <text class="section-kicker">DESTROY</text>
+            <text class="section-title">销毁并清空空间</text>
+            <text class="section-note">在另一半加入之前，你可以销毁并清空这个空间。销毁后双方都看不到空间和内容，用户侧不能自行恢复，只有平台管理员可以协助恢复。</text>
+            <view wx:if="{{destroyBlockReason}}" class="inline-note">{{destroyBlockReason}}</view>
+            <view wx:if="{{destroyError}}" class="inline-error">{{destroyError}}</view>
+            <button
+              class="destroy-button"
+              bindtap="onDestroySpace"
+              loading="{{destroying}}"
+              disabled="{{destroying || !canDestroyNow}}"
+              hover-class="button-hover"
+            >{{destroying ? '正在销毁…' : '销毁并清空空间'}}</button>
+          </view>
+        </block>
+
+        <!-- 已有空间且另一半已加入：只读摘要 + 明确说明为什么不能销毁 -->
+        <block wx:elif="{{settingsView === 'ready'}}">
+          <view class="section-card">
+            <text class="section-kicker">SPACE SUMMARY</text>
+            <text class="section-title">{{spaceName || '你们的情侣空间'}}</text>
+            <view class="summary-row">
+              <text class="summary-label">当前成员</text>
+              <text class="summary-value">{{memberCount ? memberCount + ' 位' : '已就绪'}}</text>
+            </view>
+            <view class="summary-row">
+              <text class="summary-label">空间状态</text>
+              <text class="summary-value">{{spaceStatusText || '正常'}}</text>
+            </view>
+            <view class="summary-row">
+              <text class="summary-label">你的身份</text>
+              <text class="summary-value">{{space.creator ? '空间创建者' : '空间成员'}}</text>
+            </view>
+          </view>
+
+          <!-- 空间基础信息：另一半已加入后只读，不出现编辑入口 -->
+          <view class="section-card space-info-card">
+            <text class="section-kicker">SPACE INFO</text>
+            <text class="section-title">空间信息</text>
+            <view class="summary-row">
+              <text class="summary-label">空间名称</text>
+              <text class="summary-value">{{spaceInfo.spaceName || '我们的故事'}}</text>
+            </view>
+            <view class="summary-row">
+              <text class="summary-label">空间简介</text>
+              <text class="summary-value {{spaceInfo.description ? '' : 'is-placeholder'}}">{{spaceInfo.description || '还没有写简介'}}</text>
+            </view>
+            <view class="summary-row">
+              <text class="summary-label">恋爱开始时间</text>
+              <text class="summary-value {{spaceInfo.loveStartTimeText ? '' : 'is-placeholder'}}">{{spaceInfo.loveStartTimeText || '未设置'}}</text>
+            </view>
+            <text class="inline-note">另一半已经加入，空间名称、简介和恋爱开始时间不能再修改。</text>
+          </view>
+
+          <view class="section-card destroy-card">
+            <text class="section-kicker">DESTROY</text>
+            <text class="section-title">不能销毁这个空间</text>
+            <text class="section-note">{{destroyBlockReason || '当前状态不支持销毁这个空间。'}}</text>
+            <view class="inline-note">另一半已经加入后，请通过解绑流程处理双方关系；销毁只在另一半加入前可用。</view>
+          </view>
+
+          <view class="section-card">
+            <text class="section-title">空间入口</text>
+            <text class="section-note">回到情侣空间首页，查看故事、相册与留言。</text>
+            <button class="secondary-button" bindtap="onOpenSpaceHome" hover-class="button-hover">进入情侣空间</button>
+          </view>
+        </block>
+
+        <!-- 状态加载失败：明确的错误说明 + 重试入口 -->
+        <block wx:elif="{{settingsView === 'error'}}">
+          <view class="section-card">
+            <text class="section-kicker">ERROR</text>
+            <text class="section-title">空间状态暂时无法确认</text>
+            <text class="section-note">{{pageError}}</text>
+            <view class="button-row">
+              <button class="primary-button" bindtap="onRetryPage" hover-class="button-hover">重试</button>
+              <button class="secondary-button" bindtap="onRecheck" loading="{{loading}}" hover-class="button-hover">重新确认状态</button>
+            </view>
+          </view>
+        </block>
+
+        <!-- 还没有空间：设置页给出创建 / 绑定入口 -->
+        <block wx:else>          <view class="section-card">
+            <text class="section-kicker">NO SPACE</text>
+            <text class="section-title">还没有可用空间</text>
+            <text class="section-note">你现在没有可管理的情侣空间。可以创建一个新的空间，或粘贴另一半的邀请加入 Ta 的空间。</text>
+            <view class="button-row">
+              <button class="primary-button" bindtap="onCreateMode" hover-class="button-hover">创建情侣空间</button>
+              <button class="secondary-button" bindtap="onBindMode" hover-class="button-hover">绑定 / 加入</button>
+            </view>
+          </view>
+        </block>
+      </block>
+
+      <!-- ==================== 创建 / 绑定模式（原有行为） ==================== -->
       <!-- 已创建但等待另一半加入：只展示邀请区，不再展示创建表单 -->
-      <block wx:if="{{waiting}}">
+      <block wx:elif="{{waiting}}">
         <view class="section-card">
           <text class="section-kicker">INVITE YOUR PARTNER</text>
           <text class="section-title">邀请另一半加入</text>
@@ -152,6 +386,11 @@
       <view class="recheck-row">
         <text class="recheck-note">状态看起来不对？</text>
         <text class="recheck-link" bindtap="onRecheck">重新确认情侣空间状态</text>
+      </view>
+
+      <!-- 设置模式的返回兜底：页面栈为空（分享 / 扫码直达）时也能离开本页 -->
+      <view wx:if="{{isSettingsMode}}" class="back-row">
+        <button class="back-button" bindtap="onBackToProfile" hover-class="button-hover">返回「我的」</button>
       </view>
     </block>
 

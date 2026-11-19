@@ -77,14 +77,21 @@ npm run build
 
 ### 规则
 
-- 只有空间**创建者**可以发起，且服务端以数据库成员关系判断「另一半尚未加入」，不信任前端传参；
+- 只有空间**创建者**可以发起，且服务端以数据库成员关系与成员历史判断「另一半尚未加入」，
+  不信任前端传参；
+- 「另一半尚未加入」不能只看当前有效成员数：**另一半曾加入后又退出**的空间会返回 `20102`，
+  这类空间不是单人空间，不得为了通过校验而改写成员历史；
 - 另一半已加入时接口拒绝并返回 `20094`，非创建者返回 `20093`，状态不允许返回 `20095`；
+- `POST /space/destroy` 的请求体可选：`{ spaceId?, expectedRevision? }`。带上后服务端会校验
+  「请求发起时展示的空间」与「当前推导出的目标空间」一致，不一致返回 `20103` 并拒绝整笔操作，
+  避免延迟到达的旧请求误操作用户随后创建的新空间；不带则保持旧客户端语义；
 - 销毁**不做物理删除**：空间标记为 `couple_space.status = 6`，成员关系标记为已退出，
   完整快照写入 `couple_space_archive`；重复提交按幂等返回同一份结果；
 - 销毁后普通用户的 `/space/status` 返回 `data=null`，内容接口、邀请接口与公开广场都不再返回该空间；
+  旧邀请链接预览会明确提示「空间已被创建者销毁，邀请已失效」，且不再回显空间简介 / 封面；
 - 管理员从留档恢复需要 `admin:space:restore` 权限，必须填写原因并写审计
-  （`SPACE_ARCHIVE_RESTORE`）；成员已加入其它未销毁空间等冲突会返回 `20100` 并拒绝整笔恢复，
-  不覆盖现存数据；
+  （`SPACE_ARCHIVE_RESTORE`）；成员已加入其它未销毁空间、成员账号已被删除 / 禁用、
+  或存在更新的留档轮次等冲突会返回 `20100` 并拒绝整笔恢复，不覆盖现存数据；
 - 恢复后空间回到「等待绑定」并保持私密，由创建者重新邀请另一半，不会自动重新公开；
 - 图片资源只在快照中保留 URL 引用，销毁不会触发对象存储删除，恢复后仍可按原引用访问。
 
@@ -92,10 +99,23 @@ npm run build
 
 | 端 | 接口 | 说明 |
 | --- | --- | --- |
-| Web / 小程序 | `POST /space/destroy` | 创建者销毁；无请求体，身份由登录态推导 |
+| Web / 小程序 | `POST /space/destroy` | 创建者销毁；可选请求体 `{ spaceId, expectedRevision }`，身份始终由登录态推导 |
 | 管理控制台 | `POST /admin/space/archive/list` | 查询留档分页（`admin:space:query`） |
 | 管理控制台 | `POST /admin/space/archive/detail` | 留档详情、完整性与冲突（`admin:space:query`） |
 | 管理控制台 | `POST /admin/space/archive/restore` | 从留档恢复，必须填原因（`admin:space:restore`） |
+
+### 错误码
+
+| 错误码 | 含义 |
+| --- | --- |
+| `20093` | 只有情侣空间创建者才能销毁空间 |
+| `20094` | 另一半已加入情侣空间，不能再销毁 |
+| `20095` | 只有等待另一半加入的空间才能销毁 |
+| `20096` | 情侣空间已销毁，只有管理员可以从留档恢复 |
+| `20100` | 恢复冲突：空间或成员数据与留档不一致 |
+| `20101` | 恢复失败：留档中的部分数据已不存在 |
+| `20102` | 另一半曾加入过该情侣空间，不能按「尚未加入」销毁 |
+| `20103` | 销毁目标已变化，请刷新空间状态后重试 |
 
 ### 数据库迁移（部署必做）
 
@@ -105,14 +125,23 @@ npm run build
 # MySQL 生产库
 cd amour-springboot/amour-web/src/main/resources/db/migrations
 mysql -h <host> -u <user> -p amour < 20261118_space_destroy_archive_mysql.sql
+mysql -h <host> -u <user> -p amour < 20261119_space_destroy_governance_mysql.sql
 
 # SQLite（本地 / 单机部署）
 sqlite3 /path/to/amour.db < 20261118_space_destroy_archive_sqlite.sql
+sqlite3 /path/to/amour.db < 20261119_space_destroy_governance_sqlite.sql
 ```
 
-迁移内容：`couple_space` 增加 `destroyed_at` 列，新增 `couple_space_archive` 留档表。
-两个脚本都可重复执行（MySQL 用 `information_schema` 判断；SQLite 重复执行 `ALTER` 会报
-duplicate column，属预期且发生在任何写操作之前，建议先备份）。
+- `20261118_space_destroy_archive_*`：`couple_space` 增加 `destroyed_at` 列，
+  新增 `couple_space_archive` 留档表。SQLite 重复执行 `ALTER` 会报 duplicate column，
+  属预期且发生在任何写操作之前，建议先备份。
+- `20261119_space_destroy_governance_*`：**不新增任何表或字段**，只做必要的数据治理
+  （孤儿成员行标记为已退出、半完成解绑空间收敛为 `status=5`、失效邀请撤销）。
+  两个治理 UPDATE 都带「仍满足异常条件」的 `WHERE`，可重复执行；脚本自带执行前诊断与
+  执行后校验，重复执行第 2 次起命中 0 行。
+  执行前务必用 SQLite Backup API 备份（能正确处理 WAL）：
+  `sqlite3 amour.db ".backup 'amour-before-space-destroy-governance.db'"`。
+
 
 ## 访问渠道统计
 

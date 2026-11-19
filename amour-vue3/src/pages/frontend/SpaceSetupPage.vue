@@ -115,8 +115,9 @@
         </section>
 
         <!--
-          已登录且已拿到空间状态：统一渲染空间概览与设置面板。
-          status=0 时邀请区通过 after-overview 插槽放在概览下方。
+          已登录且已拿到空间状态：统一渲染空间设置面板。
+          等待绑定（status=0）时邀请区通过 after-overview 插槽交给面板定位，
+          面板负责「基础信息 → 成员与邀请 → 公开与审核 → 内容管理 → 危险操作」的顺序。
         -->
         <SpaceSettingsPanel v-else-if="showSpacePanel" class="mt-6">
           <template #after-overview>
@@ -132,7 +133,7 @@
             >
               <header class="panel-header">
                 <div class="min-w-0">
-                  <p class="section-kicker">邀请另一半</p>
+                  <p class="section-kicker">成员与邀请</p>
                   <h2 id="space-invite-heading" class="mt-1 section-title">邀请另一半加入</h2>
                   <p class="mt-1 max-w-2xl text-xs leading-6 text-stone-500">
                     生成一条邀请链接发给 Ta。链接有效期 7 天，对方接受后空间会自动变成正常状态。
@@ -153,14 +154,14 @@
                   <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
                     <p class="text-xs font-semibold text-stone-600">生成邀请</p>
                     <RouterLink to="/space/studio" class="btn-ghost !px-2 !py-1 !text-[11px]">
-                      先布置空间
+                      先去布置内容
                       <span aria-hidden="true">→</span>
                     </RouterLink>
                   </div>
 
                   <!-- 空间已满（memberCount=2 但状态还没来得及刷新）时不再提供创建入口 -->
                   <div v-if="!canManageSpaceInvitations" class="rounded-lg border border-amber-200/80 bg-amber-50/80 px-4 py-3 text-xs leading-5 text-amber-800" role="status">
-                    当前空间已有两名成员，不能再创建新的邀请。如果状态没有及时更新，请点击上方「刷新空间状态」。
+                    当前空间已有两名成员，不能再创建新的邀请。如果状态没有及时更新，请点击页面上方的「刷新状态」。
                   </div>
 
                   <form v-else class="space-y-3" @submit.prevent="createInviteLink">
@@ -626,7 +627,7 @@ import {
   validateInviteeAmourId,
 } from '@/utils/spaceInvitation'
 import { resolveSafeRedirect } from '@/utils/safeRedirect'
-import { isDestroyedSpace, isUnboundSpace, readSpaceErrorMessage } from '@/utils/spaceState'
+import { hasLiveSpace, readSpaceErrorMessage } from '@/utils/spaceState'
 import { createMaxDateRef } from '@/utils/datePickerBounds'
 
 const route = useRoute()
@@ -635,21 +636,16 @@ const {
   spaceStatus,
   spaceLoading,
   spaceError,
-  hasCoupleSpace,
   isSpaceReady,
   isSpaceWaiting,
   canManageSpaceInvitations,
   refreshSpaceStatus,
 } = useFrontendSpace()
 
-/** 有未解绑的空间时，页面统一展示空间概览与设置面板。 */
+/** 有仍然属于用户的空间时，页面统一展示空间概览与设置面板。 */
 // 已解绑（status=5）与已销毁（status=6）都是「用户侧没有可用空间」：
 // 不能再渲染空间设置面板（否则会重新暴露销毁 / 解绑 / 邀请等入口）。
-const showSpacePanel = computed(() => (
-  hasCoupleSpace.value
-  && !isUnboundSpace(spaceStatus.value)
-  && !isDestroyedSpace(spaceStatus.value)
-))
+const showSpacePanel = computed(() => hasLiveSpace(spaceStatus.value))
 const pageHeading = computed(() => {
   if (showSpacePanel.value) return '空间设置'
   if (statusError.value) return '情侣空间'
@@ -823,7 +819,7 @@ function scrollToAction() {
 
 async function loadReceivedInvitations() {
   if (invitationsLoading.value) return
-  if ((hasCoupleSpace.value && !isUnboundSpace(spaceStatus.value)) || spaceError.value) return
+  if (hasLiveSpace(spaceStatus.value) || spaceError.value) return
 
   invitationsLoading.value = true
   invitationsError.value = ''
@@ -860,7 +856,7 @@ async function retryStatus() {
     await loadPendingInvitations()
     return
   }
-  if ((!hasCoupleSpace.value || isUnboundSpace(spaceStatus.value)) && !spaceError.value) {
+  if (!hasLiveSpace(spaceStatus.value) && !spaceError.value) {
     await loadReceivedInvitations()
   }
 }
@@ -1266,13 +1262,13 @@ onMounted(async () => {
   // status=0：创建者需要在这里管理待绑定邀请。
   if (isSpaceWaiting.value) {
     await loadPendingInvitations()
-  } else if ((!hasCoupleSpace.value || isUnboundSpace(spaceStatus.value)) && !spaceError.value) {
+  } else if (!hasLiveSpace(spaceStatus.value) && !spaceError.value) {
     await loadReceivedInvitations()
     if (tokenFromQuery) await loadInvitationPreview()
   }
 
   // 对方已经加入（status 变成 1）时，若本页带着邀请链接，仍然展示预览结果。
-  if (hasCoupleSpace.value && tokenFromQuery) {
+  if (hasLiveSpace(spaceStatus.value) && tokenFromQuery) {
     await loadInvitationPreview()
   }
 

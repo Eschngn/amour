@@ -51,6 +51,8 @@
             <el-option :value="3" label="已归档" />
             <el-option :value="4" label="删除等待期" />
             <el-option :value="5" label="双方已解绑" />
+            <!-- status=6 由创建者在另一半加入前销毁：列表里可定位，恢复入口在「已销毁空间（留档）」视图。 -->
+            <el-option :value="6" label="已销毁（留档）" />
           </el-select>
           <el-select
             v-model="filters.visibility"
@@ -165,7 +167,7 @@
                     <View class="h-3.5 w-3.5" aria-hidden="true" />详情
                   </button>
                   <button
-                    v-if="row.status === 5"
+                    v-if="row.status === 5 && canRestoreSpace"
                     type="button"
                     class="admin-table-action text-emerald-600 hover:bg-emerald-50"
                     :disabled="!row.restorable || restoringId !== null"
@@ -297,7 +299,7 @@
                       <View class="h-3.5 w-3.5" aria-hidden="true" />详情
                     </button>
                     <button
-                      v-if="!row.restoredAt"
+                      v-if="!row.restoredAt && canRestoreSpace"
                       type="button"
                       class="admin-table-action text-emerald-600 hover:bg-emerald-50"
                       :disabled="!row.restorable || restoringArchiveId !== null"
@@ -330,7 +332,12 @@
               <div class="min-w-0">
                 <div class="flex flex-wrap items-center gap-2">
                   <h3 class="text-lg font-semibold text-slate-900">{{ archiveDetail.spaceName || '未命名空间' }}</h3>
-                  <span class="rounded-full px-2.5 py-1 text-[11px] font-semibold" :class="archiveDetail.restorable ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-600'">
+                  <span
+                    class="rounded-full px-2.5 py-1 text-[11px] font-semibold"
+                    :class="archiveDetail.restoredAt
+                      ? 'bg-emerald-50 text-emerald-600'
+                      : (archiveDetail.restorable ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-600')"
+                  >
                     {{ archiveDetail.restoredAt ? '已恢复' : (archiveDetail.restorable ? '可恢复' : '存在冲突') }}
                   </span>
                 </div>
@@ -338,7 +345,7 @@
                 <p class="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-600">{{ archiveDetail.description || '暂无空间简介' }}</p>
               </div>
               <button
-                v-if="!archiveDetail.restoredAt"
+                v-if="!archiveDetail.restoredAt && canRestoreSpace"
                 type="button"
                 class="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                 :disabled="!archiveDetail.restorable || restoringArchiveId !== null"
@@ -366,6 +373,14 @@
             <div class="detail-card"><p class="detail-label">图片资源引用</p><p class="detail-value">{{ archiveDetail.fileResourceCount ?? 0 }} 个</p></div>
             <div class="detail-card"><p class="detail-label">快照版本</p><p class="detail-value">v{{ archiveDetail.snapshotVersion ?? '-' }}</p></div>
           </div>
+
+          <p
+            v-if="!archiveDetail.restoredAt && !archiveDetail.restorable && archiveDetail.restoreBlockReason"
+            class="rounded-xl border border-rose-200 bg-rose-50/70 px-3.5 py-2.5 text-xs leading-5 text-rose-700"
+            role="status"
+          >
+            当前无法恢复：{{ archiveDetail.restoreBlockReason }}
+          </p>
 
           <section class="rounded-xl border border-slate-200 p-4">
             <h4 class="text-xs font-semibold text-slate-700">留档完整性</h4>
@@ -432,7 +447,7 @@
               <p class="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-600">{{ detail.description || '暂无空间简介' }}</p>
             </div>
             <button
-              v-if="detail.restore?.restorable"
+              v-if="detail.restore?.restorable && canRestoreSpace"
               type="button"
               class="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
               :disabled="restoringId !== null"
@@ -628,6 +643,7 @@ import {
   buildArchiveRestoreSuccessMessage,
   buildRestorePromptMessage,
   buildRestoreSuccessMessage,
+  createAdminRestoreFailureError,
 } from '@/utils/adminRestore'
 import { ADMIN_PERMISSIONS, hasAdminPermission } from '@/utils/adminAuth'
 
@@ -729,6 +745,8 @@ function statusClass(value) {
     3: 'bg-slate-100 text-slate-500',
     4: 'bg-orange-50 text-orange-600',
     5: 'bg-rose-50 text-rose-600',
+    // status=6 已销毁：用户侧不可见，仅管理员可从留档恢复。
+    6: 'bg-stone-200 text-stone-700',
   }
   return map[value] || 'bg-slate-100 text-slate-500'
 }
@@ -815,6 +833,11 @@ async function promptReason(row) {
 
 async function restore(row) {
   if (restoringId.value !== null) return
+  // 查询权限不能用于恢复：后端会独立校验 admin:space:restore，前端同样在提交前拦截一次。
+  if (!canRestoreSpace.value) {
+    ElMessage.warning('当前账号没有人工恢复空间的权限')
+    return
+  }
   if (row.status !== 5) {
     ElMessage.warning('只有双方已解绑的空间才能人工恢复')
     return
@@ -828,7 +851,8 @@ async function restore(row) {
   restoringId.value = row.spaceId
   try {
     const { data } = await restoreAdminSpace(row.spaceId, reason)
-    if (!data?.success) throw new Error(data?.message || '人工恢复失败')
+    // 业务失败也要保留 errorCode：后续刷新分支依赖它判断是否属于冲突/状态已变化。
+    if (!data?.success) throw createAdminRestoreFailureError(data, '人工恢复失败')
     ElMessage.success(buildRestoreSuccessMessage(data.data))
     // 恢复成功后详情可能已过期（成员、状态、邀请都被改写），必须重新拉取。
     if (detail.value?.spaceId === row.spaceId) {
@@ -969,7 +993,8 @@ async function restoreArchive(row) {
   restoringArchiveId.value = row.archiveId
   try {
     const { data } = await restoreAdminSpaceFromArchive(row.archiveId, reason)
-    if (!data?.success) throw new Error(data?.message || '从留档恢复失败')
+    // 业务失败（20097~20101）必须保留 errorCode，才能触发下面的详情/列表刷新。
+    if (!data?.success) throw createAdminRestoreFailureError(data, '从留档恢复失败')
     ElMessage.success(buildArchiveRestoreSuccessMessage({
       spaceName: row.spaceName,
       spaceCode: row.spaceCode,
@@ -983,7 +1008,7 @@ async function restoreArchive(row) {
     await loadArchives()
   } catch (e) {
     ElMessage.error(e.response?.data?.message || e.message || '从留档恢复失败')
-    // 业务失败（冲突 / 状态已变化）时同步刷新，避免继续展示过期的恢复资格。
+    // 业务失败（冲突 / 已恢复 / 状态已变化）时同步刷新，避免继续展示过期的恢复资格。
     if (e.response?.data?.errorCode) {
       if (archiveDetail.value?.archiveId === row.archiveId) {
         await openArchiveDetail({ archiveId: row.archiveId })

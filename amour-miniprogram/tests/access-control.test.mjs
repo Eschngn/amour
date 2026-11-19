@@ -285,6 +285,62 @@ test('openSpaceSetup：已登录时进入创建 / 绑定页并带上分区参数
   assert.ok(last.url.indexOf('action=bind') !== -1)
 })
 
+test('openSpaceSetup：create 模式仍带 ?action=create', async () => {
+  await setWithoutSpace()
+  navigations.length = 0
+  const started = accessControl.openSpaceSetup('create')
+  assert.equal(started, true)
+  const last = navigations[navigations.length - 1]
+  assert.equal(last.type, 'navigateTo')
+  assert.equal(last.url, '/pages/space-setup/index?action=create')
+})
+
+test('openSpaceSetup：无参数时不带 query（保持原有行为）', async () => {
+  await setWithoutSpace()
+  navigations.length = 0
+  const started = accessControl.openSpaceSetup()
+  assert.equal(started, true)
+  const last = navigations[navigations.length - 1]
+  assert.equal(last.type, 'navigateTo')
+  assert.equal(last.url, '/pages/space-setup/index')
+})
+
+test('openSpaceSetup：settings 模式进入 ?mode=settings（已有空间也停留在设置页）', async () => {
+  await setWithSpace()
+  navigations.length = 0
+  const started = accessControl.openSpaceSetup('settings')
+  assert.equal(started, true)
+  const last = navigations[navigations.length - 1]
+  assert.equal(last.type, 'navigateTo')
+  assert.equal(last.url, '/pages/space-setup/index?mode=settings')
+  // 只会发生一次跳转，不需要先绕道其它页面。
+  assert.equal(navigations.length, 1)
+})
+
+test('openSpaceSetup：settings 模式未登录时仍先去登录页（redirect 指向空间设置页）', () => {
+  setUnauthenticated()
+  navigations.length = 0
+  const started = accessControl.openSpaceSetup('settings')
+  assert.equal(started, true)
+  const last = navigations[navigations.length - 1]
+  assert.equal(last.type, 'reLaunch')
+  assert.ok(last.url.indexOf('/pages/login/login') !== -1, last.url)
+  assert.ok(
+    last.url.indexOf(encodeURIComponent('/pages/space-setup/index')) !== -1,
+    `登录后应回到空间设置页，实际：${last.url}`,
+  )
+})
+
+test('openSpaceSetup：loading 状态下不跳转（等状态确认）', () => {
+  storage.clear()
+  sessionState.resetForTests()
+  navigations.length = 0
+  const started = accessControl.openSpaceSetup('settings')
+  assert.equal(started, false)
+  assert.equal(navigations.length, 0)
+  assert.ok(toasts.some(text => /登录状态/.test(String(text))))
+})
+
 test('redirectToLogin 保留 redirect 参数供登录后回跳', () => {
   navigations.length = 0
   accessControl.redirectToLogin('pages/story/story')

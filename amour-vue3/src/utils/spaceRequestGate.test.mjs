@@ -97,3 +97,43 @@ test('clear 语义（invalidate）不会伪造空间状态对象', () => {
   // 闸门只处理请求有效性，不持有任何空间字段
   assert.deepEqual(Object.keys(gate).sort(), ['begin', 'currentInflight', 'invalidate', 'isCurrent', 'release', 'sequence', 'track'])
 })
+
+test('销毁后的强制刷新让销毁前发出的 /space/status 响应失效（不把已销毁空间写回）', () => {
+  const gate = createSpaceRequestGate()
+
+  // 页面初始化 / 手动刷新在销毁之前发出，服务端此时还有空间。
+  const staleStatus = gate.begin()
+  gate.track(Promise.resolve('stale-status'))
+
+  // 用户点销毁 -> 服务端成功 -> 强制刷新（force: true）先 invalidate 再 begin。
+  gate.invalidate()
+  assert.equal(gate.isCurrent(staleStatus), false, '销毁前的旧状态响应必须失效')
+  assert.equal(gate.currentInflight(), null, 'force 刷新不能复用销毁前的 in-flight Promise')
+  const freshStatus = gate.begin()
+
+  let spaceStatus = { spaceId: 3001, status: 0 }
+  // 旧响应晚到：闸门判定失效，不能把空间写回页面。
+  if (gate.isCurrent(staleStatus)) spaceStatus = { spaceId: 3001, status: 0 }
+  // 新响应：销毁成功后的 data=null。
+  if (gate.isCurrent(freshStatus)) spaceStatus = null
+
+  assert.equal(spaceStatus, null, '销毁后页面必须保持无空间状态')
+  gate.release(staleStatus)
+  assert.equal(gate.sequence, freshStatus, '旧请求结束不能改变当前序号')
+})
+
+test('销毁请求失败后刷新保留最新序号，晚到的旧响应仍被丢弃', () => {
+  const gate = createSpaceRequestGate()
+  // 销毁前的自动刷新。
+  const beforeDestroy = gate.begin()
+  // 销毁被服务端拒绝（20094/20103）后按 isDestroyStateConflict 强制刷新。
+  gate.invalidate()
+  const afterReject = gate.begin()
+
+  let latest = null
+  if (gate.isCurrent(beforeDestroy)) latest = { spaceId: 3001, status: 0, memberCount: 1 }
+  assert.equal(latest, null, '拒绝后的刷新之前，旧响应不得生效')
+
+  if (gate.isCurrent(afterReject)) latest = { spaceId: 3001, status: 1, memberCount: 2 }
+  assert.deepEqual(latest, { spaceId: 3001, status: 1, memberCount: 2 }, '展示服务端真实状态')
+})

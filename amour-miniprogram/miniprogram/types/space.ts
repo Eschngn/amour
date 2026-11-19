@@ -28,12 +28,19 @@ export interface CoupleSpace {
   spaceName?: string | null
   description?: string | null
   coverImage?: string | null
-  /** 0-等待绑定 1-正常 2-冻结 3-历史归档 4-删除等待期 5-已解绑 */
+  /** 0-等待绑定 1-正常 2-冻结 3-历史归档 4-删除等待期 5-已解绑 6-已销毁（仅管理员可见） */
   status?: number | string | null
   statusText?: string | null
   /** 0-私密 1-公开到恋爱广场 */
   visibility?: number | string | null
   loveStartTime?: string | null
+  /** 首次公开时间：隐藏、恢复或再次公开都不会刷新 */
+  publicAt?: string | null
+  /** 当前是否具备公开资格：status=1 且有效成员数为 2 */
+  canSetVisibility?: boolean | null
+  archivedAt?: string | null
+  /** 完成解绑（逻辑删除）时间 */
+  deletedAt?: string | null
   createTime?: string | null
   memberLimit?: number | string | null
   memberCount?: number | string | null
@@ -42,7 +49,38 @@ export interface CoupleSpace {
   creator?: boolean | null
   canInvite?: boolean | null
   pendingInvitationCount?: number | string | null
+  /** 冻结或归档后是否需要双方确认恢复 */
+  restoreRequired?: boolean | null
+  restoreConfirmedCount?: number | string | null
+  restoreConfirmedByMe?: boolean | null
+  /** 是否存在待处理的解绑申请 */
+  unbindPending?: boolean | null
+  /** 待处理解绑申请是否由当前用户发起 */
+  unbindRequestedByMe?: boolean | null
+  unbindCanConfirm?: boolean | null
+  unbindCanCancel?: boolean | null
+  unbindRequester?: SpaceUnbindRequester | null
+  unbindRequestedAt?: string | null
+  unbindRequestId?: number | string | null
+  /** 最近一次已结束的解绑申请状态：1-已同意 2-已拒绝 3-已取消 */
+  unbindLastStatus?: number | string | null
+  unbindLastRequestedByMe?: boolean | null
+  unbindLastResolvedAt?: string | null
+  /**
+   * 空间工作版本号。
+   *
+   * 空间基础信息 / 首页配置保存成功后递增；创建 / 绑定 / 编辑接口返回的
+   * SpaceStatusVO 都会带上它，可用于识别「请求飞行期间空间已被改写」的过期状态。
+   */
+  revision?: number | string | null
   members?: SpaceMember[] | null
+}
+
+/** 解绑发起人的公开资料（SpaceUnbindRequesterVO）。 */
+export interface SpaceUnbindRequester {
+  amourId?: string | null
+  displayName?: string | null
+  avatar?: string | null
 }
 
 /** 空间邀请（InvitationVO）。 */
@@ -97,6 +135,24 @@ export interface CreateSpacePayload {
   /** yyyy-MM-dd HH:mm:ss */
   loveStartTime?: string | null
 }
+
+/**
+ * 编辑空间基础信息请求体（UpdateSpaceReqVO）。
+ *
+ * 语义是「提交完整基础信息」而不是补丁，调用时三个字段都应显式提交：
+ * - spaceName：trim 后字符串，空串也提交（后端落回默认名「我们的故事」）；
+ * - description：trim 后字符串，空串提交用于清空；
+ * - loveStartTime：`yyyy-MM-dd HH:mm:ss` 或 null（清空），不能是空字符串。
+ */
+export interface UpdateSpacePayload {
+  spaceName?: string
+  description?: string
+  /** yyyy-MM-dd HH:mm:ss 或 null（清空）；不允许空字符串 */
+  loveStartTime?: string | null
+}
+
+/** 编辑空间基础信息的返回：最新 SpaceStatusVO（含递增后的 revision）。 */
+export type UpdateSpaceResult = CoupleSpace
 
 /** 创建邀请返回（CreateInvitationRspVO）。 */
 export interface CreateInvitationResult {

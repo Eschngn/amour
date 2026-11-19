@@ -74,6 +74,7 @@ public class GalleryServiceImpl implements GalleryService {
     private static final int SPACE_STATUS_WAITING = 0;
     private static final int SPACE_STATUS_FROZEN = 2;
     private static final int SPACE_STATUS_ARCHIVED = 3;
+    private static final int SPACE_STATUS_DESTROYED = 6;
     private static final int SPACE_VISIBILITY_PUBLIC = 1;
 
     private static final int LATEST_STORY_LIMIT = 1;
@@ -519,6 +520,11 @@ public class GalleryServiceImpl implements GalleryService {
         CoupleSpaceDO space = coupleSpaceMapper.findById(spaceId);
         if (space == null) {
             throw new BizException(ResponseCodeEnum.SPACE_NOT_EXIST);
+        }
+        // 已销毁（status=6）空间对普通用户完全不可见：销毁时已强制 visibility=0，
+        // 这里显式拒绝，避免未来某条路径漏写 visibility 时把已销毁空间重新公开出去。
+        if (Integer.valueOf(SPACE_STATUS_DESTROYED).equals(space.getStatus())) {
+            throw new BizException(ResponseCodeEnum.SPACE_NOT_PUBLIC);
         }
         if (!Integer.valueOf(SPACE_VISIBILITY_PUBLIC).equals(space.getVisibility())) {
             throw new BizException(ResponseCodeEnum.SPACE_NOT_PUBLIC);

@@ -20,7 +20,10 @@ public class AdminSpacePageReqVO {
     private String keyword;
 
     /**
-     * 空间状态：0-等待绑定 1-正常 2-冻结 3-已归档 4-删除等待期 5-已解绑。
+     * 空间状态：0-等待绑定 1-正常 2-冻结 3-已归档 4-删除等待期 5-已解绑 6-已销毁。
+     *
+     * <p>已销毁（status=6）的空间同样出现在空间列表中，管理员可据此排障；
+     * 从留档恢复请使用 /admin/space/archive/restore。</p>
      */
     private Integer status;
 

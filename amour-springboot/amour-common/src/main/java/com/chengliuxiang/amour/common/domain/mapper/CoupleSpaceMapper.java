@@ -271,9 +271,15 @@ public interface CoupleSpaceMapper extends BaseMapper<CoupleSpaceDO> {
      * 创建者销毁空间（另一半尚未加入阶段）。
      *
      * <p>条件更新一次性完成所有服务端校验：空间仍处于可销毁状态（等待绑定，或历史上单人正常），
-     * 创建者就是当前用户，且空间内有效成员恰好只有创建者一人。任一条件不满足返回 0，
-     * 调用方必须回滚整笔销毁事务，不能出现「已写留档但空间未销毁」或
+     * 创建者就是当前用户，空间内有效成员恰好只有创建者一人，且成员历史中从未出现过另一半。
+     * 任一条件不满足返回 0，调用方必须回滚整笔销毁事务，不能出现「已写留档但空间未销毁」或
      * 「空间已销毁但未留档」「另一半已加入却被销毁」的中间态。</p>
+     *
+     * <p>为什么必须校验成员历史：只按「当前有效成员数 = 1」判断，会把
+     * 「另一半曾加入、后来退出」的空间误判成从未加入的单人空间。
+     * 成员行的语义是：{@code status=0} 为占位邀请（尚未真正加入，{@code joined_at} 为空），
+     * 其余状态（1 有效 / 2 暂停 / 3 已退出 / 4 已移除）都代表该用户曾经正式加入过。
+     * 因此历史判据是「存在创建者以外、且曾经加入过的成员行」，而不是「当前有效成员数」。</p>
      *
      * <p>同时强制 visibility=0，保证销毁后即使历史数据残留公开标记也不会进入恋爱广场。
      * 不删除任何内容行，只改空间状态与时间字段。</p>
@@ -287,6 +293,11 @@ public interface CoupleSpaceMapper extends BaseMapper<CoupleSpaceDO> {
                         spaceId)
                 .apply("NOT EXISTS (SELECT 1 FROM couple_member WHERE space_id = {0} "
                         + "AND status = 1 AND user_id <> {1})", spaceId, creatorUserId)
+                // 成员历史：创建者以外的人只要曾经正式加入过（joined_at 非空或已不是占位邀请），
+                // 该空间就不再是「另一半从未加入」的单人空间。
+                .apply("NOT EXISTS (SELECT 1 FROM couple_member WHERE space_id = {0} "
+                        + "AND user_id <> {1} AND (joined_at IS NOT NULL OR status <> 0))",
+                        spaceId, creatorUserId)
                 .set(CoupleSpaceDO::getStatus, 6)
                 .set(CoupleSpaceDO::getVisibility, 0)
                 .set(CoupleSpaceDO::getDestroyedAt, destroyedAt)

@@ -20,6 +20,10 @@ const DESTROY_ERROR_CODE = {
   DESTROYED: '20096',
   NOT_MEMBER: '20034',
   MEMBERSHIP_CONFLICT: '20089',
+  /** 另一半曾加入过该空间（后又退出）：不能按「尚未加入」销毁。 */
+  PARTNER_HISTORY: '20102',
+  /** 请求携带的目标空间与服务端推导出的空间不一致：必须先刷新状态，不能继续销毁。 */
+  TARGET_CHANGED: '20103',
 }
 
 function spaceLabel(space) {
@@ -87,6 +91,12 @@ function buildDestroyErrorMessage(error, fallback) {
   if (code === DESTROY_ERROR_CODE.DESTROYED) {
     return '这个情侣空间已被销毁，只有平台管理员可以协助恢复。'
   }
+  if (code === DESTROY_ERROR_CODE.PARTNER_HISTORY) {
+    return '另一半曾经加入过这个情侣空间，不能按「对方尚未加入」的方式销毁；如确需解除关系，请使用解绑申请。'
+  }
+  if (code === DESTROY_ERROR_CODE.TARGET_CHANGED) {
+    return '要销毁的情侣空间已经发生变化，请刷新空间状态后再确认。'
+  }
   const message = typeof error.message === 'string' ? error.message.trim() : ''
   return message || defaultMessage
 }
@@ -94,6 +104,9 @@ function buildDestroyErrorMessage(error, fallback) {
 /**
  * 服务端是否以「状态已过期」为由拒绝销毁。这类结果必须强制刷新本地状态，
  * 不能只依赖入口隐藏来保证安全。
+ *
+ * 20102（另一半曾加入）、20103（目标空间已变化）同样说明本地空间状态已经过期：
+ * 尤其是 20103，说明用户看到的空间已经不是服务端当前的当前空间，必须立即刷新。
  *
  * @param {object|null} error
  * @returns {boolean}
@@ -104,6 +117,8 @@ function isDestroyStateConflict(error) {
   return code === DESTROY_ERROR_CODE.PARTNER_JOINED
     || code === DESTROY_ERROR_CODE.STATUS_NOT_ALLOWED
     || code === DESTROY_ERROR_CODE.NOT_CREATOR
+    || code === DESTROY_ERROR_CODE.PARTNER_HISTORY
+    || code === DESTROY_ERROR_CODE.TARGET_CHANGED
 }
 
 /**

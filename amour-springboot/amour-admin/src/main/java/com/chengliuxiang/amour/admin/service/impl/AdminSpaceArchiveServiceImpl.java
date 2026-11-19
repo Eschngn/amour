@@ -560,8 +560,82 @@ public class AdminSpaceArchiveServiceImpl implements AdminSpaceArchiveService {
                     space.getId(), space.getSpaceCode(),
                     "当前状态为「" + spaceStatusText(space.getStatus()) + "」，不是已销毁状态"));
         }
+        // 旧留档不能覆盖新的生命周期：同一空间存在更新的销毁留档时，
+        // 恢复旧留档会回退到更早的状态，必须拒绝。
+        conflicts.addAll(findStaleArchiveConflicts(archive, space));
         if (includeMemberConflicts) {
             conflicts.addAll(findMemberConflicts(archive, members, userMap));
+            conflicts.addAll(findUnavailableUserConflicts(archive, userMap));
+        }
+        return conflicts;
+    }
+
+    /**
+     * 查找「同一空间存在更新的销毁留档」的冲突。
+     *
+     * <p>{@code archive_round} 只在同一空间再次销毁时递增。若目标空间的轮次比本留档更大，
+     * 说明用户在管理员恢复后已经重新走完了销毁流程，此时恢复旧留档相当于回退生命周期，
+     * 必须拒绝，避免覆盖后来的销毁与留档。</p>
+     */
+    private List<AdminSpaceArchiveConflictVO> findStaleArchiveConflicts(CoupleSpaceArchiveDO archive,
+                                                                       CoupleSpaceDO space) {
+        List<AdminSpaceArchiveConflictVO> conflicts = new ArrayList<>();
+        CoupleSpaceArchiveDO latest = archiveMapper.selectLatestBySpaceId(space.getId());
+        if (latest == null || Objects.equals(latest.getId(), archive.getId())) {
+            return conflicts;
+        }
+        int currentRound = archive.getArchiveRound() == null ? 1 : archive.getArchiveRound();
+        int latestRound = latest.getArchiveRound() == null ? 1 : latest.getArchiveRound();
+        if (latestRound > currentRound) {
+            conflicts.add(conflict("STALE_ARCHIVE_ROUND", "存在更新的销毁留档",
+                    space.getId(), space.getSpaceCode(),
+                    "该空间已有第 " + latestRound + " 次销毁留档（本留档为第 " + currentRound
+                            + " 次），恢复旧留档会覆盖后续生命周期，请恢复最新留档"));
+        }
+        return conflicts;
+    }
+
+    /**
+     * 查找「留档中的有效成员用户已被删除或禁用」的冲突。
+     *
+     * <p>恢复会把成员重新激活为有效成员；若账号已被删除，恢复后的空间将缺少创建者 / 另一半，
+     * 无法正常使用。这里显式拒绝并提示管理员先处理账号，而不是创建一个「看起来恢复了
+     * 但实际不可用」的空间。</p>
+     */
+    private List<AdminSpaceArchiveConflictVO> findUnavailableUserConflicts(CoupleSpaceArchiveDO archive,
+                                                                          Map<Long, UserDO> userMap) {
+        List<AdminSpaceArchiveConflictVO> conflicts = new ArrayList<>();
+        Set<Long> activeUserIds = new LinkedHashSet<>();
+        try {
+            SpaceArchiveSnapshot snapshot = snapshotService.parse(archive.getSnapshotJson());
+            if (snapshot != null) {
+                for (SpaceArchiveSnapshot.Member member : snapshot.membersOrEmpty()) {
+                    if (Objects.equals(member.getStatus(), MEMBER_STATUS_ACTIVE)
+                            && member.getUserId() != null) {
+                        activeUserIds.add(member.getUserId());
+                    }
+                }
+            }
+        } catch (Exception exception) {
+            log.warn("解析留档成员失败，archiveId: {}", archive.getId(), exception);
+            return conflicts;
+        }
+        if (activeUserIds.isEmpty()) {
+            return conflicts;
+        }
+        for (Long userId : activeUserIds) {
+            UserDO user = userMap.get(userId);
+            if (user == null) {
+                conflicts.add(conflict("MEMBER_USER_MISSING", "成员账号不存在",
+                        archive.getSpaceId(), archive.getSpaceCode(),
+                        "留档中的成员账号（内部 ID " + userId + "）不存在，无法恢复其成员关系"));
+                continue;
+            }
+            if (Boolean.TRUE.equals(user.getIsDeleted())) {
+                conflicts.add(conflict("MEMBER_USER_DISABLED", "成员账号已禁用",
+                        archive.getSpaceId(), archive.getSpaceCode(),
+                        "留档中的成员账号（" + amourId(user) + "）已被禁用或删除，请先处理账号后再恢复"));
+            }
         }
         return conflicts;
     }

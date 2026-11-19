@@ -4,7 +4,9 @@ import {
   SPACE_STATUS,
   SPACE_VIEW_MODE,
   deriveSpaceViewMode,
+  hasLiveSpace,
   hasSpaceIdentity,
+  isDestroyedSpace,
   isReadySpace,
   isSpaceAuthError,
   isUnavailableSpace,
@@ -105,4 +107,31 @@ test('网络错误只读取错误信息，不产生 auth 判定', () => {
     readSpaceErrorMessage({ response: { data: { message: '服务暂时不可用' } } }, '兜底'),
     '服务暂时不可用',
   )
+})
+
+
+// ============================== status=6 已销毁 ==============================
+
+test('已销毁（status=6）不是可用空间，viewMode 为 unavailable 而非 private', () => {
+  const destroyed = { spaceId: 2001, status: SPACE_STATUS.DESTROYED, memberCount: 0, currentUserRole: null }
+
+  assert.equal(isDestroyedSpace(destroyed), true)
+  assert.equal(isReadySpace(destroyed), false)
+  assert.equal(hasLiveSpace(destroyed), false)
+  assert.equal(deriveSpaceViewMode(true, destroyed), SPACE_VIEW_MODE.UNAVAILABLE)
+  assert.equal(isUnavailableSpace(destroyed), true)
+})
+
+test('销毁后 /space/status 返回 data=null 才是真正的「没有空间」', () => {
+  // 服务端销毁后 /space/status 返回 data=null：hasSpaceIdentity 为 false，页面回到广场。
+  assert.equal(hasSpaceIdentity(null), false)
+  assert.equal(hasLiveSpace(null), false)
+  assert.equal(deriveSpaceViewMode(true, null), SPACE_VIEW_MODE.PLAZA)
+
+  // 万一刷新晚到、服务端仍返回 status=6 的记录，也绝不能当成可用空间。
+  const destroyed = { spaceId: 2001, status: SPACE_STATUS.DESTROYED }
+  assert.equal(deriveSpaceViewMode(true, destroyed), SPACE_VIEW_MODE.UNAVAILABLE)
+
+  // 未登录时任何残留都不算空间。
+  assert.equal(deriveSpaceViewMode(false, destroyed), SPACE_VIEW_MODE.PLAZA)
 })

@@ -24,6 +24,8 @@ export const SPACE_DESTROY_ERROR_CODE: Readonly<{
   STATUS_NOT_ALLOWED: string
   DESTROYED: string
   NOT_MEMBER: string
+  PARTNER_HISTORY: string
+  TARGET_CHANGED: string
 }>
 export function canShowDestroyEntry(space: Partial<CoupleSpace> | null | undefined): boolean
 export function canDestroySpace(space: Partial<CoupleSpace> | null | undefined): boolean
