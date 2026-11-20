@@ -141,3 +141,24 @@ __screenshots__/
 *.njsproj
 *.sln
 *.sw?
+
+# ===================================================
+# 通用测试产物
+# ===================================================
+
+**/test-results/
+**/coverage/
+**/.nyc_output/
+
+# Playwright
+**/playwright-report/
+**/blob-report/
+
+# Cypress
+**/cypress/videos/
+**/cypress/screenshots/
+
+# 测试快照与报告
+**/__snapshots__/
+**/*.lcov
+**/junit.xml
