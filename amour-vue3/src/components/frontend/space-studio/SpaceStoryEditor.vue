@@ -239,7 +239,7 @@
                 <span
                   v-if="node.tagLabel"
                   class="max-w-full truncate rounded-full border px-2 py-0.5 text-[10px] font-semibold"
-                  :style="tagStyle(node.tagColor)"
+                  :style="tagStyle()"
                 >
                   {{ node.tagLabel }}
                 </span>
@@ -301,7 +301,7 @@
     <SpaceStudioDialog
       v-model="chapterDialogOpen"
       :title="chapterForm.id ? '编辑章节' : '新增章节'"
-      description="章节名称、主题色和显示状态会同步到故事列表与详情页。"
+      description="章节名称和显示状态会同步到故事列表与详情页。"
       width="min(640px, calc(100vw - 24px))"
       :before-close="handleChapterDialogBeforeClose"
       @opened="focusChapterName"
@@ -323,15 +323,7 @@
             aria-required="true"
           >
         </div>
-        <div class="grid gap-4 md:grid-cols-2">
-          <div class="rounded-xl border border-stone-200 bg-white p-3.5">
-            <ThemeColorField
-              v-model="chapterForm.colorCode"
-              input-id="studio-chapter-color"
-              label="章节主题色"
-              hint="默认使用玫瑰色，可按需调整；章节导航、故事时间线与章节标签都会使用这个颜色。"
-            />
-          </div>
+        <div class="grid gap-4">
           <div class="rounded-xl border border-stone-200 bg-white p-3.5">
             <p class="text-xs font-semibold text-stone-500">章节预览</p>
             <div class="mt-3 flex items-center gap-2 rounded-lg border border-stone-100 bg-stone-50/70 px-3 py-2.5">
@@ -528,13 +520,13 @@
           </div>
         </section>
 
-        <!-- 故事展示设置：不再折叠，桌面端标签与颜色两列 -->
+        <!-- 故事展示设置：不再折叠，标签文字独占整行 -->
         <section class="border-b border-stone-100 pb-5" aria-labelledby="studio-story-display-heading">
           <div class="flex flex-wrap items-baseline justify-between gap-2">
             <h3 id="studio-story-display-heading" class="text-sm font-bold text-stone-800">故事展示设置</h3>
             <p class="text-[11px] text-stone-400">标签与封面会出现在故事列表和详情页，封面是故事唯一的配图。</p>
           </div>
-          <div class="mt-3 grid gap-3 sm:grid-cols-2">
+          <div class="mt-3 grid gap-3">
             <div>
               <label for="studio-node-tag" class="field-label">
                 标签文字
@@ -548,13 +540,6 @@
                 placeholder="例如：初见"
               >
             </div>
-            <ThemeColorField
-              v-model="nodeForm.tagColor"
-              input-id="studio-node-tag-color"
-              label="标签颜色"
-              allow-clear
-              hint="选填；留空时使用默认玫瑰色。"
-            />
           </div>
           <div class="mt-3">
             <SpaceImageField
@@ -650,7 +635,6 @@ import 'md-editor-v3/lib/style.css'
 import SpaceImageField from '@/components/frontend/space-studio/SpaceImageField.vue'
 import SpaceStudioDialog from '@/components/frontend/space-studio/SpaceStudioDialog.vue'
 import SortHandleButton from '@/components/frontend/space-studio/SortHandleButton.vue'
-import ThemeColorField from '@/components/frontend/space-studio/ThemeColorField.vue'
 import ThemeDatePicker from '@/components/frontend/space-studio/ThemeDatePicker.vue'
 import ThemeSelect from '@/components/frontend/space-studio/ThemeSelect.vue'
 import { useDragSort } from '@/composables/useDragSort'
@@ -659,7 +643,6 @@ import {
   DEFAULT_THEME_COLOR,
   accentTextColor,
   contrastTextColor,
-  normalizeHexColor,
   softenHexColor,
   themeBorderColor,
 } from '@/utils/themeColor'
@@ -724,7 +707,7 @@ const chapterOptions = computed(() => chapters.value.map(chapter => ({ value: ch
 const visibilityOptions = computed(() => buildVisibilityOptions(props.canPublish))
 const showTimeOptions = SHOW_TIME_OPTIONS
 
-const chapterForm = reactive({ id: null, name: '', colorCode: '#D94F70', isVisible: true })
+const chapterForm = reactive({ id: null, name: '', isVisible: true })
 const chapterSaving = ref(false)
 const chapterError = ref('')
 const chapterDialogOpen = ref(false)
@@ -848,16 +831,14 @@ watch(nodes, () => {
   visibleNodes.value = sortStoryNodesForFilter(nodes.value, selectedChapterId.value)
 }, { immediate: true })
 
-/** 章节表单里实时预览主题色，避免只靠一串色值想象效果。 */
-const chapterPreviewAccent = computed(() => normalizeHexColor(chapterForm.colorCode, DEFAULT_THEME_COLOR))
-const chapterPreviewBadgeStyle = computed(() => ({
-  backgroundColor: chapterPreviewAccent.value,
-  color: contrastTextColor(chapterPreviewAccent.value),
-}))
-const chapterPreviewTagStyle = computed(() => ({
-  backgroundColor: softenHexColor(chapterPreviewAccent.value),
-  color: accentTextColor(chapterPreviewAccent.value),
-}))
+const chapterPreviewBadgeStyle = {
+  backgroundColor: DEFAULT_THEME_COLOR,
+  color: contrastTextColor(DEFAULT_THEME_COLOR),
+}
+const chapterPreviewTagStyle = {
+  backgroundColor: softenHexColor(DEFAULT_THEME_COLOR),
+  color: accentTextColor(DEFAULT_THEME_COLOR),
+}
 
 const contentLength = computed(() => String(nodeForm.content ?? '').length)
 
@@ -907,7 +888,6 @@ function emptyNodeForm() {
     location: '',
     coverImage: '',
     tagLabel: '',
-    tagColor: '',
     isMilestone: false,
     visibility: 0,
   }
@@ -930,9 +910,9 @@ function onNodeHappenedInput(value) {
     : applyDatePart(nodeForm.happenedTime, value)
 }
 
-/** 故事标签的浅底 + 主题文字样式；亮色会自动压暗文字，保证可读。 */
-function tagStyle(color) {
-  const accent = normalizeHexColor(color, DEFAULT_THEME_COLOR)
+/** 故事标签统一使用默认玫瑰色，亮底文字自动压暗保证可读。 */
+function tagStyle() {
+  const accent = DEFAULT_THEME_COLOR
   return {
     backgroundColor: softenHexColor(accent),
     borderColor: themeBorderColor(accent),
@@ -941,24 +921,22 @@ function tagStyle(color) {
 }
 
 function chapterAccent(chapter) {
-  return normalizeHexColor(chapter?.colorCode, DEFAULT_THEME_COLOR)
+  return DEFAULT_THEME_COLOR
 }
 
 function chapterAccentById(chapterId) {
-  const chapter = chapters.value.find(item => String(item.id) === String(chapterId))
-  return normalizeHexColor(chapter?.colorCode, DEFAULT_THEME_COLOR)
+  return DEFAULT_THEME_COLOR
 }
 
 /** 章节快照只保留保存接口真正提交的字段。 */
 function chapterFormSnapshot() {
   return {
     name: chapterForm.name.trim(),
-    colorCode: normalizeHexColor(chapterForm.colorCode),
     isVisible: Boolean(chapterForm.isVisible),
   }
 }
 
-/** 故事快照与保存请求保持一致：文本 trim、颜色随标签，封面是唯一配图。 */
+/** 故事快照与保存请求保持一致：文本 trim，封面是唯一配图。 */
 function nodeFormSnapshot() {
   const tagLabel = nodeForm.tagLabel.trim()
   return {
@@ -971,7 +949,6 @@ function nodeFormSnapshot() {
     location: nodeForm.location.trim(),
     coverImage: nodeForm.coverImage.trim(),
     tagLabel,
-    tagColor: tagLabel ? normalizeHexColor(nodeForm.tagColor) : '',
     isMilestone: Boolean(nodeForm.isMilestone),
     visibility: Number(nodeForm.visibility),
   }
@@ -1062,7 +1039,6 @@ function reviewStatusClass(status) {
 function resetChapterForm() {
   chapterForm.id = null
   chapterForm.name = ''
-  chapterForm.colorCode = '#D94F70'
   chapterForm.isVisible = true
   chapterError.value = ''
   captureChapterBaseline()
@@ -1125,7 +1101,6 @@ async function editChapter(chapter, event) {
   chapterDialogTrigger = rememberDialogTrigger(event)
   chapterForm.id = chapter.id
   chapterForm.name = chapter.name || ''
-  chapterForm.colorCode = normalizeHexColor(chapter.colorCode, DEFAULT_THEME_COLOR)
   chapterForm.isVisible = chapter.isVisible !== false
   chapterError.value = ''
   chapterDialogOpen.value = true
@@ -1163,7 +1138,6 @@ function loadNodeIntoForm(node) {
   nodeForm.location = node.location || ''
   nodeForm.coverImage = node.coverImage || ''
   nodeForm.tagLabel = node.tagLabel || ''
-  nodeForm.tagColor = normalizeHexColor(node.tagColor)
   nodeForm.isMilestone = node.isMilestone === true
   nodeForm.visibility = Number(node.visibility) || 0
   nodeError.value = ''
@@ -1318,11 +1292,6 @@ async function saveChapter() {
     focusChapterName()
     return
   }
-  const colorCode = normalizeHexColor(chapterForm.colorCode)
-  if (!colorCode) {
-    chapterError.value = '请选择章节主题色'
-    return
-  }
   // 编辑已有章节但没有任何改动：不调用保存接口，直接结束编辑状态。
   if (shouldSkipUnchangedSave({
     editing: Boolean(chapterForm.id),
@@ -1342,7 +1311,6 @@ async function saveChapter() {
     ensureSuccess(await saveStoryManageChapter({
       id: chapterForm.id,
       name,
-      colorCode,
       isVisible: chapterForm.isVisible,
     }), '章节保存失败')
     const feedback = resolveSaveFeedback(null, savedMessage)
@@ -1417,11 +1385,6 @@ async function saveNode() {
     return
   }
   const tagLabel = nodeForm.tagLabel.trim()
-  const tagColor = normalizeHexColor(nodeForm.tagColor)
-  if (nodeForm.tagColor.trim() && !tagColor) {
-    nodeError.value = '请选择标签颜色'
-    return
-  }
   // 编辑已有故事但没有任何改动：不调用保存接口，也不创建或提交审核。
   if (shouldSkipUnchangedSave({
     editing: Boolean(editingNodeId.value),
@@ -1448,7 +1411,6 @@ async function saveNode() {
       location: nodeForm.location.trim(),
       coverImage: nodeForm.coverImage.trim(),
       tagLabel,
-      tagColor: tagLabel ? tagColor : '',
       isMilestone: nodeForm.isMilestone,
       visibility: Number(nodeForm.visibility),
     }

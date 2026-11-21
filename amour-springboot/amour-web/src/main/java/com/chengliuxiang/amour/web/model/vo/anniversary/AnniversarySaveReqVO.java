@@ -35,9 +35,6 @@ public class AnniversarySaveReqVO {
     @Size(max = 30, message = "纪念日分类不正确")
     private String category;
 
-    @Size(max = 20, message = "纪念日主题色格式不正确")
-    private String colorCode;
-
     @Size(max = 100, message = "纪念日地点不能超过 100 个字符")
     private String location;
 

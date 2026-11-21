@@ -390,7 +390,6 @@ import {
   DEFAULT_THEME_COLOR,
   accentTextColor,
   contrastTextColor,
-  normalizeHexColor,
   softenHexColor,
   themeBorderColor,
 } from '@/utils/themeColor'
@@ -466,8 +465,8 @@ const anniversaries = computed(() => (
   Array.isArray(space.value?.anniversaries) ? space.value.anniversaries : []
 ))
 
-function storyAccent(story) {
-  return normalizeHexColor(story?.tagColor, DEFAULT_THEME_COLOR)
+function storyAccent() {
+  return DEFAULT_THEME_COLOR
 }
 
 /**
@@ -494,8 +493,8 @@ function storyTagStyle(story) {
   }
 }
 
-function anniversaryAccent(item) {
-  return normalizeHexColor(item?.colorCode, DEFAULT_THEME_COLOR)
+function anniversaryAccent() {
+  return DEFAULT_THEME_COLOR
 }
 
 function anniversaryTileStyle(item) {

@@ -31,7 +31,5 @@ public class GalleryStorySummaryVO {
 
     private String tagLabel;
 
-    private String tagColor;
-
     private Boolean isMilestone;
 }

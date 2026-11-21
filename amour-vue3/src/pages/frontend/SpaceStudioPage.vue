@@ -80,12 +80,10 @@
           <SpaceReviewStatusCard :refresh-key="reviewRefreshKey" @submitted="onReviewSubmitted" />
         </div>
 
-        <SpaceSaveFeedback class="mt-3" :notice="saveFeedback" @close="saveFeedback = null" />
-
         <!--
           桌面端：左侧纵向栏目导航 + 右侧当前编辑器。
           移动端：导航变为顶部横向滚动条，编辑内容自然落在下方，避免横向溢出。
-          审核卡与保存反馈位于两栏之上，不会遮住导航或编辑内容。
+          审核卡位于两栏之上，保存结果通过统一弹窗展示。
         -->
         <div class="mt-6 grid gap-5 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
           <aside class="min-w-0 lg:sticky lg:top-24" aria-label="空间编辑导航">
@@ -171,6 +169,12 @@
             />
           </section>
         </div>
+
+        <SpaceSaveFeedbackDialog
+          v-model="saveDialogOpen"
+          :notice="saveFeedback"
+          @closed="onSaveDialogClosed"
+        />
       </template>
     </main>
   </CouplePageScaffold>
@@ -179,8 +183,6 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
-import { ElMessageBox } from 'element-plus'
-import 'element-plus/es/components/message-box/style/css'
 import { Calendar, ChatDotRound, House, Notebook, Picture } from '@element-plus/icons-vue'
 import CouplePageScaffold from '@/components/frontend/CouplePageScaffold.vue'
 import FrontendPageHeader from '@/components/frontend/FrontendPageHeader.vue'
@@ -190,7 +192,7 @@ import SpaceMessageEditor from '@/components/frontend/space-studio/SpaceMessageE
 import SpacePhotoEditor from '@/components/frontend/space-studio/SpacePhotoEditor.vue'
 import SpaceAnniversaryEditor from '@/components/frontend/space-studio/SpaceAnniversaryEditor.vue'
 import SpaceReviewStatusCard from '@/components/frontend/space-studio/SpaceReviewStatusCard.vue'
-import SpaceSaveFeedback from '@/components/frontend/space-studio/SpaceSaveFeedback.vue'
+import SpaceSaveFeedbackDialog from '@/components/frontend/space-studio/SpaceSaveFeedbackDialog.vue'
 import { useFrontendSpace } from '@/composables/useFrontendSpace'
 import { hasFrontendQueryPermission } from '@/utils/auth'
 import { canEditSpaceContent, SPACE_STATUS } from '@/utils/spaceState'
@@ -253,6 +255,7 @@ const activeTabLabel = computed(() => (
 ))
 const dirty = ref(false)
 const saveFeedback = ref(null)
+const saveDialogOpen = ref(false)
 let saveFeedbackSeq = 0
 
 function setDirty(value) {
@@ -260,9 +263,9 @@ function setDirty(value) {
 }
 
 /**
- * 编辑器保存成功后统一在这里展示页面级反馈。
+ * 编辑器保存成功后统一在这里展示保存结果。
  *
- * 反馈区域处于正常文档流，不抢焦点也不覆盖栏目导航；
+ * 普通保存、排序与审核重新提交共用同一个弹窗，连续保存只更新内容不叠层；
  * dirty 使用编辑器重建基线后的结果，避免同栏目其他表单的修改被误清。
  */
 function onContentSaved(payload) {
@@ -270,10 +273,9 @@ function onContentSaved(payload) {
   if (typeof payload?.dirtyAfterSave === 'boolean') {
     dirty.value = payload.dirtyAfterSave
   }
-  // 排序成功使用独立弹窗反馈，不再占用内嵌提示卡片，避免重复提示。
+  // 排序结果与普通保存共用同一个弹窗，避免出现两套反馈通道。
   if (payload?.action === 'reorder') {
-    saveFeedback.value = null
-    showReorderSuccess(payload.message)
+    showSaveFeedback(payload)
     return
   }
   // 保存可能新增或撤回待审核项（例如改回公开版本），刷新状态卡展示真实审核状态。
@@ -283,31 +285,7 @@ function onContentSaved(payload) {
   showSaveFeedback(payload)
 }
 
-/** 同一时间只允许一个排序成功弹窗，连续操作不叠层。 */
-let reorderDialogOpen = false
-
-function showReorderSuccess(message) {
-  const text = typeof message === 'string' ? message.trim() : ''
-  if (!text || reorderDialogOpen || typeof document === 'undefined') return
-  reorderDialogOpen = true
-  const previousFocus = document.activeElement
-  const restoreFocus = () => {
-    reorderDialogOpen = false
-    if (previousFocus instanceof HTMLElement && previousFocus.isConnected) {
-      // 关闭弹窗后回到触发排序的位置，不改变当前分页、筛选与滚动位置。
-      previousFocus.focus({ preventScroll: true })
-    }
-  }
-  ElMessageBox.alert(text, '保存成功', {
-    confirmButtonText: '知道了',
-    showClose: false,
-    closeOnClickModal: false,
-    closeOnPressEscape: false,
-    autofocus: true,
-  }).then(restoreFocus, restoreFocus)
-}
-
-/** 页面级保存反馈：编辑器保存与重新提交审核共用同一条提示通道。 */
+/** 保存结果统一用弹窗展示；同一时间只允许一个，连续保存时覆盖内容不叠层。 */
 function showSaveFeedback(payload) {
   const message = typeof payload?.message === 'string' ? payload.message.trim() : ''
   if (!message) return
@@ -318,6 +296,12 @@ function showSaveFeedback(payload) {
     reviewStatus: payload?.reviewStatus || '',
     published: typeof payload?.published === 'boolean' ? payload.published : null,
   }
+  saveDialogOpen.value = true
+}
+
+/** 弹窗关闭后清空反馈，避免下次打开闪现上一条文案。 */
+function onSaveDialogClosed() {
+  saveFeedback.value = null
 }
 
 function isTabAllowed(key) {
@@ -345,6 +329,7 @@ async function switchTab(key) {
     // 旧编辑器随栏目切换卸载，新编辑器加载后会重新建立 clean 基线。
     dirty.value = false
     // 旧栏目的保存提示不再适用于新栏目，随切换一起收起。
+    saveDialogOpen.value = false
     saveFeedback.value = null
     await router.replace({ query: { ...route.query, tab: key } })
   } finally {

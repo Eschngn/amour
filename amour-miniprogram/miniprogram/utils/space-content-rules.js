@@ -247,13 +247,6 @@ function trimText(value) {
   return typeof value === 'string' ? value.trim() : ''
 }
 
-const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/
-
-function isValidOptionalColor(value) {
-  const text = trimText(value)
-  return !text || HEX_COLOR_PATTERN.test(text)
-}
-
 function validateHomeForm(form) {
   const source = form || {}
   const name = trimText(source.spaceName)
@@ -301,7 +294,6 @@ function validateChapterForm(form) {
   const name = trimText(form && form.name)
   if (!name) return '章节名称为必填项'
   if (name.length > 50) return '章节名称不能超过 50 个字符'
-  if (!isValidOptionalColor(form && form.colorCode)) return '章节主题色需为 #RRGGBB 格式'
   return ''
 }
 
@@ -309,7 +301,6 @@ function buildChapterPayload(form, sortOrder) {
   const source = form || {}
   const payload = {
     name: trimText(source.name),
-    colorCode: trimText(source.colorCode) || null,
     isVisible: source.isVisible !== false,
   }
   if (source.id) payload.id = source.id
@@ -327,7 +318,6 @@ function validateNodeForm(form) {
   if (String(source.content || '').length > 20000) return '故事正文不能超过 20000 个字符'
   if (String(source.location || '').length > 100) return '故事地点不能超过 100 个字符'
   if (trimText(source.tagLabel).length > 30) return '故事标签不能超过 30 个字符'
-  if (!isValidOptionalColor(source.tagColor)) return '故事标签颜色需为 #RRGGBB 格式'
   if (!isSafeImageUrl(source.coverImage)) return '封面图片地址格式不正确，请重新上传'
   const date = trimText(source.happenedDate)
   const time = trimText(source.happenedTime)
@@ -349,7 +339,6 @@ function buildNodePayload(form, sortOrder) {
     location: trimText(source.location),
     coverImage: trimText(source.coverImage),
     tagLabel: trimText(source.tagLabel),
-    tagColor: trimText(source.tagColor),
     isMilestone: source.isMilestone === true,
     visibility: normalizeVisibility(source.visibility, source.canPublish === true),
   }
@@ -437,7 +426,6 @@ function validateAnniversaryForm(form) {
   if (String(source.description || '').length > 500) return '纪念日描述不能超过 500 个字符'
   if (!trimText(source.anniversaryDate)) return '请选择纪念日日期'
   if (trimText(source.location).length > 100) return '纪念日地点不能超过 100 个字符'
-  if (!isValidOptionalColor(source.colorCode)) return '纪念日主题色需为 #RRGGBB 格式'
   return ''
 }
 
@@ -449,7 +437,6 @@ function buildAnniversaryPayload(form, sortOrder) {
     anniversaryDate: trimText(source.anniversaryDate),
     repeatType: Number(source.repeatType) === 0 ? 0 : 1,
     category: trimText(source.category) || 'other',
-    colorCode: trimText(source.colorCode),
     location: trimText(source.location),
     visibility: normalizeVisibility(source.visibility, source.canPublish === true),
   }

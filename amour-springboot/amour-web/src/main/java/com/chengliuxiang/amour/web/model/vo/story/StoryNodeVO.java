@@ -21,6 +21,5 @@ public class StoryNodeVO {
     private String location;          // 地点
     private String coverImage;        // 封面图
     private String tagLabel;          // 标签文字
-    private String tagColor;          // 标签颜色
     private Boolean isMilestone;      // 是否里程碑
 }

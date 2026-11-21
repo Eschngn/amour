@@ -98,7 +98,7 @@
               @move-up="sort.moveByOffset(index, -1)"
               @move-down="sort.moveByOffset(index, 1)"
             />
-            <span class="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-lg text-center" :style="itemDateTileStyle(item)" aria-hidden="true">
+            <span class="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-lg text-center" :style="itemDateTileStyle()" aria-hidden="true">
               <span class="text-[9px] font-bold leading-none">{{ dateParts(item.anniversaryDate).month }}</span>
               <span class="mt-0.5 font-display text-base font-bold leading-none">{{ dateParts(item.anniversaryDate).day }}</span>
             </span>
@@ -112,7 +112,7 @@
             >
               <span class="flex flex-wrap items-center gap-1.5 text-sm font-semibold text-stone-900">
                 <span class="truncate">{{ item.title }}</span>
-                <span class="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold" :style="softTagStyle(item.colorCode)">{{ categoryLabel(item.category) }}</span>
+                <span class="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold" :style="softTagStyle()">{{ categoryLabel(item.category) }}</span>
               </span>
               <span class="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-stone-500">
                 <span>{{ item.anniversaryDate }}</span>
@@ -172,7 +172,7 @@
     <SpaceStudioDialog
       v-model="dialogOpen"
       :title="form.id ? '编辑纪念日' : '新增纪念日'"
-      description="日期、重复方式与主题色会决定它在日历中的展示。"
+      description="日期与重复方式会决定它在日历中的展示。"
       width="min(720px, calc(100vw - 24px))"
       :before-close="handleDialogBeforeClose"
       @opened="focusTitle"
@@ -285,13 +285,7 @@
           </p>
 
           <div class="rounded-xl border border-stone-200 bg-stone-50/70 p-4">
-            <ThemeColorField
-              v-model="form.colorCode"
-              input-id="studio-anniversary-color"
-              label="卡片主题色"
-              hint="默认使用玫瑰色，可按需调整；纪念日卡片、日期块与年历圆点都会使用这个颜色。"
-            />
-            <div class="mt-3 flex flex-wrap items-center gap-3 rounded-lg border bg-white px-3 py-2.5" :style="{ borderColor: previewBorderColor }">
+            <div class="flex flex-wrap items-center gap-3 rounded-lg border bg-white px-3 py-2.5" :style="{ borderColor: previewBorderColor }">
               <span class="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-lg text-center" :style="previewDateTileStyle" aria-hidden="true">
                 <span class="text-[9px] font-bold leading-none">{{ previewDateParts.month }}</span>
                 <span class="mt-0.5 font-display text-base font-bold leading-none">{{ previewDateParts.day }}</span>
@@ -300,7 +294,7 @@
                 <p class="truncate font-display text-sm font-bold text-stone-900">{{ form.title.trim() || '纪念日名称预览' }}</p>
                 <p class="mt-0.5 text-[11px] text-stone-500">{{ categoryLabel(form.category) }} · {{ Number(form.repeatType) === 0 ? '仅此一次' : '每年重复' }}</p>
               </div>
-              <span class="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold" :style="previewTagStyle">主题色</span>
+              <span class="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold" :style="previewTagStyle">默认样式</span>
             </div>
           </div>
 
@@ -334,7 +328,6 @@ import {
   saveAnniversaryManage,
   saveAnniversaryOrder,
 } from '@/api/spaceContent'
-import ThemeColorField from '@/components/frontend/space-studio/ThemeColorField.vue'
 import ThemeDatePicker from '@/components/frontend/space-studio/ThemeDatePicker.vue'
 import ThemeSelect from '@/components/frontend/space-studio/ThemeSelect.vue'
 import SpaceStudioDialog from '@/components/frontend/space-studio/SpaceStudioDialog.vue'
@@ -344,7 +337,6 @@ import { normalizeSortItems } from '@/utils/reorderList'
 import {
   DEFAULT_THEME_COLOR,
   accentTextColor,
-  normalizeHexColor,
   softenHexColor,
   themeBorderColor,
 } from '@/utils/themeColor'
@@ -420,12 +412,10 @@ const sort = reactive({
   cancelDrag: dragSort.cancelDrag,
 })
 
-/** 主题色预览：日期块使用浅色主题底，保持与展示页一致。 */
-const previewAccent = computed(() => normalizeHexColor(form.colorCode, DEFAULT_THEME_COLOR))
+const previewBorderColor = themeBorderColor(DEFAULT_THEME_COLOR)
+const previewDateTileStyle = dateTileStyle(DEFAULT_THEME_COLOR)
+const previewTagStyle = softTagStyle(DEFAULT_THEME_COLOR)
 const previewDateParts = computed(() => dateParts(form.anniversaryDate))
-const previewBorderColor = computed(() => themeBorderColor(previewAccent.value))
-const previewDateTileStyle = computed(() => dateTileStyle(previewAccent.value))
-const previewTagStyle = computed(() => softTagStyle(previewAccent.value))
 
 function dateParts(value) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || '').slice(0, 10))
@@ -433,12 +423,8 @@ function dateParts(value) {
   return { month: `${Number(match[2])}月`, day: match[3] }
 }
 
-function itemAccent(item) {
-  return normalizeHexColor(item?.colorCode, DEFAULT_THEME_COLOR)
-}
-
 function dateTileStyle(color) {
-  const accent = normalizeHexColor(color, DEFAULT_THEME_COLOR)
+  const accent = color || DEFAULT_THEME_COLOR
   return {
     backgroundColor: softenHexColor(accent),
     color: accentTextColor(accent),
@@ -446,12 +432,12 @@ function dateTileStyle(color) {
   }
 }
 
-function itemDateTileStyle(item) {
-  return dateTileStyle(itemAccent(item))
+function itemDateTileStyle() {
+  return dateTileStyle(DEFAULT_THEME_COLOR)
 }
 
 function softTagStyle(color) {
-  const accent = normalizeHexColor(color, DEFAULT_THEME_COLOR)
+  const accent = color || DEFAULT_THEME_COLOR
   return {
     backgroundColor: softenHexColor(accent),
     borderColor: themeBorderColor(accent),
@@ -467,7 +453,6 @@ function emptyForm() {
     anniversaryDate: '',
     repeatType: 1,
     category: 'love',
-    colorCode: '#D94F70',
     location: '',
     visibility: 0,
   }
@@ -481,7 +466,6 @@ function formSnapshot() {
     anniversaryDate: form.anniversaryDate,
     repeatType: Number(form.repeatType),
     category: form.category,
-    colorCode: normalizeHexColor(form.colorCode),
     location: form.location.trim(),
     visibility: Number(form.visibility),
   }
@@ -615,7 +599,6 @@ async function editAnniversary(item, event) {
   form.anniversaryDate = String(item.anniversaryDate || '').slice(0, 10)
   form.repeatType = Number(item.repeatType) === 0 ? 0 : 1
   form.category = item.category || 'other'
-  form.colorCode = normalizeHexColor(item.colorCode, DEFAULT_THEME_COLOR)
   form.location = item.location || ''
   form.visibility = Number(item.visibility) || 0
   error.value = ''
@@ -665,11 +648,6 @@ async function save() {
     focusById('studio-anniversary-date')
     return
   }
-  const colorCode = normalizeHexColor(form.colorCode)
-  if (!colorCode) {
-    error.value = '请选择卡片主题色'
-    return
-  }
   // 编辑已有纪念日但没有任何改动：不调用保存接口，也不创建或提交审核。
   if (shouldSkipUnchangedSave({
     editing: Boolean(form.id),
@@ -691,7 +669,6 @@ async function save() {
       anniversaryDate: form.anniversaryDate,
       repeatType: Number(form.repeatType),
       category: form.category,
-      colorCode,
       location: form.location.trim(),
       visibility: Number(form.visibility),
     }), '纪念日保存失败')

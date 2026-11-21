@@ -92,7 +92,7 @@
                 <h2 class="mt-1 break-words font-display text-2xl font-bold text-rose-950 sm:text-3xl">{{ currentChapter?.title ?? '' }}</h2>
               </div>
               <span class="inline-flex w-fit items-center gap-2 rounded-full border bg-white/70 px-3 py-1.5 text-xs text-rose-700/55" :style="currentChapter ? chapterSoftStyle(currentChapter) : undefined">
-                <span class="h-1.5 w-1.5 rounded-full" :style="{ backgroundColor: currentChapter ? chapterAccent(currentChapter) : '#f43f5e' }" aria-hidden="true" />
+                <span class="h-1.5 w-1.5 rounded-full" :style="{ backgroundColor: chapterAccent(currentChapter) }" aria-hidden="true" />
                 {{ currentStories.length }} 个故事
               </span>
             </header>
@@ -166,7 +166,6 @@ import {
   DEFAULT_THEME_COLOR,
   accentTextColor,
   contrastTextColor,
-  normalizeHexColor,
   softenHexColor,
   themeBorderColor,
 } from '@/utils/themeColor'
@@ -240,7 +239,6 @@ async function fetchStoryOverview() {
     chapters.value = (data.chapters || []).map(ch => ({
       id: ch.id,
       title: ch.name,
-      colorCode: ch.colorCode,
       period: formatPeriod(ch.startDate, ch.endDate),
       _storyCount: Number(ch.nodeCount) || 0,
     }))
@@ -265,7 +263,6 @@ async function fetchStoriesByChapterId(chapterId) {
           location: node.location,
           title: node.title,
           tag: node.tagLabel,
-          tagColor: node.tagColor,
           content: node.summary,
           coverImage: node.coverImage,
           storyNumber: `Story #${String(globalIdx).padStart(2, '0')}`,
@@ -382,8 +379,8 @@ const startYear = computed(() => {
 
 const currentChapter = computed(() => chapters.value[activeChapter.value])
 
-function chapterAccent(chapter) {
-  return normalizeHexColor(chapter?.colorCode, DEFAULT_THEME_COLOR)
+function chapterAccent() {
+  return DEFAULT_THEME_COLOR
 }
 
 function chapterAccentText(chapter) {
@@ -411,9 +408,9 @@ function chapterSoftStyle(chapter) {
   }
 }
 
-/** 标签色优先，其次沿用当前章节主题色，保证时间线节点不会退回默认玫瑰色。 */
-function storyAccent(story) {
-  return normalizeHexColor(story?.tagColor, chapterAccent(currentChapter.value))
+/** 章节与故事统一使用默认玫瑰色，不再读取内容级颜色配置。 */
+function storyAccent() {
+  return DEFAULT_THEME_COLOR
 }
 
 function storyAccentText(story) {

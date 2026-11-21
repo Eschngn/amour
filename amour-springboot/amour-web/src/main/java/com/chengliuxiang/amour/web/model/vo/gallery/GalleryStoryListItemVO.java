@@ -46,7 +46,5 @@ public class GalleryStoryListItemVO {
 
     private String tagLabel;
 
-    private String tagColor;
-
     private Boolean isMilestone;
 }

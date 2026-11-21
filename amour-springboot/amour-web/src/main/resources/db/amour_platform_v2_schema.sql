@@ -268,8 +268,6 @@ CREATE TABLE `story_chapter` (
     `space_id` INTEGER NOT NULL,
     -- 章节名称
     `name` TEXT NOT NULL,
-    -- 章节主题色
-    `color_code` TEXT NOT NULL DEFAULT '',
     -- 章节排列顺序
     `sort_order` INTEGER NOT NULL DEFAULT 0,
     -- 是否在情侣空间中显示：1-显示 0-隐藏
@@ -308,8 +306,6 @@ CREATE TABLE `story_node` (
     `cover_image` TEXT NOT NULL DEFAULT '',
     -- 标签名称
     `tag_label` TEXT NOT NULL DEFAULT '',
-    -- 标签颜色
-    `tag_color` TEXT NOT NULL DEFAULT '',
     -- 同章节内排序值
     `sort_order` INTEGER NOT NULL DEFAULT 0,
     -- 跨章节的全局排序值（全部故事视图使用，与章节内排序互不影响）
@@ -442,8 +438,6 @@ CREATE TABLE `anniversary` (
     `repeat_type` INTEGER NOT NULL DEFAULT 1,
     -- 分类：love/birthday/journey/memory/milestone/other
     `category` TEXT NOT NULL DEFAULT 'other',
-    -- 卡片主题色
-    `color_code` TEXT NOT NULL DEFAULT '#D94F70',
     -- 纪念地点
     `location` TEXT NOT NULL DEFAULT '',
     -- 排序值

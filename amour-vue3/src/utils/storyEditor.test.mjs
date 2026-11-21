@@ -184,9 +184,9 @@ test('故事表单顺序为基本信息、发布设置、故事展示设置、�
   assert.ok(displayIndex > publishIndex, '故事展示设置应排在发布设置之后')
   assert.ok(contentIndex > displayIndex, '正文必须位于所有设置之后')
 
-  // 展示设置不再折叠，标签、颜色与封面直接可见。
+  // 展示设置不再折叠，标签与封面直接可见。
   assert.doesNotMatch(source, /showExtras|studio-story-extras|aria-expanded/)
-  assert.match(source, /id="studio-node-tag-color"/)
+  assert.doesNotMatch(source, /id="studio-node-tag-color"/)
   assert.match(source, /id="studio-node-cover"/)
 })
 

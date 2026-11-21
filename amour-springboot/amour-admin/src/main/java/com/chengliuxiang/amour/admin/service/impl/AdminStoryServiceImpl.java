@@ -111,7 +111,6 @@ public class AdminStoryServiceImpl implements AdminStoryService {
                 .location(detail.getLocation())
                 .coverImage(detail.getCoverImage())
                 .tagLabel(detail.getTagLabel())
-                .tagColor(detail.getTagColor())
                 .isMilestone(detail.getMilestone())
                 .createTime(detail.getCreateTime())
                 .updateTime(detail.getUpdateTime())

@@ -322,7 +322,6 @@ public class GalleryServiceImpl implements GalleryService {
                 .location(story.getLocation())
                 .coverImage(story.getCoverImage())
                 .tagLabel(story.getTagLabel())
-                .tagColor(story.getTagColor())
                 .sortOrder(story.getSortOrder())
                 .milestone(Boolean.TRUE.equals(story.getIsMilestone()))
                 .build();
@@ -351,7 +350,6 @@ public class GalleryServiceImpl implements GalleryService {
                 .anniversaryDate(format(anniversary.getAnniversaryDate()))
                 .repeatType(anniversary.getRepeatType())
                 .category(anniversary.getCategory())
-                .colorCode(anniversary.getColorCode())
                 .location(anniversary.getLocation())
                 .sortOrder(anniversary.getSortOrder())
                 .build();
@@ -379,7 +377,6 @@ public class GalleryServiceImpl implements GalleryService {
                             .location(story.getLocation())
                             .coverImage(story.getCoverImage())
                             .tagLabel(story.getTagLabel())
-                            .tagColor(story.getTagColor())
                             .isMilestone(story.getMilestone())
                             .build();
                 })
@@ -400,7 +397,6 @@ public class GalleryServiceImpl implements GalleryService {
                 .location(story.getLocation())
                 .coverImage(story.getCoverImage())
                 .tagLabel(story.getTagLabel())
-                .tagColor(story.getTagColor())
                 .isMilestone(story.getMilestone())
                 .build();
     }
@@ -435,7 +431,6 @@ public class GalleryServiceImpl implements GalleryService {
                         .anniversaryDate(parseDate(anniversary.getAnniversaryDate()))
                         .repeatType(anniversary.getRepeatType())
                         .category(anniversary.getCategory())
-                        .colorCode(anniversary.getColorCode())
                         .location(anniversary.getLocation())
                         .build())
                 .collect(Collectors.toList());
@@ -456,7 +451,6 @@ public class GalleryServiceImpl implements GalleryService {
                 .showTime(!Boolean.FALSE.equals(story.getShowTime()))
                 .coverImage(story.getCoverImage())
                 .tagLabel(story.getTagLabel())
-                .tagColor(story.getTagColor())
                 .isMilestone(story.getMilestone())
                 .build();
     }

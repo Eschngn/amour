@@ -14,7 +14,6 @@ import java.time.LocalDateTime;
 public class StoryChapterVO {
     private Long id;
     private String name;              // 章节名称
-    private String colorCode;         // 主题色
     private Integer sortOrder;
     private LocalDateTime startDate;      // 章节起始时间（该章节最早节点的 happened_time）
     private LocalDateTime endDate;        // 章节结束时间（该章节最晚节点的 happened_time）

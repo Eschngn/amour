@@ -1,11 +1,8 @@
 /**
  * 空间内容保存反馈的分类工具。
  *
- * 编辑器的保存结果统一转换为页面级非模态提示，避免全局浮层遮挡栏目切换。
+ * 编辑器的保存结果统一转换为页面级保存弹窗内容。
  */
-
-/** 页面级反馈的自动隐藏时间：足够读完审核说明，又不会长期占用版面。 */
-export const SAVE_FEEDBACK_DURATION_MS = 7000
 
 export const SAVE_FEEDBACK_KIND = Object.freeze({
   SUCCESS: 'success',

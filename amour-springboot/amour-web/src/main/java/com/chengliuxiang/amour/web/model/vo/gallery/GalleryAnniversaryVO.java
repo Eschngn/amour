@@ -28,7 +28,5 @@ public class GalleryAnniversaryVO {
 
     private String category;
 
-    private String colorCode;
-
     private String location;
 }

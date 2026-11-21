@@ -31,7 +31,7 @@
           <aside
             v-if="nextAnniversary"
             class="next-day-panel relative overflow-hidden border border-rose-200/80 bg-[#fffaf9] p-6 shadow-[0_22px_60px_rgba(136,57,72,0.13)] sm:p-7"
-            :style="themeStyle(nextAnniversary)"
+            :style="themeStyle()"
           >
             <div class="absolute inset-y-0 left-0 w-1.5 bg-[var(--accent)]" aria-hidden="true" />
             <div class="flex items-start justify-between gap-4">
@@ -118,7 +118,7 @@
               v-for="item in visibleAnniversaries"
               :key="item.id"
               class="anniversary-card group"
-              :style="themeStyle(item)"
+              :style="themeStyle()"
             >
               <div class="date-tile" aria-hidden="true">
                 <span class="text-[10px] font-bold tracking-wider text-[var(--accent-text)]">{{ monthLabel(item) }}</span>
@@ -176,7 +176,7 @@
                   <span class="text-[10px] font-bold tracking-wider text-rose-300">{{ month.english }}</span>
                 </div>
                 <ul v-if="month.events.length" class="mt-4 space-y-3">
-                  <li v-for="event in month.events" :key="event.id" class="flex items-start gap-3" :style="themeStyle(event)">
+                  <li v-for="event in month.events" :key="event.id" class="flex items-start gap-3" :style="themeStyle()">
                     <span class="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[var(--accent)]" aria-hidden="true" />
                     <div class="min-w-0">
                       <p class="truncate text-sm font-semibold text-rose-900">{{ event.title }}</p>
@@ -210,7 +210,6 @@ import CoupleAvatar from '@/components/frontend/CoupleAvatar.vue'
 import {
   DEFAULT_THEME_COLOR,
   accentTextColor,
-  normalizeHexColor,
   softenHexColor,
   themeBorderColor,
 } from '@/utils/themeColor'
@@ -232,8 +231,6 @@ const fallbackAnniversaries = [
     repeatType: 'yearly',
     category: 'love',
     location: '江畔公园',
-    accent: '#d94f70',
-    soft: '#fff0f3',
   },
   {
     id: 2,
@@ -243,8 +240,6 @@ const fallbackAnniversaries = [
     repeatType: 'yearly',
     category: 'journey',
     location: '青岛',
-    accent: '#178f8a',
-    soft: '#eaf8f6',
   },
   {
     id: 3,
@@ -254,8 +249,6 @@ const fallbackAnniversaries = [
     repeatType: 'yearly',
     category: 'birthday',
     location: '',
-    accent: '#b36a16',
-    soft: '#fff6df',
   },
   {
     id: 4,
@@ -265,8 +258,6 @@ const fallbackAnniversaries = [
     repeatType: 'yearly',
     category: 'memory',
     location: '南京',
-    accent: '#4579ad',
-    soft: '#edf5fb',
   },
   {
     id: 5,
@@ -276,8 +267,6 @@ const fallbackAnniversaries = [
     repeatType: 'yearly',
     category: 'memory',
     location: '先锋书店',
-    accent: '#7d65ad',
-    soft: '#f4effb',
   },
   {
     id: 6,
@@ -287,8 +276,6 @@ const fallbackAnniversaries = [
     repeatType: 'yearly',
     category: 'memory',
     location: '万达影城',
-    accent: '#bc5367',
-    soft: '#fff0f2',
   },
   {
     id: 7,
@@ -298,8 +285,6 @@ const fallbackAnniversaries = [
     repeatType: 'once',
     category: 'milestone',
     location: '大学礼堂',
-    accent: '#278064',
-    soft: '#eaf7f1',
   },
 ]
 
@@ -315,19 +300,8 @@ const filters = [
 
 const monthEnglish = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
 
-const themePresets = {
-  love: { accent: '#d94f70', soft: '#fff0f3' },
-  journey: { accent: '#178f8a', soft: '#eaf8f6' },
-  birthday: { accent: '#b36a16', soft: '#fff6df' },
-  memory: { accent: '#4579ad', soft: '#edf5fb' },
-  milestone: { accent: '#278064', soft: '#eaf7f1' },
-  other: { accent: '#7d65ad', soft: '#f4effb' },
-}
-
 function normalizeAnniversary(item) {
   const category = item.category || 'other'
-  const preset = themePresets[category] || themePresets.other
-  const serverColor = normalizeHexColor(item.colorCode, preset.accent)
   return {
     id: item.id,
     title: item.title,
@@ -336,8 +310,6 @@ function normalizeAnniversary(item) {
     repeatType: Number(item.repeatType) === 0 ? 'once' : 'yearly',
     category,
     location: item.location || '',
-    accent: serverColor,
-    soft: item.soft || preset.soft,
   }
 }
 
@@ -491,8 +463,8 @@ function nextAnniversaryLabel(item) {
   return years > 0 ? `即将迎来第 ${years} 年` : '故事从这里开始'
 }
 
-function themeStyle(item) {
-  const accent = normalizeHexColor(item.accent, DEFAULT_THEME_COLOR)
+function themeStyle() {
+  const accent = DEFAULT_THEME_COLOR
   return {
     '--accent': accent,
     '--soft': softenHexColor(accent),

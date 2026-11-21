@@ -277,15 +277,9 @@
                 <text class="field-label">章节名称</text>
                 <input class="field-input" value="{{chapterForm.name}}" maxlength="50" cursor-spacing="120" placeholder="例如：初见" placeholder-class="field-placeholder" data-form="chapterForm" data-field="name" bindinput="onFormInput" />
               </view>
-              <view class="field-grid">
-                <view class="field">
-                  <text class="field-label">主题色</text>
-                  <input class="field-input" value="{{chapterForm.colorCode}}" maxlength="20" placeholder="#D94F70" placeholder-class="field-placeholder" data-form="chapterForm" data-field="colorCode" bindinput="onFormInput" />
-                </view>
-                <view class="field">
-                  <text class="field-label">是否展示</text>
-                  <switch checked="{{chapterForm.isVisible}}" color="#c96a78" data-form="chapterForm" data-field="isVisible" bindchange="onFormSwitch" />
-                </view>
+              <view class="field">
+                <text class="field-label">是否展示</text>
+                <switch checked="{{chapterForm.isVisible}}" color="#c96a78" data-form="chapterForm" data-field="isVisible" bindchange="onFormSwitch" />
               </view>
               <text wx:if="{{chapterError}}" class="inline-error">{{chapterError}}</text>
               <view class="button-row">
@@ -637,15 +631,9 @@
                   </picker>
                 </view>
               </view>
-              <view class="field-grid">
-                <view class="field">
-                  <text class="field-label">主题色</text>
-                  <input class="field-input" value="{{anniversaryForm.colorCode}}" maxlength="20" cursor-spacing="120" placeholder="#D94F70" placeholder-class="field-placeholder" data-form="anniversaryForm" data-field="colorCode" bindinput="onFormInput" />
-                </view>
-                <view class="field">
-                  <text class="field-label">地点</text>
-                  <input class="field-input" value="{{anniversaryForm.location}}" maxlength="100" cursor-spacing="120" placeholder="选填" placeholder-class="field-placeholder" data-form="anniversaryForm" data-field="location" bindinput="onFormInput" />
-                </view>
+              <view class="field">
+                <text class="field-label">地点</text>
+                <input class="field-input" value="{{anniversaryForm.location}}" maxlength="100" cursor-spacing="120" placeholder="选填" placeholder-class="field-placeholder" data-form="anniversaryForm" data-field="location" bindinput="onFormInput" />
               </view>
               <view class="field">
                 <text class="field-label">描述</text>

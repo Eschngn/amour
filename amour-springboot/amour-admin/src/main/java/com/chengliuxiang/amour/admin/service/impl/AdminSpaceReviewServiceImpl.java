@@ -1066,7 +1066,6 @@ public class AdminSpaceReviewServiceImpl implements AdminSpaceReviewService {
         addDiff(diffs, "标签",
                 text(before == null ? null : before.getTagLabel()),
                 text(after == null ? null : after.getTagLabel()));
-        addDiff(diffs, "标签颜色", storyTagColor(before), storyTagColor(after));
         addDiff(diffs, "章节内排序",
                 numberText(before == null ? null : before.getSortOrder()),
                 numberText(after == null ? null : after.getSortOrder()));
@@ -1084,14 +1083,6 @@ public class AdminSpaceReviewServiceImpl implements AdminSpaceReviewService {
             return name;
         }
         return (name.isEmpty() ? "未分章" : name) + "（#" + story.getChapterId() + "）";
-    }
-
-    /** 标签为空时颜色不展示；统一大小写避免序列化差异造成误报。 */
-    private String storyTagColor(StoryPublicSnapshot story) {
-        if (story == null || StrUtil.isBlank(story.getTagLabel())) {
-            return "";
-        }
-        return text(story.getTagColor()).toUpperCase(Locale.ROOT);
     }
 
     private String milestoneText(Boolean milestone) {

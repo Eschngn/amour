@@ -59,7 +59,6 @@ public class AdminChapterServiceImpl implements AdminChapterService {
                         .id(chapter.getId())
                         .spaceId(chapter.getSpaceId())
                         .name(chapter.getName())
-                        .colorCode(chapter.getColorCode())
                         .sortOrder(chapter.getSortOrder())
                         .isVisible(chapter.getIsVisible())
                         .build())

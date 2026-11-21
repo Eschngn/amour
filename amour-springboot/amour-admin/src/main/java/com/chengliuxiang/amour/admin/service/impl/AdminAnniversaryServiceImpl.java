@@ -58,7 +58,6 @@ public class AdminAnniversaryServiceImpl implements AdminAnniversaryService {
                         .anniversaryDate(parseDate(item.getHappenedTime()))
                         .repeatType(item.getRepeatType())
                         .category(item.getCategoryName())
-                        .colorCode(item.getColorCode())
                         .location(item.getLocation())
                         .sortOrder(item.getSortOrder())
                         .visibility(item.getVisibility())
@@ -106,7 +105,6 @@ public class AdminAnniversaryServiceImpl implements AdminAnniversaryService {
                 .anniversaryDate(parseDate(detail.getAnniversaryDate()))
                 .repeatType(detail.getRepeatType())
                 .category(detail.getCategory())
-                .colorCode(detail.getColorCode())
                 .location(detail.getLocation())
                 .sortOrder(detail.getSortOrder())
                 .isVisible(detail.getVisibility() == null

@@ -98,7 +98,6 @@ function storyDetail(overrides = {}) {
     location: '杭州',
     coverImage: '',
     tagLabel: '初见',
-    tagColor: '#D94F70',
     isMilestone: true,
   }, overrides)
 }

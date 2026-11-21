@@ -158,6 +158,7 @@ Component(withComponentPageViewTracking({
       const loading = status === SESSION_STATUS.LOADING
       const auth = snapshot.auth || getStoredAuth()
       const displayName = (auth && auth.displayName) || '恋语间 用户'
+      const loggedIn = Boolean(auth && auth.token)
       const spaceLabels = describeSpace(snapshot.space)
       const hasSpace = status === SESSION_STATUS.AUTHENTICATED_WITH_SPACE
       const showSpaceGuide = !loading && !hasSpace
@@ -166,7 +167,7 @@ Component(withComponentPageViewTracking({
       const patch = {
         sessionStatus: status,
         statusLoading: loading,
-        loggedIn: Boolean(auth && auth.token),
+        loggedIn,
         hasSpace,
         spaceName: spaceLabels.spaceName,
         spaceSummary: spaceLabels.spaceSummary,
@@ -179,6 +180,14 @@ Component(withComponentPageViewTracking({
         avatarError: false,
         initial: getInitial(displayName),
         passwordSet: Boolean(auth && auth.passwordSet),
+      }
+      if (!loggedIn) {
+        // 掉线后关闭未完成的密码面板，避免重新登录时带着旧状态重新弹出。
+        patch.passwordModalOpen = false
+        patch.passwordSheetClosing = false
+        patch.passwordSheetOffset = 0
+        patch.passwordSheetTransition = ''
+        patch.passwordForm = { current: '', next: '', confirm: '' }
       }
       if (showSpaceGuide) {
         patch.spaceStateTitle = stateCopy.spaceStateTitle

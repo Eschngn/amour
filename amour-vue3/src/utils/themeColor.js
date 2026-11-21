@@ -1,31 +1,11 @@
 /**
- * 空间内容主题色工具。
+ * 空间内容展示色工具。
  *
- * 章节主题色、故事标签色、纪念日卡片色统一走这里：
- * - 统一解析 #RRGGBB，避免各页面自行判断；
- * - 提供柔化底色、浅底文字色、纯色块文字色，保证自定义颜色都能看清。
+ * 故事、章节与纪念日统一使用默认玫瑰色；
+ * 这里集中提供柔化底色、浅底文字色与纯色块文字色，避免各页面重复计算。
  */
 
 export const DEFAULT_THEME_COLOR = '#D94F70'
-
-export const THEME_COLOR_PRESETS = Object.freeze([
-  '#D94F70',
-  '#F43F5E',
-  '#EC4899',
-  '#B36A16',
-  '#F59E0B',
-  '#178F8A',
-  '#10B981',
-  '#4579AD',
-  '#6366F1',
-  '#7D65AD',
-])
-
-/** 是否为合法的六位十六进制颜色（允许大小写，不含 # 时也接受）。 */
-export function isHexColor(value) {
-  const text = String(value ?? '').trim()
-  return /^#?[0-9a-fA-F]{6}$/.test(text)
-}
 
 /** 统一为 #RRGGBB 大写；非法或空值返回 fallback。 */
 export function normalizeHexColor(value, fallback = '') {
@@ -59,13 +39,13 @@ export function mixHexColors(from, to, weight = 0.5) {
   return `#${mixChannel(start.r, end.r)}${mixChannel(start.g, end.g)}${mixChannel(start.b, end.b)}`
 }
 
-/** 主题色的浅色底，用于标签、日期块等大面积背景。 */
+/** 展示色的浅色底，用于标签、日期块等大面积背景。 */
 export function softenHexColor(value, fallback = DEFAULT_THEME_COLOR, ratio = 0.12) {
   const accent = normalizeHexColor(value, fallback)
   return mixHexColors(accent, '#FFFFFF', ratio)
 }
 
-/** 主题色描边，比柔化底色更有存在感。 */
+/** 展示色描边，比柔化底色更有存在感。 */
 export function themeBorderColor(value, fallback = DEFAULT_THEME_COLOR, ratio = 0.38) {
   const accent = normalizeHexColor(value, fallback)
   return mixHexColors(accent, '#FFFFFF', ratio)
@@ -81,12 +61,12 @@ function relativeLuminance(value) {
   return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
 }
 
-/** 在主题色纯色块上使用时，返回白色或深色文字，避免亮色背景白字看不清。 */
+/** 在展示色纯色块上使用时，返回白色或深色文字，避免亮色背景白字看不清。 */
 export function contrastTextColor(value, fallback = DEFAULT_THEME_COLOR) {
   return relativeLuminance(normalizeHexColor(value, fallback)) > 0.35 ? '#4C0519' : '#FFFFFF'
 }
 
-/** 在浅色底上作为主题文字色使用；过亮的颜色自动压暗，避免低对比度。 */
+/** 在浅色底上作为展示文字色使用；过亮的颜色自动压暗，避免低对比度。 */
 export function accentTextColor(value, fallback = DEFAULT_THEME_COLOR) {
   const accent = normalizeHexColor(value, fallback)
   return relativeLuminance(accent) > 0.3 ? mixHexColors(accent, '#4C0519', 0.55) : accent

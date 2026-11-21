@@ -35,7 +35,6 @@ export interface GalleryStorySummary {
   happenedTime?: string | null
   coverImage?: string | null
   tagLabel?: string | null
-  tagColor?: string | null
   isMilestone?: boolean | null
 }
 
@@ -58,7 +57,6 @@ export interface GalleryAnniversary {
   anniversaryDate?: string | null
   repeatType?: number | string | null
   category?: string | null
-  colorCode?: string | null
   location?: string | null
 }
 
@@ -98,7 +96,6 @@ export interface GalleryStoryListItem {
   location?: string | null
   coverImage?: string | null
   tagLabel?: string | null
-  tagColor?: string | null
   isMilestone?: boolean | null
 }
 
@@ -118,7 +115,6 @@ export interface GalleryStoryDetail {
   location?: string | null
   coverImage?: string | null
   tagLabel?: string | null
-  tagColor?: string | null
   isMilestone?: boolean | null
 }
 

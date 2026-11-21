@@ -40,8 +40,6 @@ public class StoryNodeManageVO {
 
     private String tagLabel;
 
-    private String tagColor;
-
     /** 章节内排序值。 */
     private Integer sortOrder;
 

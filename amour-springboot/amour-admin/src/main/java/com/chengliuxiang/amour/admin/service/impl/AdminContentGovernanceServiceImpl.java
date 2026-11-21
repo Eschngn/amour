@@ -396,7 +396,6 @@ public class AdminContentGovernanceServiceImpl implements AdminContentGovernance
                             format(anniversary.getCreateTime()), format(anniversary.getUpdateTime()),
                             null);
                     vo.setRepeatType(anniversary.getRepeatType());
-                    vo.setColorCode(anniversary.getColorCode());
                     vo.setSortOrder(anniversary.getSortOrder());
                     vo.setLocation(anniversary.getLocation());
                     return vo;
@@ -535,7 +534,6 @@ public class AdminContentGovernanceServiceImpl implements AdminContentGovernance
         String location = null;
         String coverImage = null;
         String tagLabel = null;
-        String tagColor = null;
         Boolean milestone = null;
         Long chapterId = null;
         String chapterName = null;
@@ -545,7 +543,6 @@ public class AdminContentGovernanceServiceImpl implements AdminContentGovernance
         String anniversaryDate = null;
         Integer repeatType = null;
         String category = null;
-        String colorCode = null;
         Integer sortOrder = null;
         Integer visibility = ContentGovernanceConstants.VISIBILITY_MEMBER_ONLY;
         Boolean deleted = false;
@@ -564,7 +561,6 @@ public class AdminContentGovernanceServiceImpl implements AdminContentGovernance
             location = story.getLocation();
             coverImage = story.getCoverImage();
             tagLabel = story.getTagLabel();
-            tagColor = story.getTagColor();
             milestone = story.getIsMilestone();
             chapterId = story.getChapterId();
             StoryChapterDO chapter = storyChapterMapper.selectChapterById(context.spaceId, story.getChapterId());
@@ -608,7 +604,6 @@ public class AdminContentGovernanceServiceImpl implements AdminContentGovernance
                     ? null : anniversary.getAnniversaryDate().toString();
             repeatType = anniversary.getRepeatType();
             category = anniversary.getCategory();
-            colorCode = anniversary.getColorCode();
             sortOrder = anniversary.getSortOrder();
             location = anniversary.getLocation();
             visibility = anniversary.getVisibility();
@@ -655,7 +650,6 @@ public class AdminContentGovernanceServiceImpl implements AdminContentGovernance
                 .location(location)
                 .coverImage(coverImage)
                 .tagLabel(tagLabel)
-                .tagColor(tagColor)
                 .milestone(milestone)
                 .chapterId(chapterId)
                 .chapterName(chapterName)
@@ -665,7 +659,6 @@ public class AdminContentGovernanceServiceImpl implements AdminContentGovernance
                 .anniversaryDate(anniversaryDate)
                 .repeatType(repeatType)
                 .category(category)
-                .colorCode(colorCode)
                 .sortOrder(sortOrder)
                 .visibility(visibility)
                 .visibilityText(ContentGovernanceConstants.visibilityText(visibility))

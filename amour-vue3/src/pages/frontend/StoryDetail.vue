@@ -146,7 +146,6 @@ import StoryToc from '@/components/frontend/StoryToc.vue'
 import {
   DEFAULT_THEME_COLOR,
   accentTextColor,
-  normalizeHexColor,
   softenHexColor,
   themeBorderColor,
 } from '@/utils/themeColor'
@@ -185,8 +184,8 @@ const markdownPreviewIcons = {
 const story = ref(null)
 const loading = ref(true)
 
-const tagAccent = computed(() => normalizeHexColor(story.value?.tagColor, DEFAULT_THEME_COLOR))
-const chapterAccent = computed(() => normalizeHexColor(story.value?.chapterColor, tagAccent.value))
+const tagAccent = computed(() => DEFAULT_THEME_COLOR)
+const chapterAccent = computed(() => DEFAULT_THEME_COLOR)
 const chapterAccentText = computed(() => accentTextColor(chapterAccent.value))
 const tagPillStyle = computed(() => ({
   backgroundColor: softenHexColor(tagAccent.value),

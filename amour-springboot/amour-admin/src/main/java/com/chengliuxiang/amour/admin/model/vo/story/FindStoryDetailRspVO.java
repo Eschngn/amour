@@ -33,7 +33,6 @@ public class FindStoryDetailRspVO {
     private String location;
     private String coverImage;
     private String tagLabel;
-    private String tagColor;
     private Boolean isMilestone;
     private String createTime;
     private String updateTime;

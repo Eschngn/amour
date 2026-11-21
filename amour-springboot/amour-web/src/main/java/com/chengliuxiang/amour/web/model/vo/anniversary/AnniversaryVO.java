@@ -26,8 +26,6 @@ public class AnniversaryVO {
 
     private String category;
 
-    private String colorCode;
-
     private String location;
 
     private Integer sortOrder;

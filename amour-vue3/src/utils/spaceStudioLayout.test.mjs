@@ -19,15 +19,14 @@ test('空间编辑页桌面端使用左侧纵向导航、右侧编辑内容', ()
   assert.match(source, /overflow-x-auto/)
   assert.match(source, /lg:overflow-visible/)
 
-  // 审核卡、保存反馈位于两栏之上，不会盖住左侧导航或编辑内容。
-  const feedbackIndex = source.indexOf('<SpaceSaveFeedback')
+  // 审核卡位于编辑区之前；保存结果由 teleport 弹窗展示，不再占用文档流。
   const reviewIndex = source.indexOf('<SpaceReviewStatusCard')
   const navIndex = source.indexOf('aria-label="空间编辑栏目"')
   const editorIndex = source.indexOf('<SpaceHomeEditor')
-  assert.ok(feedbackIndex >= 0, '缺少保存反馈组件')
-  assert.ok(reviewIndex >= 0 && reviewIndex < feedbackIndex, '审核状态卡应在保存反馈之前')
-  assert.ok(navIndex > feedbackIndex, '栏目导航必须位于保存反馈之后')
+  assert.ok(source.includes('<SpaceSaveFeedbackDialog'), '缺少保存反馈弹窗组件')
+  assert.ok(reviewIndex >= 0 && reviewIndex < navIndex, '审核状态卡应在栏目导航之前')
   assert.ok(editorIndex > navIndex, '栏目导航必须位于编辑内容之前')
+  assert.doesNotMatch(source, /<SpaceSaveFeedback\b/)
 
   // 当前栏目、键盘焦点与无障碍语义。
   assert.match(source, /aria-current/)
@@ -46,7 +45,8 @@ test('前台编辑弹窗使用统一共享组件与全局样式', () => {  const
   assert.match(dialog, /append-to-body/)
   assert.match(dialog, /destroy-on-close/)
   assert.match(dialog, /lock-scroll/)
-  assert.match(dialog, /close-on-click-modal="false"/)
+  assert.match(dialog, /:close-on-click-modal="closeOnClickModal"/)
+  assert.match(dialog, /closeOnClickModal: \{ type: Boolean, default: false \}/)
   assert.match(dialog, /class="space-studio-dialog"/)
   assert.match(dialog, /modal-class="space-studio-dialog-overlay"/)
   assert.match(dialog, /hasOpenPopup/)
@@ -123,9 +123,10 @@ test('纪念日编辑器改为弹窗且页面不再保留内嵌表单', () => {
   assert.doesNotMatch(source, /scrollIntoView/)
   assert.doesNotMatch(source, /xl:grid-cols-\[minmax\(0,0\.92fr\)/)
 
-  // 日期、主题色预览、保存反馈和 dirty 逻辑继续存在。
+  // 日期、预览、保存反馈和 dirty 逻辑继续存在。
   assert.match(source, /ThemeDatePicker/)
   assert.match(source, /previewDateTileStyle/)
+  assert.doesNotMatch(source, /id="studio-anniversary-color"/)
   assert.match(source, /handleDialogBeforeClose/)
   assert.match(source, /focusTitle/)
   assert.match(source, /restoreDialogFocus/)
@@ -185,4 +186,18 @@ test('故事与照片提供日期展示精度选择，并纳入表单快照与�
     assert.match(source, /toBackendContentDateTime\(/)
     assert.match(source, /:enable-seconds=/)
   }
+})
+
+test('故事与纪念日展示统一使用默认主题色，不保留分类或章节配色', () => {
+  const story = readSource('pages/frontend/OurStoryPage.vue')
+  assert.match(story, /function chapterAccent\(\) \{\s*return DEFAULT_THEME_COLOR/)
+  assert.doesNotMatch(story, /#f43f5e|colorCode/)
+
+  const anniversary = readSource('pages/frontend/AnniversaryPage.vue')
+  assert.match(anniversary, /function themeStyle\(\) \{\s*const accent = DEFAULT_THEME_COLOR/)
+  assert.doesNotMatch(anniversary, /themePresets|colorCode/)
+
+  const editor = readSource('components/frontend/space-studio/SpaceStoryEditor.vue')
+  assert.match(editor, /function tagStyle\(\) \{\s*const accent = DEFAULT_THEME_COLOR/)
+  assert.doesNotMatch(editor, /tagStyle\([^)]/)
 })

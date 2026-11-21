@@ -44,8 +44,6 @@ public class StoryNodeDO {
 
     private String tagLabel;
 
-    private String tagColor;
-
     /**
      * 章节内排序值：只在所属章节内生效。
      */

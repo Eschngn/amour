@@ -23,7 +23,6 @@ public class FindAnniversaryPageListRspVO {
     private LocalDate anniversaryDate;
     private Integer repeatType;
     private String category;
-    private String colorCode;
     private String location;
     private Integer sortOrder;
     private Integer visibility;

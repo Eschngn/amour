@@ -1,6 +1,7 @@
 package com.chengliuxiang.amour.common.model.snapshot;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -29,6 +30,8 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+// JsonUtil 使用独立 ObjectMapper，全局 unknown-properties 配置不生效，历史快照必须在此显式兼容。
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class SpaceArchiveSnapshot {
 
     /**
@@ -203,11 +206,11 @@ public class SpaceArchiveSnapshot {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class StoryChapter {
         private Long id;
         private Long spaceId;
         private String name;
-        private String colorCode;
         private Integer sortOrder;
         private Boolean isVisible;
         private Long createdBy;
@@ -219,6 +222,7 @@ public class SpaceArchiveSnapshot {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class StoryNode {
         private Long id;
         private Long spaceId;
@@ -231,7 +235,6 @@ public class SpaceArchiveSnapshot {
         private String location;
         private String coverImage;
         private String tagLabel;
-        private String tagColor;
         private Integer sortOrder;
         private Integer globalSortOrder;
         private Boolean isMilestone;
@@ -305,6 +308,7 @@ public class SpaceArchiveSnapshot {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Anniversary {
         private Long id;
         private Long spaceId;
@@ -313,7 +317,6 @@ public class SpaceArchiveSnapshot {
         private String anniversaryDate;
         private Integer repeatType;
         private String category;
-        private String colorCode;
         private String location;
         private Integer sortOrder;
         private Integer visibility;

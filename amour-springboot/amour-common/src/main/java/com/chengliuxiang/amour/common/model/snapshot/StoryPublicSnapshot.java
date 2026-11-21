@@ -39,8 +39,6 @@ public class StoryPublicSnapshot {
 
     private String tagLabel;
 
-    private String tagColor;
-
     private Integer sortOrder;
 
     private Boolean milestone;

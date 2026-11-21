@@ -13,7 +13,6 @@ public class FindChapterListRspVO {
     private Long id;
     private Long spaceId;
     private String name;
-    private String colorCode;
     private Integer sortOrder;
     private Boolean isVisible;
 }

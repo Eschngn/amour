@@ -33,8 +33,6 @@ public class AnniversaryDO {
 
     private String category;
 
-    private String colorCode;
-
     private String location;
 
     private Integer sortOrder;

@@ -163,7 +163,6 @@ test('表单校验覆盖名称、时间半选与图片地址', () => {
   assert.equal(rules.validateHomeForm({ spaceName: 'x' }), '')
   assert.match(rules.validateChapterForm({ name: '' }), /必填/)
   assert.equal(rules.validateChapterForm({ name: '初见' }), '')
-  assert.match(rules.validateChapterForm({ name: '初见', colorCode: 'red' }), /#RRGGBB/)
   assert.match(rules.validateNodeForm({ chapterId: 1, title: 'a', happenedDate: '2024-01-01' }), /同时选择/)
   assert.equal(rules.validateNodeForm({ chapterId: 1, title: 'a' }), '')
   assert.match(rules.validatePhotoForm({ photoCategoryId: 1, url: 'javascript:alert(1)' }), /图片地址/)
@@ -182,8 +181,8 @@ test('表单校验覆盖名称、时间半选与图片地址', () => {
 })
 
 test('故事 / 照片 / 纪念日提交体符合后端 VO 字段', () => {
-  const chapter = rules.buildChapterPayload({ id: 3, name: ' 初见 ', colorCode: '#D94F70', isVisible: false })
-  assert.deepEqual(chapter, { id: 3, name: '初见', colorCode: '#D94F70', isVisible: false })
+  const chapter = rules.buildChapterPayload({ id: 3, name: ' 初见 ', isVisible: false })
+  assert.deepEqual(chapter, { id: 3, name: '初见', isVisible: false })
 
   const node = rules.buildNodePayload({
     id: 9,
@@ -197,7 +196,6 @@ test('故事 / 照片 / 纪念日提交体符合后端 VO 字段', () => {
     location: '江边',
     coverImage: 'https://cdn.example.com/cover.png',
     tagLabel: '初见',
-    tagColor: '#D94F70',
     isMilestone: true,
     visibility: 1,
     canPublish: false,

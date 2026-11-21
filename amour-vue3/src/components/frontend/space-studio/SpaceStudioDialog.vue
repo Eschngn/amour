@@ -8,7 +8,7 @@
     align-center
     destroy-on-close
     lock-scroll
-    :close-on-click-modal="false"
+    :close-on-click-modal="closeOnClickModal"
     :close-on-press-escape="closeOnPressEscape"
     :before-close="handleBeforeClose"
     class="space-studio-dialog"
@@ -41,6 +41,8 @@ const props = defineProps({
   /** 父级传入的关闭前拦截：只有调用 done 才真正关闭。 */
   beforeClose: { type: Function, default: null },
   closeOnPressEscape: { type: Boolean, default: true },
+  /** 编辑弹窗默认防止误触关闭；只读的保存结果弹窗可按需开启。 */
+  closeOnClickModal: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:modelValue', 'closed'])

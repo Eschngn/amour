@@ -13,13 +13,13 @@ const messageEditor = () => readFileSync(
 test('留言人名字、正文与回复按钮使用不同视觉层级', () => {
   const source = messageEditor()
 
-  // 名字使用主题色与更高字重。
+  // 名字使用玫瑰色与更高字重。
   assert.match(source, /text-sm font-bold text-rose-800[^>]*>\{\{ message\.userName \|\| '匿名' \}\}/)
   // 正文使用主要正文色，和名字、操作按钮区分开。
   assert.match(source, /whitespace-pre-wrap break-words text-sm leading-7 text-stone-800/)
   // 时间信息保持弱化显示。
   assert.match(source, /text-\[11px\] font-normal text-stone-400/)
-  // 回复按钮使用主题色描边按钮，而不是普通黑色文字按钮。
+  // 回复按钮使用玫瑰色描边按钮，而不是普通黑色文字按钮。
   assert.match(source, /border-rose-200 bg-white text-rose-700 hover:border-rose-300 hover:bg-rose-50/)
   assert.match(source, /focus-visible:ring-2 focus-visible:ring-rose-300/)
   assert.match(source, /disabled:cursor-not-allowed disabled:opacity-55/)
@@ -38,7 +38,7 @@ test('留言展示头像、回复状态与无障碍属性', () => {
   assert.match(source, /取消回复/)
   assert.match(source, /whitespace-nowrap/)
 
-  // 回复列表同样使用主题色名字与正文色内容。
+  // 回复列表同样使用玫瑰色名字与正文色内容。
   assert.match(source, /font-semibold text-rose-700/)
   assert.match(source, /text-stone-700">\{\{ reply\.content \}\}/)
 })

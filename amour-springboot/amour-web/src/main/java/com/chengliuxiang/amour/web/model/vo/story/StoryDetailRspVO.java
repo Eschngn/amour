@@ -31,13 +31,9 @@ public class StoryDetailRspVO {
 
     private String tagLabel;
 
-    private String tagColor;
-
     private Boolean isMilestone;
 
     private String chapterName;
-
-    private String chapterColor;
 
     private StoryNeighborVO preStory;
 

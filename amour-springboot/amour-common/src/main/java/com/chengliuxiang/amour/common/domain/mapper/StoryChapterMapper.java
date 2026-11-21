@@ -50,7 +50,6 @@ public interface StoryChapterMapper extends BaseMapper<StoryChapterDO> {
                 .eq(StoryChapterDO::getId, chapter.getId())
                 .eq(StoryChapterDO::getSpaceId, chapter.getSpaceId())
                 .set(StoryChapterDO::getName, chapter.getName())
-                .set(StoryChapterDO::getColorCode, chapter.getColorCode())
                 .set(StoryChapterDO::getSortOrder, chapter.getSortOrder())
                 .set(StoryChapterDO::getIsVisible, chapter.getIsVisible())
                 .set(StoryChapterDO::getUpdateTime, chapter.getUpdateTime()));

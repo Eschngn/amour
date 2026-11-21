@@ -32,7 +32,7 @@ const EMPTY_HOME_FORM = {
   heroPhoto2: '',
 }
 
-const EMPTY_CHAPTER_FORM = { id: null, name: '', colorCode: '#D94F70', isVisible: true }
+const EMPTY_CHAPTER_FORM = { id: null, name: '', isVisible: true }
 const EMPTY_NODE_FORM = {
   id: null,
   chapterId: 0,
@@ -44,7 +44,6 @@ const EMPTY_NODE_FORM = {
   location: '',
   coverImage: '',
   tagLabel: '',
-  tagColor: '#D94F70',
   isMilestone: false,
   visibility: 0,
   baselineHappenedTime: '',
@@ -70,7 +69,6 @@ const EMPTY_ANNIVERSARY_FORM = {
   anniversaryDate: '',
   repeatType: 1,
   category: 'love',
-  colorCode: '#D94F70',
   location: '',
   visibility: 0,
 }
@@ -874,7 +872,6 @@ Page(withPageViewTracking({
       chapterForm: {
         id: chapter.id,
         name: chapter.name || '',
-        colorCode: chapter.colorCode || '#D94F70',
         isVisible: chapter.isVisible !== false,
       },
     })
@@ -1012,7 +1009,6 @@ Page(withPageViewTracking({
         location: node.location || '',
         coverImage: node.coverImage || '',
         tagLabel: node.tagLabel || '',
-        tagColor: node.tagColor || '#D94F70',
         isMilestone: node.isMilestone === true,
         visibility: Number(node.visibility) || 0,
         baselineHappenedTime: node.happenedTime || '',
@@ -1574,7 +1570,6 @@ Page(withPageViewTracking({
         anniversaryDate: item.anniversaryDate || '',
         repeatType: Number(item.repeatType) === 0 ? 0 : 1,
         category: item.category || 'other',
-        colorCode: item.colorCode || '#D94F70',
         location: item.location || '',
         visibility: Number(item.visibility) || 0,
       },

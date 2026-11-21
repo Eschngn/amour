@@ -200,7 +200,7 @@ function onTimeInput(event) {
 </script>
 
 <style scoped>
-/* 主题色日历：变量同时定义在输入框与弹出面板上，覆盖组件自带的蓝色主题。 */
+/* 玫瑰色日历：变量同时定义在输入框与弹出面板上，覆盖组件自带的蓝色主题。 */
 .theme-date-picker :deep(.dp--main),
 .theme-date-picker :deep(.dp--menu) {
   --dp-font-family: 'Nunito', 'PingFang SC', 'Microsoft YaHei', sans-serif;

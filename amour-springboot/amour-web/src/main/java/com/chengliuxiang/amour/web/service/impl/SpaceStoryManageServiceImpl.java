@@ -36,12 +36,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -50,8 +48,6 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
     private static final int VISIBILITY_MEMBER = 0;
     private static final int VISIBILITY_PUBLIC = 1;
     private static final int VISIBILITY_HIDDEN = 2;
-
-    private static final Pattern HEX_COLOR = Pattern.compile("^#[0-9a-fA-F]{6}$");
 
     @Resource
     private SpaceContentAccessService spaceContentAccessService;
@@ -73,7 +69,6 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
                 .map(chapter -> StoryChapterManageVO.builder()
                         .id(chapter.getId())
                         .name(chapter.getName())
-                        .colorCode(chapter.getColorCode())
                         .sortOrder(chapter.getSortOrder())
                         .isVisible(chapter.getIsVisible())
                         .nodeCount(storyNodeMapper.countByChapterId(spaceId, chapter.getId()).intValue())
@@ -92,11 +87,6 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
         if (StrUtil.isBlank(name) || name.length() > 50) {
             throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID);
         }
-        String colorCode = StrUtil.nullToEmpty(StrUtil.trim(reqVO.getColorCode()));
-        if (colorCode.length() > 0 && !HEX_COLOR.matcher(colorCode).matches()) {
-            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID);
-        }
-
         Long excludedId = reqVO.getId();
         Long duplicate = storyChapterMapper.countByName(spaceId, name, excludedId);
         if (duplicate != null && duplicate > 0) {
@@ -108,7 +98,6 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
             StoryChapterDO chapter = StoryChapterDO.builder()
                     .spaceId(spaceId)
                     .name(name)
-                    .colorCode(colorCode)
                     .sortOrder(reqVO.getSortOrder() == null ? nextChapterSortOrder(spaceId) : reqVO.getSortOrder())
                     .isVisible(reqVO.getIsVisible() == null || reqVO.getIsVisible())
                     .createdBy(access.getUserId())
@@ -121,7 +110,6 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
 
         StoryChapterDO current = requireChapter(spaceId, reqVO.getId());
         current.setName(name);
-        current.setColorCode(colorCode);
         current.setSortOrder(reqVO.getSortOrder() == null
                 ? (current.getSortOrder() == null ? 0 : current.getSortOrder())
                 : reqVO.getSortOrder());
@@ -199,7 +187,6 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
                             .location(node.getLocation())
                             .coverImage(node.getCoverImage())
                             .tagLabel(node.getTagLabel())
-                            .tagColor(node.getTagColor())
                             .sortOrder(node.getSortOrder())
                             .globalSortOrder(node.getGlobalSortOrder())
                             .isMilestone(node.getIsMilestone())
@@ -253,7 +240,6 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
                     .location(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getLocation())))
                     .coverImage(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getCoverImage())))
                     .tagLabel(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getTagLabel())))
-                    .tagColor(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getTagColor())))
                     .sortOrder(resolveNewNodeSortOrder(spaceId, reqVO.getChapterId(), reqVO.getSortOrder()))
                     // 新故事追加到全部故事末尾，章节内排序仍由 sortOrder 单独维护。
                     .globalSortOrder(nextNodeGlobalSortOrder(spaceId))
@@ -290,7 +276,6 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
                     .location(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getLocation())))
                     .coverImage(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getCoverImage())))
                     .tagLabel(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getTagLabel())))
-                    .tagColor(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getTagColor())))
                     // 改章节时追加到目标章节末尾；未改章节时保留原章节内顺序。
                     .sortOrder(resolveUpdatedNodeSortOrder(spaceId, current, reqVO))
                     .isMilestone(Boolean.TRUE.equals(reqVO.getIsMilestone()))
@@ -405,7 +390,8 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
      *
      * <p>只比较保存接口会写入的字段，忽略数据库自增 ID 与对象序列化差异；
      * 排序值也属于真实变更，因为会改变恋爱广场的故事顺序。
-     * 历史故事附图不再参与保存，也不会影响变化判定。</p>
+     * 历史故事附图不再参与保存，也不会影响变化判定；
+     * 颜色字段下线后不再参与变更判定。</p>
      */
     private boolean isStoryChanged(StoryNodeDO current, StoryNodeSaveReqVO reqVO, int visibility,
                                    boolean showTime, LocalDateTime happenedTime) {
@@ -419,8 +405,6 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
                 || !sameText(current.getLocation(), reqVO.getLocation())
                 || !sameText(current.getCoverImage(), reqVO.getCoverImage())
                 || !sameText(current.getTagLabel(), requestedTagLabel)
-                || !Objects.equals(effectiveTagColor(current.getTagLabel(), current.getTagColor()),
-                        effectiveTagColor(requestedTagLabel, reqVO.getTagColor()))
                 || !Objects.equals(currentSortOrder(current), requestedSortOrder(reqVO, current))
                 || !Objects.equals(Boolean.TRUE.equals(current.getIsMilestone()),
                         Boolean.TRUE.equals(reqVO.getIsMilestone()))
@@ -432,14 +416,6 @@ public class SpaceStoryManageServiceImpl implements SpaceStoryManageService {
         return Objects.equals(
                 StrUtil.nullToEmpty(StrUtil.trim(left)),
                 StrUtil.nullToEmpty(StrUtil.trim(right)));
-    }
-
-    /** 标签为空时颜色不参与展示，也不应因为历史残留颜色而误判为修改。 */
-    private String effectiveTagColor(String tagLabel, String tagColor) {
-        if (StrUtil.isBlank(tagLabel)) {
-            return "";
-        }
-        return StrUtil.nullToEmpty(StrUtil.trim(tagColor)).toUpperCase(Locale.ROOT);
     }
 
     private int currentSortOrder(StoryNodeDO current) {

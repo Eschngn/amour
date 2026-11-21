@@ -38,6 +38,13 @@ public final class SpaceSnapshotComparator {
             Collections.unmodifiableSet(new HashSet<>(Collections.singletonList("publicAt")));
 
     /**
+     * 已下线的内容颜色字段。历史发布快照可能仍保留这些键，比较时必须忽略，
+     * 否则旧数据会永远被判为内容变化。
+     */
+    private static final Set<String> CONTENT_RETIRED_FIELDS =
+            Collections.unmodifiableSet(new HashSet<>(java.util.Arrays.asList("colorCode", "tagColor")));
+
+    /**
      * 日期 / 日期时间文本：统一成 yyyy-MM-dd HH:mm:ss。
      * 历史快照可能使用 ISO 的 T 分隔符或省略秒，不能因此误判成内容变化。
      */
@@ -53,7 +60,7 @@ public final class SpaceSnapshotComparator {
      * <p>任一快照缺失时返回 false，继续沿用「首次公开 / 新增内容」的现有语义。</p>
      */
     public static boolean isSame(String currentJson, String publishedJson) {
-        return isSame(currentJson, publishedJson, Collections.emptySet());
+        return isSame(currentJson, publishedJson, CONTENT_RETIRED_FIELDS);
     }
 
     /** 空间信息快照比较：忽略系统维护字段，只比较用户可编辑内容。 */

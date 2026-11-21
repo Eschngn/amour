@@ -877,7 +877,6 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
                 .location(story.getLocation())
                 .coverImage(story.getCoverImage())
                 .tagLabel(story.getTagLabel())
-                .tagColor(story.getTagColor())
                 .sortOrder(story.getSortOrder())
                 .milestone(Boolean.TRUE.equals(story.getIsMilestone()))
                 .build();
@@ -908,7 +907,6 @@ public class SpaceReviewServiceImpl implements SpaceReviewService {
                 .anniversaryDate(format(anniversary.getAnniversaryDate()))
                 .repeatType(anniversary.getRepeatType())
                 .category(anniversary.getCategory())
-                .colorCode(anniversary.getColorCode())
                 .location(anniversary.getLocation())
                 .sortOrder(anniversary.getSortOrder())
                 .build();

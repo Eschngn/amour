@@ -39,8 +39,6 @@ public class AdminContentPageRspVO {
 
     private Integer sortOrder;
 
-    private String colorCode;
-
     private Integer repeatType;
 
     private String location;

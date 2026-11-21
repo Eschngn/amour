@@ -50,9 +50,6 @@ public class StoryNodeSaveReqVO {
     @Size(max = 30, message = "标签不能超过 30 个字符")
     private String tagLabel;
 
-    @Size(max = 20, message = "标签颜色格式不正确")
-    private String tagColor;
-
     private Integer sortOrder;
 
     private Boolean isMilestone;

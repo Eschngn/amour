@@ -195,7 +195,6 @@ import { formatSpaceContentDateTime } from '@/utils/spaceFormat'
 import {
   DEFAULT_THEME_COLOR,
   accentTextColor,
-  normalizeHexColor,
   softenHexColor,
   themeBorderColor,
 } from '@/utils/themeColor'
@@ -256,7 +255,7 @@ const returnLabel = computed(() => (
   isPlazaListPath(returnTarget.value?.path) ? '返回恋爱广场' : '返回公开空间'
 ))
 
-const tagAccent = computed(() => normalizeHexColor(story.value?.tagColor, DEFAULT_THEME_COLOR))
+const tagAccent = computed(() => DEFAULT_THEME_COLOR)
 const tagPillStyle = computed(() => ({
   backgroundColor: softenHexColor(tagAccent.value),
   borderColor: themeBorderColor(tagAccent.value),
@@ -287,7 +286,6 @@ function toPublicStory(detail) {
     location: detail.location || '',
     coverImage: detail.coverImage || '',
     tagLabel: detail.tagLabel || '',
-    tagColor: detail.tagColor || '',
     isMilestone: detail.isMilestone === true,
   }
 }

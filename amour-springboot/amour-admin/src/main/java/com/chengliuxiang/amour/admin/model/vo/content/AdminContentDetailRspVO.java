@@ -49,8 +49,6 @@ public class AdminContentDetailRspVO {
 
     private String tagLabel;
 
-    private String tagColor;
-
     private Boolean milestone;
 
     private Long chapterId;
@@ -68,8 +66,6 @@ public class AdminContentDetailRspVO {
     private Integer repeatType;
 
     private String category;
-
-    private String colorCode;
 
     private Integer sortOrder;
 

@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 
 /**
  * 底部导航（Tab）与「我的」页面行为测试。
@@ -18,6 +19,11 @@ const toasts = []
 const handlers = new Map()
 let componentOptions = null
 let pageOptions = null
+
+const profileWxml = readFileSync(
+  new URL('../miniprogram/pages/profile/profile.wxml', import.meta.url),
+  'utf8',
+)
 
 function normalizePath(url) {
   return String(url || '').replace(/^https?:\/\/[^/]+/, '').replace(/^\/api/, '')
@@ -293,6 +299,29 @@ test('「我的」页面：未登录时展示登录入口', () => {
   assert.equal(page.data.loggedIn, false)
   assert.equal(page.data.hasSpace, false)
   assert.equal(page.data.statusLoading, false)
+})
+
+test('「我的」页面：未登录仅展示登录引导，不渲染账号资料与账号安全', () => {
+  assert.match(profileWxml, /<view wx:if="\{\{loggedIn\}\}" class="account-summary"/)
+  assert.match(profileWxml, /<view wx:if="\{\{loggedIn\}\}" class="settings-section">/)
+  assert.match(profileWxml, /<view wx:if="\{\{!loggedIn\}\}" class="login-panel guest-login-panel">/)
+  assert.match(profileWxml, /微信一键登录/)
+  assert.match(profileWxml, /<view wx:if="\{\{loggedIn && passwordModalOpen\}\}" class="modal-mask"/)
+})
+
+test('「我的」页面：掉线时关闭密码面板并清空旧输入', () => {
+  auth.clearAuth()
+  const page = createProfile()
+  page.applySession(sessionOf(SESSION_STATUS.AUTHENTICATED_WITH_SPACE))
+  page.openPasswordModal()
+  page.setData({ 'passwordForm.current': 'old-password' })
+  assert.equal(page.data.passwordModalOpen, true)
+
+  page.applySession(sessionOf(SESSION_STATUS.UNAUTHENTICATED))
+
+  assert.equal(page.data.loggedIn, false)
+  assert.equal(page.data.passwordModalOpen, false)
+  assert.deepEqual(page.data.passwordForm, { current: '', next: '', confirm: '' })
 })
 
 test('「我的」页面：已登录但无情侣空间时展示创建 / 绑定引导', () => {

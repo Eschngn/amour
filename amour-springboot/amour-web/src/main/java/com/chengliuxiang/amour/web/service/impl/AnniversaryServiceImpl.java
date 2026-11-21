@@ -39,7 +39,6 @@ public class AnniversaryServiceImpl implements AnniversaryService {
                 .anniversaryDate(anniversary.getAnniversaryDate())
                 .repeatType(anniversary.getRepeatType())
                 .category(anniversary.getCategory())
-                .colorCode(anniversary.getColorCode())
                 .location(anniversary.getLocation())
                 .sortOrder(anniversary.getSortOrder())
                 .visibility(anniversary.getVisibility())

@@ -26,7 +26,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -36,10 +35,8 @@ public class SpaceAnniversaryManageServiceImpl implements SpaceAnniversaryManage
     private static final int VISIBILITY_PUBLIC = 1;
     private static final int VISIBILITY_HIDDEN = 2;
 
-    private static final String DEFAULT_COLOR = "#D94F70";
     private static final Set<String> CATEGORIES = new HashSet<>(Arrays.asList(
             "love", "birthday", "journey", "memory", "milestone", "other"));
-    private static final Pattern HEX_COLOR = Pattern.compile("^#[0-9a-fA-F]{6}$");
 
     @Resource
     private SpaceContentAccessService spaceContentAccessService;
@@ -92,10 +89,6 @@ public class SpaceAnniversaryManageServiceImpl implements SpaceAnniversaryManage
         if (!CATEGORIES.contains(category)) {
             throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID);
         }
-        String colorCode = StrUtil.blankToDefault(StrUtil.trim(reqVO.getColorCode()), DEFAULT_COLOR);
-        if (!HEX_COLOR.matcher(colorCode).matches()) {
-            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID);
-        }
         Integer visibility = resolveVisibility(reqVO.getVisibility(), access);
 
         LocalDateTime now = LocalDateTime.now();
@@ -107,7 +100,6 @@ public class SpaceAnniversaryManageServiceImpl implements SpaceAnniversaryManage
                     .anniversaryDate(reqVO.getAnniversaryDate())
                     .repeatType(repeatType)
                     .category(category)
-                    .colorCode(colorCode)
                     .location(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getLocation())))
                     .sortOrder(resolveNewAnniversarySortOrder(spaceId, reqVO.getSortOrder()))
                     .visibility(visibility)
@@ -133,7 +125,6 @@ public class SpaceAnniversaryManageServiceImpl implements SpaceAnniversaryManage
                 .anniversaryDate(reqVO.getAnniversaryDate())
                 .repeatType(repeatType)
                 .category(category)
-                .colorCode(colorCode)
                 .location(StrUtil.nullToEmpty(StrUtil.trim(reqVO.getLocation())))
                 .sortOrder(reqVO.getSortOrder() == null
                         ? (current.getSortOrder() == null ? 0 : current.getSortOrder())
@@ -229,7 +220,6 @@ public class SpaceAnniversaryManageServiceImpl implements SpaceAnniversaryManage
                 .anniversaryDate(anniversary.getAnniversaryDate())
                 .repeatType(anniversary.getRepeatType())
                 .category(anniversary.getCategory())
-                .colorCode(anniversary.getColorCode())
                 .location(anniversary.getLocation())
                 .sortOrder(anniversary.getSortOrder())
                 .visibility(anniversary.getVisibility())

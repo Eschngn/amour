@@ -24,9 +24,6 @@ public class StoryChapterSaveReqVO {
     @Size(max = 50, message = "章节名称不能超过 50 个字符")
     private String name;
 
-    @Size(max = 20, message = "章节主题色格式不正确")
-    private String colorCode;
-
     private Integer sortOrder;
 
     private Boolean isVisible;
