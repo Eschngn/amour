@@ -1,6 +1,6 @@
 <navigation-bar title="空间编辑" back="{{true}}" delta="{{0}}" color="#3b2c30" background="#fdf9f6" bind:back="onNavBack"></navigation-bar>
 
-<scroll-view class="page-scroll" scroll-y bounces="{{false}}" type="list" enhanced show-scrollbar="false">
+<scroll-view class="page-scroll" scroll-y="{{!dragging}}" bounces="{{false}}" type="list" enhanced show-scrollbar="false">
   <view class="studio-page">
     <view class="studio-header">
       <view class="studio-heading">
@@ -139,16 +139,10 @@
               </view>
 
               <view class="field">
-                <text class="field-label">恋爱开始时间</text>
-                <view class="picker-row">
-                  <picker mode="date" value="{{homeForm.loveDate}}" data-form="homeForm" data-field="loveDate" bindchange="onFormDateTimeChange" class="picker-cell">
-                    <view class="picker-value {{homeForm.loveDate ? '' : 'is-placeholder'}}">{{homeForm.loveDate || '选择日期'}}</view>
-                  </picker>
-                  <picker mode="time" value="{{homeForm.loveTime}}" data-form="homeForm" data-field="loveTime" bindchange="onFormDateTimeChange" class="picker-cell">
-                    <view class="picker-value {{homeForm.loveTime ? '' : 'is-placeholder'}}">{{homeForm.loveTime || '选择时间'}}</view>
-                  </picker>
-                  <button class="clear-button" data-form="homeForm" data-date-field="loveDate" data-time-field="loveTime" bindtap="onClearFormDateTime" hover-class="button-hover">清空</button>
-                </view>
+                <text class="field-label">恋爱开始日期</text>
+                <picker mode="date" value="{{homeForm.loveDate}}" data-form="homeForm" data-field="loveDate" bindchange="onFormDateTimeChange" class="picker-cell full">
+                  <view class="picker-value {{homeForm.loveDate ? '' : 'is-placeholder'}}">{{homeForm.loveDate || '选择日期'}}</view>
+                </picker>
               </view>
             </view>
 
@@ -163,30 +157,6 @@
                 <view class="field">
                   <text class="field-label">另一半展示名</text>
                   <input class="field-input" value="{{homeForm.girlName}}" maxlength="30" cursor-spacing="120" placeholder="留空使用个人昵称" placeholder-class="field-placeholder" data-form="homeForm" data-field="girlName" bindinput="onFormInput" />
-                </view>
-              </view>
-
-              <view class="field">
-                <text class="field-label">发起人头像</text>
-                <view class="image-field compact">
-                  <image wx:if="{{homeForm.boyAvatar}}" class="avatar-preview" src="{{homeForm.boyAvatar}}" mode="aspectFill"></image>
-                  <view wx:else class="avatar-placeholder">头像</view>
-                  <view class="image-actions">
-                    <button class="secondary-button small" data-form="homeForm" data-field="boyAvatar" data-uploading="homeUploadingField" bindtap="onChooseImage" loading="{{homeUploadingField === 'boyAvatar'}}" disabled="{{homeUploadingField === 'boyAvatar'}}" hover-class="button-hover">{{homeUploadingField === 'boyAvatar' ? '上传中…' : (homeForm.boyAvatar ? '更换头像' : '上传头像')}}</button>
-                    <button wx:if="{{homeForm.boyAvatar}}" class="text-button" data-form="homeForm" data-field="boyAvatar" bindtap="onClearImage">清除</button>
-                  </view>
-                </view>
-              </view>
-
-              <view class="field">
-                <text class="field-label">另一半头像</text>
-                <view class="image-field compact">
-                  <image wx:if="{{homeForm.girlAvatar}}" class="avatar-preview" src="{{homeForm.girlAvatar}}" mode="aspectFill"></image>
-                  <view wx:else class="avatar-placeholder">头像</view>
-                  <view class="image-actions">
-                    <button class="secondary-button small" data-form="homeForm" data-field="girlAvatar" data-uploading="homeUploadingField" bindtap="onChooseImage" loading="{{homeUploadingField === 'girlAvatar'}}" disabled="{{homeUploadingField === 'girlAvatar'}}" hover-class="button-hover">{{homeUploadingField === 'girlAvatar' ? '上传中…' : (homeForm.girlAvatar ? '更换头像' : '上传头像')}}</button>
-                    <button wx:if="{{homeForm.girlAvatar}}" class="text-button" data-form="homeForm" data-field="girlAvatar" bindtap="onClearImage">清除</button>
-                  </view>
                 </view>
               </view>
             </view>
@@ -250,7 +220,6 @@
 
             <view class="form-actions">
               <button class="primary-button" bindtap="onSaveHome" loading="{{homeSaving}}" disabled="{{homeSaving || homeUploadingField}}" hover-class="button-hover">{{homeSaving ? '正在保存…' : '保存首页'}}</button>
-              <button class="secondary-button" bindtap="onResetHome" disabled="{{homeSaving || homeUploadingField}}" hover-class="button-hover">重置</button>
             </view>
           </view>
         </view>
@@ -261,7 +230,7 @@
             <view class="section-head">
               <text class="section-kicker">STORY</text>
               <text class="section-title">故事章节与内容</text>
-              <text class="section-note">点击条目进入编辑；拖动右侧手柄调整顺序，向左滑动条目可删除。</text>
+              <text class="section-note">点击条目进入编辑；长按整行拖动排序，向左滑动条目可删除。</text>
             </view>
             <view class="button-row">
               <button class="primary-button" bindtap="onNewChapter" hover-class="button-hover">新建章节</button>
@@ -277,7 +246,7 @@
               <block wx:if="{{chapters.length}}">
                 <view class="list-heading">
                   <text class="form-title">章节</text>
-                  <text class="list-hint">{{chapters.length > 1 ? '拖动排序 · 左滑删除' : '点击进入编辑 · 左滑删除'}}</text>
+                  <text class="list-hint">{{chapters.length > 1 ? '长按整行拖动 · 左滑删除' : '点击进入编辑 · 左滑删除'}}</text>
                 </view>
                 <view
                   wx:for="{{chapters}}"
@@ -292,6 +261,8 @@
                     bindtouchstart="onRowTouchStart"
                     bindtouchmove="onRowTouchMove"
                     bindtouchend="onRowTouchEnd"
+                    bindtouchcancel="onRowTouchEnd"
+                    bindlongpress="onRowLongPress"
                     catchtap="onOpenItem"
                   >
                     <view class="row-main">
@@ -300,19 +271,6 @@
                         <text class="row-meta">{{item.nodeCount}} 个故事 · {{item.statusText}}</text>
                       </view>
                     </view>
-                    <view
-                      wx:if="{{chapters.length > 1}}"
-                      class="drag-handle"
-                      aria-role="button"
-                      aria-label="拖动调整章节顺序"
-                      data-kind="chapter"
-                      data-index="{{index}}"
-                      catchtouchstart="onDragStart"
-                      catchtouchmove="onDragMove"
-                      catchtouchend="onDragEnd"
-                      catchtouchcancel="onDragEnd"
-                      catchtap="onDragHandleTap"
-                    >⋮⋮</view>
                   </view>
                   <button
                     class="swipe-delete"
@@ -323,6 +281,7 @@
                     hover-class="swipe-delete-hover"
                   >删除</button>
                 </view>
+                <text wx:if="{{actionError && actionError.anchor === 'chapter'}}" class="inline-error">{{actionError.message}}</text>
               </block>
 
               <view wx:else class="empty-state">
@@ -341,7 +300,7 @@
               <block wx:if="{{visibleNodes.length}}">
                 <view class="list-heading">
                   <text class="form-title">故事列表</text>
-                  <text class="list-hint">{{visibleNodes.length > 1 ? '拖动排序 · 左滑删除' : '点击进入编辑 · 左滑删除'}}</text>
+                  <text class="list-hint">{{visibleNodes.length > 1 ? '长按整行拖动 · 左滑删除' : '点击进入编辑 · 左滑删除'}}</text>
                 </view>
                 <view
                   wx:for="{{visibleNodes}}"
@@ -356,6 +315,8 @@
                     bindtouchstart="onRowTouchStart"
                     bindtouchmove="onRowTouchMove"
                     bindtouchend="onRowTouchEnd"
+                    bindtouchcancel="onRowTouchEnd"
+                    bindlongpress="onRowLongPress"
                     catchtap="onOpenItem"
                   >
                     <view class="story-main">
@@ -371,19 +332,6 @@
                         </view>
                       </view>
                     </view>
-                    <view
-                      wx:if="{{visibleNodes.length > 1}}"
-                      class="drag-handle"
-                      aria-role="button"
-                      aria-label="拖动调整故事顺序"
-                      data-kind="story"
-                      data-index="{{index}}"
-                      catchtouchstart="onDragStart"
-                      catchtouchmove="onDragMove"
-                      catchtouchend="onDragEnd"
-                      catchtouchcancel="onDragEnd"
-                      catchtap="onDragHandleTap"
-                    >⋮⋮</view>
                   </view>
                   <button
                     class="swipe-delete"
@@ -394,6 +342,7 @@
                     hover-class="swipe-delete-hover"
                   >删除</button>
                 </view>
+                <text wx:if="{{actionError && actionError.anchor === 'story'}}" class="inline-error">{{actionError.message}}</text>
               </block>
               <view wx:elif="{{chapters.length}}" class="empty-state">
                 <text class="state-symbol">✦</text>
@@ -410,7 +359,7 @@
             <view class="section-head">
               <text class="section-kicker">ALBUM</text>
               <text class="section-title">相册分类与照片</text>
-              <text class="section-note">点击条目进入编辑；拖动右侧手柄调整顺序，向左滑动条目可删除。</text>
+              <text class="section-note">点击条目进入编辑；长按整行拖动排序，向左滑动条目可删除。</text>
             </view>
             <view class="button-row">
               <button class="primary-button" bindtap="onNewCategory" hover-class="button-hover">新建分类</button>
@@ -426,7 +375,7 @@
               <block wx:if="{{photoCategories.length}}">
                 <view class="list-heading">
                   <text class="form-title">分类</text>
-                  <text class="list-hint">{{photoCategories.length > 1 ? '拖动排序 · 左滑删除' : '点击进入编辑 · 左滑删除'}}</text>
+                  <text class="list-hint">{{photoCategories.length > 1 ? '长按整行拖动 · 左滑删除' : '点击进入编辑 · 左滑删除'}}</text>
                 </view>
                 <view
                   wx:for="{{photoCategories}}"
@@ -441,6 +390,8 @@
                     bindtouchstart="onRowTouchStart"
                     bindtouchmove="onRowTouchMove"
                     bindtouchend="onRowTouchEnd"
+                    bindtouchcancel="onRowTouchEnd"
+                    bindlongpress="onRowLongPress"
                     catchtap="onOpenItem"
                   >
                     <view class="row-main">
@@ -449,19 +400,6 @@
                         <text class="row-meta">{{item.isEnabled === false ? '已停用' : '启用中'}}{{item.remark ? ' · ' + item.remark : ''}}</text>
                       </view>
                     </view>
-                    <view
-                      wx:if="{{photoCategories.length > 1}}"
-                      class="drag-handle"
-                      aria-role="button"
-                      aria-label="拖动调整分类顺序"
-                      data-kind="category"
-                      data-index="{{index}}"
-                      catchtouchstart="onDragStart"
-                      catchtouchmove="onDragMove"
-                      catchtouchend="onDragEnd"
-                      catchtouchcancel="onDragEnd"
-                      catchtap="onDragHandleTap"
-                    >⋮⋮</view>
                   </view>
                   <button
                     class="swipe-delete"
@@ -472,6 +410,7 @@
                     hover-class="swipe-delete-hover"
                   >删除</button>
                 </view>
+                <text wx:if="{{actionError && actionError.anchor === 'category'}}" class="inline-error">{{actionError.message}}</text>
 
                 <view class="field">
                   <text class="field-label">筛选分类</text>
@@ -483,7 +422,7 @@
                 <block wx:if="{{photos.length}}">
                   <view class="list-heading">
                     <text class="form-title">照片</text>
-                    <text class="list-hint">{{photos.length > 1 ? '拖动排序 · 左滑删除' : '点击进入编辑 · 左滑删除'}}</text>
+                    <text class="list-hint">{{photos.length > 1 ? '长按整行拖动 · 左滑删除' : '点击进入编辑 · 左滑删除'}}</text>
                   </view>
                   <view class="photo-grid">
                     <view
@@ -499,6 +438,8 @@
                         bindtouchstart="onRowTouchStart"
                         bindtouchmove="onRowTouchMove"
                         bindtouchend="onRowTouchEnd"
+                        bindtouchcancel="onRowTouchEnd"
+                        bindlongpress="onRowLongPress"
                         catchtap="onOpenItem"
                       >
                         <image class="photo-thumb" src="{{item.url}}" mode="aspectFill"></image>
@@ -511,19 +452,6 @@
                             <text wx:if="{{item.reviewText}}" class="tag review">{{item.reviewText}}</text>
                           </view>
                         </view>
-                        <view
-                          wx:if="{{photos.length > 1}}"
-                          class="drag-handle"
-                          aria-role="button"
-                          aria-label="拖动调整照片顺序"
-                          data-kind="photo"
-                          data-index="{{index}}"
-                          catchtouchstart="onDragStart"
-                          catchtouchmove="onDragMove"
-                          catchtouchend="onDragEnd"
-                          catchtouchcancel="onDragEnd"
-                          catchtap="onDragHandleTap"
-                        >⋮⋮</view>
                       </view>
                       <button
                         class="swipe-delete"
@@ -540,6 +468,7 @@
                     <text class="page-text">{{photoCurrent}} / {{photoTotalPages}}</text>
                     <button class="secondary-button small" data-direction="next" bindtap="onPhotoPage" disabled="{{photoCurrent >= photoTotalPages || photoLoading}}">下一页</button>
                   </view>
+                  <text wx:if="{{actionError && actionError.anchor === 'photo'}}" class="inline-error">{{actionError.message}}</text>
                 </block>
                 <view wx:else class="empty-state">
                   <text class="state-symbol">◫</text>
@@ -563,7 +492,7 @@
             <view class="section-head">
               <text class="section-kicker">ANNIVERSARY</text>
               <text class="section-title">重要日期与提醒</text>
-              <text class="section-note">点击条目进入编辑；拖动右侧手柄调整顺序，向左滑动条目可删除。</text>
+              <text class="section-note">点击条目进入编辑；长按整行拖动排序，向左滑动条目可删除。</text>
             </view>
             <view class="button-row">
               <button class="primary-button" bindtap="onNewAnniversary" hover-class="button-hover">新建纪念日</button>
@@ -577,7 +506,7 @@
             <block wx:elif="{{anniversaries.length}}">
               <view class="list-heading">
                 <text class="form-title">纪念日列表</text>
-                <text class="list-hint">{{anniversaries.length > 1 ? '拖动排序 · 左滑删除' : '点击进入编辑 · 左滑删除'}}</text>
+                <text class="list-hint">{{anniversaries.length > 1 ? '长按整行拖动 · 左滑删除' : '点击进入编辑 · 左滑删除'}}</text>
               </view>
               <view
                 wx:for="{{anniversaries}}"
@@ -592,6 +521,8 @@
                   bindtouchstart="onRowTouchStart"
                   bindtouchmove="onRowTouchMove"
                   bindtouchend="onRowTouchEnd"
+                  bindtouchcancel="onRowTouchEnd"
+                  bindlongpress="onRowLongPress"
                   catchtap="onOpenItem"
                 >
                   <view class="row-main">
@@ -605,19 +536,6 @@
                       </view>
                     </view>
                   </view>
-                  <view
-                    wx:if="{{anniversaries.length > 1}}"
-                    class="drag-handle"
-                    aria-role="button"
-                    aria-label="拖动调整纪念日顺序"
-                    data-kind="anniversary"
-                    data-index="{{index}}"
-                    catchtouchstart="onDragStart"
-                    catchtouchmove="onDragMove"
-                    catchtouchend="onDragEnd"
-                    catchtouchcancel="onDragEnd"
-                    catchtap="onDragHandleTap"
-                  >⋮⋮</view>
                 </view>
                 <button
                   class="swipe-delete"
@@ -628,6 +546,7 @@
                   hover-class="swipe-delete-hover"
                 >删除</button>
               </view>
+              <text wx:if="{{actionError && actionError.anchor === 'anniversary'}}" class="inline-error">{{actionError.message}}</text>
             </block>
 
             <view wx:else class="empty-state">
@@ -644,7 +563,6 @@
             <view class="section-head">
               <text class="section-kicker">MESSAGES</text>
               <text class="section-title">留言与回复</text>
-              <text class="section-note">只能删除自己发布的留言或回复；删除按钮由服务端返回的 canDelete 决定。</text>
             </view>
 
             <view class="composer">
@@ -664,7 +582,10 @@
             <block wx:elif="{{messages.length}}">
               <view class="message-card" wx:for="{{messages}}" wx:key="messageId">
                 <view class="message-head">
-                  <view class="author-avatar"><text>{{item.initials}}</text></view>
+                  <view class="author-avatar">
+                    <image wx:if="{{item.userAvatar}}" class="avatar-image" src="{{item.userAvatar}}" mode="aspectFill"></image>
+                    <text wx:else>{{item.initials}}</text>
+                  </view>
                   <view class="row-copy">
                     <text class="row-title">{{item.userName || '匿名'}}</text>
                     <text class="row-meta">{{item.displayTime}}</text>
@@ -678,6 +599,10 @@
 
                 <view wx:if="{{item.replies.length}}" class="reply-list">
                   <view class="reply-row" wx:for="{{item.replies}}" wx:key="replyId" wx:for-item="reply">
+                    <view class="reply-avatar">
+                      <image wx:if="{{reply.fromUserAvatar}}" class="avatar-image" src="{{reply.fromUserAvatar}}" mode="aspectFill"></image>
+                      <text wx:else>{{reply.initials}}</text>
+                    </view>
                     <view class="row-copy">
                       <text class="reply-content">{{reply.content}}</text>
                       <text class="row-meta">{{reply.fromUserName || '匿名'}} 回复 {{reply.toUserName || '匿名'}} · {{reply.displayTime}}</text>

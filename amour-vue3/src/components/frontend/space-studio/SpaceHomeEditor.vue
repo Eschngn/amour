@@ -49,13 +49,14 @@
               <p class="field-hint text-right">{{ form.spaceName.length }} / 30</p>
             </div>
             <div>
-              <label for="studio-home-love-start" class="field-label">恋爱开始时间</label>
+              <label for="studio-home-love-start" class="field-label">恋爱开始日期</label>
               <ThemeDatePicker
                 v-model="form.loveStartTime"
+                mode="date"
                 input-id="studio-home-love-start"
-                placeholder="选择恋爱开始时间"
+                class="mt-2"
+                placeholder="选择恋爱开始日期"
               />
-              <p class="field-hint">用于计算首页的相伴天数，留空表示暂不设置。</p>
             </div>
             <div class="sm:col-span-2">
               <label for="studio-home-desc" class="field-label">空间简介</label>
@@ -96,7 +97,7 @@
         <div>
           <section class="px-5 py-6" aria-labelledby="studio-home-members">
             <h3 id="studio-home-members" class="font-display text-base font-bold text-stone-900">首页双方展示</h3>
-            <p class="mt-1 text-xs leading-5 text-stone-500">留空时使用各自的个人资料，填写后覆盖首页展示。</p>
+            <p class="mt-1 text-xs leading-5 text-stone-500">头像统一读取双方的账号资料；展示名留空时使用个人昵称。</p>
 
             <div class="mt-5 space-y-4">
               <div class="rounded-xl bg-stone-50/70 p-4">
@@ -111,16 +112,6 @@
                     placeholder="留空使用发起人个人昵称"
                   >
                 </div>
-                <div class="mt-3">
-                  <SpaceImageField
-                    v-model="form.boyAvatar"
-                    input-id="studio-home-boy-avatar"
-                    label="头像"
-                    hint="留空使用个人资料头像。"
-                    :disabled="saving"
-                    @uploading="uploading = $event"
-                  />
-                </div>
               </div>
 
               <div class="rounded-xl bg-stone-50/70 p-4">
@@ -134,16 +125,6 @@
                     class="field-input"
                     placeholder="留空使用另一半个人昵称"
                   >
-                </div>
-                <div class="mt-3">
-                  <SpaceImageField
-                    v-model="form.girlAvatar"
-                    input-id="studio-home-girl-avatar"
-                    label="头像"
-                    hint="留空使用个人资料头像。"
-                    :disabled="saving"
-                    @uploading="uploading = $event"
-                  />
                 </div>
               </div>
             </div>
@@ -168,7 +149,7 @@ import {
   ensureSuccess,
   readContentErrorMessage,
   toBackendDateTime,
-  toDateTimeLocalInput,
+  toDateInputValue,
 } from '@/utils/spaceContent'
 import { confirmDiscardChanges } from '@/utils/unsavedChanges'
 import { SAVE_FEEDBACK_KIND, resolveSaveFeedback, resolveUnchangedFeedback } from '@/utils/saveFeedback'
@@ -196,8 +177,6 @@ const form = reactive({
   loveStartTime: '',
   boyName: '',
   girlName: '',
-  boyAvatar: '',
-  girlAvatar: '',
   heroPhoto1: '',
   heroPhoto2: '',
 })
@@ -211,8 +190,6 @@ function homeFormSnapshot() {
     configs: {
       boy_name: form.boyName.trim(),
       girl_name: form.girlName.trim(),
-      boy_avatar: form.boyAvatar.trim(),
-      girl_avatar: form.girlAvatar.trim(),
       'home.hero_photo_1': form.heroPhoto1.trim(),
       'home.hero_photo_2': form.heroPhoto2.trim(),
     },
@@ -228,12 +205,10 @@ function emitDirty() {
 function applyHome(data) {
   form.spaceName = data.spaceName || ''
   form.description = data.description || ''
-  form.loveStartTime = toDateTimeLocalInput(data.loveStartTime)
+  form.loveStartTime = toDateInputValue(data.loveStartTime)
   // 接口返回的是“生效值”，可能来自成员资料或默认值；输入框里只保留空间配置本身。
   form.boyName = data.boyNameSource === 'config' ? (data.boyName || '') : ''
   form.girlName = data.girlNameSource === 'config' ? (data.girlName || '') : ''
-  form.boyAvatar = data.boyAvatarSource === 'config' ? (data.boyAvatar || '') : ''
-  form.girlAvatar = data.girlAvatarSource === 'config' ? (data.girlAvatar || '') : ''
   form.heroPhoto1 = data.heroPhoto1 || ''
   form.heroPhoto2 = data.heroPhoto2 || ''
 }
@@ -312,8 +287,6 @@ async function save() {
       configs: {
         boy_name: form.boyName.trim(),
         girl_name: form.girlName.trim(),
-        boy_avatar: form.boyAvatar.trim(),
-        girl_avatar: form.girlAvatar.trim(),
         'home.hero_photo_1': form.heroPhoto1.trim(),
         'home.hero_photo_2': form.heroPhoto2.trim(),
       },

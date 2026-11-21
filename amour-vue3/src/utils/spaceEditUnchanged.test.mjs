@@ -134,6 +134,17 @@ test('空间首页保存使用规范化快照，未改动时恢复表单且不�
   assert.match(block, /reset\(\)\n\s+emit\('saved', \{ \.\.\.resolveUnchangedFeedback\(\)/)
 })
 
+test('空间首页恋爱开始时间只选择日期，并按当天零点保存', () => {
+  const source = readSource('components/frontend/space-studio/SpaceHomeEditor.vue')
+
+  assert.match(source, /<label for="studio-home-love-start"[^>]*>恋爱开始日期<\/label>/)
+  assert.match(source, /<ThemeDatePicker[\s\S]*?mode="date"[\s\S]*?input-id="studio-home-love-start"[\s\S]*?class="mt-2"/)
+  assert.match(source, /form\.loveStartTime = toDateInputValue\(data\.loveStartTime\)/)
+  assert.doesNotMatch(source, /toDateTimeLocalInput/)
+  assert.match(source, /function homeFormSnapshot\(\)[\s\S]*?loveStartTime: toBackendDateTime\(form\.loveStartTime\)/)
+  assert.match(source, /loveStartTime: toBackendDateTime\(form\.loveStartTime\)/)
+})
+
 test('保存失败时编辑器保持弹窗与输入，不误派发 unchanged 或 success', () => {
   for (const [file, signature, catchField] of [
     ['components/frontend/space-studio/SpaceStoryEditor.vue', 'async function saveNode()', 'nodeError'],

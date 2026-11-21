@@ -1,0 +1,253 @@
+<navigation-bar
+  title="{{pageTitle}}"
+  back="{{true}}"
+  delta="{{0}}"
+  color="#3b2c30"
+  background="#fdf9f6"
+  bind:back="onNavBack"
+></navigation-bar>
+
+<scroll-view class="page-scroll" scroll-y bounces="{{false}}" type="list" enhanced show-scrollbar="false">
+  <view class="editor-page">
+    <view wx:if="{{loading}}" class="state-card">
+      <view class="state-spinner"></view>
+      <text class="state-title">正在读取内容…</text>
+    </view>
+
+    <view wx:elif="{{pageError}}" class="error-card">
+      <text class="error-title">内容暂时无法打开</text>
+      <text class="error-note">{{pageError}}</text>
+      <view class="button-row">
+        <button class="primary-button" bindtap="onRetryPage" hover-class="button-hover">重新加载</button>
+        <button class="secondary-button" bindtap="onNavBack" hover-class="button-hover">返回</button>
+      </view>
+    </view>
+
+    <block wx:else>
+      <view class="editor-intro">
+        <text class="editor-kicker">{{itemId ? 'EDIT' : 'CREATE'}}</text>
+        <text class="editor-title">{{pageTitle}}</text>
+        <text class="editor-note">保存后会回到空间编辑，并自动刷新当前列表。</text>
+      </view>
+
+      <view wx:if="{{blockedReason}}" class="notice-band">
+        <text>{{blockedReason}}</text>
+      </view>
+
+      <view class="editor-card">
+        <!-- 章节 -->
+        <block wx:if="{{kind === 'chapter'}}">
+          <view class="field">
+            <text class="field-label">章节名称 <text class="required">*</text></text>
+            <input class="field-input" value="{{form.name}}" maxlength="50" cursor-spacing="120" placeholder="例如：初见" placeholder-class="field-placeholder" data-field="name" bindinput="onInput" />
+          </view>
+          <view class="switch-row">
+            <view class="switch-copy">
+              <text class="switch-title">在空间中展示</text>
+              <text class="switch-note">关闭后章节及展示状态会同步更新。</text>
+            </view>
+            <switch checked="{{form.isVisible}}" color="#c96a78" data-field="isVisible" bindchange="onSwitchChange" />
+          </view>
+        </block>
+
+        <!-- 故事 -->
+        <block wx:elif="{{kind === 'story'}}">
+          <view class="field">
+            <text class="field-label">故事标题 <text class="required">*</text></text>
+            <input class="field-input" value="{{form.title}}" maxlength="100" cursor-spacing="120" placeholder="给这段回忆起个名字" placeholder-class="field-placeholder" data-field="title" bindinput="onInput" />
+          </view>
+          <view class="field">
+            <text class="field-label">所属章节 <text class="required">*</text></text>
+            <picker range="{{chapterOptions}}" range-key="name" value="{{chapterIndex}}" bindchange="onChapterChange" class="picker-cell full">
+              <view class="picker-value {{chapterOptions.length ? '' : 'is-placeholder'}}">{{chapterOptions.length ? chapterOptions[chapterIndex].name : '请先创建章节'}}</view>
+            </picker>
+          </view>
+          <view class="field">
+            <text class="field-label">发生时间 <text class="required">*</text></text>
+            <view class="time-mode-row">
+              <view class="time-mode-option {{form.showTime ? 'is-active' : ''}}" data-show-time="{{true}}" bindtap="onShowTimeChange" hover-class="time-mode-hover">展示日期和时间</view>
+              <view class="time-mode-option {{form.showTime ? '' : 'is-active'}}" data-show-time="{{false}}" bindtap="onShowTimeChange" hover-class="time-mode-hover">仅展示日期</view>
+            </view>
+            <view class="date-row">
+              <picker mode="date" value="{{form.happenedDate}}" data-field="happenedDate" bindchange="onDateChange" class="picker-cell">
+                <view class="picker-value {{form.happenedDate ? '' : 'is-placeholder'}}">{{form.happenedDate || '选择日期'}}</view>
+              </picker>
+              <picker wx:if="{{form.showTime}}" mode="time" value="{{form.happenedTime}}" data-field="happenedTime" bindchange="onDateChange" class="picker-cell">
+                <view class="picker-value {{form.happenedTime ? '' : 'is-placeholder'}}">{{form.happenedTime || '具体时间（选填）'}}</view>
+              </picker>
+            </view>
+            <button wx:if="{{form.showTime && form.happenedTime}}" class="clear-button" data-field="happenedTime" bindtap="onClearTime" hover-class="button-hover">清除具体时间</button>
+            <text class="field-hint">{{form.showTime ? '日期必选，具体时间选填；未填写时按当天 00:00 保存。' : '仅保存日期，列表和详情不展示具体时间。'}}</text>
+          </view>
+          <view class="field">
+            <text class="field-label">发生地点</text>
+            <input class="field-input" value="{{form.location}}" maxlength="100" cursor-spacing="120" placeholder="选填" placeholder-class="field-placeholder" data-field="location" bindinput="onInput" />
+          </view>
+          <view class="field">
+            <text class="field-label">故事摘要</text>
+            <textarea class="field-textarea" value="{{form.summary}}" maxlength="500" cursor-spacing="160" auto-height placeholder="列表里展示的简短摘要" placeholder-class="field-placeholder" data-field="summary" bindinput="onInput"></textarea>
+          </view>
+          <view class="field">
+            <text class="field-label">故事封面</text>
+            <view class="image-field">
+              <image wx:if="{{form.coverImage}}" class="image-preview" src="{{form.coverImage}}" mode="aspectFill"></image>
+              <view wx:else class="image-placeholder"><text>尚未上传封面</text></view>
+              <view class="image-actions">
+                <button class="secondary-button small" bindtap="onChooseImage" loading="{{uploading}}" disabled="{{uploading}}" hover-class="button-hover">{{uploading ? '上传中…' : (form.coverImage ? '更换封面' : '上传封面')}}</button>
+                <button wx:if="{{form.coverImage}}" class="text-button" bindtap="onClearImage" hover-class="button-hover">清除</button>
+              </view>
+            </view>
+          </view>
+          <view class="field">
+            <text class="field-label">故事标签</text>
+            <input class="field-input" value="{{form.tagLabel}}" maxlength="30" cursor-spacing="120" placeholder="例如：旅行、第一次" placeholder-class="field-placeholder" data-field="tagLabel" bindinput="onInput" />
+          </view>
+          <view class="switch-row">
+            <view class="switch-copy">
+              <text class="switch-title">设为里程碑</text>
+              <text class="switch-note">重要节点会在故事列表中突出展示。</text>
+            </view>
+            <switch checked="{{form.isMilestone}}" color="#c96a78" data-field="isMilestone" bindchange="onSwitchChange" />
+          </view>
+          <view class="field">
+            <text class="field-label">可见性</text>
+            <picker range="{{visibilityOptions}}" range-key="label" value="{{visibilityIndex}}" bindchange="onVisibilityChange" class="picker-cell full">
+              <view class="picker-value">{{visibilityOptions[visibilityIndex].label}}</view>
+            </picker>
+          </view>
+          <view class="field story-body-field">
+            <text class="field-label">故事正文</text>
+            <textarea class="field-textarea body" value="{{form.content}}" maxlength="20000" cursor-spacing="200" auto-height placeholder="写下当时发生的事…" placeholder-class="field-placeholder" data-field="content" bindinput="onInput"></textarea>
+          </view>
+        </block>
+
+        <!-- 相册分类 -->
+        <block wx:elif="{{kind === 'category'}}">
+          <view class="field">
+            <text class="field-label">分类名称 <text class="required">*</text></text>
+            <input class="field-input" value="{{form.categoryName}}" maxlength="50" cursor-spacing="120" placeholder="例如：日常" placeholder-class="field-placeholder" data-field="categoryName" bindinput="onInput" />
+          </view>
+          <view class="field">
+            <text class="field-label">分类备注</text>
+            <input class="field-input" value="{{form.remark}}" maxlength="200" cursor-spacing="120" placeholder="选填" placeholder-class="field-placeholder" data-field="remark" bindinput="onInput" />
+          </view>
+          <view class="switch-row">
+            <view class="switch-copy">
+              <text class="switch-title">启用分类</text>
+              <text class="switch-note">停用后不会影响分类下已有照片。</text>
+            </view>
+            <switch checked="{{form.isEnabled}}" color="#c96a78" data-field="isEnabled" bindchange="onSwitchChange" />
+          </view>
+        </block>
+
+        <!-- 照片 -->
+        <block wx:elif="{{kind === 'photo'}}">
+          <view class="field">
+            <text class="field-label">所属分类 <text class="required">*</text></text>
+            <picker range="{{categoryOptions}}" range-key="categoryName" value="{{categoryIndex}}" bindchange="onCategoryChange" class="picker-cell full">
+              <view class="picker-value {{categoryOptions.length ? '' : 'is-placeholder'}}">{{categoryOptions.length ? categoryOptions[categoryIndex].categoryName : '请先创建分类'}}</view>
+            </picker>
+          </view>
+          <view class="field">
+            <text class="field-label">照片 <text class="required">*</text></text>
+            <view class="photo-upload">
+              <image wx:if="{{form.url}}" class="photo-preview" src="{{form.url}}" mode="aspectFill"></image>
+              <view wx:else class="photo-placeholder"><text>上传一张照片</text></view>
+              <view class="image-actions">
+                <button class="secondary-button small" bindtap="onChooseImage" loading="{{uploading}}" disabled="{{uploading}}" hover-class="button-hover">{{uploading ? '上传中…' : (form.url ? '更换照片' : '选择照片')}}</button>
+                <button wx:if="{{form.url}}" class="text-button" bindtap="onClearImage" hover-class="button-hover">清除</button>
+              </view>
+            </view>
+          </view>
+          <view class="field">
+            <text class="field-label">照片标题</text>
+            <input class="field-input" value="{{form.title}}" maxlength="100" cursor-spacing="120" placeholder="选填" placeholder-class="field-placeholder" data-field="title" bindinput="onInput" />
+          </view>
+          <view class="field">
+            <text class="field-label">照片描述</text>
+            <textarea class="field-textarea" value="{{form.description}}" maxlength="500" cursor-spacing="160" auto-height placeholder="选填" placeholder-class="field-placeholder" data-field="description" bindinput="onInput"></textarea>
+          </view>
+          <view class="field">
+            <text class="field-label">拍摄时间</text>
+            <view class="date-row">
+              <picker mode="date" value="{{form.takenDate}}" data-field="takenDate" bindchange="onDateChange" class="picker-cell">
+                <view class="picker-value {{form.takenDate ? '' : 'is-placeholder'}}">{{form.takenDate || '选择日期'}}</view>
+              </picker>
+              <picker mode="time" value="{{form.takenTime}}" data-field="takenTime" bindchange="onDateChange" class="picker-cell">
+                <view class="picker-value {{form.takenTime ? '' : 'is-placeholder'}}">{{form.takenTime || '选择时间'}}</view>
+              </picker>
+            </view>
+            <button class="clear-button" data-date-field="takenDate" data-time-field="takenTime" bindtap="onClearDate" hover-class="button-hover">清空时间</button>
+          </view>
+          <view class="field">
+            <text class="field-label">拍摄地点</text>
+            <input class="field-input" value="{{form.location}}" maxlength="100" cursor-spacing="120" placeholder="选填" placeholder-class="field-placeholder" data-field="location" bindinput="onInput" />
+          </view>
+          <view class="switch-row">
+            <view class="switch-copy">
+              <text class="switch-title">设为相册封面</text>
+              <text class="switch-note">封面照片不能同时设为隐藏。</text>
+            </view>
+            <switch checked="{{form.isCover}}" color="#c96a78" data-field="isCover" bindchange="onSwitchChange" />
+          </view>
+          <view class="field">
+            <text class="field-label">可见性</text>
+            <picker range="{{visibilityOptions}}" range-key="label" value="{{visibilityIndex}}" bindchange="onVisibilityChange" class="picker-cell full">
+              <view class="picker-value">{{visibilityOptions[visibilityIndex].label}}</view>
+            </picker>
+          </view>
+        </block>
+
+        <!-- 纪念日 -->
+        <block wx:elif="{{kind === 'anniversary'}}">
+          <view class="field">
+            <text class="field-label">纪念日名称 <text class="required">*</text></text>
+            <input class="field-input" value="{{form.title}}" maxlength="100" cursor-spacing="120" placeholder="例如：在一起一周年" placeholder-class="field-placeholder" data-field="title" bindinput="onInput" />
+          </view>
+          <view class="field">
+            <text class="field-label">纪念日日期 <text class="required">*</text></text>
+            <picker mode="date" value="{{form.anniversaryDate}}" data-field="anniversaryDate" bindchange="onDateChange" class="picker-cell full">
+              <view class="picker-value {{form.anniversaryDate ? '' : 'is-placeholder'}}">{{form.anniversaryDate || '选择日期'}}</view>
+            </picker>
+          </view>
+          <view class="field-grid">
+            <view class="field">
+              <text class="field-label">重复方式</text>
+              <picker range="{{repeatOptions}}" value="{{form.repeatType}}" bindchange="onRepeatChange" class="picker-cell full">
+                <view class="picker-value">{{repeatOptions[form.repeatType]}}</view>
+              </picker>
+            </view>
+            <view class="field">
+              <text class="field-label">分类</text>
+              <picker range="{{anniversaryCategoryOptions}}" range-key="label" value="{{anniversaryCategoryIndex}}" bindchange="onAnniversaryCategoryChange" class="picker-cell full">
+                <view class="picker-value">{{anniversaryCategoryOptions[anniversaryCategoryIndex].label}}</view>
+              </picker>
+            </view>
+          </view>
+          <view class="field">
+            <text class="field-label">纪念地点</text>
+            <input class="field-input" value="{{form.location}}" maxlength="100" cursor-spacing="120" placeholder="选填" placeholder-class="field-placeholder" data-field="location" bindinput="onInput" />
+          </view>
+          <view class="field">
+            <text class="field-label">纪念日描述</text>
+            <textarea class="field-textarea" value="{{form.description}}" maxlength="500" cursor-spacing="160" auto-height placeholder="选填" placeholder-class="field-placeholder" data-field="description" bindinput="onInput"></textarea>
+          </view>
+          <view class="field">
+            <text class="field-label">可见性</text>
+            <picker range="{{visibilityOptions}}" range-key="label" value="{{visibilityIndex}}" bindchange="onVisibilityChange" class="picker-cell full">
+              <view class="picker-value">{{visibilityOptions[visibilityIndex].label}}</view>
+            </picker>
+          </view>
+        </block>
+
+        <text wx:if="{{formError}}" class="inline-error">{{formError}}</text>
+      </view>
+
+      <view class="action-bar">
+        <button class="secondary-button" bindtap="onNavBack" disabled="{{saving}}" hover-class="button-hover">取消</button>
+        <button class="primary-button save-button" bindtap="onSave" loading="{{saving}}" disabled="{{saving || uploading || !!blockedReason}}" hover-class="button-hover">{{saving ? '保存中…' : (uploading ? '图片上传中…' : '保存')}}</button>
+      </view>
+      <view class="safe-bottom"></view>
+    </block>
+  </view>
+</scroll-view>

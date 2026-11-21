@@ -170,11 +170,7 @@
           </section>
         </div>
 
-        <SpaceSaveFeedbackDialog
-          v-model="saveDialogOpen"
-          :notice="saveFeedback"
-          @closed="onSaveDialogClosed"
-        />
+        <SpaceSaveToast :visible="saveToastVisible" :notice="saveFeedback" />
       </template>
     </main>
   </CouplePageScaffold>
@@ -192,7 +188,7 @@ import SpaceMessageEditor from '@/components/frontend/space-studio/SpaceMessageE
 import SpacePhotoEditor from '@/components/frontend/space-studio/SpacePhotoEditor.vue'
 import SpaceAnniversaryEditor from '@/components/frontend/space-studio/SpaceAnniversaryEditor.vue'
 import SpaceReviewStatusCard from '@/components/frontend/space-studio/SpaceReviewStatusCard.vue'
-import SpaceSaveFeedbackDialog from '@/components/frontend/space-studio/SpaceSaveFeedbackDialog.vue'
+import SpaceSaveToast from '@/components/frontend/space-studio/SpaceSaveToast.vue'
 import { useFrontendSpace } from '@/composables/useFrontendSpace'
 import { hasFrontendQueryPermission } from '@/utils/auth'
 import { canEditSpaceContent, SPACE_STATUS } from '@/utils/spaceState'
@@ -255,8 +251,10 @@ const activeTabLabel = computed(() => (
 ))
 const dirty = ref(false)
 const saveFeedback = ref(null)
-const saveDialogOpen = ref(false)
+const saveToastVisible = ref(false)
+const SAVE_TOAST_DURATION_MS = 2000
 let saveFeedbackSeq = 0
+let saveToastTimer = null
 
 function setDirty(value) {
   dirty.value = Boolean(value)
@@ -265,7 +263,7 @@ function setDirty(value) {
 /**
  * 编辑器保存成功后统一在这里展示保存结果。
  *
- * 普通保存、排序与审核重新提交共用同一个弹窗，连续保存只更新内容不叠层；
+ * 普通保存、排序与审核重新提交共用同一个顶部轻提示，连续保存只更新内容不叠层；
  * dirty 使用编辑器重建基线后的结果，避免同栏目其他表单的修改被误清。
  */
 function onContentSaved(payload) {
@@ -273,7 +271,7 @@ function onContentSaved(payload) {
   if (typeof payload?.dirtyAfterSave === 'boolean') {
     dirty.value = payload.dirtyAfterSave
   }
-  // 排序结果与普通保存共用同一个弹窗，避免出现两套反馈通道。
+  // 排序结果与普通保存共用同一个轻提示，避免出现两套反馈通道。
   if (payload?.action === 'reorder') {
     showSaveFeedback(payload)
     return
@@ -285,7 +283,19 @@ function onContentSaved(payload) {
   showSaveFeedback(payload)
 }
 
-/** 保存结果统一用弹窗展示；同一时间只允许一个，连续保存时覆盖内容不叠层。 */
+function clearSaveToastTimer() {
+  if (saveToastTimer === null) return
+  window.clearTimeout(saveToastTimer)
+  saveToastTimer = null
+}
+
+function dismissSaveFeedback() {
+  clearSaveToastTimer()
+  saveToastVisible.value = false
+  saveFeedback.value = null
+}
+
+/** 保存结果统一用顶部轻提示展示；连续保存时重置计时并覆盖文案。 */
 function showSaveFeedback(payload) {
   const message = typeof payload?.message === 'string' ? payload.message.trim() : ''
   if (!message) return
@@ -296,12 +306,12 @@ function showSaveFeedback(payload) {
     reviewStatus: payload?.reviewStatus || '',
     published: typeof payload?.published === 'boolean' ? payload.published : null,
   }
-  saveDialogOpen.value = true
-}
-
-/** 弹窗关闭后清空反馈，避免下次打开闪现上一条文案。 */
-function onSaveDialogClosed() {
-  saveFeedback.value = null
+  clearSaveToastTimer()
+  saveToastVisible.value = true
+  saveToastTimer = window.setTimeout(() => {
+    saveToastVisible.value = false
+    saveToastTimer = null
+  }, SAVE_TOAST_DURATION_MS)
 }
 
 function isTabAllowed(key) {
@@ -328,9 +338,8 @@ async function switchTab(key) {
     activeTab.value = key
     // 旧编辑器随栏目切换卸载，新编辑器加载后会重新建立 clean 基线。
     dirty.value = false
-    // 旧栏目的保存提示不再适用于新栏目，随切换一起收起。
-    saveDialogOpen.value = false
-    saveFeedback.value = null
+    // 旧栏目的保存提示不再适用于新栏目，随切换一起收起并取消自动隐藏计时。
+    dismissSaveFeedback()
     await router.replace({ query: { ...route.query, tab: key } })
   } finally {
     switchingTab = false
@@ -366,6 +375,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  clearSaveToastTimer()
   window.removeEventListener('beforeunload', handleBeforeUnload)
 })
 </script>

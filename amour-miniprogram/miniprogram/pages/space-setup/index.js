@@ -1468,7 +1468,7 @@ Page(withPageViewTracking({
       wx.showModal({
         title: '放弃未保存的修改？',
         content: '空间名称、简介或恋爱开始时间有未保存的修改，返回后不会保存。',
-        confirmText: '放弃并返回',
+        confirmText: '放弃返回',
         cancelText: '继续编辑',
         confirmColor: '#b85060',
         success: (result) => {

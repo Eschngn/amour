@@ -26,14 +26,28 @@
           <view class="message-author">
             <view class="author-avatar"><text>{{item.initials}}</text><image wx:if="{{item.userAvatar}}" class="avatar-image" src="{{item.userAvatar}}" mode="aspectFill"></image></view>
             <view class="author-copy"><text class="author-name">{{item.userName}}</text><text class="message-time">{{item.displayTime}}</text></view>
-            <text class="message-index">#{{item.number}}</text>
           </view>
           <text class="message-content">{{item.content}}</text>
-          <view class="message-footer"><text>♡ {{item.replyCount}} 条回复</text><text>{{item.shortDate}}</text></view>
+          <view class="message-footer">
+            <text>♡ {{item.replyCount}} 条回复</text>
+            <view class="message-footer-actions">
+              <text class="message-footer-date">{{item.shortDate}}</text>
+              <button class="reply-action" data-message-id="{{item.messageId}}" data-target-name="{{item.userName}}" bindtap="toggleReply">回复</button>
+            </view>
+          </view>
           <view wx:if="{{item.replies.length}}" class="reply-list">
             <view class="reply-row" wx:for="{{item.replies}}" wx:key="replyId" wx:for-item="reply">
               <view class="reply-avatar"><text>{{reply.initials}}</text><image wx:if="{{reply.fromUserAvatar}}" class="avatar-image" src="{{reply.fromUserAvatar}}" mode="aspectFill"></image></view>
               <view class="reply-copy"><text class="reply-content">{{reply.content}}</text><text class="reply-meta"><text class="reply-name">{{reply.fromUserName}}</text> 回复 {{reply.toUserName}} · {{reply.displayTime}}</text></view>
+              <button class="reply-action reply-row-action" data-message-id="{{item.messageId}}" data-reply-id="{{reply.replyId}}" data-target-name="{{reply.fromUserName}}" bindtap="toggleReply">回复</button>
+            </view>
+          </view>
+          <view wx:if="{{activeReplyMessageId === item.messageId}}" class="reply-composer">
+            <view class="reply-composer-heading"><text class="reply-composer-label">回复 {{activeReplyTargetName}}</text><text class="reply-count">{{replyDraftLength}} / 500</text></view>
+            <textarea class="reply-input" value="{{replyDraft}}" maxlength="500" cursor-spacing="220" focus="{{activeReplyMessageId === item.messageId}}" placeholder="写下给 {{activeReplyTargetName}} 的回复…" placeholder-class="input-placeholder" bindinput="onReplyInput"></textarea>
+            <view class="reply-composer-footer">
+              <button class="reply-cancel" bindtap="cancelReply" disabled="{{replying}}">取消</button>
+              <button class="reply-submit" bindtap="submitReply" loading="{{replying}}" disabled="{{replying || !canReply}}">{{replying ? '发送中…' : '发送回复'}}</button>
             </view>
           </view>
         </view>

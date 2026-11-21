@@ -24,11 +24,8 @@ const EMPTY_HOME_FORM = {
   spaceName: '',
   description: '',
   loveDate: '',
-  loveTime: '',
   boyName: '',
   girlName: '',
-  boyAvatar: '',
-  girlAvatar: '',
   heroPhoto1: '',
   heroPhoto2: '',
 }
@@ -40,15 +37,6 @@ function formatDateTime(value, showTime) {
 function initials(name) {
   const text = String(name || '').trim()
   return text ? text.slice(0, 1).toUpperCase() : '恋'
-}
-
-function readPageDepth() {
-  try {
-    const pages = typeof getCurrentPages === 'function' ? getCurrentPages() : []
-    return Array.isArray(pages) && pages.length ? pages.length : 1
-  } catch (error) {
-    return 1
-  }
 }
 
 function confirmModal(title, content, confirmText) {
@@ -108,6 +96,9 @@ Page(withPageViewTracking({
     dragListSnapshot: null,
     sortSaving: false,
     deleting: false,
+    /* 删除/排序失败的操作类错误：anchor 标记属于哪个列表，展示在对应列表正下方，
+       与加载失败错误分开，避免误挂出"重新加载"按钮。 */
+    actionError: null,
 
     /* 公开审核：默认只展示一行摘要，展开后再看驳回原因与详情 */
     review: null,
@@ -180,7 +171,6 @@ Page(withPageViewTracking({
     this.requestedTab = query && typeof query.tab === 'string' ? query.tab : ''
     this.loadedTabs = {}
     this.loadedSpaceId = null
-    this.homeBaselineLoveStartTime = ''
     this.homeBaselineForm = { ...EMPTY_HOME_FORM }
     this.reviewRequestSeq = 0
     this.photoPageSeq = 0
@@ -343,7 +333,7 @@ Page(withPageViewTracking({
       wx.showModal({
         title: '放弃未保存的修改？',
         content: '切换栏目会丢失当前未保存的修改。',
-        confirmText: '放弃并切换',
+        confirmText: '放弃切换',
         cancelText: '继续编辑',
         confirmColor: '#b85060',
         success: (result) => {
@@ -380,31 +370,34 @@ Page(withPageViewTracking({
 
   onNavBack() {
     if (this.navConfirming) return
-    const depth = readPageDepth()
-    const leave = () => {
-      if (this.pageDisposed) return
-      if (depth > 1) {
-        wx.navigateBack({ delta: 1, fail: () => wx.reLaunch({ url: PROFILE_ROUTE }) })
-        return
-      }
-      wx.reLaunch({ url: PROFILE_ROUTE })
-    }
     if (!this.draftDirty) {
-      leave()
+      this.leavePage()
       return
     }
     this.navConfirming = true
     wx.showModal({
       title: '放弃未保存的修改？',
       content: '返回后当前未保存的修改不会保留。',
-      confirmText: '放弃并返回',
+      // showModal 的按钮文案最多 4 个字符，超长会导致返回确认无法回调。
+      confirmText: '放弃返回',
       cancelText: '继续编辑',
       confirmColor: '#b85060',
       success: (result) => {
         this.navConfirming = false
-        if (result && result.confirm) leave()
+        if (result && result.confirm) this.leavePage()
       },
       fail: () => { this.navConfirming = false },
+    })
+  },
+
+  /** 有上一页时保留页面栈返回；栈底或返回失败时兜底到「我的」。 */
+  leavePage() {
+    if (this.pageDisposed) return
+    wx.navigateBack({
+      delta: 1,
+      fail: () => {
+        if (!this.pageDisposed) wx.reLaunch({ url: PROFILE_ROUTE })
+      },
     })
   },
 
@@ -528,16 +521,6 @@ Page(withPageViewTracking({
     this.markDirty()
   },
 
-  onClearFormDateTime(event) {
-    const dataset = event.currentTarget.dataset || {}
-    const form = String(dataset.form || '')
-    const dateField = String(dataset.dateField || '')
-    const timeField = String(dataset.timeField || '')
-    if (!form || !dateField || !timeField) return
-    this.setData({ [`${form}.${dateField}`]: '', [`${form}.${timeField}`]: '' })
-    this.markDirty()
-  },
-
   /** 选择并按现有 /space/media/upload 上传图片，成功后写入真实 URL。 */
   onChooseImage(event) {
     const dataset = event.currentTarget.dataset || {}
@@ -609,9 +592,6 @@ Page(withPageViewTracking({
     try {
       const home = await api.querySpaceHome()
       if (this.pageDisposed) return
-      this.homeBaselineLoveStartTime = home && typeof home.loveStartTime === 'string'
-        ? home.loveStartTime
-        : ''
       const form = rules.buildHomeForm(home)
       this.homeBaselineForm = { ...form }
       this.setData({
@@ -639,17 +619,6 @@ Page(withPageViewTracking({
     })
   },
 
-  onResetHome() {
-    const run = () => this.loadHome()
-    if (!this.draftDirty) {
-      run()
-      return
-    }
-    confirmModal('重置首页内容？', '重置会恢复到上次保存的内容。', '重置').then((confirmed) => {
-      if (confirmed) run()
-    })
-  },
-
   async onSaveHome() {
     if (!this.data.canEditContent || this.data.homeSaving) return
     // 上传期间保存会把旧地址写回服务端，这里直接阻止并提示等待。
@@ -665,24 +634,29 @@ Page(withPageViewTracking({
     this.setData({ homeSaving: true, homeError: '', homeSyncError: '' })
     try {
       const result = await api.saveSpaceHome(
-        rules.buildHomePayload(this.data.homeForm, this.homeBaselineLoveStartTime),
+        rules.buildHomePayload(this.data.homeForm),
       )
       if (this.pageDisposed) return
-      this.homeBaselineLoveStartTime = result && typeof result.loveStartTime === 'string'
-        ? result.loveStartTime
-        : ''
       const nextForm = rules.buildHomeForm(result)
       this.homeBaselineForm = { ...nextForm }
       this.setData({
         homeSaving: false,
         homeForm: nextForm,
+        feedback: null,
       })
       this.clearDraft()
-      const feedback = rules.describeSaveReview(result, '空间首页已保存')
-      this.showFeedback(feedback.kind, feedback.message)
-      this.loadReview()
+      // 与其他内容编辑页保持一致：轻提示反馈后立即返回上一级，不阻塞用户操作。
+      const pendingReview = Boolean(result && (
+        result.reviewStatus === 'PENDING'
+        || result.reviewPending === true
+      ))
       // 空间名称 / 简介变化会影响全局空间上下文：刷新失败单独提示，不误报保存失败。
       this.syncHomeStateAfterSave()
+      wx.showToast({
+        title: pendingReview ? '已提交审核' : '首页已保存',
+        icon: 'success',
+      })
+      this.leavePage()
     } catch (error) {
       if (this.pageDisposed) return
       this.setData({
@@ -739,7 +713,7 @@ Page(withPageViewTracking({
   /* ===================== 故事 ===================== */
 
   async loadStory() {
-    this.setData({ storyLoading: true, storyError: '' })
+    this.setData({ storyLoading: true, storyError: '', actionError: null })
     try {
       const [chapters, nodes] = await Promise.all([
         api.fetchStoryChapters(),
@@ -874,7 +848,11 @@ Page(withPageViewTracking({
   },
 
   onRowTouchMove(event) {
-    if (this.data.dragging || this.data.sortSaving) return
+    if (this.data.dragging) {
+      this.onDragMove(event)
+      return
+    }
+    if (this.data.sortSaving) return
     const touch = firstTouch(event)
     if (!touch) return
     const deltaX = (Number(touch.clientX) || 0) - this.touchStartX
@@ -897,12 +875,25 @@ Page(withPageViewTracking({
     }
   },
 
-  onRowTouchEnd() {
+  onRowTouchEnd(event) {
+    if (this.data.dragging) {
+      this.touchAxis = ''
+      return this.onDragEnd(event)
+    }
     if (this.touchAxis === 'x') this.suppressTapUntil = Date.now() + 300
     this.touchAxis = ''
   },
 
-  onDragHandleTap() {},
+  /** 长按整条记录即可进入拖动排序，不再依赖右侧手柄。 */
+  onRowLongPress(event) {
+    if (this.data.dragging || this.data.sortSaving || this.data.deleting) return
+    // 长按即使因列表只有一条而不能排序，也不能在松手时误触进入编辑页。
+    this.suppressTapUntil = Date.now() + 600
+    const dataset = (event && event.currentTarget && event.currentTarget.dataset) || {}
+    const list = this.getDragList(String(dataset.kind || ''))
+    if (list.length <= 1) return
+    this.onDragStart(event)
+  },
 
   getDragList(kind) {
     const lists = {
@@ -983,9 +974,10 @@ Page(withPageViewTracking({
     const index = Number(dataset.index)
     const list = this.getDragList(kind)
     const item = list[index]
-    if (!item || !item.id) return
+    if (list.length <= 1 || !item || !item.id) return
     const touch = firstTouch(event)
-    this.dragStartY = touch ? (Number(touch.clientY) || 0) : 0
+    this.dragStartY = touch ? (Number(touch.clientY) || 0) : (Number(this.touchStartY) || 0)
+    this.touchAxis = 'drag'
     this.dragRects = []
     this.suppressTapUntil = Date.now() + 600
     const patch = {
@@ -1043,6 +1035,7 @@ Page(withPageViewTracking({
     this.setData(patch)
     this.dragRects = []
     this.dragRowHeight = 88
+    this.touchAxis = ''
     this.suppressTapUntil = Date.now() + 350
     if (!listKey || from === to || !snapshot.length) return
     await this.commitSort(kind, snapshot, next)
@@ -1050,16 +1043,9 @@ Page(withPageViewTracking({
 
   async commitSort(kind, snapshot, nextList) {
     if (this.data.sortSaving) return
-    const errorKeys = {
-      chapter: 'storyError',
-      story: 'storyError',
-      category: 'photoError',
-      photo: 'photoError',
-      anniversary: 'anniversaryError',
-    }
-    const errorKey = errorKeys[kind]
-    if (!errorKey) return
-    this.setData({ sortSaving: true, [errorKey]: '' })
+    const sortableKinds = ['chapter', 'story', 'category', 'photo', 'anniversary']
+    if (!sortableKinds.includes(kind)) return
+    this.setData({ sortSaving: true, actionError: null })
     try {
       if (kind === 'chapter') {
         await api.saveStoryChapterOrder(rules.buildOrderItems(nextList))
@@ -1097,7 +1083,7 @@ Page(withPageViewTracking({
       this.setDragList(kind, snapshot, -1)
       this.setData({
         sortSaving: false,
-        [errorKey]: this.handleContentError(error, '排序保存失败，请稍后重试'),
+        actionError: { anchor: kind, message: this.handleContentError(error, '排序保存失败，请稍后重试') },
       })
     }
   },
@@ -1129,15 +1115,7 @@ Page(withPageViewTracking({
     if (!copy) return
     const confirmed = await confirmModal(copy.title, copy.content, '删除')
     if (!confirmed || this.pageDisposed) return
-    const errorKeys = {
-      chapter: 'storyError',
-      story: 'storyError',
-      category: 'photoError',
-      photo: 'photoError',
-      anniversary: 'anniversaryError',
-    }
-    const errorKey = errorKeys[kind]
-    this.setData({ deleting: true, swipeKey: '', [errorKey]: '' })
+    this.setData({ deleting: true, swipeKey: '', actionError: null })
     try {
       if (kind === 'chapter') await api.deleteStoryChapter(id)
       else if (kind === 'story') await api.deleteStoryNode(id)
@@ -1154,7 +1132,7 @@ Page(withPageViewTracking({
       if (this.pageDisposed) return
       this.setData({
         deleting: false,
-        [errorKey]: this.handleContentError(error, '删除失败，请稍后重试'),
+        actionError: { anchor: kind, message: this.handleContentError(error, '删除失败，请稍后重试') },
       })
     }
   },
@@ -1162,7 +1140,7 @@ Page(withPageViewTracking({
   /* ===================== 相册 ===================== */
 
   async loadPhoto() {
-    this.setData({ photoLoading: true, photoError: '' })
+    this.setData({ photoLoading: true, photoError: '', actionError: null })
     try {
       await this.loadPhotoCategories()
       if (this.pageDisposed) return
@@ -1233,7 +1211,7 @@ Page(withPageViewTracking({
     const index = Number(event.detail.value) || 0
     const option = this.data.photoFilterOptions[index] || { id: 0 }
     this.setData({ photoFilterIndex: index, photoFilterId: Number(option.id) || 0 })
-    this.setData({ photoLoading: true, photoError: '' })
+    this.setData({ photoLoading: true, photoError: '', actionError: null })
     this.loadPhotoPage(1).catch((error) => {
       if (this.pageDisposed) return
       this.setData({
@@ -1249,7 +1227,7 @@ Page(withPageViewTracking({
     const totalPages = Math.max(1, Math.ceil((this.data.photoTotal || 0) / PHOTO_PAGE_SIZE))
     const next = direction === 'prev' ? this.data.photoCurrent - 1 : this.data.photoCurrent + 1
     if (next < 1 || next > totalPages) return
-    this.setData({ photoLoading: true, photoError: '' })
+    this.setData({ photoLoading: true, photoError: '', actionError: null })
     this.loadPhotoPage(next).catch((error) => {
       if (this.pageDisposed) return
       this.setData({
@@ -1262,7 +1240,7 @@ Page(withPageViewTracking({
   /* ===================== 纪念日 ===================== */
 
   async loadAnniversary() {
-    this.setData({ anniversaryLoading: true, anniversaryError: '' })
+    this.setData({ anniversaryLoading: true, anniversaryError: '', actionError: null })
     try {
       const list = await api.fetchAnniversaries()
       if (this.pageDisposed) return

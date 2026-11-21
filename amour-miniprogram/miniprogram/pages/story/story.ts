@@ -2,6 +2,7 @@ import { post } from '../../utils/request'
 import { hasFrontendQueryPermission } from '../../utils/auth'
 import { withComponentPageViewTracking } from '../../utils/page-view-lifecycle'
 import { guardPageReady } from '../../utils/access-control'
+import { formatStoryStartYear } from '../../utils/story-content'
 
 interface StoryChapter {
   id: number
@@ -57,7 +58,7 @@ Component(withComponentPageViewTracking({
     storiesError: '',
     loadingItems: [1, 2, 3],
     activeChapter: 0,
-    stats: { totalNodes: 0, totalSeasons: 0, startYear: "'24" },
+    stats: { totalNodes: 0, totalSeasons: 0, startYear: '--' },
     chapters: [] as WechatMiniprogram.IAnyObject[],
     currentChapter: { title: '', period: '' },
     stories: [] as WechatMiniprogram.IAnyObject[],
@@ -81,7 +82,9 @@ Component(withComponentPageViewTracking({
     async loadOverview() {
       this.setData({ loading: true, loadError: '' })
       try {
-        const overview = await post<StoryOverview>('/story/overview')
+        const response = await post<StoryOverview | null>('/story/overview')
+        // 没有章节时后端可能返回空数据，按“尚未开始记录故事”处理。
+        const overview = response || ({} as Partial<StoryOverview>)
         const chapters = (overview.chapters || []).map((chapter, index) => ({
           id: chapter.id,
           title: chapter.name,
@@ -89,7 +92,7 @@ Component(withComponentPageViewTracking({
           nodeCount: Number(chapter.nodeCount) || 0,
           number: String(index + 1).padStart(2, '0'),
         }))
-        const startYear = overview.startDate ? `'${overview.startDate.slice(2, 4)}` : "'24"
+        const startYear = formatStoryStartYear(overview.startDate)
         this.setData({
           chapters,
           stats: {

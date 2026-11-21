@@ -288,7 +288,8 @@ Component(withComponentPageViewTracking({
      *
      * 数据唯一来源是 POST /space/home/query：
      * - 空间名 / 简介 / 恋爱开始时间来自 couple_space；
-     * - 双方展示名、头像与主视觉照片由后端按来源解析（空间配置 / 成员资料 / 平台默认）；
+     * - 双方头像固定使用成员个人资料头像；
+     * - 双方展示名与主视觉照片由后端按来源解析（空间配置 / 成员资料 / 平台默认）；
      * - 不再读取 /site-config/query 并用平台默认值覆盖用户空间数据。
      */
     async loadSpaceHome(requestId: number) {

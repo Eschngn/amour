@@ -30,6 +30,12 @@ interface MessagePageResult {
   records: MessageRecord[]
 }
 
+interface ReplyPayload {
+  messageId: string
+  content: string
+  replyId?: string
+}
+
 function initials(name: string) {
   return String(name || '匿名').trim().slice(0, 2).toUpperCase()
 }
@@ -60,6 +66,13 @@ Component(withComponentPageViewTracking({
     draftLength: 0,
     canPublish: false,
     publishing: false,
+    activeReplyMessageId: '',
+    activeReplyReplyId: '',
+    activeReplyTargetName: '',
+    replyDraft: '',
+    replyDraftLength: 0,
+    canReply: false,
+    replying: false,
   },
 
   lifetimes: {
@@ -83,13 +96,12 @@ Component(withComponentPageViewTracking({
         const total = Number(result.total) || 0
         const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
         const currentPage = Math.min(Math.max(1, Number(result.current) || page), totalPages)
-        const messages = (result.records || []).map((message, index) => ({
+        const messages = (result.records || []).map((message) => ({
           ...message,
           userName: message.userName || '匿名',
           initials: initials(message.userName),
           displayTime: formatTime(message.createTime),
           shortDate: message.createTime ? message.createTime.slice(5, 10).replace('-', '.') : '',
-          number: String(total - ((currentPage - 1) * PAGE_SIZE + index)).padStart(2, '0'),
           replies: (message.replies || []).map((reply) => ({
             ...reply,
             initials: initials(reply.fromUserName),
@@ -109,6 +121,77 @@ Component(withComponentPageViewTracking({
     onDraftInput(event: WechatMiniprogram.CustomEvent<{ value: string }>) {
       const draft = event.detail.value || ''
       this.setData({ draft, draftLength: draft.length, canPublish: Boolean(draft.trim()) })
+    },
+
+    toggleReply(event: WechatMiniprogram.BaseEvent) {
+      if (this.data.replying) return
+      const dataset = event.currentTarget.dataset
+      const messageId = String(dataset.messageId || '')
+      const replyId = String(dataset.replyId || '')
+      if (!messageId) return
+      if (this.data.activeReplyMessageId === messageId && this.data.activeReplyReplyId === replyId) {
+        this.cancelReply()
+        return
+      }
+      this.setData({
+        activeReplyMessageId: messageId,
+        activeReplyReplyId: replyId,
+        activeReplyTargetName: String(dataset.targetName || 'Ta'),
+        replyDraft: '',
+        replyDraftLength: 0,
+        canReply: false,
+      })
+    },
+
+    onReplyInput(event: WechatMiniprogram.CustomEvent<{ value: string }>) {
+      const replyDraft = event.detail.value || ''
+      this.setData({ replyDraft, replyDraftLength: replyDraft.length, canReply: Boolean(replyDraft.trim()) })
+    },
+
+    cancelReply() {
+      if (this.data.replying) return
+      this.setData({
+        activeReplyMessageId: '',
+        activeReplyReplyId: '',
+        activeReplyTargetName: '',
+        replyDraft: '',
+        replyDraftLength: 0,
+        canReply: false,
+      })
+    },
+
+    async submitReply() {
+      const content = this.data.replyDraft.trim()
+      const messageId = this.data.activeReplyMessageId
+      const replyId = this.data.activeReplyReplyId
+      if (!content || !messageId || !this.data.canReply || this.data.replying) return
+      const payload: ReplyPayload = { messageId, content }
+      if (replyId) payload.replyId = replyId
+      this.setData({ replying: true })
+      try {
+        await ensureWechatLogin()
+        try {
+          await post<void>('/message/reply', payload)
+        } catch (error) {
+          if (!isUnauthorized(error)) throw error
+          await ensureWechatLogin({ force: true })
+          await post<void>('/message/reply', payload)
+        }
+        this.setData({
+          activeReplyMessageId: '',
+          activeReplyReplyId: '',
+          activeReplyTargetName: '',
+          replyDraft: '',
+          replyDraftLength: 0,
+          canReply: false,
+        })
+        wx.showToast({ title: '回复已发送', icon: 'success' })
+        await this.loadMessages(this.data.currentPage)
+      } catch (error) {
+        wx.showToast({ title: getErrorMessage(error, '回复失败，请稍后重试'), icon: 'none' })
+      } finally {
+        this.setData({ replying: false })
+      }
     },
 
     async publishMessage() {

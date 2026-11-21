@@ -11,8 +11,9 @@ import java.time.LocalDateTime;
  * 情侣空间首页数据。
  *
  * <p>空间名、简介、恋爱开始时间以 couple_space 为唯一事实来源；
- * 双方显示名、头像与首页主视觉照片读取 couple_space_config（按 space_id 隔离）。
- * 未显式配置时回退到空间成员的个人资料。</p>
+ * 双方显示名与首页主视觉照片读取 couple_space_config（按 space_id 隔离），
+ * 未显式配置时回退到空间成员的个人资料或平台默认图。
+ * 双方头像固定使用空间成员的个人资料头像，不再读取空间独立头像配置。</p>
  */
 @Data
 @Builder
@@ -44,7 +45,7 @@ public class SpaceHomeVO {
 
     /**
      * 服务端解析出的实际展示值来源：
-     * config-空间配置 member-成员资料 platform-管理员配置的全站默认资源 placeholder-前端占位样式。
+     * 头像来源固定为 member-成员资料 / placeholder-前端占位样式。
      * 前端据此区分真实上传内容与默认占位，避免把示例图误认为用户内容。
      */
     private String boyNameSource;

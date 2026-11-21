@@ -19,11 +19,11 @@ test('空间编辑页桌面端使用左侧纵向导航、右侧编辑内容', ()
   assert.match(source, /overflow-x-auto/)
   assert.match(source, /lg:overflow-visible/)
 
-  // 审核卡位于编辑区之前；保存结果由 teleport 弹窗展示，不再占用文档流。
+  // 审核卡位于编辑区之前；保存结果由顶部 teleport 轻提示展示，不再占用文档流。
   const reviewIndex = source.indexOf('<SpaceReviewStatusCard')
   const navIndex = source.indexOf('aria-label="空间编辑栏目"')
   const editorIndex = source.indexOf('<SpaceHomeEditor')
-  assert.ok(source.includes('<SpaceSaveFeedbackDialog'), '缺少保存反馈弹窗组件')
+  assert.ok(source.includes('<SpaceSaveToast'), '缺少保存反馈顶部轻提示组件')
   assert.ok(reviewIndex >= 0 && reviewIndex < navIndex, '审核状态卡应在栏目导航之前')
   assert.ok(editorIndex > navIndex, '栏目导航必须位于编辑内容之前')
   assert.doesNotMatch(source, /<SpaceSaveFeedback\b/)

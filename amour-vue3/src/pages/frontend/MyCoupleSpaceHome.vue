@@ -107,14 +107,14 @@
           <div class="avatar-badge absolute right-[4%] top-[5%] flex items-center rounded-full border border-white/80 bg-white/85 p-2 pr-4 shadow-xl shadow-rose-200/40 backdrop-blur-md">
             <div class="flex -space-x-3">
               <CoupleAvatar
-                :src="homeConfig.boyAvatar"
+                :src="creatorMember?.avatar || ''"
                 :name="homeConfig.boyName"
                 fallback="HE"
                 :label="`${homeConfig.boyName}的头像`"
                 class="h-11 w-11 border-2 border-white text-xs"
               />
               <CoupleAvatar
-                :src="homeConfig.girlAvatar"
+                :src="partnerMember?.avatar || ''"
                 :name="homeConfig.girlName"
                 fallback="SHE"
                 :label="`${homeConfig.girlName}的头像`"
@@ -570,9 +570,7 @@ const homeConfig = reactive({
   boyName: 'HE',
   girlName: 'SHE',
   loveStartTime: DEFAULT_LOVE_START_TIME,
-  // 空字符串表示没有真实头像 / 照片，由占位组件展示首字母或“尚未上传照片”。
-  boyAvatar: '',
-  girlAvatar: '',
+  // 空字符串表示没有真实照片，由占位组件展示“尚未上传照片”。
   heroPhoto1: '',
   heroPhoto2: '',
 })
@@ -663,17 +661,12 @@ async function loadHomeConfig() {
     if (homeData.boyName?.trim()) homeConfig.boyName = homeData.boyName.trim()
     if (homeData.girlName?.trim()) homeConfig.girlName = homeData.girlName.trim()
     if (homeData.loveStartTime) homeConfig.loveStartTime = homeData.loveStartTime
-    // 后端按「空间配置 → 成员资料 → 管理员默认图 → 占位」解析，空字符串表示没有真实图片。
-    homeConfig.boyAvatar = homeData.boyAvatar?.trim() || ''
-    homeConfig.girlAvatar = homeData.girlAvatar?.trim() || ''
     homeConfig.heroPhoto1 = homeData.heroPhoto1?.trim() || ''
     homeConfig.heroPhoto2 = homeData.heroPhoto2?.trim() || ''
   } else {
-    // 接口失败时退回到成员资料，仍然不读取平台全局配置。
+    // 接口失败时退回到成员资料；头像始终直接读取成员资料，不读取平台全局配置。
     if (creatorMember.value?.displayName?.trim()) homeConfig.boyName = creatorMember.value.displayName.trim()
     if (partnerMember.value?.displayName?.trim()) homeConfig.girlName = partnerMember.value.displayName.trim()
-    if (creatorMember.value?.avatar?.trim()) homeConfig.boyAvatar = creatorMember.value.avatar.trim()
-    if (partnerMember.value?.avatar?.trim()) homeConfig.girlAvatar = partnerMember.value.avatar.trim()
     if (spaceStatus.value?.loveStartTime) homeConfig.loveStartTime = spaceStatus.value.loveStartTime
   }
 }

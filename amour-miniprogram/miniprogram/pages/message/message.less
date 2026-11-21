@@ -28,9 +28,13 @@ page { display: flex; height: 100vh; flex-direction: column; background: #fdf8fb
 .author-copy { min-width: 0; flex: 1; margin-left: 17rpx; }
 .author-name { display: block; overflow: hidden; color: #674254; font-size: 25rpx; font-weight: 700; white-space: nowrap; text-overflow: ellipsis; }
 .message-time { display: block; margin-top: 5rpx; color: #af8d9d; font-size: 18rpx; }
-.message-index { color: #cfadbd; font-family: Georgia, serif; font-size: 22rpx; font-weight: 700; }
 .message-content { display: block; margin-top: 24rpx; color: #745265; font-size: 24rpx; line-height: 1.75; white-space: pre-wrap; word-break: break-word; }
 .message-footer { display: flex; justify-content: space-between; margin-top: 23rpx; padding-top: 17rpx; border-top: 1rpx solid #f0e1e8; color: #ae8d9d; font-size: 18rpx; }
+.message-footer-actions { display: flex; flex: none; align-items: center; gap: 14rpx; }
+.message-footer-date { color: #b594a4; }
+.reply-action { display: inline-flex; width: auto !important; min-width: 0 !important; height: auto; align-items: center; margin: 0; padding: 0 4rpx; border: 0; background: transparent; color: #9f5a7a; font-size: 18rpx; font-weight: 700; line-height: 1.5; }
+.reply-action::after { border: 0; }
+.reply-action[disabled] { opacity: .4; }
 .reply-list { margin-top: 17rpx; padding: 0 16rpx; background: #fcf4f8; }
 .reply-row { display: flex; padding: 20rpx 0; border-top: 1rpx solid #efdee6; }
 .reply-row:first-child { border-top: 0; }
@@ -38,6 +42,18 @@ page { display: flex; height: 100vh; flex-direction: column; background: #fdf8fb
 .reply-copy { min-width: 0; flex: 1; margin-left: 15rpx; }
 .reply-content { display: block; color: #79576a; font-size: 22rpx; line-height: 1.6; word-break: break-word; }
 .reply-meta { display: block; margin-top: 8rpx; color: #b08e9e; font-size: 17rpx; line-height: 1.5; }.reply-name { color: #9b5879; font-weight: 700; }
+.reply-row-action { flex: none; margin-top: -2rpx; margin-left: 10rpx; }
+.reply-composer { margin-top: 18rpx; padding: 20rpx; border: 1rpx solid #e7cdda; border-radius: 14rpx; background: #fffafd; }
+.reply-composer-heading { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
+.reply-composer-label { overflow: hidden; color: #8f4f6d; font-size: 21rpx; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.reply-count { flex: none; color: #b594a4; font-size: 17rpx; }
+.reply-input { width: 100%; height: 142rpx; margin-top: 14rpx; padding: 16rpx; border: 1rpx solid #e9cfdb; border-radius: 12rpx; background: #fff; box-sizing: border-box; color: #6a4557; font-size: 22rpx; line-height: 1.6; }
+.reply-composer-footer { display: flex; align-items: center; justify-content: flex-end; gap: 12rpx; margin-top: 14rpx; }
+.reply-cancel, .reply-submit { width: auto !important; min-width: 0 !important; height: 58rpx; margin: 0; padding: 0 24rpx; border-radius: 29rpx; font-size: 20rpx; font-weight: 700; line-height: 56rpx; }
+.reply-cancel { border: 1rpx solid #dec0cf; background: #fff; color: #985575; }
+.reply-submit { border: 0; background: #a95780; color: #fff; }
+.reply-cancel::after, .reply-submit::after { border: 0; }
+.reply-submit[disabled] { opacity: .42; }
 .pagination { display: flex; align-items: center; justify-content: center; padding-top: 35rpx; }
 .page-button { width: 190rpx; height: 64rpx; margin: 0; padding: 0; border: 1rpx solid #dec0cf; border-radius: 32rpx; background: #fff; color: #985575; font-size: 21rpx; line-height: 62rpx; }.page-button::after { border: 0; }.page-button[disabled] { opacity: .35; }
 .page-current { width: 110rpx; color: #9d7c8c; font-size: 20rpx; text-align: center; }

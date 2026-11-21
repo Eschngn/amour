@@ -133,35 +133,34 @@ test('恢复标记优先于后端的 changed=false 与待审核状态', () => {
   assert.equal(feedback.message, RESTORED_TO_PUBLISHED_MESSAGE)
 })
 
-test('保存反馈组件复用统一弹窗并具备无障碍语义', () => {
-  const source = readSource('components/frontend/space-studio/SpaceSaveFeedbackDialog.vue')
+test('保存反馈使用页面顶部轻提示并具备无障碍语义', () => {
+  const source = readSource('components/frontend/space-studio/SpaceSaveToast.vue')
 
-  assert.match(source, /<SpaceStudioDialog/)
+  assert.match(source, /<Teleport to="body">/)
   assert.match(source, /role="status"/)
   assert.match(source, /aria-live="polite"/)
-  assert.match(source, /:close-on-click-modal="true"/)
-  assert.match(source, /saveFeedbackTitle\(props\.notice\?\.kind\)/)
-  assert.match(source, /知道了/)
-  assert.doesNotMatch(source, /<section\b/)
-
-  const sharedDialog = readSource('components/frontend/space-studio/SpaceStudioDialog.vue')
-  assert.match(sharedDialog, /append-to-body/)
-  assert.match(sharedDialog, /closeOnClickModal: \{ type: Boolean, default: false \}/)
-  assert.doesNotMatch(source, /SAVE_FEEDBACK_DURATION_MS/)
+  assert.match(source, /aria-atomic="true"/)
+  assert.match(source, /class="pointer-events-none fixed inset-x-0 top-4/)
+  assert.match(source, /v-if="visible && message"/)
+  assert.match(source, /\{\{ message \}\}/)
+  assert.doesNotMatch(source, /<button\b/)
+  assert.doesNotMatch(source, /SpaceStudioDialog|el-dialog|dialog-overlay/)
+  assert.doesNotMatch(source, /知道了|关闭/)
 })
 
-test('无改动保存使用独立中性卡片与低强调关闭按钮', () => {
-  const source = readSource('components/frontend/space-studio/SpaceSaveFeedbackDialog.vue')
+test('顶部轻提示根据保存结果使用克制的状态色', () => {
+  const source = readSource('components/frontend/space-studio/SpaceSaveToast.vue')
 
-  assert.match(source, /const isUnchangedKind = computed\(\(\) => props\.notice\?\.kind === SAVE_FEEDBACK_KIND\.UNCHANGED\)/)
-  assert.match(source, /isUnchangedKind\.value \? 'min\(460px, calc\(100vw - 24px\)\)'/)
-  assert.match(source, /v-if="isUnchangedKind"/)
-  assert.match(source, /当前内容与已保存版本一致/)
-  assert.match(source, /isUnchangedKind \? 'btn-secondary' : 'btn-primary'/)
-  assert.match(source, /<Minus\b/)
+  assert.match(source, /const toneClass = computed/)
+  assert.match(source, /SAVE_FEEDBACK_KIND\.PENDING/)
+  assert.match(source, /SAVE_FEEDBACK_KIND\.STALE/)
+  assert.match(source, /SAVE_FEEDBACK_KIND\.REMOVED/)
+  assert.match(source, /SAVE_FEEDBACK_KIND\.UNCHANGED/)
+  assert.match(source, /bg-emerald-400 ring-emerald-100/)
+  assert.match(source, /aria-hidden="true"/)
 })
 
-test('保存反馈弹窗关闭态不渲染内容', async () => {
+test('保存反馈顶部轻提示关闭态不渲染内容', async () => {
   const { createServer } = await import('vite')
   const server = await createServer({
     configFile: resolve(ROOT, '..', 'vite.config.js'),
@@ -172,13 +171,13 @@ test('保存反馈弹窗关闭态不渲染内容', async () => {
   })
   try {
     const component = await server.ssrLoadModule(
-      '/src/components/frontend/space-studio/SpaceSaveFeedbackDialog.vue',
+      '/src/components/frontend/space-studio/SpaceSaveToast.vue',
     )
     const { createSSRApp } = await import('vue')
     const { renderToString } = await import('vue/server-renderer')
 
     const empty = await renderToString(createSSRApp(component.default, {
-      modelValue: false,
+      visible: false,
       notice: null,
     }))
     assert.equal(empty.replace(/<!--.*?-->/g, '').trim(), '')
@@ -187,10 +186,15 @@ test('保存反馈弹窗关闭态不渲染内容', async () => {
   }
 })
 
-test('编辑页通过统一弹窗承接保存反馈', () => {
+test('编辑页通过顶部轻提示承接保存反馈并在 2 秒后自动关闭', () => {
   const source = readSource('pages/frontend/SpaceStudioPage.vue')
 
-  assert.match(source, /<SpaceSaveFeedbackDialog[\s\S]*?v-model="saveDialogOpen"[\s\S]*?:notice="saveFeedback"/)
+  assert.match(source, /<SpaceSaveToast :visible="saveToastVisible" :notice="saveFeedback" \/>/)
+  assert.match(source, /const saveToastVisible = ref\(false\)/)
+  assert.match(source, /const SAVE_TOAST_DURATION_MS = 2000/)
+  assert.match(source, /saveToastTimer = window\.setTimeout\(\(\) => \{[\s\S]*?saveToastVisible\.value = false[\s\S]*?\}, SAVE_TOAST_DURATION_MS\)/)
+  assert.match(source, /function dismissSaveFeedback\(\)[\s\S]*?saveToastVisible\.value = false/)
+  assert.match(source, /onUnmounted\(\(\) => \{[\s\S]*?clearSaveToastTimer\(\)/)
   assert.equal((source.match(/@saved="onContentSaved"/g) || []).length, 5)
   assert.match(source, /function onContentSaved\(payload\)[\s\S]*?dirtyAfterSave/)
   const handlerBlock = source.slice(
@@ -204,7 +208,7 @@ test('编辑页通过统一弹窗承接保存反馈', () => {
   assert.match(source, /switchTab\([\s\S]*?confirmDiscard\('切换栏目会丢失当前未保存的修改，确定继续吗？'\)/)
   assert.match(source, /onBeforeRouteLeave\([\s\S]*?confirmDiscard\('离开编辑页会丢失当前未保存的修改，确定离开吗？'\)/)
 
-  assert.doesNotMatch(source, /<SpaceSaveFeedback\b/)
+  assert.doesNotMatch(source, /SpaceSaveFeedbackDialog|<SpaceSaveFeedback\b/)
 })
 
 test('五个内容编辑器保存成功后都派发 saved 事件', () => {
@@ -359,12 +363,12 @@ test('纪念日新增、编辑、排序与删除成功都派发 saved', () => {
   assert.match(source, /emitSimpleSaved\('纪念日已删除'\)/)
 })
 
-test('排序成功使用明确 action 字段并交给统一保存弹窗，失败不派发成功', () => {
+test('排序成功使用明确 action 字段并交给统一顶部提示，失败不派发成功', () => {
   const page = readSource('pages/frontend/SpaceStudioPage.vue')
   assert.match(page, /payload\?\.action === 'reorder'/)
   assert.match(page, /payload\?\.action === 'reorder'\) \{\s*showSaveFeedback\(payload\)/)
-  assert.match(page, /const saveDialogOpen = ref\(false\)/)
-  assert.match(page, /saveDialogOpen\.value = true/)
+  assert.match(page, /const saveToastVisible = ref\(false\)/)
+  assert.match(page, /saveToastVisible\.value = true/)
   assert.doesNotMatch(page, /showReorderSuccess|ElMessageBox\.alert/)
 
   for (const relativePath of [
@@ -436,6 +440,6 @@ test('空间编辑页为全部编辑器绑定 saved，并在同一处展示反�
     source.indexOf('function isTabAllowed(key)'),
   )
   assert.match(feedbackBlock, /saveFeedback\.value = \{/)
-  assert.match(feedbackBlock, /saveDialogOpen\.value = true/)
+  assert.match(feedbackBlock, /saveToastVisible\.value = true/)
   assert.doesNotMatch(feedbackBlock, /ElMessage\.success/)
 })

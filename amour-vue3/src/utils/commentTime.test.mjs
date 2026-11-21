@@ -179,26 +179,25 @@ test('非法时间返回稳定的降级展示信息', () => {
   })
 })
 
-test('留言板主留言与回复共用格式化入口，时间元素保留完整时间', () => {
+test('留言板主留言与回复展示具体年月日和时间，不再使用相对时间时钟', () => {
   const page = readFileSync(resolve(ROOT, 'pages/frontend/MessageBoardPage.vue'), 'utf8')
 
-  assert.match(page, /import \{ describeCommentTime \} from '@\/utils\/commentTime'/)
-  assert.match(page, /import \{ useCommentClock \} from '@\/composables\/useCommentClock'/)
-  assert.match(page, /const now = useCommentClock\(\)/)
-  assert.equal(page.match(/describeCommentTime\(/g)?.length, 2)
-  assert.match(page, /describeCommentTime\(message\.createTime, \{ now: now\.value \}\)/)
-  assert.match(page, /describeCommentTime\(reply\.createTime, \{ now: now\.value \}\)/)
+  assert.match(page, /import \{ formatSpaceDateTime \} from '@\/utils\/spaceFormat'/)
+  assert.doesNotMatch(page, /describeCommentTime|useCommentClock/)
+  assert.equal(page.match(/formatSpaceDateTime\(/g)?.length, 2)
+  assert.match(page, /formatSpaceDateTime\(message\.createTime, '时间未知'\)/)
+  assert.match(page, /formatSpaceDateTime\(reply\.createTime, '时间未知'\)/)
 
-  // 主留言与回复都使用 time 元素，dateTime 为原始时间，title 为完整时间。
-  assert.match(page, /<time[^>]*:datetime="m\.timeMeta\.dateTime"[^>]*:title="m\.timeMeta\.title"/)
-  assert.match(page, /<time[^>]*:datetime="r\.timeMeta\.dateTime"[^>]*:title="r\.timeMeta\.title"/)
+  // 主留言与回复都使用 time 元素，dateTime 为原始时间，title 与正文均为完整时间。
+  assert.match(page, /<time[^>]*:datetime="m\.createTime"[^>]*:title="m\.timeText"/)
+  assert.match(page, /<time[^>]*:datetime="r\.createTime"[^>]*:title="r\.timeText"/)
   assert.match(page, /class="whitespace-nowrap text-\[11px\] text-rose-700\/80"/)
 
   // 时间与名字、内容、操作区保持弹性换行，移动端不重叠。
   assert.match(page, /flex flex-wrap items-start justify-between gap-x-3 gap-y-1/)
   assert.match(page, /class="flex shrink-0 items-center gap-1\.5"/)
 
-  // 不新增逐条留言的定时器，刷新统一由 composable 负责。
+  // 绝对时间无需页面级或逐条留言的定时器。
   assert.doesNotMatch(page, /setInterval|setTimeout/)
 })
 

@@ -479,13 +479,6 @@ page {
 
 .field-placeholder { color: @rose-faint; }
 
-.picker-row {
-  display: flex;
-  align-items: center;
-  gap: @space-2;
-  flex-wrap: wrap;
-}
-
 .picker-cell {
   min-width: 220rpx;
   flex: 1;
@@ -509,12 +502,15 @@ page {
 
 .picker-value.is-placeholder { color: @rose-faint; }
 
-.clear-button,
 .text-button {
   display: inline-flex;
+  /* style v2 会给普通 button 一个很宽的默认宽度，不覆盖会把留言昵称挤成一列。 */
+  width: auto !important;
+  min-width: 0 !important;
   min-height: 64rpx;
   flex: none;
   align-items: center;
+  justify-content: center;
   margin: 0;
   padding: 0 10rpx;
   border: 0;
@@ -523,10 +519,10 @@ page {
   font-size: @font-sm;
   font-weight: 600;
   line-height: 1.6;
+  white-space: nowrap;
 }
 
-.text-button::after,
-.clear-button::after { border: 0; }
+.text-button::after { border: 0; }
 
 .text-button.danger { color: @danger; }
 .text-button[disabled] { color: @rose-faint; }
@@ -599,8 +595,6 @@ page {
   box-sizing: border-box;
 }
 
-.image-field.compact { padding: @space-2; }
-
 .image-preview {
   width: 200rpx;
   height: 112rpx;
@@ -609,16 +603,7 @@ page {
   background: @bg-soft;
 }
 
-.avatar-preview {
-  width: 96rpx;
-  height: 96rpx;
-  flex: none;
-  border-radius: 50%;
-  background: @bg-soft;
-}
-
-.image-placeholder,
-.avatar-placeholder {
+.image-placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -630,12 +615,6 @@ page {
   color: @rose-faint;
   font-size: @font-xs;
   text-align: center;
-}
-
-.avatar-placeholder {
-  width: 96rpx;
-  height: 96rpx;
-  border-radius: 50%;
 }
 
 .image-actions {
@@ -672,7 +651,7 @@ page {
   overflow: hidden;
   margin-top: @space-2;
   border-radius: @radius-md;
-  background: @danger;
+  background: #ef4055;
 }
 
 .swipe-content {
@@ -682,7 +661,6 @@ page {
   min-width: 0;
   align-items: center;
   padding: @space-3 @space-4;
-  padding-right: 92rpx;
   border: 1rpx solid @rose-line;
   border-radius: @radius-md;
   background: #fffdfc;
@@ -691,7 +669,7 @@ page {
   transition: transform .2s ease;
 }
 
-.swipe-row.is-open .swipe-content { transform: translateX(-140rpx); }
+.swipe-row.is-open .swipe-content { transform: translateX(-176rpx); }
 
 .swipe-content.is-dragging {
   border-color: @rose-primary-light;
@@ -707,45 +685,28 @@ page {
   right: 0;
   bottom: 0;
   display: flex;
-  width: 140rpx;
+  /* style v2 的默认样式 button:not([size=mini]) { width: 184px } 优先级更高，
+     会把按钮撑宽导致文字偏出可视区，只能看到半个“除”字，这里强制覆盖宽度。 */
+  width: 176rpx !important;
+  min-width: 0 !important;
   align-items: center;
   justify-content: center;
   margin: 0;
   padding: 0;
   border: 0;
   border-radius: 0 @radius-md @radius-md 0;
-  background: @danger;
-  color: @text-inverse;
-  font-size: @font-sm;
+  background: #ef4055;
+  color: #ffffff;
+  font-size: 32rpx;
   font-weight: 700;
-  line-height: 1.4;
+  letter-spacing: 2rpx;
+  line-height: 1;
+  box-sizing: border-box;
 }
 
 .swipe-delete::after { border: 0; }
 .swipe-delete-hover { opacity: .86; }
 .swipe-delete[disabled] { opacity: .65; }
-
-.drag-handle {
-  position: absolute;
-  z-index: 3;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  width: 76rpx;
-  align-items: center;
-  justify-content: center;
-  color: @rose-faint;
-  font-size: 28rpx;
-  font-weight: 700;
-  letter-spacing: -4rpx;
-  line-height: 1;
-}
-
-.swipe-content.is-dragging .drag-handle {
-  background: @bg-rose-soft;
-  color: @rose-primary-dark;
-}
 
 .list-row {
   display: flex;
@@ -856,15 +817,6 @@ page {
 
 .photo-copy { padding: @space-3; }
 
-.photo-card .drag-handle {
-  top: 0;
-  bottom: auto;
-  width: 88rpx;
-  height: 260rpx;
-  background: linear-gradient(90deg, rgba(59, 44, 48, 0), rgba(59, 44, 48, .34));
-  color: @text-inverse;
-}
-
 .pagination {
   display: flex;
   align-items: center;
@@ -956,22 +908,54 @@ page {
 
 .message-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: @space-3;
 }
 
-.author-avatar {
+.author-avatar,
+.reply-avatar {
+  position: relative;
   display: flex;
-  width: 68rpx;
-  height: 68rpx;
+  overflow: hidden;
   flex: none;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
   background: @bg-rose-soft;
   color: @rose-primary-dark;
-  font-size: @font-sm;
   font-weight: 700;
+}
+
+.author-avatar {
+  width: 68rpx;
+  height: 68rpx;
+  border-radius: 50%;
+  font-size: @font-sm;
+}
+
+.reply-avatar {
+  width: 54rpx;
+  height: 54rpx;
+  border-radius: @radius-sm;
+  font-size: @font-xs;
+}
+
+.avatar-image {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.message-head .row-copy { padding-top: 2rpx; }
+
+.message-head .text-button { margin-top: -8rpx; margin-right: -10rpx; }
+
+.message-head .row-title {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .message-content {
@@ -1002,6 +986,8 @@ page {
   gap: @space-2;
   padding: @space-1 0;
 }
+
+.reply-row .text-button { margin-top: -8rpx; }
 
 .reply-content {
   display: block;

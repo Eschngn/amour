@@ -138,6 +138,13 @@ export function formatStoryReadTime(totalWords: number): string {
   return `约 ${Math.ceil(words / 400)} 分钟`
 }
 
+/** 故事开始年份展示为 '24；无有效开始日期时返回占位符。 */
+export function formatStoryStartYear(value: unknown): string {
+  const text = String(value === null || value === undefined ? '' : value).trim()
+  const match = /^(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])(?:[ T].*)?$/.exec(text)
+  return match ? `'${match[1].slice(2)}` : '--'
+}
+
 /** 故事发生日期展示为 2024.05.20；无有效日期时返回空字符串。 */
 export function formatStoryDate(value: unknown): string {
   if (!value) return ''

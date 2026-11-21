@@ -20,6 +20,7 @@ const requests = []
 const handlers = new Map()
 const navigations = []
 const toasts = []
+const modals = []
 const modalResults = []
 let pageOptions = null
 let uploadCount = 0
@@ -64,12 +65,14 @@ globalThis.wx = {
   },
   navigateBack(options) {
     navigations.push({ type: 'navigateBack', url: 'back' })
-    if (options && options.fail) options.fail({})
+    // 模拟真实页面栈：只有栈底或调用失败时才走页面兜底。
+    if ((!currentPages || currentPages.length <= 1) && options && options.fail) options.fail({})
   },
   showToast(options) {
     toasts.push(options && options.title)
   },
   showModal(options) {
+    modals.push(options)
     const result = modalResults.shift()
     if (typeof options.success === 'function') {
       queueMicrotask(() => options.success(result || { confirm: true }))
@@ -187,6 +190,7 @@ test.beforeEach(async () => {
   handlers.clear()
   navigations.length = 0
   toasts.length = 0
+  modals.length = 0
   modalResults.length = 0
   uploadCount = 0
   sessionState.resetForTests()
@@ -206,7 +210,7 @@ test('新页面已注册，访问级别为 SPACE（双向一致）', async () =>
   })
 })
 
-test('内容列表已移除工作台内联表单、编辑与上下移动按钮', () => {
+test('内容列表移除内联编辑，整条记录支持长按排序与左滑删除', () => {
   const wxml = readFileSync('miniprogram/pages/space-studio/index.wxml', 'utf8')
   assert.doesNotMatch(wxml, /class="[^"]*inline-form/)
   assert.doesNotMatch(wxml, /\son(?:Edit|Move)[A-Za-z]*=/)
@@ -214,8 +218,34 @@ test('内容列表已移除工作台内联表单、编辑与上下移动按钮',
   assert.doesNotMatch(wxml, />\s*上移\s*<\/button>/)
   assert.doesNotMatch(wxml, />\s*下移\s*<\/button>/)
   assert.match(wxml, /catchtap="onOpenItem"/)
-  assert.match(wxml, /catchtouchstart="onDragStart"/)
   assert.match(wxml, /catchtap="onDeleteItem"/)
+  assert.doesNotMatch(wxml, /class="drag-handle"|onDragHandleTap|catchtouchstart="onDragStart"/)
+  assert.doesNotMatch(wxml, /拖动右侧手柄/)
+  assert.equal((wxml.match(/class="swipe-content/g) || []).length, 5)
+  assert.equal((wxml.match(/bindlongpress="onRowLongPress"/g) || []).length, 5)
+  assert.match(wxml, /长按整行拖动/)
+  assert.match(wxml, />删除<\/button>/)
+})
+
+test('左滑删除操作区使用醒目的红底白字样式', () => {
+  const less = readFileSync('miniprogram/pages/space-studio/index.less', 'utf8')
+  assert.match(
+    less,
+    /\.swipe-delete\s*\{[\s\S]*?width: 176rpx !important;[\s\S]*?background: #ef4055;[\s\S]*?color: #ffffff;[\s\S]*?font-size: 32rpx;/,
+  )
+  assert.match(less, /\.swipe-row\.is-open \.swipe-content \{ transform: translateX\(-176rpx\); \}/)
+  assert.doesNotMatch(less, /\.drag-handle/)
+})
+
+test('首页只选择恋爱开始日期，并移除模块清空与重置入口', () => {
+  const wxml = readFileSync('miniprogram/pages/space-studio/index.wxml', 'utf8')
+  assert.match(wxml, /恋爱开始日期/)
+  assert.match(wxml, /<picker mode="date"[^>]*data-form="homeForm"[^>]*data-field="loveDate"/)
+  assert.doesNotMatch(wxml, /发起人头像|另一半头像|data-field="boyAvatar"|data-field="girlAvatar"/)
+  assert.doesNotMatch(wxml, /data-field="loveTime"/)
+  assert.doesNotMatch(wxml, /onClearFormDateTime|onResetHome/)
+  assert.doesNotMatch(wxml, />\s*重置\s*<\/button>/)
+  assert.doesNotMatch(wxml, />\s*清空\s*<\/button>/)
 })
 
 test('故事、相册与纪念日的新建入口均跳转独立编辑页', () => {
@@ -299,6 +329,38 @@ test('左滑条目后只展开当前条目，删除调用对应接口', async ()
   }
 })
 
+test('删除章节因非空失败时只在章节列表下方提示操作错误，不挂出重新加载', async () => {
+  prepareSession(NORMAL_SPACE, ['frontend:story:query'])
+  handlers.set('/story/manage/chapter/delete', options => options.success(fail('20068', '章节下仍有故事，无法删除')))
+
+  const page = createPage()
+  let reloads = 0
+  page.loadStory = async () => { reloads += 1 }
+  try {
+    await page.onDeleteItem({ currentTarget: { dataset: { kind: 'chapter', id: 7 } } })
+    await settle()
+    assert.equal(page.data.storyError, '', '删除失败不能写入故事加载错误')
+    assert.ok(page.data.actionError, '删除失败必须展示操作类错误')
+    assert.equal(page.data.actionError.anchor, 'chapter')
+    assert.match(page.data.actionError.message, /章节下仍有故事/)
+    assert.equal(reloads, 0, '业务性删除失败不应触发重新加载')
+    assert.equal(page.data.deleting, false)
+  } finally {
+    page.destroy()
+  }
+})
+
+test('五个列表的操作类错误各自渲染在对应列表正下方', () => {
+  const wxml = readFileSync('miniprogram/pages/space-studio/index.wxml', 'utf8')
+  for (const anchor of ['chapter', 'story', 'category', 'photo', 'anniversary']) {
+    assert.match(
+      wxml,
+      new RegExp(`actionError && actionError\\.anchor === '${anchor}'`),
+      `缺少 ${anchor} 列表的操作错误展示`,
+    )
+  }
+})
+
 test('拖动排序后调用排序接口并保留新顺序', async () => {
   prepareSession(NORMAL_SPACE, ['frontend:story:query'])
   handlers.set('/story/manage/chapter/order', options => options.success(ok(true)))
@@ -310,13 +372,14 @@ test('拖动排序后调用排序接口并保留新顺序', async () => {
     chapters: [{ id: 1, name: '第一章' }, { id: 2, name: '第二章' }],
   })
   try {
-    page.onDragStart({
+    page.onRowLongPress({
       currentTarget: { dataset: { kind: 'chapter', index: 0 } },
       touches: [{ clientY: 100 }],
     })
-    page.onDragMove({ touches: [{ clientY: 280 }] })
+    assert.equal(page.data.dragging, true, '长按整条记录应进入拖动状态')
+    page.onRowTouchMove({ touches: [{ clientY: 280 }] })
     assert.equal(page.data.dragItemId, 1)
-    await page.onDragEnd({ changedTouches: [{ clientY: 280 }] })
+    await page.onRowTouchEnd({ changedTouches: [{ clientY: 280 }] })
     await settle()
 
     const request = requests.find(item => item.path === '/story/manage/chapter/order')
@@ -457,6 +520,10 @@ test('首页保存：提交完整基础信息与白名单 configs，审核中提
     }))
   })
 
+  currentPages = [
+    { route: 'pages/profile/profile', options: {} },
+    { route: 'pages/space-studio/index', options: {} },
+  ]
   const page = createPage()
   page.onLoad({})
   await settle()
@@ -467,7 +534,6 @@ test('首页保存：提交完整基础信息与白名单 configs，审核中提
         spaceName: '新名字',
         description: '新简介',
         loveDate: '2024-05-21',
-        loveTime: '20:00',
       },
     })
     await page.onSaveHome()
@@ -476,19 +542,18 @@ test('首页保存：提交完整基础信息与白名单 configs，审核中提
     assert.ok(saveBody, '必须调用 /space/home/save')
     assert.equal(saveBody.spaceName, '新名字')
     assert.equal(saveBody.description, '新简介')
-    assert.equal(saveBody.loveStartTime, '2024-05-21 20:00:00')
+    assert.equal(saveBody.loveStartTime, '2024-05-21 00:00:00')
     assert.deepEqual(Object.keys(saveBody.configs).sort(), [
-      'boy_avatar',
       'boy_name',
-      'girl_avatar',
       'girl_name',
       'home.hero_photo_1',
       'home.hero_photo_2',
     ])
     assert.equal(page.data.homeSaving, false)
-    assert.equal(page.data.feedback.kind, 'stale')
-    assert.match(page.data.feedback.message, /审核/)
-    assert.doesNotMatch(page.data.feedback.message, /已公开$/)
+    assert.equal(page.data.feedback, null, '成功提示不应占用页面顶部提示条')
+    assert.equal(modals.length, 0, '首页保存成功不应弹窗阻塞返回')
+    assert.deepEqual(toasts, ['已提交审核'], '审核中的首页保存使用轻提示')
+    assert.equal(navigations[navigations.length - 1].type, 'navigateBack', '保存成功后自动返回上一页')
     assert.equal(page.data.draftDirty, false)
   } finally {
     page.destroy()
@@ -596,6 +661,10 @@ test('有未保存修改时返回需要确认：取消停留、确认后离开',
   prepareSession(NORMAL_SPACE, [])
   handlers.set('/space/home/query', options => options.success(ok(HOME_DATA)))
   handlers.set('/space/review/status', options => options.success(ok({ pending: false })))
+  currentPages = [
+    { route: 'pages/profile/profile', options: {} },
+    { route: 'pages/space-studio/index', options: {} },
+  ]
 
   const page = createPage()
   page.onLoad({})
@@ -609,13 +678,14 @@ test('有未保存修改时返回需要确认：取消停留、确认后离开',
     page.onNavBack()
     await settle()
     assert.equal(navigations.length, 0, '取消后应停留在编辑页')
+    assert.equal(modals[modals.length - 1].confirmText, '放弃返回')
+    assert.ok(modals[modals.length - 1].confirmText.length <= 4, '确认按钮文案不能超过微信限制')
 
     modalResults.push({ confirm: true })
     page.onNavBack()
     await settle()
-    const last = navigations[navigations.length - 1]
-    assert.ok(last, '确认后应离开')
-    assert.match(last.url, /pages\/profile\/profile/)
+    assert.equal(navigations.length, 1, '确认后只应执行一次返回')
+    assert.equal(navigations[0].type, 'navigateBack')
   } finally {
     page.destroy()
   }
@@ -643,6 +713,54 @@ test('留言分页使用 /message/page 的 query 参数，不提交 body 分页'
     assert.equal(request.path, '/message/page?current=2&size=8')
     assert.equal(page.data.messageCurrent, 2)
     assert.equal(page.data.messageTotalPages, 3)
+  } finally {
+    page.destroy()
+  }
+})
+
+test('空间编辑留言保留用户头像，回复渲染头像且不展示 canDelete 说明', async () => {
+  prepareSession(NORMAL_SPACE, ['frontend:message:query'])
+  handlers.set('/space/home/query', options => options.success(ok(HOME_DATA)))
+  handlers.set('/space/review/status', options => options.success(ok({ pending: false })))
+  handlers.set('/message/page?current=1&size=8', options => options.success(ok({
+    current: 1,
+    size: 8,
+    total: 1,
+    records: [{
+      messageId: '31',
+      content: '今天也很想你',
+      userName: '测试用户',
+      userAvatar: 'https://cdn.example.com/user.png',
+      canDelete: true,
+      createTime: '2026-11-21 10:00:00',
+      replies: [{
+        replyId: '41',
+        content: '我也是',
+        fromUserName: '另一半',
+        fromUserAvatar: 'https://cdn.example.com/partner.png',
+        toUserName: '测试用户',
+        canDelete: false,
+        createTime: '2026-11-21 10:05:00',
+      }],
+    }],
+  })))
+
+  const page = createPage()
+  page.onLoad({ tab: 'message' })
+  await settle()
+  try {
+    assert.equal(page.data.messages[0].userAvatar, 'https://cdn.example.com/user.png')
+    assert.equal(page.data.messages[0].replies[0].fromUserAvatar, 'https://cdn.example.com/partner.png')
+
+    const wxml = readFileSync('miniprogram/pages/space-studio/index.wxml', 'utf8')
+    const less = readFileSync('miniprogram/pages/space-studio/index.less', 'utf8')
+    assert.match(wxml, /wx:if="\{\{item\.userAvatar\}\}"/)
+    assert.match(wxml, /wx:if="\{\{reply\.fromUserAvatar\}\}"/)
+    assert.match(wxml, /class="reply-avatar"/)
+    assert.doesNotMatch(wxml, /canDelete 决定|服务端返回的 canDelete/)
+    assert.match(less, /\.text-button\s*\{[\s\S]*?width:\s*auto !important;/)
+    assert.match(less, /\.text-button\s*\{[\s\S]*?min-width:\s*0 !important;/)
+    assert.match(less, /\.message-head\s*\{[\s\S]*?align-items:\s*flex-start;/)
   } finally {
     page.destroy()
   }

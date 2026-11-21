@@ -105,7 +105,7 @@ test('审核摘要保持待审核与驳回状态可发现', () => {
   assert.equal(rules.describeReview(null).summary, '私密 · 暂无待审核内容')
 })
 
-test('首页表单只回填空间配置本身，不把成员资料 / 平台默认值写成用户配置', () => {
+test('首页表单只回填展示名与照片配置，头像固定来自用户资料', () => {
   const form = rules.buildHomeForm({
     spaceName: '我们的故事',
     description: '简介',
@@ -125,41 +125,44 @@ test('首页表单只回填空间配置本身，不把成员资料 / 平台默�
   })
   assert.equal(form.boyName, '橙子')
   assert.equal(form.girlName, '', 'member 来源不写回配置输入框')
-  assert.equal(form.boyAvatar, '', 'platform 来源不写回配置输入框')
+  assert.equal(Object.prototype.hasOwnProperty.call(form, 'boyAvatar'), false, '不再提供空间头像设置')
+  assert.equal(Object.prototype.hasOwnProperty.call(form, 'girlAvatar'), false, '不再提供空间头像设置')
   assert.equal(form.heroPhoto1, 'https://cdn.example.com/hero.png')
   assert.equal(form.heroPhoto2, '', '平台默认图不能被写回空间配置')
   assert.equal(form.loveDate, '2024-05-20')
-  assert.equal(form.loveTime, '19:30')
+  assert.equal(Object.prototype.hasOwnProperty.call(form, 'loveTime'), false)
 })
 
-test('首页保存提交完整基础信息与白名单 configs，时间为秒级或 null', () => {
+test('首页保存提交基础信息与不含头像的白名单 configs，日期按当天零点提交', () => {
   const form = {
     spaceName: '  新名字  ',
     description: ' 简介 ',
     loveDate: '2024-05-20',
-    loveTime: '19:30',
     boyName: ' 橙子 ',
     girlName: '',
-    boyAvatar: '',
-    girlAvatar: '',
+    boyAvatar: 'https://cdn.example.com/legacy-boy.png',
+    girlAvatar: 'https://cdn.example.com/legacy-girl.png',
     heroPhoto1: 'https://cdn.example.com/hero.png',
     heroPhoto2: '',
   }
-  const payload = rules.buildHomePayload(form, '2024-05-20 19:30:47')
+  const payload = rules.buildHomePayload(form)
   assert.equal(payload.spaceName, '新名字')
   assert.equal(payload.description, '简介')
-  assert.equal(payload.loveStartTime, '2024-05-20 19:30:47', '同一分钟保存保留原秒数')
+  assert.equal(payload.loveStartTime, '2024-05-20 00:00:00')
   assert.equal(payload.configs.boy_name, '橙子')
   assert.equal(payload.configs.girl_name, '')
+  assert.equal(Object.prototype.hasOwnProperty.call(payload.configs, 'boy_avatar'), false)
+  assert.equal(Object.prototype.hasOwnProperty.call(payload.configs, 'girl_avatar'), false)
   assert.equal(payload.configs['home.hero_photo_1'], 'https://cdn.example.com/hero.png')
 
-  const cleared = rules.buildHomePayload({ ...form, loveDate: '', loveTime: '' }, '')
-  assert.equal(cleared.loveStartTime, null, '清空时间必须提交 null')
+  const cleared = rules.buildHomePayload({ ...form, loveDate: '' })
+  assert.equal(cleared.loveStartTime, null, '未设置恋爱开始日期时必须提交 null')
 })
 
-test('表单校验覆盖名称、时间半选与图片地址', () => {
+test('表单校验覆盖名称、可选恋爱日期与图片地址', () => {
   assert.match(rules.validateHomeForm({ spaceName: '' }), /必填/)
-  assert.match(rules.validateHomeForm({ spaceName: 'x', loveDate: '2024-01-01' }), /同时选择/)
+  assert.equal(rules.validateHomeForm({ spaceName: 'x', loveDate: '2024-01-01' }), '')
+  assert.match(rules.validateHomeForm({ spaceName: 'x', loveDate: '2024-02-30' }), /日期格式/)
   assert.equal(rules.validateHomeForm({ spaceName: 'x' }), '')
   assert.match(rules.validateChapterForm({ name: '' }), /必填/)
   assert.equal(rules.validateChapterForm({ name: '初见' }), '')

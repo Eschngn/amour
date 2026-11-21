@@ -210,13 +210,9 @@ public class SpaceHomeServiceImpl implements SpaceHomeService {
                 displayName(userMap, creatorMember), DEFAULT_BOY_NAME);
         ResolvedValue girlName = resolveText(configMap.get(CONFIG_GIRL_NAME),
                 displayName(userMap, partnerMember), DEFAULT_GIRL_NAME);
-        // 头像按「空间配置 → 成员资料 → 管理控制台默认图 → 前端占位样式」解析。
-        ResolvedValue boyAvatar = resolveAvatar(configMap.get(CONFIG_BOY_AVATAR),
-                avatar(userMap, creatorMember),
-                platformImages.get(FrontendSiteConfigConstants.DEFAULT_COUPLE_AVATAR_BOY));
-        ResolvedValue girlAvatar = resolveAvatar(configMap.get(CONFIG_GIRL_AVATAR),
-                avatar(userMap, partnerMember),
-                platformImages.get(FrontendSiteConfigConstants.DEFAULT_COUPLE_AVATAR_GIRL));
+        // 头像只读取成员个人资料；旧空间头像配置仍可写入以兼容旧客户端，但不再参与展示。
+        ResolvedValue boyAvatar = resolveMemberAvatar(avatar(userMap, creatorMember));
+        ResolvedValue girlAvatar = resolveMemberAvatar(avatar(userMap, partnerMember));
         // 主视觉照片只在用户配置或管理员默认图存在时返回地址，否则由前端展示“尚未上传”占位。
         ResolvedValue heroPhoto1 = resolveImage(configMap.get(CONFIG_HERO_PHOTO_1),
                 platformImages.get(FrontendSiteConfigConstants.DEFAULT_COUPLE_HERO_PHOTO_1));
@@ -281,15 +277,9 @@ public class SpaceHomeServiceImpl implements SpaceHomeService {
         return new ResolvedValue(fallback, SOURCE_DEFAULT);
     }
 
-    private ResolvedValue resolveAvatar(String configured, String memberValue, String platformValue) {
-        if (StrUtil.isNotBlank(configured)) {
-            return new ResolvedValue(configured.trim(), SOURCE_CONFIG);
-        }
+    private ResolvedValue resolveMemberAvatar(String memberValue) {
         if (StrUtil.isNotBlank(memberValue)) {
             return new ResolvedValue(memberValue.trim(), SOURCE_MEMBER);
-        }
-        if (StrUtil.isNotBlank(platformValue)) {
-            return new ResolvedValue(platformValue, SOURCE_PLATFORM);
         }
         return new ResolvedValue("", SOURCE_PLACEHOLDER);
     }

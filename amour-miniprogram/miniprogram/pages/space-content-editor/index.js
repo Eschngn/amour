@@ -105,7 +105,7 @@ function confirmDiscard() {
     wx.showModal({
       title: '放弃未保存的修改？',
       content: '返回后本次填写的内容不会保留。',
-      confirmText: '放弃并返回',
+      confirmText: '放弃返回',
       cancelText: '继续编辑',
       confirmColor: '#b85060',
       success: result => resolve(Boolean(result && result.confirm)),

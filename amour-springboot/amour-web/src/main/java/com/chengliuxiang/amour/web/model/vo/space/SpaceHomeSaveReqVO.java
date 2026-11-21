@@ -31,7 +31,8 @@ public class SpaceHomeSaveReqVO {
 
     /**
      * 空间级首页配置，允许的键见 SpaceHomeServiceImpl 中的白名单：
-     * boy_name / girl_name / boy_avatar / girl_avatar / home.hero_photo_1 / home.hero_photo_2。
+     * boy_name / girl_name / home.hero_photo_1 / home.hero_photo_2。
+     * boy_avatar / girl_avatar 仅为兼容旧客户端保留写入能力，不参与头像展示。
      */
     @Size(max = 16, message = "首页配置项过多")
     private Map<String, String> configs;

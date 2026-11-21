@@ -107,7 +107,9 @@ test('情侣空间首页移除示例头像与示例照片，改用占位组件',
   assert.match(source, /CoupleAvatar/)
   assert.match(source, /CoupleHeroPhoto/)
   assert.match(source, /heroPhoto1: ''/)
-  assert.match(source, /boyAvatar: ''/)
+  assert.match(source, /:src="creatorMember\?\.avatar \|\| ''"/)
+  assert.match(source, /:src="partnerMember\?\.avatar \|\| ''"/)
+  assert.doesNotMatch(source, /homeConfig\.(?:boy|girl)Avatar/)
   // 图片加载失败由占位组件在内部回退，不再预先加载示例图。
   assert.doesNotMatch(source, /preloadImage|resolveDisplayableImage/)
 })
@@ -147,6 +149,8 @@ test('首页编辑器说明不再承诺使用站点示例图', () => {
 
   assert.doesNotMatch(source, /站点示例图/)
   assert.match(source, /尚未上传照片/)
+  assert.doesNotMatch(source, /boy_avatar|girl_avatar|form\.(?:boy|girl)Avatar/)
+  assert.match(source, /头像统一读取双方的账号资料/)
 })
 
 test('小程序首页移除硬编码示例图片，并提供占位视图', () => {
@@ -160,13 +164,14 @@ test('小程序首页移除硬编码示例图片，并提供占位视图', () =>
   ), 'utf8')
 
   assert.doesNotMatch(script, /example-photo1|example-photo2|DEFAULT_AVATAR/)
-  assert.match(script, /heroPhotoOne: ''/)
+  assert.match(script, /homePhotos: \[\] as HomePhotoItem\[\]/)
   assert.match(script, /boyAvatar: ''/)
+  assert.match(script, /girlAvatar: ''/)
   assert.match(script, /space\/home\/query/)
   assert.doesNotMatch(script, /post[^\n]*\/site-config\/query/, '首页不能再用平台默认配置覆盖空间首页数据')
 
-  assert.match(template, /wx:if="\{\{heroPhotoOne\}\}"/)
-  assert.match(template, /尚未上传照片/)
-  assert.match(template, /mini-avatar-fallback/)
+  assert.match(template, /wx:if="\{\{homePhotos\.length\}\}"/)
+  assert.match(template, /还没有首页照片/)
+  assert.match(template, /avatar-fallback/)
   assert.match(template, /onAvatarError/)
 })

@@ -13,6 +13,7 @@ const {
   countStoryWords,
   formatStoryReadTime,
   formatStoryDate,
+  formatStoryStartYear,
   collectContentImages,
 } = await import('../miniprogram/utils/story-content.ts')
 
@@ -93,6 +94,16 @@ test('日期展示为 yyyy.MM.dd，缺失时为空字符串', () => {
   assert.equal(formatStoryDate('2024-05-20'), '2024.05.20')
   assert.equal(formatStoryDate(''), '')
   assert.equal(formatStoryDate(null), '')
+})
+
+test('故事开始年份只使用真实日期，缺失或非法值显示占位符', () => {
+  assert.equal(formatStoryStartYear('2024-05-20 19:30:00'), "'24")
+  assert.equal(formatStoryStartYear('2023-12-31T23:59:59'), "'23")
+  assert.equal(formatStoryStartYear(''), '--')
+  assert.equal(formatStoryStartYear(null), '--')
+  assert.equal(formatStoryStartYear(undefined), '--')
+  assert.equal(formatStoryStartYear('2024-13-01'), '--')
+  assert.equal(formatStoryStartYear("'24"), '--')
 })
 
 test('正文图片只收集 http(s) 绝对地址', () => {

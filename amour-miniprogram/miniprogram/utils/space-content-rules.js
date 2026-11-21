@@ -213,8 +213,6 @@ function describeSaveReview(result, fallback) {
 const HOME_CONFIG_KEYS = Object.freeze({
   boyName: 'boy_name',
   girlName: 'girl_name',
-  boyAvatar: 'boy_avatar',
-  girlAvatar: 'girl_avatar',
   heroPhoto1: 'home.hero_photo_1',
   heroPhoto2: 'home.hero_photo_2',
 })
@@ -222,8 +220,8 @@ const HOME_CONFIG_KEYS = Object.freeze({
 /**
  * 服务端 SpaceHomeVO → 编辑表单。
  *
- * 接口返回的是“生效值”，可能来自成员资料或平台默认图；
- * 输入框只保留空间配置本身（source=config），避免把默认值误保存成用户配置。
+ * 展示名接口返回的是“生效值”，输入框只保留空间配置本身（source=config），
+ * 避免把成员资料或平台默认值误保存成用户配置。头像固定读取成员资料，不再写入首页配置。
  */
 function buildHomeForm(home) {
   const source = home && typeof home === 'object' ? home : {}
@@ -232,11 +230,8 @@ function buildHomeForm(home) {
     spaceName: typeof source.spaceName === 'string' ? source.spaceName : '',
     description: typeof source.description === 'string' ? source.description : '',
     loveDate: time.date,
-    loveTime: time.time,
     boyName: source.boyNameSource === 'config' ? (source.boyName || '') : '',
     girlName: source.girlNameSource === 'config' ? (source.girlName || '') : '',
-    boyAvatar: source.boyAvatarSource === 'config' ? (source.boyAvatar || '') : '',
-    girlAvatar: source.girlAvatarSource === 'config' ? (source.girlAvatar || '') : '',
     // 平台默认图只用于展示，不写回空间配置；否则一次无关保存会把默认图固化进用户空间。
     heroPhoto1: source.heroPhoto1Source === 'config' ? (source.heroPhoto1 || '') : '',
     heroPhoto2: source.heroPhoto2Source === 'config' ? (source.heroPhoto2 || '') : '',
@@ -257,9 +252,8 @@ function validateHomeForm(form) {
     return '展示名不能超过 30 个字符'
   }
   const date = trimText(source.loveDate)
-  const time = trimText(source.loveTime)
-  if (Boolean(date) !== Boolean(time)) return '请同时选择恋爱开始的日期和时间'
-  const imageFields = ['boyAvatar', 'girlAvatar', 'heroPhoto1', 'heroPhoto2']
+  if (date && !parseBackendDateTime(date)) return '恋爱开始日期格式不正确'
+  const imageFields = ['heroPhoto1', 'heroPhoto2']
   for (let index = 0; index < imageFields.length; index += 1) {
     if (!isSafeImageUrl(source[imageFields[index]])) {
       return '图片地址格式不正确，请重新上传'
@@ -268,20 +262,17 @@ function validateHomeForm(form) {
   return ''
 }
 
-function buildHomePayload(form, baselineLoveStartTime) {
+function buildHomePayload(form) {
   const source = form || {}
+  const loveDate = splitLoveStartTime(trimText(source.loveDate)).date
   return {
     spaceName: trimText(source.spaceName),
     description: trimText(source.description),
-    loveStartTime: composeLoveStartTime(
-      { loveDate: source.loveDate, loveTime: source.loveTime },
-      baselineLoveStartTime,
-    ),
+    // 小程序端只选择日期；后端仍使用 LocalDateTime，因此按当天 00:00:00 保存。
+    loveStartTime: loveDate ? `${loveDate} 00:00:00` : null,
     configs: {
       [HOME_CONFIG_KEYS.boyName]: trimText(source.boyName),
       [HOME_CONFIG_KEYS.girlName]: trimText(source.girlName),
-      [HOME_CONFIG_KEYS.boyAvatar]: trimText(source.boyAvatar),
-      [HOME_CONFIG_KEYS.girlAvatar]: trimText(source.girlAvatar),
       [HOME_CONFIG_KEYS.heroPhoto1]: trimText(source.heroPhoto1),
       [HOME_CONFIG_KEYS.heroPhoto2]: trimText(source.heroPhoto2),
     },
