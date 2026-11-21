@@ -308,6 +308,17 @@ function buildChapterPayload(form, sortOrder) {
   return payload
 }
 
+/** 时间展示精度：true-日期和时间 false-仅日期；历史缺失字段按 true 兼容。 */
+function normalizeShowTime(value) {
+  if (value === null || value === undefined || value === '') return true
+  if (typeof value === 'boolean') return value
+  const text = String(value).trim().toLowerCase()
+  if (text === 'false' || text === '0') return false
+  if (text === 'true' || text === '1') return true
+  const number = Number(value)
+  return Number.isFinite(number) ? number !== 0 : true
+}
+
 function validateNodeForm(form) {
   const source = form || {}
   if (!source.chapterId) return '请选择故事所属章节'
@@ -320,22 +331,26 @@ function validateNodeForm(form) {
   if (trimText(source.tagLabel).length > 30) return '故事标签不能超过 30 个字符'
   if (!isSafeImageUrl(source.coverImage)) return '封面图片地址格式不正确，请重新上传'
   const date = trimText(source.happenedDate)
-  const time = trimText(source.happenedTime)
-  if (Boolean(date) !== Boolean(time)) return '请同时选择发生日期和时间'
+  if (!date) return '请选择故事发生日期'
   return ''
 }
 
 function buildNodePayload(form, sortOrder) {
   const source = form || {}
+  const showTime = normalizeShowTime(source.showTime)
+  const happenedDate = trimText(source.happenedDate)
   const payload = {
     chapterId: source.chapterId,
     title: trimText(source.title),
     summary: trimText(source.summary),
     content: typeof source.content === 'string' ? source.content : '',
-    happenedTime: composeLoveStartTime(
-      { loveDate: source.happenedDate, loveTime: source.happenedTime },
-      source.baselineHappenedTime,
-    ),
+    happenedTime: showTime
+      ? composeLoveStartTime(
+        { loveDate: happenedDate, loveTime: trimText(source.happenedTime) || '00:00' },
+        source.baselineHappenedTime,
+      )
+      : composeLoveStartTime({ loveDate: happenedDate, loveTime: '00:00' }, ''),
+    showTime,
     location: trimText(source.location),
     coverImage: trimText(source.coverImage),
     tagLabel: trimText(source.tagLabel),
@@ -591,6 +606,7 @@ module.exports = {
   buildHomePayload,
   validateChapterForm,
   buildChapterPayload,
+  normalizeShowTime,
   validateNodeForm,
   buildNodePayload,
   validateCategoryForm,

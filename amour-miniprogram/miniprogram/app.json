@@ -2,6 +2,7 @@
   "pages": [
     "pages/index/index",
     "pages/space-studio/index",
+    "pages/space-content-editor/index",
     "pages/plaza/index",
     "pages/plaza-detail/index",
     "pages/plaza-story/plaza-story",

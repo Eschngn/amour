@@ -198,10 +198,202 @@ test('新页面已注册，访问级别为 SPACE（双向一致）', async () =>
   const { PAGE_ACCESS_BY_ROUTE } = await import('../miniprogram/utils/session-rules.js')
   const { PAGE_ACCESS } = await import('../miniprogram/utils/session-constants.js')
   assert.ok(appJson.pages.includes('pages/space-studio/index'))
+  assert.ok(appJson.pages.includes('pages/space-content-editor/index'))
   assert.equal(PAGE_ACCESS_BY_ROUTE['pages/space-studio/index'], PAGE_ACCESS.SPACE)
+  assert.equal(PAGE_ACCESS_BY_ROUTE['pages/space-content-editor/index'], PAGE_ACCESS.SPACE)
   Object.keys(PAGE_ACCESS_BY_ROUTE).forEach((route) => {
     assert.ok(appJson.pages.includes(route), `${route} 未在 app.json 注册`)
   })
+})
+
+test('内容列表已移除工作台内联表单、编辑与上下移动按钮', () => {
+  const wxml = readFileSync('miniprogram/pages/space-studio/index.wxml', 'utf8')
+  assert.doesNotMatch(wxml, /class="[^"]*inline-form/)
+  assert.doesNotMatch(wxml, /\son(?:Edit|Move)[A-Za-z]*=/)
+  assert.doesNotMatch(wxml, />\s*编辑\s*<\/button>/)
+  assert.doesNotMatch(wxml, />\s*上移\s*<\/button>/)
+  assert.doesNotMatch(wxml, />\s*下移\s*<\/button>/)
+  assert.match(wxml, /catchtap="onOpenItem"/)
+  assert.match(wxml, /catchtouchstart="onDragStart"/)
+  assert.match(wxml, /catchtap="onDeleteItem"/)
+})
+
+test('故事、相册与纪念日的新建入口均跳转独立编辑页', () => {
+  const page = createPage()
+  page.setData({
+    chapters: [{ id: 11 }],
+    chapterFilterId: 11,
+    photoCategories: [{ id: 22 }],
+    photoFilterId: 22,
+  })
+  try {
+    page.onNewChapter()
+    page.onNewNode()
+    page.onNewCategory()
+    page.onNewPhoto()
+    page.onNewAnniversary()
+    assert.deepEqual(navigations.map(item => item.url), [
+      '/pages/space-content-editor/index?kind=chapter',
+      '/pages/space-content-editor/index?kind=story&chapterId=11',
+      '/pages/space-content-editor/index?kind=category',
+      '/pages/space-content-editor/index?kind=photo&categoryId=22',
+      '/pages/space-content-editor/index?kind=anniversary',
+    ])
+  } finally {
+    page.destroy()
+  }
+})
+
+test('缺少章节或相册分类时阻止新建并给出提示', () => {
+  const page = createPage()
+  try {
+    page.onNewNode()
+    page.onNewPhoto()
+    assert.equal(navigations.length, 0)
+    assert.deepEqual(toasts, ['请先创建章节', '请先创建一个相册分类'])
+  } finally {
+    page.destroy()
+  }
+})
+
+test('点击列表条目进入带 id 的独立编辑页', () => {
+  const page = createPage()
+  try {
+    page.onOpenItem({
+      currentTarget: { dataset: { kind: 'story', id: 42 } },
+    })
+    assert.equal(navigations.length, 1)
+    assert.equal(navigations[0].url, '/pages/space-content-editor/index?kind=story&id=42')
+  } finally {
+    page.destroy()
+  }
+})
+
+test('左滑条目后只展开当前条目，删除调用对应接口', async () => {
+  prepareSession(NORMAL_SPACE, ['frontend:story:query'])
+  handlers.set('/story/manage/chapter/delete', options => options.success(ok(true)))
+
+  const page = createPage()
+  page.loadStory = async () => {}
+  try {
+    page.onRowTouchStart({
+      currentTarget: { dataset: { kind: 'chapter', id: 7 } },
+      touches: [{ clientX: 320, clientY: 140 }],
+    })
+    page.onRowTouchMove({
+      currentTarget: { dataset: { kind: 'chapter', id: 7 } },
+      touches: [{ clientX: 250, clientY: 142 }],
+    })
+    page.onRowTouchEnd()
+    assert.equal(page.data.swipeKey, 'chapter:7')
+
+    await page.onDeleteItem({ currentTarget: { dataset: { kind: 'chapter', id: 7 } } })
+    await settle()
+    const request = requests.find(item => item.path === '/story/manage/chapter/delete')
+    assert.ok(request, '必须调用章节删除接口')
+    assert.deepEqual(request.data, { id: 7 })
+    assert.equal(page.data.swipeKey, '')
+    assert.equal(page.data.deleting, false)
+  } finally {
+    page.destroy()
+  }
+})
+
+test('拖动排序后调用排序接口并保留新顺序', async () => {
+  prepareSession(NORMAL_SPACE, ['frontend:story:query'])
+  handlers.set('/story/manage/chapter/order', options => options.success(ok(true)))
+
+  const page = createPage()
+  let reloadCount = 0
+  page.loadStory = async () => { reloadCount += 1 }
+  page.setData({
+    chapters: [{ id: 1, name: '第一章' }, { id: 2, name: '第二章' }],
+  })
+  try {
+    page.onDragStart({
+      currentTarget: { dataset: { kind: 'chapter', index: 0 } },
+      touches: [{ clientY: 100 }],
+    })
+    page.onDragMove({ touches: [{ clientY: 280 }] })
+    assert.equal(page.data.dragItemId, 1)
+    await page.onDragEnd({ changedTouches: [{ clientY: 280 }] })
+    await settle()
+
+    const request = requests.find(item => item.path === '/story/manage/chapter/order')
+    assert.ok(request, '必须调用章节排序接口')
+    assert.deepEqual(request.data.items, [
+      { id: 2, sortOrder: 10 },
+      { id: 1, sortOrder: 20 },
+    ])
+    assert.deepEqual(page.data.chapters.map(item => item.id), [2, 1])
+    assert.equal(reloadCount, 0, '排序成功后不能重新加载列表，否则会跳回页面顶部')
+    assert.equal(page.data.dragging, false)
+    assert.equal(page.data.dragItemId, 0)
+  } finally {
+    page.destroy()
+  }
+})
+
+test('章节、故事、分类、照片和纪念日排序成功后都不重新加载列表', async () => {
+  prepareSession(NORMAL_SPACE, ['frontend:story:query', 'frontend:photo:query', 'frontend:anniversary:query'])
+  for (const path of [
+    '/story/manage/chapter/order',
+    '/story/manage/node/order',
+    '/photo/manage/category/order',
+    '/photo/manage/photo/order',
+    '/anniversary/manage/order',
+  ]) {
+    handlers.set(path, options => options.success(ok(true)))
+  }
+  handlers.set('/photo/manage/photo/sort-list', options => options.success(ok([
+    { id: 7 },
+    { id: 8 },
+  ])))
+
+  const page = createPage()
+  const reloads = { story: 0, photo: 0, anniversary: 0 }
+  page.loadStory = async () => { reloads.story += 1 }
+  page.loadPhoto = async () => { reloads.photo += 1 }
+  page.loadPhotoPage = async () => { reloads.photo += 1 }
+  page.loadAnniversary = async () => { reloads.anniversary += 1 }
+  page.setData({ chapterFilterId: 11 })
+
+  const snapshot = [{ id: 7 }, { id: 8 }]
+  const nextList = [{ id: 8 }, { id: 7 }]
+  try {
+    await page.commitSort('chapter', snapshot, nextList)
+    await page.commitSort('story', snapshot, nextList)
+    await page.commitSort('category', snapshot, nextList)
+    await page.commitSort('photo', snapshot, nextList)
+    await page.commitSort('anniversary', snapshot, nextList)
+
+    assert.deepEqual(reloads, { story: 0, photo: 0, anniversary: 0 })
+    assert.equal(page.data.sortSaving, false)
+  } finally {
+    page.destroy()
+  }
+})
+
+test('从独立编辑页返回后清理并刷新当前栏目', () => {
+  const page = createPage()
+  const loaded = []
+  let reviewLoads = 0
+  page.pageReady = true
+  page.editorOpen = true
+  page.loadedTabs = { photo: true }
+  page.loadTab = key => loaded.push(key)
+  page.loadReview = async () => { reviewLoads += 1 }
+  page.applySession = () => {}
+  page.setData({ activeTab: 'photo' })
+  try {
+    page.onShow()
+    assert.equal(page.editorOpen, false)
+    assert.equal(page.loadedTabs.photo, undefined)
+    assert.deepEqual(loaded, ['photo'])
+    assert.equal(reviewLoads, 1)
+  } finally {
+    page.destroy()
+  }
 })
 
 test('无空间进入工作台：守卫 reLaunch 到「我的」并提示创建 / 绑定', async () => {

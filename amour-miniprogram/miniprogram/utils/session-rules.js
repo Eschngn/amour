@@ -250,6 +250,7 @@ const PAGE_ACCESS_BY_ROUTE = {
   // 必须存在情侣空间：项目原有的私密模块
   'pages/index/index': PAGE_ACCESS.SPACE,
   'pages/space-studio/index': PAGE_ACCESS.SPACE,
+  'pages/space-content-editor/index': PAGE_ACCESS.SPACE,
   'pages/story/story': PAGE_ACCESS.SPACE,
   'pages/story-detail/story-detail': PAGE_ACCESS.SPACE,
   'pages/photo/photo': PAGE_ACCESS.SPACE,

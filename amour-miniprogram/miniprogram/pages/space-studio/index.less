@@ -578,15 +578,7 @@ page {
 
 .button-hover { opacity: .82; }
 
-/* ==================== 内联表单 / 图片 ==================== */
-
-.inline-form {
-  margin-top: @space-4;
-  padding: @space-4;
-  border: 1rpx solid @rose-line;
-  border-radius: @radius-md;
-  background: @bg-soft;
-}
+/* ==================== 图片上传 ==================== */
 
 .form-title {
   display: block;
@@ -658,6 +650,103 @@ page {
 
 /* ==================== 列表 ==================== */
 
+.list-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: @space-3;
+  margin-top: @space-4;
+}
+
+.list-heading .form-title { margin-bottom: 0; }
+
+.list-hint {
+  flex: none;
+  color: @text-tertiary;
+  font-size: @font-xs;
+  line-height: 1.5;
+}
+
+.swipe-row {
+  position: relative;
+  overflow: hidden;
+  margin-top: @space-2;
+  border-radius: @radius-md;
+  background: @danger;
+}
+
+.swipe-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  padding: @space-3 @space-4;
+  padding-right: 92rpx;
+  border: 1rpx solid @rose-line;
+  border-radius: @radius-md;
+  background: #fffdfc;
+  box-sizing: border-box;
+  transform: translateX(0);
+  transition: transform .2s ease;
+}
+
+.swipe-row.is-open .swipe-content { transform: translateX(-140rpx); }
+
+.swipe-content.is-dragging {
+  border-color: @rose-primary-light;
+  background: @bg-rose-soft;
+  box-shadow: @shadow-card;
+  transition: none;
+}
+
+.swipe-delete {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  width: 140rpx;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0 @radius-md @radius-md 0;
+  background: @danger;
+  color: @text-inverse;
+  font-size: @font-sm;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.swipe-delete::after { border: 0; }
+.swipe-delete-hover { opacity: .86; }
+.swipe-delete[disabled] { opacity: .65; }
+
+.drag-handle {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  width: 76rpx;
+  align-items: center;
+  justify-content: center;
+  color: @rose-faint;
+  font-size: 28rpx;
+  font-weight: 700;
+  letter-spacing: -4rpx;
+  line-height: 1;
+}
+
+.swipe-content.is-dragging .drag-handle {
+  background: @bg-rose-soft;
+  color: @rose-primary-dark;
+}
+
 .list-row {
   display: flex;
   flex-direction: column;
@@ -668,6 +757,7 @@ page {
 
 .row-main {
   display: flex;
+  width: 100%;
   min-width: 0;
   align-items: flex-start;
   gap: @space-3;
@@ -702,20 +792,6 @@ page {
   word-break: break-word;
 }
 
-.row-actions {
-  display: flex;
-  align-items: center;
-  gap: @space-3;
-  flex-wrap: wrap;
-}
-
-.row-actions.bar {
-  justify-content: flex-end;
-  margin-top: @space-1;
-  padding-top: @space-1;
-  border-top: 1rpx solid fade(@rose-line, 55%);
-}
-
 .tag-row {
   display: flex;
   gap: 8rpx;
@@ -734,13 +810,10 @@ page {
 
 .tag.review { background: #fdf5e8; color: #a8761f; }
 
-.story-card {
-  padding: @space-3 0;
-  border-bottom: 1rpx solid fade(@rose-line, 70%);
-}
-
 .story-main {
   display: flex;
+  width: 100%;
+  min-width: 0;
   align-items: flex-start;
   gap: @space-3;
 }
@@ -757,13 +830,17 @@ page {
 
 .photo-grid {
   display: flex;
-  flex-wrap: wrap;
-  gap: @space-3;
+  flex-direction: column;
+  gap: @space-2;
 }
 
+.photo-swipe-row { margin-top: 0; }
+
 .photo-card {
-  width: calc(50% - 12rpx);
+  display: block;
+  width: 100%;
   overflow: hidden;
+  padding: 0;
   border: 1rpx solid @rose-line;
   border-radius: @radius-md;
   background: #fffdfc;
@@ -771,16 +848,21 @@ page {
 }
 
 .photo-thumb {
+  display: block;
   width: 100%;
-  height: 220rpx;
+  height: 260rpx;
   background: @bg-soft;
 }
 
-.photo-copy { padding: @space-2 @space-3; }
+.photo-copy { padding: @space-3; }
 
-.photo-card .row-actions {
-  justify-content: flex-end;
-  padding: 0 @space-2 @space-2;
+.photo-card .drag-handle {
+  top: 0;
+  bottom: auto;
+  width: 88rpx;
+  height: 260rpx;
+  background: linear-gradient(90deg, rgba(59, 44, 48, 0), rgba(59, 44, 48, .34));
+  color: @text-inverse;
 }
 
 .pagination {
@@ -946,7 +1028,6 @@ page {
   .studio-page { padding: 0 24rpx; }
   .section-card { padding: @space-3; }
   .field-grid .field { min-width: 100%; }
-  .photo-card { width: 100%; }
   .image-preview,
   .image-placeholder { width: 160rpx; height: 96rpx; }
   .tab-item { padding: 0 20rpx; }

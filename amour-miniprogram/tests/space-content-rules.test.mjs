@@ -163,8 +163,9 @@ test('表单校验覆盖名称、时间半选与图片地址', () => {
   assert.equal(rules.validateHomeForm({ spaceName: 'x' }), '')
   assert.match(rules.validateChapterForm({ name: '' }), /必填/)
   assert.equal(rules.validateChapterForm({ name: '初见' }), '')
-  assert.match(rules.validateNodeForm({ chapterId: 1, title: 'a', happenedDate: '2024-01-01' }), /同时选择/)
-  assert.equal(rules.validateNodeForm({ chapterId: 1, title: 'a' }), '')
+  assert.match(rules.validateNodeForm({ chapterId: 1, title: 'a' }), /发生日期/)
+  assert.match(rules.validateNodeForm({ chapterId: 1, title: 'a', happenedTime: '19:30' }), /发生日期/)
+  assert.equal(rules.validateNodeForm({ chapterId: 1, title: 'a', happenedDate: '2024-01-01' }), '')
   assert.match(rules.validatePhotoForm({ photoCategoryId: 1, url: 'javascript:alert(1)' }), /图片地址/)
   assert.equal(rules.validatePhotoForm({ photoCategoryId: 1, url: 'https://cdn.example.com/a.png' }), '')
   assert.match(
@@ -180,6 +181,17 @@ test('表单校验覆盖名称、时间半选与图片地址', () => {
   assert.equal(rules.validateAnniversaryForm({ title: '周年', anniversaryDate: '2025-05-20' }), '')
 })
 
+test('故事时间展示精度兼容历史数据与字符串布尔值', () => {
+  assert.equal(rules.normalizeShowTime(undefined), true)
+  assert.equal(rules.normalizeShowTime(null), true)
+  assert.equal(rules.normalizeShowTime(true), true)
+  assert.equal(rules.normalizeShowTime(false), false)
+  assert.equal(rules.normalizeShowTime('false'), false)
+  assert.equal(rules.normalizeShowTime('0'), false)
+  assert.equal(rules.normalizeShowTime('true'), true)
+  assert.equal(rules.normalizeShowTime('1'), true)
+})
+
 test('故事 / 照片 / 纪念日提交体符合后端 VO 字段', () => {
   const chapter = rules.buildChapterPayload({ id: 3, name: ' 初见 ', isVisible: false })
   assert.deepEqual(chapter, { id: 3, name: '初见', isVisible: false })
@@ -192,6 +204,7 @@ test('故事 / 照片 / 纪念日提交体符合后端 VO 字段', () => {
     content: '正文',
     happenedDate: '2024-05-20',
     happenedTime: '19:30',
+    showTime: true,
     baselineHappenedTime: '2024-05-20 19:30:47',
     location: '江边',
     coverImage: 'https://cdn.example.com/cover.png',
@@ -201,8 +214,29 @@ test('故事 / 照片 / 纪念日提交体符合后端 VO 字段', () => {
     canPublish: false,
   })
   assert.equal(node.happenedTime, '2024-05-20 19:30:47')
+  assert.equal(node.showTime, true)
   assert.equal(node.visibility, 0, '未完成绑定时不能提交公开')
   assert.equal(node.isMilestone, true)
+
+  const dateOnlyNode = rules.buildNodePayload({
+    chapterId: 3,
+    title: '只记录日期',
+    happenedDate: '2024-05-20',
+    happenedTime: '',
+    showTime: true,
+  })
+  assert.equal(dateOnlyNode.happenedTime, '2024-05-20 00:00:00', '未填具体时间时保存为当天零点')
+  assert.equal(dateOnlyNode.showTime, true)
+
+  const hiddenTimeNode = rules.buildNodePayload({
+    chapterId: 3,
+    title: '不展示时间',
+    happenedDate: '2024-05-20',
+    happenedTime: '19:30',
+    showTime: false,
+  })
+  assert.equal(hiddenTimeNode.happenedTime, '2024-05-20 00:00:00', '仅日期模式必须归一化为零点')
+  assert.equal(hiddenTimeNode.showTime, false)
 
   const photo = rules.buildPhotoPayload({
     photoCategoryId: 5,

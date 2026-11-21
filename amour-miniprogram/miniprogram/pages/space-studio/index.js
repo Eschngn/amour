@@ -18,6 +18,7 @@ const rules = require('../../utils/space-content-rules')
 
 const MESSAGE_PAGE_SIZE = 8
 const PHOTO_PAGE_SIZE = 10
+const SPACE_CONTENT_EDITOR_ROUTE = '/pages/space-content-editor/index'
 
 const EMPTY_HOME_FORM = {
   spaceName: '',
@@ -30,55 +31,6 @@ const EMPTY_HOME_FORM = {
   girlAvatar: '',
   heroPhoto1: '',
   heroPhoto2: '',
-}
-
-const EMPTY_CHAPTER_FORM = { id: null, name: '', isVisible: true }
-const EMPTY_NODE_FORM = {
-  id: null,
-  chapterId: 0,
-  title: '',
-  summary: '',
-  content: '',
-  happenedDate: '',
-  happenedTime: '',
-  location: '',
-  coverImage: '',
-  tagLabel: '',
-  isMilestone: false,
-  visibility: 0,
-  baselineHappenedTime: '',
-}
-const EMPTY_CATEGORY_FORM = { id: null, categoryName: '', remark: '', isEnabled: true }
-const EMPTY_PHOTO_FORM = {
-  id: null,
-  photoCategoryId: 0,
-  title: '',
-  description: '',
-  url: '',
-  takenDate: '',
-  takenTime: '',
-  location: '',
-  isCover: false,
-  visibility: 0,
-  baselineTakenTime: '',
-}
-const EMPTY_ANNIVERSARY_FORM = {
-  id: null,
-  title: '',
-  description: '',
-  anniversaryDate: '',
-  repeatType: 1,
-  category: 'love',
-  location: '',
-  visibility: 0,
-}
-
-function splitDateTime(value) {
-  const text = typeof value === 'string' ? value.trim() : ''
-  if (!text) return { date: '', time: '' }
-  const match = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/.exec(text)
-  if (!match) return { date: '', time: '' }
-  return { date: `${match[1]}-${match[2]}-${match[3]}`, time: `${match[4]}:${match[5]}` }
 }
 
 function formatDateTime(value, showTime) {
@@ -113,10 +65,22 @@ function confirmModal(title, content, confirmText) {
   })
 }
 
-function visibilityIndexOf(options, value) {
-  const index = (Array.isArray(options) ? options : [])
-    .findIndex(option => Number(option.value) === Number(value))
-  return index < 0 ? 0 : index
+function firstTouch(event) {
+  const touches = event && (event.touches && event.touches.length
+    ? event.touches
+    : event.changedTouches)
+  return touches && touches.length ? touches[0] : null
+}
+
+function reorderList(list, from, to) {
+  const source = Array.isArray(list) ? list.slice() : []
+  const start = Number(from)
+  const end = Number(to)
+  if (!Number.isInteger(start) || !Number.isInteger(end)) return source
+  if (start < 0 || start >= source.length || end < 0 || end >= source.length) return source
+  const [item] = source.splice(start, 1)
+  source.splice(end, 0, item)
+  return source
 }
 
 Page(withPageViewTracking({
@@ -135,6 +99,15 @@ Page(withPageViewTracking({
     draftDirty: false,
     feedback: null,
     visibilityOptions: [],
+    swipeKey: '',
+    dragging: false,
+    dragKind: '',
+    dragItemId: 0,
+    dragFromIndex: -1,
+    dragToIndex: -1,
+    dragListSnapshot: null,
+    sortSaving: false,
+    deleting: false,
 
     /* 公开审核：默认只展示一行摘要，展开后再看驳回原因与详情 */
     review: null,
@@ -159,30 +132,16 @@ Page(withPageViewTracking({
     /* 故事 */
     storyLoading: true,
     storyError: '',
-    storySorting: false,
     chapters: [],
     nodes: [],
     visibleNodes: [],
     chapterOptions: [{ id: 0, name: '全部章节' }],
     chapterFilterIndex: 0,
     chapterFilterId: 0,
-    chapterEditing: false,
-    chapterSaving: false,
-    chapterError: '',
-    chapterForm: { ...EMPTY_CHAPTER_FORM },
-    nodeEditing: false,
-    nodeSaving: false,
-    nodeError: '',
-    nodeForm: { ...EMPTY_NODE_FORM },
-    nodeChapterOptions: [],
-    nodeChapterIndex: 0,
-    nodeVisibilityIndex: 0,
-    nodeCoverUploading: false,
 
     /* 相册 */
     photoLoading: true,
     photoError: '',
-    photoSorting: false,
     photoCategories: [],
     photoFilterOptions: [{ id: 0, categoryName: '全部分类' }],
     photoFilterIndex: 0,
@@ -192,32 +151,11 @@ Page(withPageViewTracking({
     photoTotal: 0,
     photoTotalPages: 1,
     photoSize: PHOTO_PAGE_SIZE,
-    categoryEditing: false,
-    categorySaving: false,
-    categoryError: '',
-    categoryForm: { ...EMPTY_CATEGORY_FORM },
-    photoEditing: false,
-    photoSaving: false,
-    photoFormError: '',
-    photoForm: { ...EMPTY_PHOTO_FORM },
-    photoCategoryOptions: [],
-    photoCategoryIndex: 0,
-    photoVisibilityIndex: 0,
-    photoUploading: false,
 
     /* 纪念日 */
     anniversaryLoading: true,
     anniversaryError: '',
-    anniversarySorting: false,
     anniversaries: [],
-    anniversaryEditing: false,
-    anniversarySaving: false,
-    anniversaryFormError: '',
-    anniversaryForm: { ...EMPTY_ANNIVERSARY_FORM },
-    anniversaryCategoryOptions: rules.ANNIVERSARY_CATEGORIES,
-    anniversaryCategoryIndex: 0,
-    anniversaryVisibilityIndex: 0,
-    repeatOptions: ['仅此一次', '每年重复'],
 
     /* 留言 */
     messageLoading: true,
@@ -248,12 +186,29 @@ Page(withPageViewTracking({
     this.photoPageSeq = 0
     this.messagePageSeq = 0
     this.draftDirty = false
+    this.editorOpen = false
+    this.touchStartX = 0
+    this.touchStartY = 0
+    this.touchAxis = ''
+    this.suppressTapUntil = 0
+    this.dragStartY = 0
+    this.dragRects = []
+    this.dragRowHeight = 88
     this.bootstrap()
     this.unsubscribe = sessionState.subscribe(snapshot => this.applySession(snapshot))
   },
 
   onShow() {
     if (!this.pageReady) return
+    if (this.editorOpen) {
+      this.editorOpen = false
+      const key = this.data.activeTab
+      if (key) {
+        delete this.loadedTabs[key]
+        this.loadTab(key)
+        this.loadReview()
+      }
+    }
     // 从图片选择 / 其它页面返回时重新对齐空间状态；不重复拉取已加载的列表。
     const snapshot = sessionState.getSnapshot()
     if (snapshot.status !== SESSION_STATUS.LOADING) this.applySession(snapshot)
@@ -409,11 +364,7 @@ Page(withPageViewTracking({
       activeTab: key,
       draftDirty: false,
       feedback: null,
-      chapterEditing: false,
-      nodeEditing: false,
-      categoryEditing: false,
-      photoEditing: false,
-      anniversaryEditing: false,
+      swipeKey: '',
       replyTargetId: '',
       replyDraft: '',
       replyDraftLength: 0,
@@ -854,274 +805,356 @@ Page(withPageViewTracking({
     this.applyChapterFilter(Number(event.detail.value) || 0)
   },
 
+  openEditor(kind, extra) {
+    if (!kind || this.data.sortSaving || this.data.deleting) return
+    const parts = [`kind=${encodeURIComponent(kind)}`]
+    if (extra && extra.id) parts.push(`id=${encodeURIComponent(extra.id)}`)
+    if (extra && extra.chapterId) {
+      parts.push(`chapterId=${encodeURIComponent(extra.chapterId)}`)
+    }
+    if (extra && extra.categoryId) {
+      parts.push(`categoryId=${encodeURIComponent(extra.categoryId)}`)
+    }
+    this.editorOpen = true
+    wx.navigateTo({
+      url: `${SPACE_CONTENT_EDITOR_ROUTE}?${parts.join('&')}`,
+      fail: () => { this.editorOpen = false },
+    })
+  },
+
   onNewChapter() {
-    this.setData({
-      chapterEditing: true,
-      chapterError: '',
-      chapterForm: { ...EMPTY_CHAPTER_FORM },
-    })
-  },
-
-  onEditChapter(event) {
-    const index = Number(event.currentTarget.dataset.index)
-    const chapter = (this.data.chapters || [])[index]
-    if (!chapter) return
-    this.setData({
-      chapterEditing: true,
-      chapterError: '',
-      chapterForm: {
-        id: chapter.id,
-        name: chapter.name || '',
-        isVisible: chapter.isVisible !== false,
-      },
-    })
-  },
-
-  onCancelChapter() {
-    const keepDirty = this.data.nodeEditing === true
-    this.setData({ chapterEditing: false, chapterError: '', chapterForm: { ...EMPTY_CHAPTER_FORM } })
-    if (!keepDirty) this.clearDraft()
-  },
-
-  async onSaveChapter() {
-    if (this.data.chapterSaving) return
-    const validationError = rules.validateChapterForm(this.data.chapterForm)
-    if (validationError) {
-      this.setData({ chapterError: validationError })
-      return
-    }
-    this.setData({ chapterSaving: true, chapterError: '' })
-    try {
-      await api.saveStoryChapter(rules.buildChapterPayload(this.data.chapterForm))
-      if (this.pageDisposed) return
-      const keepDirty = this.data.nodeEditing === true
-      this.setData({
-        chapterSaving: false,
-        chapterEditing: false,
-        chapterForm: { ...EMPTY_CHAPTER_FORM },
-      })
-      if (keepDirty) this.markDirty()
-      else this.clearDraft()
-      wx.showToast({ title: '章节已保存', icon: 'success' })
-      this.loadedTabs.story = true
-      await this.loadStory()
-    } catch (error) {
-      if (this.pageDisposed) return
-      this.setData({
-        chapterSaving: false,
-        chapterError: this.handleContentError(error, '章节保存失败，请稍后重试'),
-      })
-    }
-  },
-
-  async onDeleteChapter(event) {
-    const id = Number(event.currentTarget.dataset.id)
-    if (!id) return
-    const confirmed = await confirmModal('删除章节？', '章节下仍有故事时无法删除。', '删除')
-    if (!confirmed || this.pageDisposed) return
-    try {
-      await api.deleteStoryChapter(id)
-      if (this.pageDisposed) return
-      if (Number(this.data.chapterForm.id) === id) {
-        this.setData({ chapterEditing: false, chapterForm: { ...EMPTY_CHAPTER_FORM } })
-      }
-      if (this.data.nodeEditing && Number(this.data.nodeForm.chapterId) === id) {
-        this.setData({ nodeEditing: false, nodeForm: { ...EMPTY_NODE_FORM } })
-      }
-      wx.showToast({ title: '章节已删除', icon: 'success' })
-      await this.loadStory()
-    } catch (error) {
-      if (this.pageDisposed) return
-      this.setData({ storyError: this.handleContentError(error, '章节删除失败，请稍后重试') })
-    }
-  },
-
-  async onMoveChapter(event) {
-    if (this.data.storySorting) return
-    const index = Number(event.currentTarget.dataset.index)
-    const direction = String(event.currentTarget.dataset.direction || '')
-    const result = rules.moveListItem(this.data.chapters, index, direction)
-    if (!result.moved) return
-    this.setData({ storySorting: true, storyError: '' })
-    try {
-      await api.saveStoryChapterOrder(rules.buildOrderItems(result.list))
-      if (this.pageDisposed) return
-      this.setData({ storySorting: false })
-      await this.loadStory()
-    } catch (error) {
-      if (this.pageDisposed) return
-      this.setData({
-        storySorting: false,
-        storyError: this.handleContentError(error, '章节排序失败，请稍后重试'),
-      })
-    }
+    this.openEditor('chapter')
   },
 
   onNewNode() {
-    if (!this.data.chapters.length) {
-      this.setData({ storyError: '请先创建章节，再添加故事' })
+    if (!(this.data.chapters || []).length) {
+      wx.showToast({ title: '请先创建章节', icon: 'none', duration: 2200 })
       return
     }
-    const defaultChapterId = this.data.chapterFilterId || this.data.chapters[0].id
-    const chapterOptions = this.data.chapters.map(chapter => ({
-      id: chapter.id,
-      name: chapter.name || '未命名章节',
-    }))
-    const index = Math.max(0, chapterOptions.findIndex(chapter => chapter.id === defaultChapterId))
-    this.setData({
-      nodeEditing: true,
-      nodeError: '',
-      nodeChapterOptions: chapterOptions,
-      nodeChapterIndex: index,
-      nodeVisibilityIndex: 0,
-      nodeForm: {
-        ...EMPTY_NODE_FORM,
-        chapterId: defaultChapterId,
-        visibility: 0,
-      },
-    })
+    this.openEditor('story', { chapterId: this.data.chapterFilterId })
   },
 
-  onEditNode(event) {
-    const index = Number(event.currentTarget.dataset.index)
-    const node = (this.data.visibleNodes || [])[index]
-    if (!node) return
-    const chapterOptions = (this.data.chapters || []).map(chapter => ({
-      id: chapter.id,
-      name: chapter.name || '未命名章节',
-    }))
-    const chapterIndex = Math.max(0, chapterOptions.findIndex(chapter => chapter.id === node.chapterId))
-    const time = splitDateTime(node.happenedTime)
-    this.setData({
-      nodeEditing: true,
-      nodeError: '',
-      nodeChapterOptions: chapterOptions,
-      nodeChapterIndex: chapterIndex,
-      nodeVisibilityIndex: visibilityIndexOf(this.data.visibilityOptions, node.visibility),
-      nodeForm: {
-        id: node.id,
-        chapterId: node.chapterId,
-        title: node.title || '',
-        summary: node.summary || '',
-        content: node.content || '',
-        happenedDate: time.date,
-        happenedTime: time.time,
-        location: node.location || '',
-        coverImage: node.coverImage || '',
-        tagLabel: node.tagLabel || '',
-        isMilestone: node.isMilestone === true,
-        visibility: Number(node.visibility) || 0,
-        baselineHappenedTime: node.happenedTime || '',
-      },
-    })
+  onNewCategory() {
+    this.openEditor('category')
   },
 
-  onCancelNode() {
-    const keepDirty = this.data.chapterEditing === true
-    this.setData({ nodeEditing: false, nodeError: '', nodeForm: { ...EMPTY_NODE_FORM } })
-    if (!keepDirty) this.clearDraft()
-  },
-
-  onNodeChapterChange(event) {
-    const index = Number(event.detail.value) || 0
-    const chapter = this.data.nodeChapterOptions[index]
-    if (!chapter) return
-    this.setData({ nodeChapterIndex: index, 'nodeForm.chapterId': chapter.id })
-    this.markDirty()
-  },
-
-  onNodeVisibilityChange(event) {
-    const index = Number(event.detail.value) || 0
-    const option = this.data.visibilityOptions[index]
-    if (!option) return
-    const error = rules.validateVisibility(option.value, this.data.canPublish)
-    if (error) {
-      wx.showToast({ title: error, icon: 'none', duration: 2200 })
+  onNewPhoto() {
+    if (!(this.data.photoCategories || []).length) {
+      wx.showToast({ title: '请先创建一个相册分类', icon: 'none', duration: 2200 })
       return
     }
-    this.setData({ nodeVisibilityIndex: index, 'nodeForm.visibility': option.value })
-    this.markDirty()
+    this.openEditor('photo', { categoryId: this.data.photoFilterId })
   },
 
-  async onSaveNode() {
-    if (this.data.nodeSaving) return
-    const form = { ...this.data.nodeForm, canPublish: this.data.canPublish }
-    const validationError = rules.validateNodeForm(form)
-    if (validationError) {
-      this.setData({ nodeError: validationError })
+  onNewAnniversary() {
+    this.openEditor('anniversary')
+  },
+
+  onOpenItem(event) {
+    if (this.data.dragging || this.data.sortSaving || this.data.deleting) return
+    if (Date.now() < this.suppressTapUntil) return
+    if (this.data.swipeKey) {
+      this.setData({ swipeKey: '' })
       return
     }
-    const visibilityError = rules.validateVisibility(form.visibility, this.data.canPublish)
-    if (visibilityError) {
-      this.setData({ nodeError: visibilityError })
-      return
+    const dataset = event.currentTarget.dataset || {}
+    const kind = String(dataset.kind || '')
+    const id = Number(dataset.id)
+    if (!kind || !id) return
+    this.openEditor(kind, { id })
+  },
+
+  onRowTouchStart(event) {
+    if (this.data.dragging || this.data.sortSaving) return
+    const touch = firstTouch(event)
+    if (!touch) return
+    this.touchStartX = Number(touch.clientX) || 0
+    this.touchStartY = Number(touch.clientY) || 0
+    this.touchAxis = ''
+  },
+
+  onRowTouchMove(event) {
+    if (this.data.dragging || this.data.sortSaving) return
+    const touch = firstTouch(event)
+    if (!touch) return
+    const deltaX = (Number(touch.clientX) || 0) - this.touchStartX
+    const deltaY = (Number(touch.clientY) || 0) - this.touchStartY
+    if (!this.touchAxis) {
+      if (Math.max(Math.abs(deltaX), Math.abs(deltaY)) < 10) return
+      this.touchAxis = Math.abs(deltaX) > Math.abs(deltaY) ? 'x' : 'y'
     }
-    this.setData({ nodeSaving: true, nodeError: '' })
+    if (this.touchAxis !== 'x') return
+    this.suppressTapUntil = Date.now() + 300
+    const dataset = event.currentTarget.dataset || {}
+    const kind = String(dataset.kind || '')
+    const id = Number(dataset.id)
+    if (!kind || !id) return
+    const key = `${kind}:${id}`
+    if (deltaX < -48) {
+      if (this.data.swipeKey !== key) this.setData({ swipeKey: key })
+    } else if (deltaX > 24 && this.data.swipeKey === key) {
+      this.setData({ swipeKey: '' })
+    }
+  },
+
+  onRowTouchEnd() {
+    if (this.touchAxis === 'x') this.suppressTapUntil = Date.now() + 300
+    this.touchAxis = ''
+  },
+
+  onDragHandleTap() {},
+
+  getDragList(kind) {
+    const lists = {
+      chapter: this.data.chapters,
+      story: this.data.visibleNodes,
+      category: this.data.photoCategories,
+      photo: this.data.photos,
+      anniversary: this.data.anniversaries,
+    }
+    const list = lists[kind]
+    return Array.isArray(list) ? list.slice() : []
+  },
+
+  setDragList(kind, list, toIndex) {
+    const keys = {
+      chapter: 'chapters',
+      story: 'visibleNodes',
+      category: 'photoCategories',
+      photo: 'photos',
+      anniversary: 'anniversaries',
+    }
+    const key = keys[kind]
+    if (!key) return
+    this.setData({ [key]: list, dragToIndex: toIndex })
+  },
+
+  measureDragRects(kind) {
+    if (!kind) return
+    if (typeof wx === 'undefined' || typeof wx.createSelectorQuery !== 'function') return
     try {
-      const result = await api.saveStoryNode(rules.buildNodePayload(form))
+      const query = wx.createSelectorQuery().in(this)
+      if (!query || typeof query.selectAll !== 'function' || typeof query.exec !== 'function') return
+      const selector = query.selectAll(`.drag-item-${kind}`)
+      if (!selector || typeof selector.boundingClientRect !== 'function') return
+      selector.boundingClientRect((rects) => {
+        if (!this.data.dragging || !Array.isArray(rects)) return
+        this.dragRects = rects
+        if (rects[0] && Number(rects[0].height) > 0) {
+          this.dragRowHeight = Number(rects[0].height)
+        }
+      })
+      query.exec()
+    } catch (error) {
+      this.dragRects = []
+    }
+  },
+
+  resolveDragTarget(clientY) {
+    const from = Number(this.data.dragFromIndex)
+    const list = this.data.dragListSnapshot || []
+    if (!Number.isInteger(from) || !list.length) return from
+    const max = list.length - 1
+    const y = Number(clientY)
+    if (!Number.isFinite(y)) return Math.min(Math.max(0, from), max)
+    const rects = this.dragRects || []
+    if (rects.length === list.length) {
+      let target = 0
+      let nearest = Number.POSITIVE_INFINITY
+      rects.forEach((rect, index) => {
+        const center = (Number(rect.top) + Number(rect.bottom)) / 2
+        const distance = Math.abs(center - y)
+        if (distance < nearest) {
+          nearest = distance
+          target = index
+        }
+      })
+      return target
+    }
+    const rowHeight = Math.max(32, Number(this.dragRowHeight) || 88)
+    const delta = Math.round((y - this.dragStartY) / rowHeight)
+    return Math.min(max, Math.max(0, from + delta))
+  },
+
+  onDragStart(event) {
+    if (this.data.sortSaving || this.data.deleting) return
+    const dataset = event.currentTarget.dataset || {}
+    const kind = String(dataset.kind || '')
+    const index = Number(dataset.index)
+    const list = this.getDragList(kind)
+    const item = list[index]
+    if (!item || !item.id) return
+    const touch = firstTouch(event)
+    this.dragStartY = touch ? (Number(touch.clientY) || 0) : 0
+    this.dragRects = []
+    this.suppressTapUntil = Date.now() + 600
+    const patch = {
+      dragging: true,
+      dragKind: kind,
+      dragItemId: Number(item.id) || 0,
+      dragFromIndex: index,
+      dragToIndex: index,
+      dragListSnapshot: list,
+      swipeKey: '',
+    }
+    if (kind === 'chapter' || kind === 'story') patch.storyError = ''
+    else if (kind === 'category' || kind === 'photo') patch.photoError = ''
+    else if (kind === 'anniversary') patch.anniversaryError = ''
+    this.setData(patch)
+    this.measureDragRects(kind)
+  },
+
+  onDragMove(event) {
+    if (!this.data.dragging) return
+    const touch = firstTouch(event)
+    if (!touch) return
+    const target = this.resolveDragTarget(touch.clientY)
+    if (target === Number(this.data.dragToIndex)) return
+    const snapshot = this.data.dragListSnapshot || []
+    const next = reorderList(snapshot, this.data.dragFromIndex, target)
+    this.setDragList(this.data.dragKind, next, target)
+  },
+
+  async onDragEnd(event) {
+    if (!this.data.dragging) return
+    const kind = this.data.dragKind
+    const from = Number(this.data.dragFromIndex)
+    const snapshot = this.data.dragListSnapshot || []
+    const touch = firstTouch(event)
+    const to = touch ? this.resolveDragTarget(touch.clientY) : Number(this.data.dragToIndex)
+    const next = reorderList(snapshot, from, to)
+    const keys = {
+      chapter: 'chapters',
+      story: 'visibleNodes',
+      category: 'photoCategories',
+      photo: 'photos',
+      anniversary: 'anniversaries',
+    }
+    const listKey = keys[kind]
+    const patch = {
+      dragging: false,
+      dragKind: '',
+      dragItemId: 0,
+      dragFromIndex: -1,
+      dragToIndex: -1,
+      dragListSnapshot: null,
+    }
+    if (listKey) patch[listKey] = next
+    this.setData(patch)
+    this.dragRects = []
+    this.dragRowHeight = 88
+    this.suppressTapUntil = Date.now() + 350
+    if (!listKey || from === to || !snapshot.length) return
+    await this.commitSort(kind, snapshot, next)
+  },
+
+  async commitSort(kind, snapshot, nextList) {
+    if (this.data.sortSaving) return
+    const errorKeys = {
+      chapter: 'storyError',
+      story: 'storyError',
+      category: 'photoError',
+      photo: 'photoError',
+      anniversary: 'anniversaryError',
+    }
+    const errorKey = errorKeys[kind]
+    if (!errorKey) return
+    this.setData({ sortSaving: true, [errorKey]: '' })
+    try {
+      if (kind === 'chapter') {
+        await api.saveStoryChapterOrder(rules.buildOrderItems(nextList))
+      } else if (kind === 'story') {
+        const chapterId = Number(this.data.chapterFilterId) || 0
+        const items = rules.buildOrderItems(nextList)
+        if (chapterId) await api.saveStoryNodeOrder(chapterId, items)
+        else await api.saveStoryNodeGlobalOrder(items)
+      } else if (kind === 'category') {
+        await api.savePhotoCategoryOrder(rules.buildOrderItems(nextList))
+      } else if (kind === 'anniversary') {
+        await api.saveAnniversaryOrder(rules.buildOrderItems(nextList))
+      } else if (kind === 'photo') {
+        const categoryId = Number(this.data.photoFilterId) || 0
+        const sortList = await api.fetchPhotoSortList(categoryId)
+        const fullList = Array.isArray(sortList) ? sortList.slice() : []
+        const positions = snapshot.map((item) => {
+          return fullList.findIndex(record => Number(record.id) === Number(item.id))
+        })
+        if (positions.some(index => index < 0)) {
+          throw new Error('照片排序列表已变化，请重试')
+        }
+        const nextIds = nextList.map(item => item.id)
+        positions.forEach((position, index) => {
+          fullList[position] = { ...fullList[position], id: nextIds[index] }
+        })
+        const items = rules.buildOrderItems(fullList)
+        if (categoryId) await api.savePhotoOrder(categoryId, items)
+        else await api.savePhotoGlobalOrder(items)
+      }
       if (this.pageDisposed) return
-      const keepDirty = this.data.chapterEditing === true
-      this.setData({ nodeSaving: false, nodeEditing: false, nodeForm: { ...EMPTY_NODE_FORM } })
-      if (keepDirty) this.markDirty()
-      else this.clearDraft()
-      const feedback = rules.describeSaveReview(result, '故事已保存')
-      this.showFeedback(feedback.kind, feedback.message)
-      if (result && result.reviewStatus) this.loadReview()
-      await this.loadStory()
+      this.setData({ sortSaving: false })
     } catch (error) {
       if (this.pageDisposed) return
+      this.setDragList(kind, snapshot, -1)
       this.setData({
-        nodeSaving: false,
-        nodeError: this.handleContentError(error, '故事保存失败，请稍后重试'),
+        sortSaving: false,
+        [errorKey]: this.handleContentError(error, '排序保存失败，请稍后重试'),
       })
     }
   },
 
-  async onDeleteNode(event) {
-    const id = Number(event.currentTarget.dataset.id)
-    if (!id) return
-    const confirmed = await confirmModal('删除故事？', '删除后该故事不再展示，且无法恢复。', '删除')
-    if (!confirmed || this.pageDisposed) return
-    try {
-      await api.deleteStoryNode(id)
-      if (this.pageDisposed) return
-      if (Number(this.data.nodeForm.id) === id) {
-        this.setData({ nodeEditing: false, nodeForm: { ...EMPTY_NODE_FORM } })
-      }
-      wx.showToast({ title: '故事已删除', icon: 'success' })
-      await this.loadStory()
-    } catch (error) {
-      if (this.pageDisposed) return
-      this.setData({ storyError: this.handleContentError(error, '故事删除失败，请稍后重试') })
-      if (error && String(error.errorCode) === '20003') this.loadStory()
+  async onDeleteItem(event) {
+    if (this.data.deleting) return
+    const dataset = event.currentTarget.dataset || {}
+    const kind = String(dataset.kind || '')
+    const id = Number(dataset.id)
+    if (!kind || !id) return
+    const copies = {
+      chapter: {
+        title: '删除章节？', content: '章节下仍有故事时无法删除。删除后不可恢复。', toast: '章节已删除',
+      },
+      story: {
+        title: '删除故事？', content: '删除后该故事不再展示，且无法恢复。', toast: '故事已删除',
+      },
+      category: {
+        title: '删除分类？', content: '分类下仍有照片时无法删除。删除后不可恢复。', toast: '分类已删除',
+      },
+      photo: {
+        title: '删除照片？', content: '删除后照片不再展示，且无法恢复。', toast: '照片已删除',
+      },
+      anniversary: {
+        title: '删除纪念日？', content: '删除后不再展示，且无法恢复。', toast: '纪念日已删除',
+      },
     }
-  },
-
-  async onMoveNode(event) {
-    if (this.data.storySorting) return
-    const index = Number(event.currentTarget.dataset.index)
-    const direction = String(event.currentTarget.dataset.direction || '')
-    const source = this.data.chapterFilterId
-      ? this.data.visibleNodes
-      : this.data.nodes
-    const result = rules.moveListItem(source, index, direction)
-    if (!result.moved) return
-    const items = rules.buildOrderItems(result.list)
-    this.setData({ storySorting: true, storyError: '' })
+    const copy = copies[kind]
+    if (!copy) return
+    const confirmed = await confirmModal(copy.title, copy.content, '删除')
+    if (!confirmed || this.pageDisposed) return
+    const errorKeys = {
+      chapter: 'storyError',
+      story: 'storyError',
+      category: 'photoError',
+      photo: 'photoError',
+      anniversary: 'anniversaryError',
+    }
+    const errorKey = errorKeys[kind]
+    this.setData({ deleting: true, swipeKey: '', [errorKey]: '' })
     try {
-      if (this.data.chapterFilterId) {
-        await api.saveStoryNodeOrder(this.data.chapterFilterId, items)
-      } else {
-        await api.saveStoryNodeGlobalOrder(items)
-      }
+      if (kind === 'chapter') await api.deleteStoryChapter(id)
+      else if (kind === 'story') await api.deleteStoryNode(id)
+      else if (kind === 'category') await api.deletePhotoCategory(id)
+      else if (kind === 'photo') await api.deletePhoto(id)
+      else await api.deleteAnniversary(id)
       if (this.pageDisposed) return
-      this.setData({ storySorting: false })
-      await this.loadStory()
+      this.setData({ deleting: false })
+      wx.showToast({ title: copy.toast, icon: 'success' })
+      if (kind === 'chapter' || kind === 'story') await this.loadStory()
+      else if (kind === 'category' || kind === 'photo') await this.loadPhoto()
+      else await this.loadAnniversary()
     } catch (error) {
       if (this.pageDisposed) return
       this.setData({
-        storySorting: false,
-        storyError: this.handleContentError(error, '故事排序失败，请稍后重试'),
+        deleting: false,
+        [errorKey]: this.handleContentError(error, '删除失败，请稍后重试'),
       })
     }
   },
@@ -1150,10 +1183,6 @@ Page(withPageViewTracking({
       id: category.id,
       categoryName: category.categoryName || '未命名分类',
     })))
-    const formOptions = categories.map(category => ({
-      id: category.id,
-      categoryName: category.categoryName || '未命名分类',
-    }))
     const existingIndex = filterOptions.findIndex(
       option => Number(option.id) === Number(this.data.photoFilterId),
     )
@@ -1164,7 +1193,6 @@ Page(withPageViewTracking({
       photoFilterOptions: filterOptions,
       photoFilterIndex: filterIndex,
       photoFilterId: Number(filterOption.id) || 0,
-      photoCategoryOptions: formOptions,
     })
   },
 
@@ -1231,285 +1259,6 @@ Page(withPageViewTracking({
     })
   },
 
-  onNewCategory() {
-    this.setData({
-      categoryEditing: true,
-      categoryError: '',
-      categoryForm: { ...EMPTY_CATEGORY_FORM },
-    })
-  },
-
-  onEditCategory(event) {
-    const index = Number(event.currentTarget.dataset.index)
-    const category = (this.data.photoCategories || [])[index]
-    if (!category) return
-    this.setData({
-      categoryEditing: true,
-      categoryError: '',
-      categoryForm: {
-        id: category.id,
-        categoryName: category.categoryName || '',
-        remark: category.remark || '',
-        isEnabled: category.isEnabled !== false,
-      },
-    })
-  },
-
-  onCancelCategory() {
-    const keepDirty = this.data.photoEditing === true
-    this.setData({ categoryEditing: false, categoryError: '', categoryForm: { ...EMPTY_CATEGORY_FORM } })
-    if (!keepDirty) this.clearDraft()
-  },
-
-  async onSaveCategory() {
-    if (this.data.categorySaving) return
-    const validationError = rules.validateCategoryForm(this.data.categoryForm)
-    if (validationError) {
-      this.setData({ categoryError: validationError })
-      return
-    }
-    this.setData({ categorySaving: true, categoryError: '' })
-    try {
-      await api.savePhotoCategory(rules.buildCategoryPayload(this.data.categoryForm))
-      if (this.pageDisposed) return
-      const keepDirty = this.data.photoEditing === true
-      this.setData({
-        categorySaving: false,
-        categoryEditing: false,
-        categoryForm: { ...EMPTY_CATEGORY_FORM },
-      })
-      if (keepDirty) this.markDirty()
-      else this.clearDraft()
-      wx.showToast({ title: '分类已保存', icon: 'success' })
-      await this.loadPhoto()
-    } catch (error) {
-      if (this.pageDisposed) return
-      this.setData({
-        categorySaving: false,
-        categoryError: this.handleContentError(error, '分类保存失败，请稍后重试'),
-      })
-    }
-  },
-
-  async onDeleteCategory(event) {
-    const id = Number(event.currentTarget.dataset.id)
-    if (!id) return
-    const confirmed = await confirmModal('删除分类？', '分类下仍有照片时无法删除。', '删除')
-    if (!confirmed || this.pageDisposed) return
-    try {
-      await api.deletePhotoCategory(id)
-      if (this.pageDisposed) return
-      if (Number(this.data.categoryForm.id) === id) {
-        this.setData({ categoryEditing: false, categoryForm: { ...EMPTY_CATEGORY_FORM } })
-      }
-      if (this.data.photoEditing && Number(this.data.photoForm.photoCategoryId) === id) {
-        this.setData({ photoEditing: false, photoForm: { ...EMPTY_PHOTO_FORM } })
-      }
-      wx.showToast({ title: '分类已删除', icon: 'success' })
-      await this.loadPhoto()
-    } catch (error) {
-      if (this.pageDisposed) return
-      this.setData({ photoError: this.handleContentError(error, '分类删除失败，请稍后重试') })
-    }
-  },
-
-  async onMoveCategory(event) {
-    if (this.data.photoSorting) return
-    const index = Number(event.currentTarget.dataset.index)
-    const direction = String(event.currentTarget.dataset.direction || '')
-    const result = rules.moveListItem(this.data.photoCategories, index, direction)
-    if (!result.moved) return
-    this.setData({ photoSorting: true, photoError: '' })
-    try {
-      await api.savePhotoCategoryOrder(rules.buildOrderItems(result.list))
-      if (this.pageDisposed) return
-      this.setData({ photoSorting: false })
-      await this.loadPhoto()
-    } catch (error) {
-      if (this.pageDisposed) return
-      this.setData({
-        photoSorting: false,
-        photoError: this.handleContentError(error, '分类排序失败，请稍后重试'),
-      })
-    }
-  },
-
-  onNewPhoto() {
-    if (!this.data.photoCategoryOptions.length) {
-      this.setData({ photoError: '请先创建一个相册分类' })
-      return
-    }
-    const defaultCategory = this.data.photoCategoryOptions.find(
-      category => category.id === this.data.photoFilterId,
-    ) || this.data.photoCategoryOptions[0]
-    const index = Math.max(
-      0,
-      this.data.photoCategoryOptions.findIndex(category => category.id === defaultCategory.id),
-    )
-    this.setData({
-      photoEditing: true,
-      photoFormError: '',
-      photoCategoryIndex: index,
-      photoVisibilityIndex: 0,
-      photoForm: {
-        ...EMPTY_PHOTO_FORM,
-        photoCategoryId: defaultCategory.id,
-        visibility: 0,
-      },
-    })
-  },
-
-  onEditPhoto(event) {
-    const index = Number(event.currentTarget.dataset.index)
-    const photo = (this.data.photos || [])[index]
-    if (!photo) return
-    const categoryIndex = Math.max(
-      0,
-      this.data.photoCategoryOptions.findIndex(category => category.id === photo.photoCategoryId),
-    )
-    const time = splitDateTime(photo.takenTime)
-    this.setData({
-      photoEditing: true,
-      photoFormError: '',
-      photoCategoryIndex: categoryIndex,
-      photoVisibilityIndex: visibilityIndexOf(this.data.visibilityOptions, photo.visibility),
-      photoForm: {
-        id: photo.id,
-        photoCategoryId: photo.photoCategoryId,
-        title: photo.title || '',
-        description: photo.description || '',
-        url: photo.url || '',
-        takenDate: time.date,
-        takenTime: time.time,
-        location: photo.location || '',
-        isCover: photo.isCover === true,
-        visibility: Number(photo.visibility) || 0,
-        baselineTakenTime: photo.takenTime || '',
-      },
-    })
-  },
-
-  onCancelPhoto() {
-    const keepDirty = this.data.categoryEditing === true
-    this.setData({ photoEditing: false, photoFormError: '', photoForm: { ...EMPTY_PHOTO_FORM } })
-    if (!keepDirty) this.clearDraft()
-  },
-
-  onPhotoCategoryChange(event) {
-    const index = Number(event.detail.value) || 0
-    const category = this.data.photoCategoryOptions[index]
-    if (!category) return
-    this.setData({ photoCategoryIndex: index, 'photoForm.photoCategoryId': category.id })
-    this.markDirty()
-  },
-
-  onPhotoVisibilityChange(event) {
-    const index = Number(event.detail.value) || 0
-    const option = this.data.visibilityOptions[index]
-    if (!option) return
-    const error = rules.validateVisibility(option.value, this.data.canPublish)
-    if (error) {
-      wx.showToast({ title: error, icon: 'none', duration: 2200 })
-      return
-    }
-    this.setData({ photoVisibilityIndex: index, 'photoForm.visibility': option.value })
-    this.markDirty()
-  },
-
-  async onSavePhoto() {
-    if (this.data.photoSaving) return
-    const form = { ...this.data.photoForm, canPublish: this.data.canPublish }
-    const validationError = rules.validatePhotoForm(form)
-    if (validationError) {
-      this.setData({ photoFormError: validationError })
-      return
-    }
-    const visibilityError = rules.validateVisibility(form.visibility, this.data.canPublish)
-    if (visibilityError) {
-      this.setData({ photoFormError: visibilityError })
-      return
-    }
-    this.setData({ photoSaving: true, photoFormError: '' })
-    try {
-      const result = await api.savePhoto(rules.buildPhotoPayload(form))
-      if (this.pageDisposed) return
-      const keepDirty = this.data.categoryEditing === true
-      this.setData({ photoSaving: false, photoEditing: false, photoForm: { ...EMPTY_PHOTO_FORM } })
-      if (keepDirty) this.markDirty()
-      else this.clearDraft()
-      const feedback = rules.describeSaveReview(result, '照片已保存')
-      this.showFeedback(feedback.kind, feedback.message)
-      if (result && result.reviewStatus) this.loadReview()
-      await this.loadPhoto()
-    } catch (error) {
-      if (this.pageDisposed) return
-      this.setData({
-        photoSaving: false,
-        photoFormError: this.handleContentError(error, '照片保存失败，请稍后重试'),
-      })
-    }
-  },
-
-  async onDeletePhoto(event) {
-    const id = Number(event.currentTarget.dataset.id)
-    if (!id) return
-    const confirmed = await confirmModal('删除照片？', '删除后照片不再展示，且无法恢复。', '删除')
-    if (!confirmed || this.pageDisposed) return
-    try {
-      await api.deletePhoto(id)
-      if (this.pageDisposed) return
-      if (Number(this.data.photoForm.id) === id) {
-        this.setData({ photoEditing: false, photoForm: { ...EMPTY_PHOTO_FORM } })
-      }
-      wx.showToast({ title: '照片已删除', icon: 'success' })
-      await this.loadPhoto()
-    } catch (error) {
-      if (this.pageDisposed) return
-      this.setData({ photoError: this.handleContentError(error, '照片删除失败，请稍后重试') })
-    }
-  },
-
-  /**
-   * 照片排序必须先取回完整列表（不能只对当前分页排序），
-   * 再按分类内 / 全局接口提交。
-   */
-  async onMovePhoto(event) {
-    if (this.data.photoSorting) return
-    const index = Number(event.currentTarget.dataset.index)
-    const direction = String(event.currentTarget.dataset.direction || '')
-    const categoryId = Number(this.data.photoFilterId) || 0
-    const current = (this.data.photos || [])[index]
-    if (!current) return
-    this.setData({ photoSorting: true, photoError: '' })
-    try {
-      const sortList = await api.fetchPhotoSortList(categoryId)
-      if (this.pageDisposed) return
-      const source = Array.isArray(sortList) ? sortList : []
-      const sortIndex = source.findIndex(item => item.id === current.id)
-      if (sortIndex < 0) {
-        this.setData({ photoSorting: false })
-        return
-      }
-      const result = rules.moveListItem(source, sortIndex, direction)
-      if (!result.moved) {
-        this.setData({ photoSorting: false })
-        return
-      }
-      const items = rules.buildOrderItems(result.list)
-      if (categoryId) await api.savePhotoOrder(categoryId, items)
-      else await api.savePhotoGlobalOrder(items)
-      if (this.pageDisposed) return
-      this.setData({ photoSorting: false })
-      await this.loadPhotoPage(this.data.photoCurrent)
-    } catch (error) {
-      if (this.pageDisposed) return
-      this.setData({
-        photoSorting: false,
-        photoError: this.handleContentError(error, '照片排序失败，请稍后重试'),
-      })
-    }
-  },
-
   /* ===================== 纪念日 ===================== */
 
   async loadAnniversary() {
@@ -1539,155 +1288,6 @@ Page(withPageViewTracking({
 
   onRetryAnniversary() {
     this.loadAnniversary()
-  },
-
-  onNewAnniversary() {
-    this.setData({
-      anniversaryEditing: true,
-      anniversaryFormError: '',
-      anniversaryCategoryIndex: 0,
-      anniversaryVisibilityIndex: 0,
-      anniversaryForm: { ...EMPTY_ANNIVERSARY_FORM },
-    })
-  },
-
-  onEditAnniversary(event) {
-    const index = Number(event.currentTarget.dataset.index)
-    const item = (this.data.anniversaries || [])[index]
-    if (!item) return
-    this.setData({
-      anniversaryEditing: true,
-      anniversaryFormError: '',
-      anniversaryCategoryIndex: Math.max(
-        0,
-        this.data.anniversaryCategoryOptions.findIndex(option => option.value === item.category),
-      ),
-      anniversaryVisibilityIndex: visibilityIndexOf(this.data.visibilityOptions, item.visibility),
-      anniversaryForm: {
-        id: item.id,
-        title: item.title || '',
-        description: item.description || '',
-        anniversaryDate: item.anniversaryDate || '',
-        repeatType: Number(item.repeatType) === 0 ? 0 : 1,
-        category: item.category || 'other',
-        location: item.location || '',
-        visibility: Number(item.visibility) || 0,
-      },
-    })
-  },
-
-  onCancelAnniversary() {
-    this.setData({
-      anniversaryEditing: false,
-      anniversaryFormError: '',
-      anniversaryForm: { ...EMPTY_ANNIVERSARY_FORM },
-    })
-    this.clearDraft()
-  },
-
-  onAnniversaryCategoryChange(event) {
-    const index = Number(event.detail.value) || 0
-    const option = this.data.anniversaryCategoryOptions[index]
-    if (!option) return
-    this.setData({ anniversaryCategoryIndex: index, 'anniversaryForm.category': option.value })
-    this.markDirty()
-  },
-
-  onAnniversaryVisibilityChange(event) {
-    const index = Number(event.detail.value) || 0
-    const option = this.data.visibilityOptions[index]
-    if (!option) return
-    const error = rules.validateVisibility(option.value, this.data.canPublish)
-    if (error) {
-      wx.showToast({ title: error, icon: 'none', duration: 2200 })
-      return
-    }
-    this.setData({ anniversaryVisibilityIndex: index, 'anniversaryForm.visibility': option.value })
-    this.markDirty()
-  },
-
-  onAnniversaryRepeatChange(event) {
-    const value = Number(event.detail.value) === 0 ? 0 : 1
-    this.setData({ 'anniversaryForm.repeatType': value })
-    this.markDirty()
-  },
-
-  async onSaveAnniversary() {
-    if (this.data.anniversarySaving) return
-    const form = { ...this.data.anniversaryForm, canPublish: this.data.canPublish }
-    const validationError = rules.validateAnniversaryForm(form)
-    if (validationError) {
-      this.setData({ anniversaryFormError: validationError })
-      return
-    }
-    const visibilityError = rules.validateVisibility(form.visibility, this.data.canPublish)
-    if (visibilityError) {
-      this.setData({ anniversaryFormError: visibilityError })
-      return
-    }
-    this.setData({ anniversarySaving: true, anniversaryFormError: '' })
-    try {
-      const result = await api.saveAnniversary(rules.buildAnniversaryPayload(form))
-      if (this.pageDisposed) return
-      this.setData({
-        anniversarySaving: false,
-        anniversaryEditing: false,
-        anniversaryForm: { ...EMPTY_ANNIVERSARY_FORM },
-      })
-      this.clearDraft()
-      const feedback = rules.describeSaveReview(result, '纪念日已保存')
-      this.showFeedback(feedback.kind, feedback.message)
-      if (result && result.reviewStatus) this.loadReview()
-      await this.loadAnniversary()
-    } catch (error) {
-      if (this.pageDisposed) return
-      this.setData({
-        anniversarySaving: false,
-        anniversaryFormError: this.handleContentError(error, '纪念日保存失败，请稍后重试'),
-      })
-    }
-  },
-
-  async onDeleteAnniversary(event) {
-    const id = Number(event.currentTarget.dataset.id)
-    if (!id) return
-    const confirmed = await confirmModal('删除纪念日？', '删除后不再展示，且无法恢复。', '删除')
-    if (!confirmed || this.pageDisposed) return
-    try {
-      await api.deleteAnniversary(id)
-      if (this.pageDisposed) return
-      if (Number(this.data.anniversaryForm.id) === id) {
-        this.setData({ anniversaryEditing: false, anniversaryForm: { ...EMPTY_ANNIVERSARY_FORM } })
-      }
-      wx.showToast({ title: '纪念日已删除', icon: 'success' })
-      await this.loadAnniversary()
-    } catch (error) {
-      if (this.pageDisposed) return
-      this.setData({
-        anniversaryError: this.handleContentError(error, '纪念日删除失败，请稍后重试'),
-      })
-    }
-  },
-
-  async onMoveAnniversary(event) {
-    if (this.data.anniversarySorting) return
-    const index = Number(event.currentTarget.dataset.index)
-    const direction = String(event.currentTarget.dataset.direction || '')
-    const result = rules.moveListItem(this.data.anniversaries, index, direction)
-    if (!result.moved) return
-    this.setData({ anniversarySorting: true, anniversaryError: '' })
-    try {
-      await api.saveAnniversaryOrder(rules.buildOrderItems(result.list))
-      if (this.pageDisposed) return
-      this.setData({ anniversarySorting: false })
-      await this.loadAnniversary()
-    } catch (error) {
-      if (this.pageDisposed) return
-      this.setData({
-        anniversarySorting: false,
-        anniversaryError: this.handleContentError(error, '纪念日排序失败，请稍后重试'),
-      })
-    }
   },
 
   /* ===================== 留言 ===================== */
