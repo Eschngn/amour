@@ -153,7 +153,7 @@ const bottomNav = `<div class="bottom-nav"><div class="nav-bar">
     <div class="nav-item"><span class="nav-icon story-icon">✦</span><span class="nav-label">故事</span></div>
     <div class="nav-item"><span class="nav-icon photo-icon">▣</span><span class="nav-label">相册</span></div>
   </div>
-  <div class="nav-item home-item"><div class="home-logo"></div><span class="nav-label home-label">我的空间</span></div>
+  <div class="nav-item home-item"><div class="home-logo"></div><span class="nav-label home-label">首页</span></div>
   <div class="nav-side nav-side-right">
     <div class="nav-item"><span class="nav-icon message-icon">♡</span><span class="nav-label">留言</span></div>
     <div class="nav-item"><span class="icon profile-icon"><span class="profile-head"></span><span class="profile-body"></span></span><span class="nav-label">我的</span></div>

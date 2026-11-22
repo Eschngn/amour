@@ -83,7 +83,7 @@ const TAB_DEFINITIONS = Object.freeze([
   { id: TAB_ID.PLAZA, label: '广场', route: '/pages/plaza/index', requiresSpace: false, requiresAuth: false },
   { id: TAB_ID.STORY, label: '故事', route: '/pages/story/story', requiresSpace: true, requiresAuth: true, module: 'story' },
   { id: TAB_ID.PHOTO, label: '相册', route: '/pages/photo/photo', requiresSpace: true, requiresAuth: true, module: 'photo' },
-  { id: TAB_ID.HOME, label: '我的空间', route: '/pages/index/index', requiresSpace: true, requiresAuth: true },
+  { id: TAB_ID.HOME, label: '首页', route: '/pages/index/index', requiresSpace: true, requiresAuth: true },
   { id: TAB_ID.MESSAGE, label: '留言', route: '/pages/message/message', requiresSpace: true, requiresAuth: true, module: 'message' },
   { id: TAB_ID.PROFILE, label: '我的', route: '/pages/profile/profile', requiresSpace: false, requiresAuth: false },
 ])

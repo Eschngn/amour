@@ -5,6 +5,7 @@ import {
   SPACE_STATUS,
   SPACE_VIEW_MODE,
   canArchiveSpace,
+  canAccessSpaceModules,
   canCancelUnbind,
   canEditSpaceBasicInfo,
   canEditSpaceContent,
@@ -85,6 +86,31 @@ test('只读原因：按「已加入 / 需先恢复 / 非成员」给出可执�
     spaceBasicInfoReadOnlyReason(space({ status: SPACE_STATUS.WAITING, memberCount: 1, currentUserRole: null })),
     /不是这个空间的有效成员/,
   )
+})
+
+// ============================== canAccessSpaceModules ==============================
+
+test('等待绑定与正常状态的有效成员可以预览空间首页与可访问模块', () => {
+  assert.equal(canAccessSpaceModules(space({ status: SPACE_STATUS.WAITING, memberCount: 1, currentUserRole: 1 })), true)
+  assert.equal(canAccessSpaceModules(space({ status: '0', memberCount: '1', currentUserRole: '1' })), true)
+  assert.equal(canAccessSpaceModules(space()), true)
+  assert.equal(canAccessSpaceModules(space({ currentUserRole: 2 })), true)
+})
+
+test('冻结、归档、删除等待期、已解绑、已销毁与非成员不能预览空间模块', () => {
+  for (const status of [
+    SPACE_STATUS.FROZEN,
+    SPACE_STATUS.ARCHIVED,
+    SPACE_STATUS.DELETING,
+    SPACE_STATUS.DELETED,
+    SPACE_STATUS.DESTROYED,
+  ]) {
+    assert.equal(canAccessSpaceModules(space({ status })), false, `status=${status}`)
+  }
+  assert.equal(canAccessSpaceModules(null), false)
+  assert.equal(canAccessSpaceModules({}), false)
+  assert.equal(canAccessSpaceModules(space({ status: SPACE_STATUS.WAITING, currentUserRole: null })), false)
+  assert.equal(canAccessSpaceModules(space({ status: SPACE_STATUS.WAITING, memberCount: 0 })), false)
 })
 
 // ============================== canEditSpaceContent ==============================

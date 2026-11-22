@@ -101,7 +101,6 @@ Component(withComponentPageViewTracking({
           userName: message.userName || '匿名',
           initials: initials(message.userName),
           displayTime: formatTime(message.createTime),
-          shortDate: message.createTime ? message.createTime.slice(5, 10).replace('-', '.') : '',
           replies: (message.replies || []).map((reply) => ({
             ...reply,
             initials: initials(reply.fromUserName),

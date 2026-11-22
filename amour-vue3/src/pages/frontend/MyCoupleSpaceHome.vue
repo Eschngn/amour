@@ -1,6 +1,6 @@
 <template>
   <CouplePageScaffold>
-    <main v-if="isSpaceReady" class="home-page overflow-x-clip">
+    <main v-if="canPreviewSpace" class="home-page overflow-x-clip">
       <section
         class="relative z-10 mx-auto grid min-h-[calc(100vh-72px)] max-w-6xl items-center gap-12 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[1.04fr_0.96fr] lg:gap-16 lg:px-8 lg:py-24"
         aria-labelledby="hero-heading"
@@ -29,7 +29,7 @@
 
           <div class="mt-8 flex flex-wrap justify-center gap-3 lg:justify-start">
             <RouterLink
-              v-if="hasFrontendQueryPermission('story')"
+              v-if="canOpenStory"
               to="/story"
               @click="guardNavigation($event, 'story')"
               class="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-300/40 transition duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-rose-300/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
@@ -113,7 +113,17 @@
                 :label="`${homeConfig.boyName}的头像`"
                 class="h-11 w-11 border-2 border-white text-xs"
               />
+              <button
+                v-if="isSpaceWaiting"
+                type="button"
+                class="flex h-11 w-11 items-center justify-center rounded-full border-2 border-dashed border-[#d8a1aa] bg-[#fff9f8] text-xl font-semibold leading-none text-rose-500 shadow-sm transition hover:bg-rose-50 hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
+                aria-label="邀请另一半加入"
+                @click="goToInvitePartner"
+              >
+                +
+              </button>
               <CoupleAvatar
+                v-else
                 :src="partnerMember?.avatar || ''"
                 :name="homeConfig.girlName"
                 fallback="SHE"
@@ -182,12 +192,15 @@
               <h2 id="story-heading" class="mt-2 font-display text-3xl font-bold text-rose-950 sm:text-4xl">一起走过的日子</h2>
               <p class="mt-3 max-w-xl text-sm leading-7 text-rose-800/55 sm:text-base">时间不会停下，但我们可以把那些闪闪发光的瞬间留住。</p>
             </div>
-            <RouterLink v-if="hasFrontendQueryPermission('story')" to="/story" class="group inline-flex items-center gap-2 text-sm font-semibold text-rose-500 transition hover:text-rose-700" @click="guardNavigation($event, 'story')">
+            <RouterLink v-if="canOpenStory" to="/story" class="group inline-flex items-center gap-2 text-sm font-semibold text-rose-500 transition hover:text-rose-700" @click="guardNavigation($event, 'story')">
               查看全部故事
               <svg class="h-4 w-4 transition group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14m-5-5 5 5-5 5" />
               </svg>
             </RouterLink>
+            <span v-else class="inline-flex items-center gap-2 rounded-full border border-rose-200/80 bg-rose-50/70 px-3 py-1.5 text-xs font-semibold text-rose-500">
+              另一半加入后开放
+            </span>
           </div>
 
           <div v-if="storyLoading" class="mt-12 grid gap-5 md:grid-cols-2">
@@ -240,7 +253,7 @@
                   <h3 class="mt-3 font-display text-xl font-bold text-rose-950 sm:text-2xl">{{ item.title }}</h3>
                   <p class="mt-3 line-clamp-3 text-sm leading-7 text-rose-800/55">{{ item.summary || '这一天的故事，被我们认真地收藏了起来。' }}</p>
                   <span class="mt-auto inline-flex items-center gap-2 pt-6 text-xs font-bold text-rose-500">
-                    阅读这一章
+                    {{ canOpenStory ? '阅读这一章' : '另一半加入后开放' }}
                     <span class="transition group-hover:translate-x-1" aria-hidden="true">→</span>
                   </span>
                 </div>
@@ -407,12 +420,14 @@ import api from '@/axios'
 import { hasFrontendQueryPermission } from '@/utils/auth'
 import { useFrontendSpace } from '@/composables/useFrontendSpace'
 import { formatSpaceDateTime, formatSpaceContentDateTime } from '@/utils/spaceFormat'
-import { SPACE_STATUS, hasLiveSpace, isUnbindPendingForPartner } from '@/utils/spaceState'
+import { SPACE_STATUS, canAccessSpaceModules, hasLiveSpace, isUnbindPendingForPartner } from '@/utils/spaceState'
 import { dismissUnbindPrompt, isUnbindPromptDismissed } from '@/utils/spaceUnbindPrompt'
 import { HOME_STORY_LIMIT, loadSpaceHomeStories } from '@/utils/spaceHomeStories'
 
 const router = useRouter()
-const { spaceStatus, isSpaceReady, refreshSpaceStatus } = useFrontendSpace()
+const { spaceStatus, isSpaceReady, isSpaceWaiting, refreshSpaceStatus } = useFrontendSpace()
+const canPreviewSpace = computed(() => canAccessSpaceModules(spaceStatus.value))
+const canOpenStory = computed(() => isSpaceReady.value && hasFrontendQueryPermission('story'))
 
 const spaceMembers = computed(() => (
   Array.isArray(spaceStatus.value?.members) ? spaceStatus.value.members : []
@@ -424,6 +439,10 @@ const partnerMember = computed(() => (
   spaceMembers.value.find(member => Number(member.memberRole) === 2) || spaceMembers.value[1] || null
 ))
 const spaceName = computed(() => spaceStatus.value?.spaceName || '我们的故事')
+
+function goToInvitePartner() {
+  router.push({ name: 'space-setup', hash: '#space-invite-partner' })
+}
 
 const unbindRequester = computed(() => (
   spaceStatus.value?.unbindRequester && typeof spaceStatus.value.unbindRequester === 'object'
@@ -561,6 +580,11 @@ const DEFAULT_LOVE_START_TIME = '2024-05-20 18:30:00'
 const MODULE_LABELS = { story: '故事', photo: '相册', anniversary: '纪念日', message: '留言' }
 
 function guardNavigation(event, module) {
+  if (module === 'story' && !isSpaceReady.value) {
+    event.preventDefault()
+    ElMessage.info('另一半加入后即可一起查看故事')
+    return
+  }
   if (hasFrontendQueryPermission(module)) return
   event.preventDefault()
   ElMessage.warning(`暂无${MODULE_LABELS[module] || '该模块'}查询权限`)
@@ -629,7 +653,7 @@ const elapsedUnits = computed(() => [
 ])
 
 const exploreCards = computed(() => [
-  { module: 'story', to: '/story', icon: '✦', title: '我们的故事', description: '沿着时间线，重温一路走来的重要章节。', stat: homeStories.value.length ? `已收藏 ${homeStories.value.length} 个瞬间` : '等待新的章节', iconBg: 'bg-rose-100 text-rose-500', glow: 'bg-rose-100/80' },
+  { module: 'story', to: '/story', icon: '✦', title: '我们的故事', description: '沿着时间线，重温一路走来的重要章节。', stat: canOpenStory.value ? (homeStories.value.length ? `已收藏 ${homeStories.value.length} 个瞬间` : '等待新的章节') : '另一半加入后开放', iconBg: 'bg-rose-100 text-rose-500', glow: 'bg-rose-100/80' },
   { module: 'photo', to: '/photo', icon: '◫', title: '恋爱相册', description: '把旅行、日常和彼此的笑容装进同一本相册。', stat: '定格每一次心动', iconBg: 'bg-pink-100 text-pink-500', glow: 'bg-pink-100/80' },
   { module: 'anniversary', to: '/anniversary', icon: '⌁', title: '纪念日', description: '记住那些值得期待，也值得庆祝的特殊日期。', stat: `相伴第 ${togetherTotalDays.value} 天`, iconBg: 'bg-orange-100 text-orange-500', glow: 'bg-orange-100/70' },
   { module: 'message', to: '/message', icon: '♡', title: '悄悄话', description: '写下此刻想说的话，让温柔一直有迹可循。', stat: '给 Ta 留一句话', iconBg: 'bg-fuchsia-100 text-fuchsia-500', glow: 'bg-fuchsia-100/70' },
@@ -702,8 +726,8 @@ async function loadHomeStories() {
 }
 
 onMounted(async () => {
-  // 只有确认当前空间 status=1 后才允许请求私密故事数据。
-  if (!isSpaceReady.value) {
+  // 等待另一半或正常绑定时都可以预览首页；冻结、归档等状态仍走不可用面板。
+  if (!canPreviewSpace.value) {
     storyLoading.value = false
     return
   }

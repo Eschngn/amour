@@ -37,7 +37,7 @@
           恋爱广场
         </RouterLink>
         <RouterLink
-          v-if="isSpaceReady"
+          v-if="canOpenSpaceModules"
           to="/"
           class="nav-link"
           :class="{ 'nav-link-active': isHomeSection }"
@@ -55,7 +55,7 @@
           我们的故事
         </RouterLink>
         <RouterLink
-          v-if="isSpaceReady && hasFrontendQueryPermission('message')"
+          v-if="canOpenSpaceModules && hasFrontendQueryPermission('message')"
           to="/message"
           class="nav-link"
           :class="{ 'nav-link-active': isSection('/message') }"
@@ -64,7 +64,7 @@
           留言板
         </RouterLink>
         <RouterLink
-          v-if="isSpaceReady && hasFrontendQueryPermission('photo')"
+          v-if="canOpenSpaceModules && hasFrontendQueryPermission('photo')"
           to="/photo"
           class="nav-link"
           :class="{ 'nav-link-active': isSection('/photo') }"
@@ -73,7 +73,7 @@
           相册
         </RouterLink>
         <RouterLink
-          v-if="isSpaceReady && hasFrontendQueryPermission('anniversary')"
+          v-if="canOpenSpaceModules && hasFrontendQueryPermission('anniversary')"
           to="/anniversary"
           class="nav-link"
           :class="{ 'nav-link-active': isSection('/anniversary') }"
@@ -164,7 +164,7 @@
         恋爱广场
       </RouterLink>
       <RouterLink
-        v-if="isSpaceReady"
+        v-if="canOpenSpaceModules"
         to="/"
         class="mobile-nav-link"
         :class="{ 'mobile-nav-link-active': isHomeSection }"
@@ -182,7 +182,7 @@
         我们的故事
       </RouterLink>
       <RouterLink
-        v-if="isSpaceReady && hasFrontendQueryPermission('photo')"
+        v-if="canOpenSpaceModules && hasFrontendQueryPermission('photo')"
         to="/photo"
         class="mobile-nav-link"
         :class="{ 'mobile-nav-link-active': isSection('/photo') }"
@@ -191,7 +191,7 @@
         相册
       </RouterLink>
       <RouterLink
-        v-if="isSpaceReady && hasFrontendQueryPermission('anniversary')"
+        v-if="canOpenSpaceModules && hasFrontendQueryPermission('anniversary')"
         to="/anniversary"
         class="mobile-nav-link"
         :class="{ 'mobile-nav-link-active': isSection('/anniversary') }"
@@ -200,7 +200,7 @@
         纪念日
       </RouterLink>
       <RouterLink
-        v-if="isSpaceReady && hasFrontendQueryPermission('message')"
+        v-if="canOpenSpaceModules && hasFrontendQueryPermission('message')"
         to="/message"
         class="mobile-nav-link"
         :class="{ 'mobile-nav-link-active': isSection('/message') }"
@@ -242,7 +242,7 @@
           @keydown.esc="dropdownOpen = false"
         >
           <RouterLink
-            v-if="isSpaceReady"
+            v-if="canOpenSpaceModules"
             to="/"
             role="menuitem"
             class="dropdown-link"
@@ -304,7 +304,7 @@ import {
   hasFrontendQueryPermission,
 } from '@/utils/auth'
 import { useFrontendSpace } from '@/composables/useFrontendSpace'
-import { canEditSpaceContent, hasLiveSpace } from '@/utils/spaceState'
+import { canAccessSpaceModules, canEditSpaceContent, hasLiveSpace } from '@/utils/spaceState'
 import { resolveSiteNavState } from '@/utils/siteNav'
 
 const router = useRouter()
@@ -335,6 +335,10 @@ const navState = computed(() => resolveSiteNavState(route.path, viewMode.value))
 const isPlazaSection = computed(() => navState.value.plazaActive)
 // 首页同时承载“我的情侣空间”和广场兜底：只有根路径且不是广场视图时才高亮这一项。
 const isHomeSection = computed(() => navState.value.homeActive)
+// 首页、相册、留言板、纪念日在等待另一半加入时也可以预览；故事仍要求空间已绑定。
+const canOpenSpaceModules = computed(() => (
+  frontendLoggedIn.value && canAccessSpaceModules(spaceStatus.value)
+))
 
 /**
  * 空间状态与空间设置已合并到 /space/setup：

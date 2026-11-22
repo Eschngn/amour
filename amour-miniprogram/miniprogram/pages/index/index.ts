@@ -105,6 +105,7 @@ Component(withComponentPageViewTracking({
     hasLoveStart: false,
     togetherDays: 0,
     elapsedUnits: [
+      { label: '天', value: '0' },
       { label: '小时', value: '00' },
       { label: '分钟', value: '00' },
       { label: '秒', value: '00' },
@@ -253,6 +254,7 @@ Component(withComponentPageViewTracking({
       this.setData({
         togetherDays: days,
         elapsedUnits: [
+          { label: '天', value: String(days) },
           { label: '小时', value: pad(hours) },
           { label: '分钟', value: pad(minutes) },
           { label: '秒', value: pad(seconds) },
@@ -431,7 +433,12 @@ Component(withComponentPageViewTracking({
     },
 
     onPhotoError(event: WechatMiniprogram.BaseEvent) {
-      const index = Number(event.currentTarget.dataset.index)
+      const source = String(event.currentTarget.dataset.source || '')
+      const fallbackIndex = source === 'secondary' ? 1 : 0
+      const parsedIndex = Number(event.currentTarget.dataset.index)
+      const index = Number.isInteger(parsedIndex) && parsedIndex >= 0
+        ? parsedIndex
+        : fallbackIndex
       const photos = (this.data.homePhotos || []).map((item, current) => (
         current === index ? { ...item, failed: true } : item
       ))

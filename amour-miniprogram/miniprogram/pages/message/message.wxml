@@ -31,7 +31,6 @@
           <view class="message-footer">
             <text>♡ {{item.replyCount}} 条回复</text>
             <view class="message-footer-actions">
-              <text class="message-footer-date">{{item.shortDate}}</text>
               <button class="reply-action" data-message-id="{{item.messageId}}" data-target-name="{{item.userName}}" bindtap="toggleReply">回复</button>
             </view>
           </view>

@@ -269,8 +269,12 @@ import PublicSpaceCard from '@/components/frontend/PublicSpaceCard.vue'
 import { fetchPublicSpaces } from '@/api/gallery'
 import { frontendLoggedIn } from '@/utils/auth'
 import { useFrontendSpace } from '@/composables/useFrontendSpace'
-import { SPACE_STATUS } from '@/utils/spaceState'
-import { isUnavailableSpace, readSpaceErrorMessage } from '@/utils/spaceState'
+import {
+  SPACE_STATUS,
+  canAccessSpaceModules,
+  isUnavailableSpace,
+  readSpaceErrorMessage,
+} from '@/utils/spaceState'
 import { formatCount } from '@/utils/spaceFormat'
 import {
   PLAZA_LIST_PATH,
@@ -283,7 +287,6 @@ import { useListViewSnapshot } from '@/composables/useListViewSnapshot'
 
 const route = useRoute()
 const {
-  isSpaceReady,
   hasCoupleSpace,
   spaceStatus,
   spaceLoading,
@@ -292,10 +295,12 @@ const {
 } = useFrontendSpace()
 
 /**
- * 只有登录且空间处于可正常进入的状态时，才提供“回到我的恋爱空间”入口。
- * 未登录、没有空间、空间冻结或归档都统一回到首页，避免把用户送进状态面板。
+ * 空间等待另一半加入时也可预览首页与部分模块，因此同样展示返回入口。
+ * 未登录、没有空间、空间冻结或归档都不提供该入口，避免把用户送进不可用空间。
  */
-const showMySpaceEntry = computed(() => isSpaceReady.value)
+const showMySpaceEntry = computed(() => (
+  frontendLoggedIn.value && canAccessSpaceModules(spaceStatus.value)
+))
 
 /**
  * 顶部提示条按身份互斥展示，同一时刻只出现一条：
@@ -349,7 +354,7 @@ const unavailablePrompt = computed(() => {
       iconClass: 'bg-amber-100 text-amber-500',
       badge: 'Waiting For Partner',
       title: `${spaceName} 还在等待另一半加入`,
-      description: '对方接受邀请后，就可以一起使用故事、相册和纪念日。',
+      description: '你可以先回到空间预览首页、相册、留言板和纪念日；故事会在对方加入后开放。',
       canRetry: false,
     }
   }

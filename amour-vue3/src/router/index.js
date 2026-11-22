@@ -32,7 +32,7 @@ import { fetchAdminPermissions } from '@/api/admin/auth'
 import { reportPageView } from '@/api/analytics'
 import { clearFrontendSession, hasFrontendQueryPermission, isFrontendAuthenticated, setFrontendProfile } from '@/utils/auth.js'
 import { isSpaceReady, isSpaceStatusUnknown, refreshSpaceStatus, spaceStatus } from '@/composables/useFrontendSpace.js'
-import { canEditSpaceContent } from '@/utils/spaceState.js'
+import { canAccessSpaceModules, canEditSpaceContent } from '@/utils/spaceState.js'
 import { createPageViewTracker } from '@/utils/pageViewTracker.js'
 import api from '@/axios'
 import { createRouter, createWebHistory } from 'vue-router'
@@ -104,17 +104,32 @@ const routes = [
   {
     path: '/message',
     component: MessageBoardPage,
-    meta: { title: '留言板 · 恋语间', requiresFrontendAuth: true, requiresCoupleSpace: true },
+    meta: {
+      title: '留言板 · 恋语间',
+      requiresFrontendAuth: true,
+      requiresCoupleSpace: true,
+      allowsWaitingSpace: true,
+    },
   },
   {
     path: '/photo',
     component: PhotoAlbumPage,
-    meta: { title: '相册 · 恋语间', requiresFrontendAuth: true, requiresCoupleSpace: true },
+    meta: {
+      title: '相册 · 恋语间',
+      requiresFrontendAuth: true,
+      requiresCoupleSpace: true,
+      allowsWaitingSpace: true,
+    },
   },
   {
     path: '/anniversary',
     component: AnniversaryPage,
-    meta: { title: '纪念日 · 恋语间', requiresFrontendAuth: true, requiresCoupleSpace: true },
+    meta: {
+      title: '纪念日 · 恋语间',
+      requiresFrontendAuth: true,
+      requiresCoupleSpace: true,
+      allowsWaitingSpace: true,
+    },
   },
   {
     path: '/login',
@@ -335,11 +350,20 @@ function hasInvitationToken(query) {
  * 返回 true 表示放行；false 表示确实没有可用空间，应引导去 setup。
  * 网络失败时不能返回 false —— 那会把“暂时连不上”误判成“没有空间”，
  * 这里改为抛出故障，交给调用方原样放行并保留 spaceError。
+ *
+ * allowsWaitingSpace=true 的页面（相册/留言板/纪念日）在等待另一半加入时也可预览；
+ * 故事等其它页面仍要求 status=1。
  */
-async function ensureCoupleSpaceReady() {
-  if (isSpaceReady.value) return true
+async function ensureCoupleSpaceReady(allowsWaitingSpace = false) {
+  const canAccess = () => (
+    allowsWaitingSpace
+      ? canAccessSpaceModules(spaceStatus.value)
+      : isSpaceReady.value
+  )
+
+  if (canAccess()) return true
   await refreshSpaceStatus()
-  if (isSpaceReady.value) return true
+  if (canAccess()) return true
   // 状态无法确认（网络/服务异常）：保留错误，不要重定向到 setup。
   if (isSpaceStatusUnknown.value) return true
   return false
@@ -363,7 +387,7 @@ router.beforeEach(async (to) => {
     }
   }
   if (!to.path.startsWith('/admin')) {
-    if (to.meta?.requiresCoupleSpace && !(await ensureCoupleSpaceReady())) {
+    if (to.meta?.requiresCoupleSpace && !(await ensureCoupleSpaceReady(to.meta?.allowsWaitingSpace === true))) {
       return {
         path: '/space/setup',
         query: { redirect: to.fullPath },

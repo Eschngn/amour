@@ -155,6 +155,46 @@ test('首页改为组合故事概览与章节故事接口，不再只读里程�
   assert.match(source, /v-else-if="homeStories\.length === 0"/)
   assert.match(source, /故事正等待被写下/)
 
-  // 只有 isSpaceReady 之后才请求私密故事数据。
-  assert.match(source, /if \(!isSpaceReady\.value\) \{[\s\S]*?storyLoading\.value = false[\s\S]*?return/)
+  // 等待另一半加入时也能展示首页，因此按模块访问权限决定是否请求首页数据。
+  assert.match(source, /v-if="canPreviewSpace"/)
+  assert.match(source, /canAccessSpaceModules\(spaceStatus\.value\)/)
+  assert.match(source, /if \(!canPreviewSpace\.value\) \{[\s\S]*?storyLoading\.value = false[\s\S]*?return/)
+})
+
+test('等待绑定开放首页、相册、留言板与纪念日，故事仍要求正常空间', () => {
+  const routerSource = readSource('router/index.js')
+  const headerSource = readSource('components/frontend/SiteHeader.vue')
+  const homeSource = readSource('pages/frontend/MyCoupleSpaceHome.vue')
+  const routeBlock = path => routerSource.match(
+    new RegExp(`path: '${path}',[\\s\\S]*?\\n  \\},`),
+  )?.[0] || ''
+
+  for (const path of ['/photo', '/message', '/anniversary']) {
+    assert.match(routeBlock(path), /allowsWaitingSpace: true/, `${path} 应允许等待绑定预览`)
+  }
+  assert.doesNotMatch(routeBlock('/story'), /allowsWaitingSpace: true/)
+  assert.match(routerSource, /ensureCoupleSpaceReady\(to\.meta\?\.allowsWaitingSpace === true\)/)
+
+  assert.match(headerSource, /const canOpenSpaceModules = computed\(\(\) => \(/)
+  assert.match(headerSource, /canOpenSpaceModules && hasFrontendQueryPermission\('photo'\)/)
+  assert.match(headerSource, /canOpenSpaceModules && hasFrontendQueryPermission\('message'\)/)
+  assert.match(headerSource, /canOpenSpaceModules && hasFrontendQueryPermission\('anniversary'\)/)
+  assert.match(headerSource, /isSpaceReady && hasFrontendQueryPermission\('story'\)/)
+
+  // 首页可以预览故事样式，但等待绑定期间所有故事入口都保持锁定，避免跳到 setup。
+  assert.match(homeSource, /const canOpenStory = computed\(\(\) => isSpaceReady\.value && hasFrontendQueryPermission\('story'\)\)/)
+  assert.match(homeSource, /v-if="canOpenStory"/)
+  assert.match(homeSource, /module === 'story' && !isSpaceReady\.value/)
+  assert.match(homeSource, /另一半加入后开放/)
+})
+
+test('等待另一半加入时，首页头像显示加号并跳转到邀请分区', () => {
+  const homeSource = readSource('pages/frontend/MyCoupleSpaceHome.vue')
+
+  assert.match(homeSource, /const \{ spaceStatus, isSpaceReady, isSpaceWaiting, refreshSpaceStatus \} = useFrontendSpace\(\)/)
+  assert.match(homeSource, /v-if="isSpaceWaiting"/)
+  assert.match(homeSource, /border-2 border-dashed border-\[#d8a1aa\]/)
+  assert.match(homeSource, /aria-label="邀请另一半加入"/)
+  assert.match(homeSource, /@click="goToInvitePartner"/)
+  assert.match(homeSource, /router\.push\(\{ name: 'space-setup', hash: '#space-invite-partner' \}\)/)
 })

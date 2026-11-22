@@ -26,8 +26,8 @@
       </view>
     </view>
 
-    <view wx:if="{{showHome}}" class="nav-item home-item {{current === 'home' ? 'is-active' : ''}}" data-page="home" bindtap="navigate" hover-class="home-hover" aria-role="button" aria-label="我的空间">
-      <view class="home-logo"><image class="logo-image" src="/images/amour-logo.svg" mode="aspectFit"></image></view><text class="nav-label home-label">我的空间</text>
+    <view wx:if="{{showHome}}" class="nav-item home-item {{current === 'home' ? 'is-active' : ''}}" data-page="home" bindtap="navigate" hover-class="home-hover" aria-role="button" aria-label="首页">
+      <view class="home-logo"><image class="logo-image" src="/images/amour-logo.svg" mode="aspectFit"></image></view><text class="nav-label home-label">首页</text>
     </view>
     <!-- 无情侣空间时不展示品牌入口，用等宽占位保持两侧 Tab 均分，避免布局跳动。 -->
     <view wx:else class="home-placeholder"></view>

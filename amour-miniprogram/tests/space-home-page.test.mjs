@@ -473,6 +473,12 @@ test('等待另一半加入时从统一会话状态读取等待标记', async ()
   try {
     assert.equal(page.data.waitingForPartner, true)
     assert.equal(page.data.memberCount, 1)
+
+    page.onOpenInvite()
+    assert.deepEqual(navigations[navigations.length - 1], {
+      type: 'navigateTo',
+      url: '/pages/space-setup/index?mode=settings',
+    })
   } finally {
     page.destroy()
   }

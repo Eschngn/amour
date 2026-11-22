@@ -271,6 +271,21 @@ export function hasActiveSpaceMembership(spaceStatus) {
 }
 
 /**
+ * 当前成员是否可以进入空间首页及相册、留言板、纪念日等可预览模块。
+ *
+ * 另一半尚未加入（status=0）时也允许预览，方便空间创建者提前查看自己的
+ * 首页与内容样式；页面的写入权限仍由服务端和各自操作条件单独校验。
+ * 冻结、归档、删除等待期、已解绑与已销毁空间一律不可访问。
+ *
+ * 该规则不影响 isReadySpace：故事等需要双方绑定后才能使用的入口仍只认 status=1。
+ */
+export function canAccessSpaceModules(spaceStatus) {
+  if (!hasActiveSpaceMembership(spaceStatus)) return false
+  const status = Number(spaceStatus.status)
+  return status === SPACE_STATUS.WAITING || status === SPACE_STATUS.NORMAL
+}
+
+/**
  * 当前用户是否可以进入空间内容编辑（/space/studio）。
  *
  * - 必须是空间有效成员；

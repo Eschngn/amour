@@ -24,6 +24,14 @@ const profileWxml = readFileSync(
   new URL('../miniprogram/pages/profile/profile.wxml', import.meta.url),
   'utf8',
 )
+const bottomNavWxml = readFileSync(
+  new URL('../miniprogram/components/bottom-nav/bottom-nav.wxml', import.meta.url),
+  'utf8',
+)
+const spaceHomeWxml = readFileSync(
+  new URL('../miniprogram/pages/index/index.wxml', import.meta.url),
+  'utf8',
+)
 
 function normalizePath(url) {
   return String(url || '').replace(/^https?:\/\/[^/]+/, '').replace(/^\/api/, '')
@@ -68,7 +76,7 @@ globalThis.Component = (options) => {
 
 const auth = await import('../miniprogram/utils/auth.js')
 const sessionState = await import('../miniprogram/utils/session-state.js')
-const { SESSION_STATUS } = await import('../miniprogram/utils/session-constants.js')
+const { SESSION_STATUS, TAB_DEFINITIONS } = await import('../miniprogram/utils/session-constants.js')
 
 await import('../miniprogram/components/bottom-nav/bottom-nav.js')
 await import('../miniprogram/pages/profile/profile.js')
@@ -168,6 +176,28 @@ test.beforeEach(() => {
 })
 
 // ============================ bottom-nav ============================
+
+test('中间品牌 Tab 的显示文案为「首页」', () => {
+  const homeTab = TAB_DEFINITIONS.find(tab => tab.id === 'home')
+  assert.equal(homeTab.label, '首页')
+  assert.match(bottomNavWxml, /aria-label="首页"/)
+  assert.match(bottomNavWxml, /<text class="nav-label home-label">首页<\/text>/)
+  assert.doesNotMatch(bottomNavWxml, /我的空间/)
+  assert.match(spaceHomeWxml, /<navigation-bar title="首页"/)
+})
+
+test('首页采用主视觉布局，顶部不再展示空间工具栏与等待提示框', () => {
+  assert.match(spaceHomeWxml, /class="hero-section"/)
+  assert.match(spaceHomeWxml, /class="time-grid"/)
+  assert.match(spaceHomeWxml, /quick-card-anniversary/)
+  assert.match(
+    spaceHomeWxml,
+    /class="mini-avatar mini-avatar-overlap avatar-waiting"[\s\S]{0,180}?bindtap="onOpenInvite"/,
+  )
+  assert.doesNotMatch(spaceHomeWxml, /class="space-toolbar"/)
+  assert.doesNotMatch(spaceHomeWxml, /class="waiting-banner"/)
+  assert.doesNotMatch(spaceHomeWxml, /class="space-card"/)
+})
 
 test('状态确认中（loading）不渲染任何真实 Tab', () => {
   const nav = createNav()

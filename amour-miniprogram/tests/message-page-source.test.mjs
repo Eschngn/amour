@@ -14,6 +14,16 @@ test('留言页展示用户头像且不再渲染右侧序号', () => {
   assert.doesNotMatch(less, /\.message-index/)
 })
 
+test('留言卡片的回复按钮旁不展示日期', () => {
+  const wxml = readFileSync('miniprogram/pages/message/message.wxml', 'utf8')
+  const source = readFileSync('miniprogram/pages/message/message.ts', 'utf8')
+  const less = readFileSync('miniprogram/pages/message/message.less', 'utf8')
+
+  assert.doesNotMatch(wxml, /message-footer-date/)
+  assert.doesNotMatch(source, /shortDate:/)
+  assert.doesNotMatch(less, /\.message-footer-date/)
+})
+
 test('留言页支持回复主留言和已有回复，并沿用登录失效重试', () => {
   const wxml = readFileSync('miniprogram/pages/message/message.wxml', 'utf8')
   const source = readFileSync('miniprogram/pages/message/message.ts', 'utf8')
