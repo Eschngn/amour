@@ -130,7 +130,7 @@ test('所有候选地址都失败时，错误里带上实际尝试过的地址',
     () => post('/gallery/spaces', { current: 1, size: 8 }),
     (error) => {
       assert.equal(error.isNetworkError, true)
-      assert.deepEqual(error.attempts, ['http://192.168.7.91:8080', 'http://127.0.0.1:8080'])
+      assert.deepEqual(error.attempts, ['http://192.168.7.93:8080', 'http://127.0.0.1:8080'])
       return true
     },
   )

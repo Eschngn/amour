@@ -24,6 +24,14 @@ const profileWxml = readFileSync(
   new URL('../miniprogram/pages/profile/profile.wxml', import.meta.url),
   'utf8',
 )
+const profileJs = readFileSync(
+  new URL('../miniprogram/pages/profile/profile.js', import.meta.url),
+  'utf8',
+)
+const profileLess = readFileSync(
+  new URL('../miniprogram/pages/profile/profile.less', import.meta.url),
+  'utf8',
+)
 const bottomNavWxml = readFileSync(
   new URL('../miniprogram/components/bottom-nav/bottom-nav.wxml', import.meta.url),
   'utf8',
@@ -332,11 +340,35 @@ test('「我的」页面：未登录时展示登录入口', () => {
 })
 
 test('「我的」页面：未登录仅展示登录引导，不渲染账号资料与账号安全', () => {
-  assert.match(profileWxml, /<view wx:if="\{\{loggedIn\}\}" class="account-summary"/)
-  assert.match(profileWxml, /<view wx:if="\{\{loggedIn\}\}" class="settings-section">/)
-  assert.match(profileWxml, /<view wx:if="\{\{!loggedIn\}\}" class="login-panel guest-login-panel">/)
+  assert.match(profileWxml, /<view wx:if="\{\{!loggedIn\}\}" class="profile-card guest-login-panel">/)
+  assert.match(profileWxml, /class="profile-card profile-card-main"/)
+  assert.match(profileWxml, /class="profile-card settings-card"/)
   assert.match(profileWxml, /微信一键登录/)
   assert.match(profileWxml, /<view wx:if="\{\{loggedIn && passwordModalOpen\}\}" class="modal-mask"/)
+})
+
+test('「我的」页面：不展示冗余的空间连接状态标签', () => {
+  assert.doesNotMatch(profileWxml, /空间已连接|status-pill/)
+  assert.doesNotMatch(profileJs, /空间已就绪/)
+})
+
+test('「我的」页面：四个高频入口使用同一套设置行样式', () => {
+  assert.equal((profileWxml.match(/class="settings-row action-row[^\"]*"/g) || []).length, 4)
+  assert.equal((profileWxml.match(/hover-class="settings-row-hover"/g) || []).length, 4)
+  assert.match(profileWxml, /aria-label="空间编辑"/)
+  assert.match(profileWxml, /aria-label="空间设置"/)
+  assert.match(profileWxml, /aria-label="\{\{passwordSet \? '修改密码' : '设置密码'\}\}"/)
+  assert.match(profileWxml, /aria-label="退出登录"/)
+  assert.match(profileLess, /\.settings-row\s*\{[^}]*width:\s*100%\s*!important/s)
+  assert.match(profileLess, /\.action-row\s*\{[^}]*justify-content:\s*flex-start/s)
+  assert.match(profileLess, /\.settings-row-copy\s*\{[^}]*text-align:\s*left/s)
+  assert.match(profileLess, /\.row-chevron\s*\{[^}]*margin-left:\s*auto/s)
+})
+
+test('「我的」页面：离线错误态只提供一个重新查询入口', () => {
+  assert.equal((profileWxml.match(/bindtap="onRetrySession"/g) || []).length, 1)
+  assert.equal((profileWxml.match(/重新查询状态/g) || []).length, 1)
+  assert.doesNotMatch(profileWxml, /class="error-band"/)
 })
 
 test('「我的」页面：掉线时关闭密码面板并清空旧输入', () => {
@@ -412,13 +444,13 @@ test('「我的」页面：有空间时点「空间设置」→ navigateTo ?mode
   assert.equal(last.url, '/pages/space-setup/index?mode=settings')
 })
 
-test('「我的」页面：有空间时点「编辑空间内容」→ navigateTo 空间编辑页', async () => {
+test('「我的」页面：有空间时点「空间编辑」→ navigateTo 空间编辑页', async () => {
   await loginWithSpace()
   const page = createProfile()
   page.applySession(sessionState.getSnapshot())
   navigations.length = 0
 
-  assert.equal(typeof page.onOpenSpaceStudio, 'function', '应存在内容编辑入口的处理函数')
+  assert.equal(typeof page.onOpenSpaceStudio, 'function', '应存在空间编辑入口的处理函数')
   page.onOpenSpaceStudio()
 
   const last = navigations[navigations.length - 1]

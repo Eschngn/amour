@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 
 /**
  * 情侣空间页「设置模式」（?mode=settings）页面级行为测试。
@@ -18,6 +19,15 @@ import assert from 'node:assert/strict'
  * 8. 销毁请求携带 spaceId，且 20103 会触发状态重新同步；
  * 9. 返回兜底：页面栈为空时导航栏返回会 reLaunch 到「我的」。
  */
+
+const spaceSetupJs = readFileSync(
+  new URL('../miniprogram/pages/space-setup/index.js', import.meta.url),
+  'utf8',
+)
+const spaceSetupWxml = readFileSync(
+  new URL('../miniprogram/pages/space-setup/index.wxml', import.meta.url),
+  'utf8',
+)
 
 const storage = new Map()
 const requests = []
@@ -279,6 +289,11 @@ test('设置模式 + 另一半已加入（status=1, memberCount=2）：停留本
   // 不展示邀请生成入口（服务端也会拒绝）。
   assert.equal(page.data.canManageInvitations, false)
   assert.equal(page.data.canInviteNow, false)
+})
+
+test('设置页不展示冗余的「已就绪」状态文案', () => {
+  assert.doesNotMatch(spaceSetupJs, /已就绪/)
+  assert.doesNotMatch(spaceSetupWxml, /已就绪/)
 })
 
 test('设置模式 onShow 之后（再次 applySnapshot）仍然不跳走', async () => {

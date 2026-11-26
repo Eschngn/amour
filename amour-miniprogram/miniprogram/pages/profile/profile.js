@@ -57,7 +57,7 @@ function describeSpace(space) {
   const count = Number(space.memberCount)
   return {
     spaceName: name,
-    spaceSummary: Number.isFinite(count) && count > 0 ? `${count} 位成员` : '空间已就绪',
+    spaceSummary: Number.isFinite(count) && count > 0 ? `${count} 位成员` : '成员信息暂不可用',
   }
 }
 

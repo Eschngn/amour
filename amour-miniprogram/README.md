@@ -20,7 +20,7 @@ npm run preview      # 可选：把广场样式渲染成 HTML/PNG（输出 /tmp/
 
 ```js
 const DEV_API_BASE_URLS = [
-  'http://192.168.7.91:8080',  // 局域网 IP，优先
+  'http://192.168.7.93:8080',  // 局域网 IP，优先
   'http://127.0.0.1:8080',     // 回环地址，兜底
 ]
 ```

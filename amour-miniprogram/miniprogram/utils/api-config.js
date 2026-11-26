@@ -19,10 +19,10 @@ const PROD_API_BASE_URL = 'https://www.chengliuxiang.top/api'
  * 1. 局域网 IP —— 真机预览也能用，且不受「本机 IP」限制与代理回环影响；
  * 2. 127.0.0.1 —— 仅当工具内关闭代理、且系统允许回环访问时可用。
  *
- * 本机当前局域网 IP：192.168.7.91（可用 `ipconfig getifaddr en0` 查看）。
+ * 本机当前局域网 IP：192.168.7.93（可用 `ipconfig getifaddr en0` 查看）。
  */
 const DEV_API_BASE_URLS = [
-  'http://192.168.7.91:8080',
+  'http://192.168.7.93:8080',
   'http://127.0.0.1:8080',
 ]
 

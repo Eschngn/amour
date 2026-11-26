@@ -17,7 +17,7 @@ export const LIST_SNAPSHOT_THROTTLE_MS = 250
  * 设计要点：
  * - 快照挂在“这一条历史记录”上，`/story` 与 `/plaza` 各自独立，
  *   从其它入口新开的列表记录没有快照，不会误用上一次的浏览位置；
- * - 组件 setup 期间就能同步读到快照（popstate 时 history.state 已就绪），
+ * - 组件 setup 期间就能同步读到快照（popstate 时 history.state 可用），
  *   因此首屏请求可以直接按快照里的章节/分页拉取，不需要先渲染默认状态再跳转；
  * - 离开路由、刷新/关闭页面（pagehide + beforeunload）都会保存一次；
  * - 滚动与章节/分页变化时节流自动保存，保证“刷新后仍在原位置”，

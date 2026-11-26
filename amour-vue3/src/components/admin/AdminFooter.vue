@@ -6,10 +6,6 @@
         <a href="https://beian.miit.gov.cn/" target="_blank" rel="noreferrer"
           class="transition hover:text-stone-700 hover:underline">浙ICP备2026073792号</a>
       </p>
-      <p class="flex items-center gap-1.5">
-        <span class="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-        服务运行正常
-      </p>
     </div>
   </footer>
 </template>

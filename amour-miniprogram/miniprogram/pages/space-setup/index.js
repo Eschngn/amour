@@ -174,7 +174,7 @@ function describeSpaceSummary(space, hasSpace, waiting, memberCount) {
   if (!hasSpace) return ''
   if (waiting) return '等待另一半加入'
   const statusText = describeSpaceStatus(space)
-  const memberText = memberCount > 0 ? `${memberCount} 位成员` : '空间已就绪'
+  const memberText = memberCount > 0 ? `${memberCount} 位成员` : '成员信息暂不可用'
   return statusText ? `${memberText} · ${statusText}` : memberText
 }
 
@@ -182,7 +182,7 @@ function describeSpaceSummary(space, hasSpace, waiting, memberCount) {
  * 页面标题与 hero 文案。
  *
  * 设置模式与创建 / 绑定模式的文案必须区分开，避免用户以为自己进错了页面；
- * 设置模式还要按「未登录 / 加载失败 / 无空间 / 等待绑定 / 已就绪」给出不同说明。
+ * 设置模式还要按「未登录 / 加载失败 / 无空间 / 等待绑定 / 可用」给出不同说明。
  *
  * @param {{ isSettings: boolean, hasSpace: boolean, waiting: boolean, pageError: string, notLoggedIn: boolean }} state
  */
@@ -224,7 +224,7 @@ function describePageChrome(state) {
     return {
       pageTitle: '空间设置',
       heroKicker: 'SPACE SETTINGS',
-      heroTitle: '空间已就绪',
+      heroTitle: '管理你们的空间',
       heroCopy: '你们已经是这个空间的成员，下面可以查看当前成员与空间状态。',
     }
   }

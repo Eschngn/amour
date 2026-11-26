@@ -214,11 +214,11 @@
             <text class="section-title">{{spaceName || '你们的情侣空间'}}</text>
             <view class="summary-row">
               <text class="summary-label">当前成员</text>
-              <text class="summary-value">{{memberCount ? memberCount + ' 位' : '已就绪'}}</text>
+              <text class="summary-value">{{memberCount ? memberCount + ' 位' : '暂不可用'}}</text>
             </view>
             <view class="summary-row">
               <text class="summary-label">空间状态</text>
-              <text class="summary-value">{{spaceStatusText || '正常'}}</text>
+              <text class="summary-value">{{spaceStatusText || '-'}}</text>
             </view>
             <view class="summary-row">
               <text class="summary-label">你的身份</text>
