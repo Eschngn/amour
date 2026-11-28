@@ -167,14 +167,7 @@
           </tbody>
         </table>
       </div>
-      <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-5 py-3 sm:px-6">
-        <span class="text-xs text-slate-400">共 {{ total }} 条</span>
-        <div class="flex items-center gap-1">
-          <button type="button" :disabled="current <= 1 || loading" class="rounded-lg px-3 py-1.5 text-xs transition enabled:hover:bg-slate-100 disabled:text-slate-300" @click="current -= 1">上一页</button>
-          <span class="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-medium text-white">{{ current }}</span>
-          <button type="button" :disabled="current >= totalPages || loading" class="rounded-lg px-3 py-1.5 text-xs transition enabled:hover:bg-slate-100 disabled:text-slate-300" @click="current += 1">下一页</button>
-        </div>
-      </div>
+      <AdminPagination v-model:current="current" v-model:page-size="pageSize" :total="total" :disabled="loading" />
     </section>
 
     <el-drawer
@@ -501,6 +494,7 @@ import {
   unpublishAdminSpaceContent,
 } from '@/api/admin/spaceReview'
 import SpaceImagePreview from '@/components/frontend/space-studio/SpaceImagePreview.vue'
+import AdminPagination from '@/components/admin/AdminPagination.vue'
 import { buildReviewImagePreviews } from '@/utils/imagePreview'
 import { ADMIN_PERMISSIONS, hasAdminPermission } from '@/utils/adminAuth'
 import {
@@ -511,7 +505,7 @@ import {
 } from '@/utils/adminPrompt'
 import { ADMIN_MESSAGE_BOX_CLASS } from '@/utils/adminRestore'
 
-const PAGE_SIZE = 10
+const pageSize = ref(10)
 
 const statusOptions = [
   { value: 'PENDING', label: '待审核' },
@@ -554,8 +548,6 @@ const isProcessing = computed(() => Boolean(processingKey.value))
 const previewOpen = ref(false)
 const previewImages = ref([])
 const previewIndex = ref(0)
-
-const totalPages = computed(() => Math.max(1, Math.ceil(total.value / PAGE_SIZE)))
 
 function isActionBusy(key) {
   return processingKey.value === key
@@ -641,7 +633,7 @@ function buildPayload() {
   const [startTime, endTime] = Array.isArray(filters.timeRange) ? filters.timeRange : [null, null]
   return {
     current: current.value,
-    size: PAGE_SIZE,
+    size: pageSize.value,
     status: filters.status || null,
     reviewType: filters.reviewType || null,
     keyword: filters.keyword.trim() || null,
@@ -917,6 +909,6 @@ async function unpublishSpace() {
   }
 }
 
-watch(current, load)
+watch([current, pageSize], load)
 onMounted(load)
 </script>

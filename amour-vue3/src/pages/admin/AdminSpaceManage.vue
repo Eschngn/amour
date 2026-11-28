@@ -182,14 +182,7 @@
           </tbody>
         </table>
       </div>
-      <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-5 py-3 sm:px-6">
-        <span class="text-xs text-slate-400">共 {{ total }} 条</span>
-        <div class="flex items-center gap-1">
-          <button type="button" :disabled="current <= 1 || loading" class="rounded-lg px-3 py-1.5 text-xs transition enabled:hover:bg-slate-100 disabled:text-slate-300" @click="current -= 1">上一页</button>
-          <span class="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-medium text-white">{{ current }}</span>
-          <button type="button" :disabled="current >= totalPages || loading" class="rounded-lg px-3 py-1.5 text-xs transition enabled:hover:bg-slate-100 disabled:text-slate-300" @click="current += 1">下一页</button>
-        </div>
-      </div>
+      <AdminPagination v-model:current="current" v-model:page-size="pageSize" :total="total" :disabled="loading" />
     </section>
     </template>
 
@@ -314,14 +307,7 @@
             </tbody>
           </table>
         </div>
-        <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-5 py-3 sm:px-6">
-          <span class="text-xs text-slate-400">共 {{ archiveTotal }} 条</span>
-          <div class="flex items-center gap-1">
-            <button type="button" :disabled="archiveCurrent <= 1 || archiveLoading" class="rounded-lg px-3 py-1.5 text-xs transition enabled:hover:bg-slate-100 disabled:text-slate-300" @click="archiveCurrent -= 1">上一页</button>
-            <span class="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-medium text-white">{{ archiveCurrent }}</span>
-            <button type="button" :disabled="archiveCurrent >= archiveTotalPages || archiveLoading" class="rounded-lg px-3 py-1.5 text-xs transition enabled:hover:bg-slate-100 disabled:text-slate-300" @click="archiveCurrent += 1">下一页</button>
-          </div>
-        </div>
+        <AdminPagination v-model:current="archiveCurrent" v-model:page-size="archivePageSize" :total="archiveTotal" :disabled="archiveLoading" />
       </section>
 
       <el-drawer v-model="archiveDetailVisible" title="销毁留档详情" size="min(820px, calc(100vw - 24px))" class="admin-drawer admin-dialog-surface" modal-class="admin-modal-overlay" append-to-body destroy-on-close>
@@ -637,6 +623,7 @@ import {
   restoreAdminSpace,
   restoreAdminSpaceFromArchive,
 } from '@/api/admin/space'
+import AdminPagination from '@/components/admin/AdminPagination.vue'
 import {
   ADMIN_RESTORE_MESSAGE_BOX_CLASS,
   buildArchiveRestorePromptMessage,
@@ -651,7 +638,7 @@ import { ADMIN_PERMISSIONS, hasAdminPermission } from '@/utils/adminAuth'
 const view = ref('spaces')
 const filters = reactive({ keyword: '', status: null, visibility: null })
 const current = ref(1)
-const pageSize = 10
+const pageSize = ref(10)
 const total = ref(0)
 const rows = ref([])
 const loading = ref(false)
@@ -662,13 +649,13 @@ const detailLoading = ref(false)
 const detail = ref(null)
 const activeTab = ref('overview')
 
-const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
 const canRestoreSpace = computed(() => hasAdminPermission(ADMIN_PERMISSIONS.SPACE_RESTORE))
 
 /* -------------------- 已销毁空间留档 -------------------- */
 
 const archiveFilters = reactive({ keyword: '', restored: null })
 const archiveCurrent = ref(1)
+const archivePageSize = ref(10)
 const archiveTotal = ref(0)
 const archiveRows = ref([])
 const archiveLoading = ref(false)
@@ -677,7 +664,6 @@ const restoringArchiveId = ref(null)
 const archiveDetailVisible = ref(false)
 const archiveDetailLoading = ref(false)
 const archiveDetail = ref(null)
-const archiveTotalPages = computed(() => Math.max(1, Math.ceil(archiveTotal.value / pageSize)))
 const archiveDetailCounts = computed(() => {
   if (!archiveDetail.value) return []
   return [
@@ -770,7 +756,7 @@ async function load() {
   try {
     const { data } = await fetchAdminSpacePage({
       current: current.value,
-      size: pageSize,
+      size: pageSize.value,
       keyword: filters.keyword.trim() || undefined,
       status: typeof filters.status === 'number' ? filters.status : undefined,
       visibility: typeof filters.visibility === 'number' ? filters.visibility : undefined,
@@ -900,7 +886,7 @@ async function loadArchives() {
   try {
     const { data } = await fetchAdminSpaceArchivePage({
       current: archiveCurrent.value,
-      size: pageSize,
+      size: archivePageSize.value,
       keyword: archiveFilters.keyword.trim() || undefined,
       restored: typeof archiveFilters.restored === 'boolean' ? archiveFilters.restored : undefined,
     })
@@ -1042,8 +1028,8 @@ async function restoreArchiveDetail() {
   })
 }
 
-watch(current, load)
-watch(archiveCurrent, loadArchives)
+watch([current, pageSize], load)
+watch([archiveCurrent, archivePageSize], loadArchives)
 onMounted(load)
 </script>
 

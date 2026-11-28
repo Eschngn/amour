@@ -112,21 +112,15 @@
           </tbody>
         </table>
       </div>
-      <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-5 py-3 sm:px-6">
-        <span class="text-xs text-slate-400">共 {{ total }} 条</span>
-        <div class="flex items-center gap-1">
-          <button type="button" :disabled="current <= 1 || loading" class="rounded-lg px-3 py-1.5 text-xs transition enabled:hover:bg-slate-100 disabled:text-slate-300" @click="current -= 1">上一页</button>
-          <span class="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-medium text-white">{{ current }}</span>
-          <button type="button" :disabled="current >= totalPages || loading" class="rounded-lg px-3 py-1.5 text-xs transition enabled:hover:bg-slate-100 disabled:text-slate-300" @click="current += 1">下一页</button>
-        </div>
-      </div>
+      <AdminPagination v-model:current="current" v-model:page-size="pageSize" :total="total" :disabled="loading" />
     </section>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
+import AdminPagination from '@/components/admin/AdminPagination.vue'
 import { fetchAdminAuditPage } from '@/api/admin/audit'
 
 const actionOptions = [
@@ -148,12 +142,11 @@ const actionOptions = [
 
 const filters = reactive({ action: null, targetType: null, targetSpaceId: null, timeRange: null })
 const current = ref(1)
-const pageSize = 10
+const pageSize = ref(10)
 const total = ref(0)
 const rows = ref([])
 const loading = ref(false)
 const error = ref('')
-const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
 
 let loadSequence = 0
 async function load() {
@@ -164,7 +157,7 @@ async function load() {
     const timeRange = Array.isArray(filters.timeRange) ? filters.timeRange : []
     const { data } = await fetchAdminAuditPage({
       current: current.value,
-      size: pageSize,
+      size: pageSize.value,
       action: filters.action || undefined,
       targetType: filters.targetType || undefined,
       targetSpaceId: filters.targetSpaceId || undefined,
@@ -190,6 +183,6 @@ function applyFilters() {
   else current.value = 1
 }
 
-watch(current, load)
+watch([current, pageSize], load)
 onMounted(load)
 </script>

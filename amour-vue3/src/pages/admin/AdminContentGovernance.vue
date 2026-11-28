@@ -192,14 +192,7 @@
         </table>
       </div>
 
-      <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-5 py-3 sm:px-6">
-        <span class="text-xs text-slate-400">共 {{ total }} 条</span>
-        <div class="flex items-center gap-1">
-          <button type="button" :disabled="current <= 1 || loading" class="rounded-lg px-3 py-1.5 text-xs transition enabled:hover:bg-slate-100 disabled:text-slate-300" @click="current -= 1">上一页</button>
-          <span class="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-medium text-white">{{ current }}</span>
-          <button type="button" :disabled="current >= totalPages || loading" class="rounded-lg px-3 py-1.5 text-xs transition enabled:hover:bg-slate-100 disabled:text-slate-300" @click="current += 1">下一页</button>
-        </div>
-      </div>
+      <AdminPagination v-model:current="current" v-model:page-size="pageSize" :total="total" :disabled="loading" />
     </section>
 
     <el-drawer v-model="detailVisible" :title="`${contentTypeLabel}详情`" size="min(680px, calc(100vw - 24px))" class="admin-drawer admin-dialog-surface" modal-class="admin-modal-overlay" append-to-body destroy-on-close>
@@ -242,6 +235,7 @@ import { Delete, Hide, Refresh, RefreshLeft, Search, View } from '@element-plus/
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { fetchAdminContentDetail, fetchAdminContentPage, deleteAdminContent, moderateAdminContentVisibility } from '@/api/admin/content'
 import { fetchAdminSpacePage } from '@/api/admin/space'
+import AdminPagination from '@/components/admin/AdminPagination.vue'
 import { hasAdminPermission, ADMIN_PERMISSIONS } from '@/utils/adminAuth'
 import {
   ADMIN_DANGER_CONFIRM_BUTTON_CLASS,
@@ -273,7 +267,7 @@ const filters = reactive({
   includeDeleted: false,
 })
 const current = ref(1)
-const pageSize = 10
+const pageSize = ref(10)
 const total = ref(0)
 const rows = ref([])
 const loading = ref(false)
@@ -283,8 +277,6 @@ const spaceOptionsLoaded = ref(false)
 const detailVisible = ref(false)
 const detail = ref(null)
 const processing = ref(false)
-
-const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
 
 function visibilityText(value) {
   if (value === 0) return '仅空间成员'
@@ -329,7 +321,7 @@ async function load() {
   try {
     const { data } = await fetchAdminContentPage({
       current: current.value,
-      size: pageSize,
+      size: pageSize.value,
       contentType: contentType.value,
       spaceId: filters.spaceId || undefined,
       keyword: filters.keyword.trim() || undefined,
@@ -454,7 +446,7 @@ async function removeContent(row) {
   }
 }
 
-watch(current, load)
+watch([current, pageSize], load)
 watch(() => contentType.value, () => {
   filters.spaceId = routeSpaceId.value
   current.value = 1

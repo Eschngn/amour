@@ -97,10 +97,7 @@
         </table>
       </div>
 
-      <div class="flex flex-col items-center justify-between gap-3 border-t border-slate-100 px-5 py-3 text-xs text-slate-400 sm:flex-row sm:px-6">
-        <span>共 {{ total }} 条 · 第 {{ currentPage }} / {{ totalPages }} 页</span>
-        <div class="flex items-center gap-1"><button type="button" :disabled="currentPage <= 1 || loading" class="rounded-lg px-3 py-1.5 transition enabled:hover:bg-slate-100 disabled:text-slate-300" @click="currentPage -= 1">上一页</button><button type="button" class="rounded-lg bg-rose-600 px-3 py-1.5 font-medium text-white shadow-sm">{{ currentPage }}</button><button type="button" :disabled="currentPage >= totalPages || loading" class="rounded-lg px-3 py-1.5 transition enabled:hover:bg-slate-100 disabled:text-slate-300" @click="currentPage += 1">下一页</button></div>
-      </div>
+      <AdminPagination v-model:current="currentPage" v-model:page-size="pageSize" :total="total" :disabled="loading" />
     </section>
 
     <el-dialog
@@ -184,10 +181,11 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { CollectionTag, Close, Delete, Edit, Loading, Plus, Refresh, Search, Upload } from '@element-plus/icons-vue'
 import 'element-plus/es/components/message/style/css'
 import 'element-plus/es/components/message-box/style/css'
+import AdminPagination from '@/components/admin/AdminPagination.vue'
 import { ADMIN_MESSAGE_BOX_CLASS } from '@/utils/adminRestore'
 import api from '@/axios'
 
-const pageSize = 10
+const pageSize = ref(10)
 const currentPage = ref(1)
 const keyword = ref('')
 const valueType = ref('')
@@ -195,10 +193,9 @@ const loading = ref(false)
 const saving = ref(false)
 const uploadingImage = ref(false)
 const previousValueType = ref('text')
-const data = ref({ records: [], total: 0, current: 1, size: pageSize })
+const data = ref({ records: [], total: 0, current: 1, size: pageSize.value })
 const configs = computed(() => data.value.records || [])
 const total = computed(() => Number(data.value.total) || 0)
-const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
 const dialog = reactive({ visible: false, form: createForm() })
 const imagePreview = reactive({ visible: false, url: '', alt: '' })
 const editableTypeOptions = [
@@ -215,9 +212,9 @@ function createForm() {
 async function fetchConfigs() {
   loading.value = true
   try {
-    const { data: response } = await api.post('/admin/dict/config/list', { current: currentPage.value, size: pageSize, keyword: keyword.value.trim() || undefined, valueType: valueType.value || undefined })
+    const { data: response } = await api.post('/admin/dict/config/list', { current: currentPage.value, size: pageSize.value, keyword: keyword.value.trim() || undefined, valueType: valueType.value || undefined })
     if (!response.success) throw new Error(response.message || '获取配置失败')
-    data.value = response.data || { records: [], total: 0, current: currentPage.value, size: pageSize }
+    data.value = response.data || { records: [], total: 0, current: currentPage.value, size: pageSize.value }
   } catch (error) {
     ElMessage.error(error.response?.data?.message || error.message || '获取配置失败')
   } finally {
@@ -308,7 +305,7 @@ let searchTimer
 function resetAndLoad() { if (currentPage.value === 1) fetchConfigs(); else currentPage.value = 1 }
 function applyFilters() { clearTimeout(searchTimer); resetAndLoad() }
 
-watch(currentPage, fetchConfigs)
+watch([currentPage, pageSize], fetchConfigs)
 watch(valueType, applyFilters)
 watch(keyword, () => { clearTimeout(searchTimer); searchTimer = setTimeout(resetAndLoad, 250) })
 onMounted(fetchConfigs)
