@@ -188,20 +188,22 @@ Page(withPageViewTracking({
     this.unsubscribe = sessionState.subscribe(snapshot => this.applySession(snapshot))
   },
 
-  onShow() {
+  async onShow() {
     if (!this.pageReady) return
+    let refreshTask = null
     if (this.editorOpen) {
       this.editorOpen = false
       const key = this.data.activeTab
       if (key) {
         delete this.loadedTabs[key]
-        this.loadTab(key)
-        this.loadReview()
+        // 返回时静默刷新当前栏目：保留列表内容，滚动容器与位置保持不动。
+        refreshTask = Promise.all([this.loadTab(key, { silent: true }), this.loadReview()])
       }
     }
     // 从图片选择 / 其它页面返回时重新对齐空间状态；不重复拉取已加载的列表。
     const snapshot = sessionState.getSnapshot()
     if (snapshot.status !== SESSION_STATUS.LOADING) this.applySession(snapshot)
+    if (refreshTask) await refreshTask
   },
 
   onUnload() {
@@ -307,22 +309,23 @@ Page(withPageViewTracking({
     if (!this.loadedTabs[activeTab]) this.loadTab(activeTab)
   },
 
-  loadTab(tab) {
-    if (this.pageDisposed) return
+  loadTab(tab, options) {
+    if (this.pageDisposed) return Promise.resolve()
     const key = String(tab || '')
-    if (!key || this.loadedTabs[key]) return
+    if (!key || this.loadedTabs[key]) return Promise.resolve()
     this.loadedTabs[key] = true
     if (key === 'home') {
-      this.loadHome()
+      return this.loadHome()
     } else if (key === 'story') {
-      this.loadStory()
+      return this.loadStory(options)
     } else if (key === 'photo') {
-      this.loadPhoto()
+      return this.loadPhoto(options)
     } else if (key === 'anniversary') {
-      this.loadAnniversary()
+      return this.loadAnniversary(options)
     } else if (key === 'message') {
-      this.loadMessages(1)
+      return this.loadMessages(1)
     }
+    return Promise.resolve()
   },
 
   onSwitchTab(event) {
@@ -712,8 +715,11 @@ Page(withPageViewTracking({
 
   /* ===================== 故事 ===================== */
 
-  async loadStory() {
-    this.setData({ storyLoading: true, storyError: '', actionError: null })
+  async loadStory(options) {
+    const silent = Boolean(options && options.silent)
+    this.setData(silent
+      ? { storyError: '', actionError: null }
+      : { storyLoading: true, storyError: '', actionError: null })
     try {
       const [chapters, nodes] = await Promise.all([
         api.fetchStoryChapters(),
@@ -749,10 +755,14 @@ Page(withPageViewTracking({
       this.applyChapterFilter(filterIndex)
     } catch (error) {
       if (this.pageDisposed) return
-      this.setData({
-        storyLoading: false,
-        storyError: this.handleContentError(error, '故事内容加载失败，请稍后重试'),
-      })
+      const message = this.handleContentError(error, '故事内容加载失败，请稍后重试')
+      if (silent && this.data.chapters.length) {
+        // 静默刷新失败：保留当前列表与滚动位置，不用错误态替换内容。
+        console.warn('故事内容静默刷新失败', message)
+        this.setData({ storyLoading: false })
+        return
+      }
+      this.setData({ storyLoading: false, storyError: message })
     }
   },
 
@@ -792,7 +802,9 @@ Page(withPageViewTracking({
     this.editorOpen = true
     wx.navigateTo({
       url: `${SPACE_CONTENT_EDITOR_ROUTE}?${parts.join('&')}`,
-      fail: () => { this.editorOpen = false },
+      fail: () => {
+        this.editorOpen = false
+      },
     })
   },
 
@@ -1139,18 +1151,25 @@ Page(withPageViewTracking({
 
   /* ===================== 相册 ===================== */
 
-  async loadPhoto() {
-    this.setData({ photoLoading: true, photoError: '', actionError: null })
+  async loadPhoto(options) {
+    const silent = Boolean(options && options.silent)
+    this.setData(silent
+      ? { photoError: '', actionError: null }
+      : { photoLoading: true, photoError: '', actionError: null })
     try {
       await this.loadPhotoCategories()
       if (this.pageDisposed) return
       await this.loadPhotoPage(this.data.photoCurrent || 1)
     } catch (error) {
       if (this.pageDisposed) return
-      this.setData({
-        photoLoading: false,
-        photoError: this.handleContentError(error, '相册加载失败，请稍后重试'),
-      })
+      const message = this.handleContentError(error, '相册加载失败，请稍后重试')
+      if (silent && this.data.photos.length) {
+        // 静默刷新失败：保留当前列表与滚动位置，不用错误态替换内容。
+        console.warn('相册静默刷新失败', message)
+        this.setData({ photoLoading: false })
+        return
+      }
+      this.setData({ photoLoading: false, photoError: message })
     }
   },
 
@@ -1239,8 +1258,11 @@ Page(withPageViewTracking({
 
   /* ===================== 纪念日 ===================== */
 
-  async loadAnniversary() {
-    this.setData({ anniversaryLoading: true, anniversaryError: '', actionError: null })
+  async loadAnniversary(options) {
+    const silent = Boolean(options && options.silent)
+    this.setData(silent
+      ? { anniversaryError: '', actionError: null }
+      : { anniversaryLoading: true, anniversaryError: '', actionError: null })
     try {
       const list = await api.fetchAnniversaries()
       if (this.pageDisposed) return
@@ -1257,10 +1279,14 @@ Page(withPageViewTracking({
       })
     } catch (error) {
       if (this.pageDisposed) return
-      this.setData({
-        anniversaryLoading: false,
-        anniversaryError: this.handleContentError(error, '纪念日加载失败，请稍后重试'),
-      })
+      const message = this.handleContentError(error, '纪念日加载失败，请稍后重试')
+      if (silent && this.data.anniversaries.length) {
+        // 静默刷新失败：保留当前列表与滚动位置，不用错误态替换内容。
+        console.warn('纪念日静默刷新失败', message)
+        this.setData({ anniversaryLoading: false })
+        return
+      }
+      this.setData({ anniversaryLoading: false, anniversaryError: message })
     }
   },
 

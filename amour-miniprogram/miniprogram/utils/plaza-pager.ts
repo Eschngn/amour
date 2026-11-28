@@ -122,6 +122,65 @@ export class PlazaPager {
     return this.runFirstPage('refresh')
   }
 
+  /**
+   * 从详情返回时刷新已加载的所有页。
+   *
+   * 与下拉刷新不同：这里不回到第 1 页，而是重新请求 1..当前页并按原顺序合并，
+   * 避免用户上滑加载多页后返回时列表被截断、滚动位置无法恢复。
+   * 任一页失败时保留旧列表，只关闭刷新态。
+   */
+  async refreshLoaded(): Promise<PagerOutcome> {
+    if (this.disposed || this.firstRequest !== null) return 'ignored'
+    const previousState = this.state
+    const targetPage = previousState.page
+    if (targetPage < 1 || !previousState.items.length) return 'ignored'
+
+    const generation = ++this.generation
+    this.moreToken += 1
+    this.patch({ refreshing: true, loadingMore: false, loadMoreError: '', loadError: '' })
+
+    const pages: PagerPage[] = []
+    try {
+      for (let page = 1; page <= targetPage; page += 1) {
+        pages.push(await this.fetchPage({ current: page, size: this.pageSize }))
+        if (this.disposed || generation !== this.generation) return 'ignored'
+      }
+    } catch (error) {
+      if (this.disposed || generation !== this.generation) return 'ignored'
+      // 后台静默刷新失败时保留旧列表，不展示“加载更多失败”这类与当前操作无关的提示。
+      console.warn('恋爱广场刷新失败', this.describeError(error, '恋爱广场加载失败了'))
+      this.patch({
+        refreshing: false,
+        status: 'ready',
+        loadError: '',
+        loadMoreError: '',
+      })
+      return 'failed'
+    }
+
+    const pageCards = pages.map(page => this.adapt(page.records))
+    let items: SpaceCardView[] = []
+    pageCards.forEach((cards) => {
+      items = this.merge(items, cards)
+    })
+    const lastPage = pages[pages.length - 1] || {}
+    const lastCards = pageCards[pageCards.length - 1] || []
+    const current = toCount(lastPage.current) || targetPage
+    const total = toCount(pages[0] ? pages[0].total : undefined)
+    this.patch({
+      status: 'ready',
+      items,
+      page: current,
+      total: total === null ? items.length : total,
+      hasMore: this.resolveHasMore({ page: current, total, received: lastCards.length }),
+      refreshing: false,
+      loadingMore: false,
+      loadError: '',
+      loadMoreError: '',
+    })
+    return 'loaded'
+  }
+
   /** 加载下一页。页码只在成功拿到数据后推进。 */
   async loadMore(): Promise<PagerOutcome> {
     if (this.disposed) return Promise.resolve('ignored')

@@ -72,13 +72,18 @@ page {
 .error-card .primary-button { margin-top: 28rpx; }
 
 .refresh-band {
+  position: fixed;
+  right: 32rpx;
+  bottom: calc(132rpx + env(safe-area-inset-bottom));
+  left: 32rpx;
+  z-index: 90;
   display: flex;
   align-items: center;
-  margin: 20rpx 32rpx 0;
   padding: 18rpx 24rpx;
   border: 1rpx solid #e7d3d1;
   border-radius: 18rpx;
   background: #fbf1ee;
+  box-shadow: 0 10rpx 30rpx rgba(89, 52, 62, .12);
   box-sizing: border-box;
 }
 

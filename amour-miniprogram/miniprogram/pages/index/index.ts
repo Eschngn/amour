@@ -182,7 +182,7 @@ Component(withComponentPageViewTracking({
       const state = stateOf(this)
       state.visible = true
       if (state.disposed || this.data.pageBlocked) return
-      // 从空间编辑页保存后返回：重新读取 /space/home/query，确保看到最新内容。
+      // 从空间编辑页保存后返回：静默重读 /space/home/query，保留当前列表与滚动位置。
       this.syncTicker()
       if (this.data.homeLoadedOnce) this.loadHomeData({ refresh: true })
     },

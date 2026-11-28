@@ -4,6 +4,9 @@ import { adaptSpaceDetail } from '../../utils/plaza-adapter'
 import type { SpaceDetailView } from '../../types/plaza'
 import { withPageViewTracking } from '../../utils/page-view-lifecycle'
 
+/** 记录哪些页面实例刚打开过公开故事 / 照片详情：返回时只做一次静默刷新。 */
+const returningFromDetail = new WeakSet<object>()
+
 /**
  * 公开空间详情承接页。
  *
@@ -27,7 +30,7 @@ interface DetailPageData {
 }
 
 interface DetailMethods {
-  loadDetail(): Promise<void>
+  loadDetail(options?: { silent?: boolean }): Promise<void>
   onPrimaryAction(): void
   goBackToPlaza(): void
   onCoverError(): void
@@ -81,19 +84,28 @@ Page<DetailPageData, DetailCustom & DetailMethods>(withPageViewTracking<DetailPa
     this.loadDetail()
   },
 
+  async onShow() {
+    // 从公开故事 / 照片详情返回：静默刷新当前空间，保留已有内容与滚动位置。
+    if (!returningFromDetail.delete(this)) return
+    await this.loadDetail({ silent: true })
+  },
+
   onUnload() {
     this.disposed = true
     // 让在途响应失效，避免卸载后 setData。
     this.requestSeq = (this.requestSeq || 0) + 1
   },
 
-  async loadDetail() {
+  async loadDetail(options?: { silent?: boolean }) {
     const spaceId = this.data.spaceId
     if (!spaceId) return
+    const silent = Boolean(options && options.silent)
     const seq = (this.requestSeq || 0) + 1
     this.requestSeq = seq
 
-    this.setData({ loading: true, loadError: '', unavailable: false, coverFailed: false })
+    if (!silent) {
+      this.setData({ loading: true, loadError: '', unavailable: false, coverFailed: false })
+    }
     try {
       const detail = await fetchPlazaSpaceDetail(spaceId)
       if (this.disposed || seq !== this.requestSeq) return
@@ -109,6 +121,11 @@ Page<DetailPageData, DetailCustom & DetailMethods>(withPageViewTracking<DetailPa
       this.setData({ loading: false, space: view })
     } catch (error) {
       if (this.disposed || seq !== this.requestSeq) return
+      if (silent && this.data.space) {
+        // 静默刷新失败时保留当前内容，不把用户已看到的页面替换成错误页。
+        console.warn('公开空间刷新失败', error)
+        return
+      }
       const plazaError = error as PlazaError
       this.setData({
         loading: false,
@@ -203,6 +220,7 @@ Page<DetailPageData, DetailCustom & DetailMethods>(withPageViewTracking<DetailPa
     this.navigating = true
     wx.navigateTo({
       url,
+      success: () => returningFromDetail.add(this),
       complete: () => {
         this.navigating = false
       },

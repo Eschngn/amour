@@ -34,6 +34,7 @@ globalThis.wx = {
   },
   navigateTo(options) {
     navigations.push(options && options.url)
+    if (options && options.success) options.success({})
     if (options && options.complete) options.complete({})
   },
   navigateBack(options) {
@@ -461,7 +462,7 @@ test('端到端：本人 / 情侣空间私有详情页的行为未被修改', as
   assert.equal(resolvePageAccess('pages/plaza-photo/plaza-photo'), PAGE_ACCESS.PUBLIC)
 })
 
-test('端到端：从详情页返回后公开空间保持原有列表与状态，不重新加载', async () => {
+test('端到端：从详情页返回后公开空间自动刷新，且保持原有列表与页面状态', async () => {
   const space = createPage(detailPage, { spaceId: '2001' })
   pageStack = [{ route: 'pages/plaza/index' }, { route: 'pages/plaza-detail/index' }]
   await flush()
@@ -477,9 +478,8 @@ test('端到端：从详情页返回后公开空间保持原有列表与状态�
   await flush()
   assert.equal(story.data.story.storyId, '8001')
 
-  // 返回：navigateBack 只出栈，公开空间页实例与数据保持不变
+  // 返回：公开空间重新可见，onShow 静默刷新详情数据
   story.backToSpace()
-  // 退回后公开空间重新可见（onShow 由框架触发；页面本身不做隐式刷新）
   pageStack = [{ route: 'pages/plaza/index' }, { route: 'pages/plaza-detail/index' }]
   if (typeof space.onShow === 'function') space.onShow()
   await flush()
@@ -488,6 +488,6 @@ test('端到端：从详情页返回后公开空间保持原有列表与状态�
   assert.deepEqual(space.data.space.photos.map(photo => photo.photoId), photoIdsBefore)
   assert.equal(space.data.loading, false)
   assert.equal(space.data.loadError, '')
-  // 只新增了详情页自己的请求，空间页没有重新请求
-  assert.equal(requests.length, requestCountBefore + 1)
+  // 新增一次故事详情请求 + 一次静默刷新请求；刷新期间不进入整页 loading 态
+  assert.equal(requests.length, requestCountBefore + 2)
 })

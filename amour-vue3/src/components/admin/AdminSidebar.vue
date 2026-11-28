@@ -1,9 +1,9 @@
 <template>
   <aside
-    class="admin-sidebar fixed inset-y-0 left-0 z-40 flex w-72 shrink-0 flex-col transition-[width,transform] duration-300 ease-out lg:relative lg:z-20 lg:translate-x-0"
+    class="admin-sidebar fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col transition-[width,transform] duration-300 ease-out lg:relative lg:z-20 lg:translate-x-0"
     :class="[
       open ? 'translate-x-0 shadow-xl' : '-translate-x-full',
-      collapsed ? 'lg:w-[88px]' : 'lg:w-[248px]',
+      collapsed ? 'lg:w-[80px]' : 'lg:w-[220px]',
     ]"
     aria-label="后台主导航"
   >

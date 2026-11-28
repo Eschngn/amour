@@ -437,7 +437,7 @@ test('章节、故事、分类、照片和纪念日排序成功后都不重新�
   }
 })
 
-test('从独立编辑页返回后清理并刷新当前栏目', () => {
+test('从独立编辑页返回后清理并刷新当前栏目', async () => {
   const page = createPage()
   const loaded = []
   let reviewLoads = 0
@@ -449,11 +449,150 @@ test('从独立编辑页返回后清理并刷新当前栏目', () => {
   page.applySession = () => {}
   page.setData({ activeTab: 'photo' })
   try {
-    page.onShow()
+    await page.onShow()
     assert.equal(page.editorOpen, false)
     assert.equal(page.loadedTabs.photo, undefined)
     assert.deepEqual(loaded, ['photo'])
     assert.equal(reviewLoads, 1)
+  } finally {
+    page.destroy()
+  }
+})
+
+test('从独立编辑页返回：静默刷新当前栏目，不写滚动位置、不清空列表', async () => {
+  const page = createPage()
+  const loaded = []
+  page.pageReady = true
+  page.applySession = () => {}
+  page.loadReview = async () => {}
+  page.setData({ activeTab: 'photo', photos: [{ id: 7, title: '旧照片' }] })
+  page.loadedTabs = { photo: true }
+  page.loadTab = (key, options) => {
+    loaded.push({ key, options })
+    return Promise.resolve()
+  }
+  const patches = []
+  const originalSetData = page.setData
+  page.setData = (patch, callback) => {
+    patches.push(patch)
+    return originalSetData(patch, callback)
+  }
+  try {
+    page.openEditor('photo', { id: 9 })
+    assert.equal(page.editorOpen, true)
+    assert.ok(navigations.some(item => item.type === 'navigateTo' && item.url.includes('kind=photo')))
+
+    await page.onShow()
+
+    assert.deepEqual(loaded, [{ key: 'photo', options: { silent: true } }])
+    assert.deepEqual(page.data.photos, [{ id: 7, title: '旧照片' }], '返回刷新不能先清空列表')
+    assert.equal(
+      patches.some(patch => Object.prototype.hasOwnProperty.call(patch, 'scrollTop')),
+      false,
+      '父页面返回过程中不能写入 scrollTop',
+    )
+    assert.equal(
+      Object.prototype.hasOwnProperty.call(page.data, 'scrollTop'),
+      false,
+      '不再依赖 scroll-top 绑定恢复位置',
+    )
+    const wxml = readFileSync('miniprogram/pages/space-studio/index.wxml', 'utf8')
+    assert.doesNotMatch(wxml, /scroll-top=/)
+    assert.doesNotMatch(wxml, /onContentScroll/)
+  } finally {
+    page.destroy()
+  }
+})
+
+test('相册 / 故事 / 纪念日静默刷新时保留已有列表，不切换加载骨架', async () => {
+  prepareSession(NORMAL_SPACE, ['frontend:story:query', 'frontend:photo:query', 'frontend:anniversary:query'])
+  let pendingChapters = null
+  let pendingNodes = null
+  let pendingPhotos = null
+  let pendingAnniversaries = null
+  handlers.set('/story/manage/chapters', (options) => { pendingChapters = options })
+  handlers.set('/story/manage/nodes', (options) => { pendingNodes = options })
+  handlers.set('/photo/manage/categories', options => options.success(ok([{ id: 22, categoryName: '旧分类' }])))
+  handlers.set('/photo/manage/page', (options) => { pendingPhotos = options })
+  handlers.set('/anniversary/manage/list', (options) => { pendingAnniversaries = options })
+
+  const page = createPage()
+  page.photoPageSeq = 0
+  page.setData({
+    storyLoading: false,
+    chapters: [{ id: 11, name: '旧章节' }],
+    nodes: [{ id: 1, chapterId: 11 }],
+    visibleNodes: [{ id: 1, chapterId: 11 }],
+    photoLoading: false,
+    photos: [{ id: 7, title: '旧照片' }],
+    anniversaryLoading: false,
+    anniversaries: [{ id: 8, title: '旧纪念日' }],
+  })
+  try {
+    const storyTask = page.loadStory({ silent: true })
+    assert.equal(page.data.storyLoading, false, '故事刷新不能切回加载骨架')
+    assert.deepEqual(page.data.chapters.map(item => item.id), [11])
+    pendingChapters.success(ok([{ id: 12, name: '新章节' }]))
+    pendingNodes.success(ok([{ id: 2, chapterId: 12 }]))
+    await storyTask
+    assert.deepEqual(page.data.chapters.map(item => item.id), [12])
+
+    const photoTask = page.loadPhoto({ silent: true })
+    await settle()
+    assert.equal(page.data.photoLoading, false, '相册刷新不能切回加载骨架')
+    assert.deepEqual(page.data.photos.map(item => item.id), [7])
+    pendingPhotos.success(ok({ current: 1, size: 10, total: 1, records: [{ id: 9, title: '新照片' }] }))
+    await photoTask
+    assert.deepEqual(page.data.photos.map(item => item.id), [9])
+
+    const anniversaryTask = page.loadAnniversary({ silent: true })
+    assert.equal(page.data.anniversaryLoading, false, '纪念日刷新不能切回加载骨架')
+    assert.deepEqual(page.data.anniversaries.map(item => item.id), [8])
+    pendingAnniversaries.success(ok([{ id: 10, title: '新纪念日' }]))
+    await anniversaryTask
+    assert.deepEqual(page.data.anniversaries.map(item => item.id), [10])
+  } finally {
+    page.destroy()
+  }
+})
+
+test('静默刷新失败时保留已有列表，不清空内容也不切换错误态', async () => {
+  prepareSession(NORMAL_SPACE, ['frontend:story:query', 'frontend:photo:query', 'frontend:anniversary:query'])
+  handlers.set('/story/manage/chapters', options => options.success(fail('50000', '故事刷新失败')))
+  handlers.set('/story/manage/nodes', options => options.success(fail('50000', '故事刷新失败')))
+  handlers.set('/photo/manage/categories', options => options.success(fail('50000', '相册刷新失败')))
+  handlers.set('/anniversary/manage/list', options => options.success(fail('50000', '纪念日刷新失败')))
+
+  const page = createPage()
+  page.photoPageSeq = 0
+  page.setData({
+    storyLoading: false,
+    storyError: '',
+    chapters: [{ id: 11, name: '旧章节' }],
+    nodes: [{ id: 1, chapterId: 11 }],
+    visibleNodes: [{ id: 1, chapterId: 11 }],
+    photoLoading: false,
+    photoError: '',
+    photos: [{ id: 7, title: '旧照片' }],
+    anniversaryLoading: false,
+    anniversaryError: '',
+    anniversaries: [{ id: 8, title: '旧纪念日' }],
+  })
+  try {
+    await page.loadStory({ silent: true })
+    await page.loadPhoto({ silent: true })
+    await page.loadAnniversary({ silent: true })
+
+    assert.deepEqual(page.data.chapters.map(item => item.id), [11])
+    assert.deepEqual(page.data.nodes.map(item => item.id), [1])
+    assert.deepEqual(page.data.photos.map(item => item.id), [7])
+    assert.deepEqual(page.data.anniversaries.map(item => item.id), [8])
+    assert.equal(page.data.storyError, '')
+    assert.equal(page.data.photoError, '')
+    assert.equal(page.data.anniversaryError, '')
+    assert.equal(page.data.storyLoading, false)
+    assert.equal(page.data.photoLoading, false)
+    assert.equal(page.data.anniversaryLoading, false)
   } finally {
     page.destroy()
   }

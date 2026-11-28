@@ -308,7 +308,7 @@ test('页面卸载后忽略在途响应，不再 setData', async () => {
   assert.deepEqual(page.data, snapshot)
 })
 
-test('从详情返回（onShow）不会清空或重新加载列表', async () => {
+test('非详情返回的 onShow 不重复加载列表（如从后台恢复）', async () => {
   responseHandler = (options) => options.success(pageBody([1, 2, 3], 3))
   const page = createPage()
   page.onLoad()
@@ -318,4 +318,77 @@ test('从详情返回（onShow）不会清空或重新加载列表', async () =>
   await flush()
   assert.equal(requests.length, 1)
   assert.deepEqual(page.data.cards, cards)
+})
+
+test('从详情返回：静默刷新已加载页，期间保留卡片且不进入加载态', async () => {
+  let version = 1
+  responseHandler = (options) => {
+    const current = Number(options.data && options.data.current) || 1
+    if (version === 1) {
+      options.success(current === 1
+        ? pageBody([1, 2, 3, 4, 5, 6, 7, 8], 16)
+        : pageBody([9, 10, 11, 12, 13, 14, 15, 16], 16, 2))
+      return
+    }
+    options.success(current === 1
+      ? pageBody([101, 102, 103, 104, 105, 106, 107, 108], 16)
+      : pageBody([109, 110, 111, 112, 113, 114, 115, 116], 16, 2))
+  }
+  const page = createPage()
+  page.onLoad()
+  await flush()
+  await page.onLoadMore()
+  await flush()
+  const beforeIds = page.data.cards.map(item => item.spaceId)
+  assert.equal(beforeIds.length, 16)
+  assert.equal(page.data.status, 'ready')
+
+  page.onOpenSpace({ detail: { spaceId: '2001' } })
+  version = 2
+  const requestsBefore = requests.length
+  const showTask = page.onShow()
+
+  assert.equal(page.data.status, 'ready', '静默刷新不能切回骨架屏')
+  assert.deepEqual(page.data.cards.map(item => item.spaceId), beforeIds, '刷新期间不能清空旧列表')
+
+  await showTask
+  await flush()
+  assert.equal(requests.length, requestsBefore + 2, '应重新读取已加载的两页')
+  assert.deepEqual(
+    page.data.cards.map(item => item.spaceId),
+    ['101', '102', '103', '104', '105', '106', '107', '108', '109', '110', '111', '112', '113', '114', '115', '116'],
+  )
+  assert.equal(page.data.status, 'ready')
+  assert.equal(Object.prototype.hasOwnProperty.call(page.data, 'scrollTop'), false)
+})
+
+test('从详情返回刷新失败：保留卡片与分页状态，不展示错误页', async () => {
+  let shouldFail = false
+  responseHandler = (options) => {
+    if (shouldFail) {
+      options.fail({ errMsg: 'request:fail timeout' })
+      return
+    }
+    const current = Number(options.data && options.data.current) || 1
+    options.success(current === 1
+      ? pageBody([1, 2, 3, 4, 5, 6, 7, 8], 16)
+      : pageBody([9, 10, 11, 12, 13, 14, 15, 16], 16, 2))
+  }
+  const page = createPage()
+  page.onLoad()
+  await flush()
+  await page.onLoadMore()
+  await flush()
+  const before = page.data.cards.map(item => item.spaceId)
+
+  page.onOpenSpace({ detail: { spaceId: '2001' } })
+  shouldFail = true
+  await page.onShow()
+  await flush()
+
+  assert.deepEqual(page.data.cards.map(item => item.spaceId), before)
+  assert.equal(page.data.status, 'ready')
+  assert.equal(page.data.loadError, '')
+  assert.equal(page.data.loadMoreError, '')
+  assert.equal(page.data.refreshing, false)
 })

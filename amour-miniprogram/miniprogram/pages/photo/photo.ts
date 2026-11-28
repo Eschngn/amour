@@ -5,6 +5,8 @@ import { guardPageReady } from '../../utils/access-control'
 
 const PAGE_SIZE = 6
 let latestPhotoRequestId = 0
+/** 记录哪些页面实例刚打开过照片详情：返回时只做一次静默刷新。 */
+const returningFromDetail = new WeakSet<object>()
 
 interface PhotoCategory {
   id: number
@@ -42,6 +44,19 @@ function formatPhotoDate(value: string, showTime?: boolean) {
   return clock ? `${date} ${clock}` : date
 }
 
+/** 统一的照片展示字段：number 使用整个列表中的真实序号，刷新后不会从 01 重新开始。 */
+function decoratePhoto(item: PhotoRecord, index: number): WechatMiniprogram.IAnyObject {
+  return {
+    ...item,
+    title: item.title || '未命名照片',
+    description: item.description || '这一页还没有写下文字。',
+    categoryName: item.categoryName || '共同回忆',
+    date: formatPhotoDate(item.takenTime, item.showTime),
+    location: item.location || '',
+    number: String(index + 1).padStart(2, '0'),
+  }
+}
+
 Component(withComponentPageViewTracking({
   data: {
     loading: true,
@@ -69,6 +84,14 @@ Component(withComponentPageViewTracking({
         return
       }
       this.initialize()
+    },
+  },
+
+  pageLifetimes: {
+    async show() {
+      // 只有从照片详情返回时才刷新；静默更新已有列表，不重建滚动容器。
+      if (!returningFromDetail.delete(this)) return
+      await this.refreshLoadedPhotos()
     },
   },
 
@@ -112,15 +135,9 @@ Component(withComponentPageViewTracking({
         const total = Number(result.total) || 0
         const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
         const currentPage = Math.min(Math.max(1, Number(result.current) || page), totalPages)
-        const newPhotos = (result.records || []).filter((item) => item.url).map((item, index) => ({
-          ...item,
-          title: item.title || '未命名照片',
-          description: item.description || '这一页还没有写下文字。',
-          categoryName: item.categoryName || '共同回忆',
-          date: formatPhotoDate(item.takenTime, item.showTime),
-          location: item.location || '',
-          number: String((currentPage - 1) * PAGE_SIZE + index + 1).padStart(2, '0'),
-        }))
+        const newPhotos = (result.records || []).filter((item) => item.url).map((item, index) => (
+          decoratePhoto(item, (currentPage - 1) * PAGE_SIZE + index)
+        ))
         const photos = append ? [...this.data.photos, ...newPhotos] : newPhotos
         this.setData({
           photos,
@@ -155,6 +172,50 @@ Component(withComponentPageViewTracking({
       this.loadPhotos(this.data.currentPage + 1, true)
     },
 
+    /**
+     * 从照片详情返回时刷新已加载的所有分页。
+     *
+     * 只刷新第 1 页会把已经上滑加载出来的照片丢掉，导致无法回到原位置；
+     * 这里按当前已加载页数并行请求，再按原顺序合并成同一份列表。
+     */
+    async refreshLoadedPhotos() {
+      const targetPage = Math.max(1, Number(this.data.currentPage) || 1)
+      if (!this.data.photos.length) {
+        await this.loadPhotos(this.data.currentPage || 1)
+        return
+      }
+      const requestId = ++latestPhotoRequestId
+      const payloadBase: WechatMiniprogram.IAnyObject = { size: PAGE_SIZE }
+      if (this.data.activeCategory !== 'all') payloadBase.photoCategoryId = this.data.activeCategory
+      try {
+        const pages = await Promise.all(
+          Array.from({ length: targetPage }, (_, index) => post<PhotoPageResult>('/photo/page', {
+            ...payloadBase,
+            current: index + 1,
+          })),
+        )
+        if (requestId !== latestPhotoRequestId) return
+        const total = Number(pages[0] && pages[0].total) || 0
+        const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+        const currentPage = Math.min(targetPage, totalPages)
+        const records = pages
+          .slice(0, currentPage)
+          .reduce((all: PhotoRecord[], page) => all.concat(page.records || []), [])
+        const photos = records.filter((item) => item.url).map((item, index) => decoratePhoto(item, index))
+        this.setData({
+          photos,
+          currentPage,
+          totalPages,
+          total,
+          hasMore: currentPage < totalPages && photos.length > 0,
+          pageSummary: total ? `${photos.length} / ${total}` : '等待新的照片',
+        })
+      } catch (error) {
+        // 静默刷新失败时保留现有列表，不打断用户当前浏览位置。
+        console.warn('照片列表刷新失败', error)
+      }
+    },
+
     openPhotoDetail(event: WechatMiniprogram.BaseEvent) {
       const index = Number(event.currentTarget.dataset.index)
       const photo = this.data.photos[index]
@@ -163,6 +224,7 @@ Component(withComponentPageViewTracking({
       wx.navigateTo({
         url: `../photo-detail/photo-detail?id=${photo.id}`,
         success: (result) => {
+          returningFromDetail.add(this)
           result.eventChannel.emit('photoData', { photos: this.data.photos, index })
         },
       })

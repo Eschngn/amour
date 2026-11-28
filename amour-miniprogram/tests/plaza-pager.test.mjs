@@ -253,6 +253,56 @@ test('刷新成功后替换旧列表并重置分页', async () => {
   assert.equal(state.hasMore, true)
 })
 
+test('从详情返回刷新已加载页：不回到第 1 页，保留原位置', async () => {
+  const queries = []
+  let version = 1
+  const pager = new PlazaPager(async (query) => {
+    queries.push(query.current)
+    if (version === 1) {
+      return query.current === 1
+        ? page([1, 2], { current: 1, total: 6 })
+        : page([3, 4], { current: 2, total: 6 })
+    }
+    return query.current === 1
+      ? page([1, 9], { current: 1, total: 6 })
+      : page([3, 8], { current: 2, total: 6 })
+  }, ADAPT, { pageSize: 2 })
+
+  await pager.load()
+  await pager.loadMore()
+  version = 2
+  const outcome = await pager.refreshLoaded()
+  const state = pager.getState()
+  assert.equal(outcome, 'loaded')
+  assert.deepEqual(queries, [1, 2, 1, 2])
+  assert.deepEqual(state.items.map(item => item.spaceId), [1, 9, 3, 8])
+  assert.equal(state.page, 2)
+  assert.equal(state.total, 6)
+  assert.equal(state.hasMore, true)
+  assert.equal(state.refreshing, false)
+})
+
+test('从详情返回刷新失败：保留原列表与页码', async () => {
+  let shouldFail = false
+  const pager = new PlazaPager(async (query) => {
+    if (shouldFail) throw new Error('刷新失败')
+    return query.current === 1
+      ? page([1, 2], { current: 1, total: 6 })
+      : page([3, 4], { current: 2, total: 6 })
+  }, ADAPT, { pageSize: 2 })
+
+  await pager.load()
+  await pager.loadMore()
+  shouldFail = true
+  const outcome = await pager.refreshLoaded()
+  const state = pager.getState()
+  assert.equal(outcome, 'failed')
+  assert.deepEqual(state.items.map(item => item.spaceId), [1, 2, 3, 4])
+  assert.equal(state.page, 2)
+  assert.equal(state.refreshing, false)
+  assert.equal(state.status, 'ready')
+})
+
 test('卸载后忽略在途响应', async () => {
   const { fetcher, calls } = deferredFetcher()
   const pager = new PlazaPager(fetcher, ADAPT)

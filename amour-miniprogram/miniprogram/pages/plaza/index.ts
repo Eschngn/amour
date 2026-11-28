@@ -5,6 +5,9 @@ import type { PlazaListState } from '../../utils/plaza-pager'
 import type { SpaceCardView } from '../../types/plaza'
 import { withPageViewTracking } from '../../utils/page-view-lifecycle'
 
+/** 记录哪些页面实例刚打开过公开空间详情：返回时只做一次静默刷新。 */
+const returningFromDetail = new WeakSet<object>()
+
 /**
  * 恋爱广场列表页。
  *
@@ -87,9 +90,11 @@ Page<PlazaPageData, PlazaCustom & PlazaMethods>(withPageViewTracking<PlazaPageDa
     }
   },
 
-  onShow() {
-    // 从详情返回时保留列表、分页与滚动位置：这里不做任何重新加载。
-    // 只有页面首次进入（onLoad 已处理）或用户主动下拉刷新才会请求。
+  async onShow() {
+    // 从详情返回：静默刷新已加载的页码，列表与滚动位置保持不变。
+    // 首次进入由 onLoad 负责加载，这里不重复请求。
+    if (!returningFromDetail.delete(this)) return
+    if (this.pager) await this.pager.refreshLoaded()
   },
 
   onPullDownRefresh() {
@@ -180,6 +185,7 @@ Page<PlazaPageData, PlazaCustom & PlazaMethods>(withPageViewTracking<PlazaPageDa
     const url = `/pages/plaza-detail/index?spaceId=${encodeURIComponent(spaceId)}`
     wx.navigateTo({
       url,
+      success: () => returningFromDetail.add(this),
       fail: () => {
         wx.showToast({ title: '暂时无法打开这个空间', icon: 'none' })
       },

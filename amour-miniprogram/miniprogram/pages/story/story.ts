@@ -4,6 +4,9 @@ import { withComponentPageViewTracking } from '../../utils/page-view-lifecycle'
 import { guardPageReady } from '../../utils/access-control'
 import { formatStoryStartYear } from '../../utils/story-content'
 
+/** 记录哪些页面实例刚打开过故事详情：返回时只做一次静默刷新。 */
+const returningFromDetail = new WeakSet<object>()
+
 interface StoryChapter {
   id: number
   name: string
@@ -78,6 +81,14 @@ Component(withComponentPageViewTracking({
     },
   },
 
+  pageLifetimes: {
+    async show() {
+      // 只有从故事详情返回时才刷新；静默更新当前章节，保留列表与滚动位置。
+      if (!returningFromDetail.delete(this)) return
+      await this.refreshVisibleChapter()
+    },
+  },
+
   methods: {
     async loadOverview() {
       this.setData({ loading: true, loadError: '' })
@@ -113,18 +124,19 @@ Component(withComponentPageViewTracking({
       if (Number.isInteger(index) && index !== this.data.activeChapter) this.loadChapter(index)
     },
 
-    async loadChapter(index: number) {
+    async loadChapter(index: number, options?: { silent?: boolean }) {
       const chapter = this.data.chapters[index]
       if (!chapter) return
+      const silent = Boolean(options && options.silent)
       const globalOffset = this.data.chapters
         .slice(0, index)
         .reduce((sum: number, item: WechatMiniprogram.IAnyObject) => sum + Number(item.nodeCount || 0), 0)
       this.setData({
         activeChapter: index,
         currentChapter: chapter as { title: string; period: string },
-        storiesLoading: true,
+        storiesLoading: !silent,
         storiesError: '',
-        stories: [],
+        ...(silent ? {} : { stories: [] }),
       })
       try {
         const nodes = await post<StoryNode[]>('/story/getStoryByChapterId', { chapterId: String(chapter.id) })
@@ -140,10 +152,14 @@ Component(withComponentPageViewTracking({
         }))
         this.setData({ stories, storiesLoading: false })
       } catch (error) {
-        this.setData({
-          storiesLoading: false,
-          storiesError: getErrorMessage(error, '本章故事暂时加载失败'),
-        })
+        const message = getErrorMessage(error, '本章故事暂时加载失败')
+        if (silent && this.data.stories.length) {
+          // 静默刷新失败：保留当前章节内容与滚动位置，不用错误态替换列表。
+          console.warn('本章故事静默刷新失败', message)
+          this.setData({ storiesLoading: false })
+          return
+        }
+        this.setData({ storiesLoading: false, storiesError: message })
       }
     },
 
@@ -151,11 +167,22 @@ Component(withComponentPageViewTracking({
       this.loadChapter(this.data.activeChapter)
     },
 
+    /** 从故事详情返回：静默刷新当前章节，保留列表与滚动位置。 */
+    async refreshVisibleChapter() {
+      if (!this.data.chapters.length) {
+        await this.loadOverview()
+        return
+      }
+      await this.loadChapter(Number(this.data.activeChapter) || 0, { silent: true })
+    },
+
     openStoryDetail(event: WechatMiniprogram.BaseEvent) {
       const id = Number(event.currentTarget.dataset.id)
-      if (Number.isFinite(id) && id > 0) {
-        wx.navigateTo({ url: `../story-detail/story-detail?id=${id}` })
-      }
+      if (!Number.isFinite(id) || id <= 0) return
+      wx.navigateTo({
+        url: `../story-detail/story-detail?id=${id}`,
+        success: () => returningFromDetail.add(this),
+      })
     },
   },
 }, 'pages/story/story'))

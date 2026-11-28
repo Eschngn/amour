@@ -20,15 +20,6 @@
     </view>
 
     <block wx:else>
-      <!-- 已有内容后的刷新失败：保留页面内容，只提供轻量重试 -->
-      <view wx:if="{{refreshError}}" class="refresh-band">
-        <view class="refresh-copy">
-          <text class="refresh-title">刷新失败，正在展示上次的内容</text>
-          <text class="refresh-note">{{refreshError}}</text>
-        </view>
-        <button class="retry-button" bindtap="onRetryHome" loading="{{refreshing}}" disabled="{{refreshing}}">{{refreshing ? '重试中…' : '重试'}}</button>
-      </view>
-
       <!-- ==================== 首页主视觉 ==================== -->
       <view class="hero-section">
         <view class="hero-copy">
@@ -231,5 +222,14 @@
     <view class="safe-bottom"></view>
   </view>
 </scroll-view>
+
+<!-- 后台刷新失败：固定浮层提示并保留重试，不参与滚动内容布局 -->
+<view wx:if="{{refreshError}}" class="refresh-band">
+  <view class="refresh-copy">
+    <text class="refresh-title">刷新失败，正在展示上次的内容</text>
+    <text class="refresh-note">{{refreshError}}</text>
+  </view>
+  <button class="retry-button" bindtap="onRetryHome" loading="{{refreshing}}" disabled="{{refreshing}}">{{refreshing ? '重试中…' : '重试'}}</button>
+</view>
 
 <bottom-nav current="home"></bottom-nav>
